@@ -595,12 +595,14 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
   function counts(r) {
     let drills = 0;
     let mill = 0;
+    let saw = 0;
     for (const op of r.ops) {
       if (op.kind === 'drill') drills += op.pattern.nX * op.pattern.nY;
       else if (op.kind === 'sdrill') drills++;
+      else if (op.kind === 'blade') saw++;
       else mill++;
     }
-    return { drills: drills, mill: mill };
+    return { drills: drills, mill: mill, saw: saw };
   }
 
   function renderParts() {
@@ -624,7 +626,10 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
       if (r && r.panel) {
         const c = counts(r);
         html += '<span class="d">' + fmt(r.panel.L) + ' × ' + fmt(r.panel.W) + ' × ' + fmt(r.panel.T) + '</span>';
-        html += '<span class="chips"><span class="chip ok">' + c.drills + ' Bohrungen</span><span class="chip ok">' + c.mill + ' Fräsungen</span>' +
+        const n = (k, one, many) => k + ' ' + (k === 1 ? one : many);
+        html += '<span class="chips"><span class="chip ok">' + n(c.drills, 'Bohrung', 'Bohrungen') + '</span>' +
+          (c.saw ? '<span class="chip ok">' + n(c.saw, 'Sägeschnitt', 'Sägeschnitte') + '</span>' : '') +
+          '<span class="chip ok">' + n(c.mill, 'Fräsung', 'Fräsungen') + '</span>' +
           (r.warnings.length ? '<span class="chip warn">' + r.warnings.length + ' Hinweis' + (r.warnings.length > 1 ? 'e' : '') + '</span>' : '') + '</span>';
       } else {
         html += '<span class="chips"><span class="chip err">Fehler</span></span>';

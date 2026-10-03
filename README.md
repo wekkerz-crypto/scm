@@ -59,6 +59,11 @@ Für jede Fräsbearbeitung gibt es eine Auswahlliste mit allen Fräsern, Favorit
 stehen oben. Zustellung global oder je Bearbeitung; Warnung, wenn die Zustellung länger als die Schneide ist.
 `node tools/build_defaults.js` erzeugt die eingebaute Standardliste neu.
 
+**Animation der Werkzeugbahn:** Unter der Draufsicht lässt sich die Bearbeitung in Programmreihenfolge abspielen
+(Tempo, Schieberegler zum Spulen, Anzeige von Bearbeitung und Werkzeug). Das Werkzeug wird mit seinem Durchmesser aus
+der Werkzeugliste gezeigt, Konturen mit Radiuskorrektur, Taschen vereinfacht zeilenweise plus Nachkontur
+(`web/js/toolpath.js`). Maßgeblich bleibt die Simulation in Maestro.
+
 Ausrichtung: Die längste Seite wird X, Bearbeitungsseite ist die Seite mit den meisten Bearbeitungen.
 Nullpunkt vorne links unten. Werkzeuge, Zugaben und Bohrerlisten sind im Web-Tool unter
 *Werkzeuge & Regeln* einstellbar (Standard aus `maestro/werkzeuge/def.tlgx` und den Beispielen).

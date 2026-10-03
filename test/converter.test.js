@@ -163,3 +163,23 @@ test('Arbeitsfeld: bis 1300 mm IJ, darüber IL', () => {
   assert.strictEqual(field(1300.5), 'IL');
   assert.strictEqual(field(2305), 'IL');
 });
+
+test('Werkzeugbahn für die Animation', () => {
+  const { convert } = require('../web/js/convert.js');
+  const T = require('../web/js/tools.js');
+  const TP = require('../web/js/toolpath.js');
+  const toolInfo = T.infoMap(T.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
+  const [part] = convert(read('test/fixtures/fuenfachs.step'), { toolInfo: toolInfo });
+  const moves = TP.build(part, toolInfo, {});
+  const format = moves.find((m) => m.type === 'cut' && m.label === 'Formatfräsen');
+  const r = toolInfo.E014.d / 2;
+  // Fräsermitte läuft außen um die Platte (Korrektur rechts)
+  assert.ok(format.pts.every((q) => q[0] <= -r + 1e-6 || q[0] >= 600 + r - 1e-6 || q[1] <= -r + 1e-6 || q[1] >= 400 + r - 1e-6));
+  const pocket = moves.filter((m) => m.type === 'cut' && /^Tasche/.test(m.label));
+  assert.ok(pocket.length > 3, 'Tasche wird ausgeräumt');
+  // keine Taschenbahn näher als der Fräserradius an der Insel (Mitte 130/200, R15)
+  const rp = toolInfo.E016.d / 2;
+  for (const m of pocket) for (const q of m.pts) assert.ok(Math.hypot(q[0] - 130, q[1] - 200) >= 15 + rp - 0.6);
+  assert.ok(moves.some((m) => m.type === 'plunge'));
+  assert.strictEqual(moves[moves.length - 1].label, 'Parkposition');
+});

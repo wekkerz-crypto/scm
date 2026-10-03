@@ -395,3 +395,20 @@ test('Teilename aus der STEP, bereinigt, gleich für .xcs', () => {
   assert.ok(hz.xcs.includes('CreateBladeCut("Saegeschnitt_1", "Saegeschnitt 45 Grad",'));
   assert.ok(hz.ops.filter((o) => o.kind === 'blade').every((o) => o.label === 'Sägeschnitt 45°'));
 });
+
+test('Zustelltiefe Taschen, Extra-Tiefe Säge, Vorritzen', () => {
+  const { convert } = require('../web/js/convert.js');
+  // Taschen eigene Zustelltiefe, Konturen weiter mit der allgemeinen
+  const [f] = convert(read('test/fixtures/fuenfachs.step'), { stepDown: 6, pocketStepDown: 3 });
+  assert.ok(f.xcs.includes('CreateContourParallelStrategy(true, 1, true, 3, 0);'), 'Tasche mit 3 mm');
+  assert.ok(f.xcs.includes('CreateUnidirectionalMillingStrategy(true, 6, 0, 1, false);'), 'Formatfräsen mit 6 mm');
+  // 0 = wie Fräsen
+  const [g] = convert(read('test/fixtures/fuenfachs.step'), { stepDown: 6, pocketStepDown: 0 });
+  assert.ok(g.xcs.includes('CreateContourParallelStrategy(true, 1, true, 6, 0);'));
+  // Säge: eigene Extra-Tiefe, Vorritzen vor dem Schnitt
+  const [h] = convert(read('test/fixtures/holz.step'), { bladeExtra: 5, scoreCut: true, scoreDepth: 2.5, scoreOut: 12 });
+  const cuts = h.xcs.match(/CreateSectioningMillingStrategy\(2\.5, 12, 0\);\r\nCreateBladeCut\([^)]*, 5\);/g) || [];
+  assert.strictEqual(cuts.length, 2, h.xcs);
+  const [k] = convert(read('test/fixtures/holz.step'), {});
+  assert.ok(!k.xcs.includes('CreateSectioningMillingStrategy'));
+});

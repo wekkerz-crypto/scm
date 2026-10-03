@@ -28,11 +28,16 @@
     rebateToolDia: 12,         // nur falls der Fräser nicht in der Werkzeugliste steht
     pocketTool: 'E016',        // Taschen (CreateContourPocket)
     pocketOverlap: 50,         // Überdeckung in %
+    pocketStepDown: 0,         // Zustelltiefe je Durchgang bei Taschen in mm (0 = wie stepDown)
     chamferTool: 'E050',       // Fasen (CreateChamfer)
     slantTool: 'E016',         // schräge Kanten / Gehrung (CreateSlantedRoughFinish)
     slantExtra: 2,             // Schrägfräsen: Dicke + …
     slantCut: 'saw',           // schräge Kanten über die ganze Länge: 'saw' = Sägeschnitt (CreateBladeCut), 'mill' = fräsen
-    bladeTool: 'E070',         // Säge für schräge Schnitte
+    bladeTool: 'E070',         // Säge für Sägeschnitte
+    bladeExtra: 2,             // Sägeschnitt: Extra-Tiefe unter der Platte (extraDepth)
+    scoreCut: false,           // Sägeschnitt vorritzen (CreateSectioningMillingStrategy)
+    scoreDepth: 3,             // Vorritzen: Tiefe des ersten Schnitts in mm
+    scoreOut: 10,              // Vorritzen: Abstand nach außen zwischen den Durchgängen in mm
     stepDown: 0,               // Zustellung je Durchgang in mm (0 = in einem Durchgang)
     finishDepth: 0,            // letzte Zustellung in mm (0 = keine eigene)
     contourMode: 'whole',      // Sonderkontur: 'whole' = Außenkontur am Stück, 'rect' = Rechteck + Ausschnitte
@@ -324,8 +329,9 @@
         const so = cfg.sawOverrun;
         ops.push({ kind: 'blade', key: 'blade-' + i, toolKind: 'saw', toolDefault: 'bladeTool',
           a: [w.top.a[0] - u[0] * so, w.top.a[1] - u[1] * so], b: [w.top.b[0] + u[0] * so, w.top.b[1] + u[1] * so],
-          a0: w.top.a, b0: w.top.b, tilt: w.angle, leanOut: w.leanOut, depth: T, extra: cfg.slantExtra, tool: cfg.bladeTool,
-          label: 'Sägeschnitt ' + fmt(w.angle) + '°' });
+          a0: w.top.a, b0: w.top.b, tilt: w.angle, leanOut: w.leanOut, depth: T, extra: cfg.bladeExtra, tool: cfg.bladeTool,
+          score: cfg.scoreCut ? { depth: cfg.scoreDepth, out: cfg.scoreOut } : null,
+          label: 'Sägeschnitt ' + fmt(w.angle) + '°' + (cfg.scoreCut ? ' vorgeritzt' : '') });
         continue;
       }
       ops.push({ kind: 'slant', key: 'slant-' + i, toolKind: 'mill', toolDefault: 'slantTool',
@@ -486,7 +492,8 @@
         }
       }
       if (op.kind === 'contour' || op.kind === 'pocket') {
-        const st = cfg.stepOverrides && cfg.stepOverrides[op.key] !== undefined ? cfg.stepOverrides[op.key] : cfg.stepDown;
+        const glob = op.kind === 'pocket' && cfg.pocketStepDown > 0 ? cfg.pocketStepDown : cfg.stepDown;
+        const st = cfg.stepOverrides && cfg.stepOverrides[op.key] !== undefined ? cfg.stepOverrides[op.key] : glob;
         op.step = st > 0 && op.depth > st + 1e-9 ? st : 0;
         const info = cfg.toolInfo && cfg.toolInfo[op.tool];
         const pass = op.step || op.depth;
@@ -719,6 +726,8 @@
         L.push('CreateSegment("Saegeschnitt_Linie_' + n + '", ' + pt(op.a) + ', ' + pt(op.b) + ');');
         L.push('ResetApproachStrategy();');
         L.push('ResetRetractStrategy();');
+        // Vorritzen: erster Schnitt in Ritztiefe, Rückweg auf volle Tiefe
+        if (op.score) L.push('CreateSectioningMillingStrategy(' + fmt(op.score.depth) + ', ' + fmt(op.score.out) + ', 0);');
         L.push('CreateBladeCut("Saegeschnitt_' + n + '", "Saegeschnitt ' + fmt(op.tilt) + ' Grad", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", ' + fmt(ang) +
           ', 2, -1, -1, -1, 0, true, true, 0, ' + fmt(op.extra) + ');');
         blank();

@@ -221,7 +221,17 @@
         const sh = (q) => [q[0] + right[0] * off, q[1] + right[1] * off];
         meta.blade.d = info0.d || 300;
         meta.blade.thick = info0.blade || 3;
-        go([sh(op.a0 || op.a), sh(op.b0 || op.b)], Math.max(w, info0.blade || 3), op.label, op.tool, i);
+        const a0 = op.a0 || op.a;
+        const b0 = op.b0 || op.b;
+        if (op.score) {
+          // Vorritzen: dünner Schnitt in Ritztiefe, zurück auf volle Tiefe
+          meta.z = op.score.depth;
+          go([a0, b0], info0.blade || 3, op.label + ' – vorritzen', op.tool, i);
+          meta.z = p.T * 0.3;
+          go([sh(b0), sh(a0)], Math.max(w, info0.blade || 3), op.label, op.tool, i);
+        } else {
+          go([sh(a0), sh(b0)], Math.max(w, info0.blade || 3), op.label, op.tool, i);
+        }
         return;
       }
       if (op.kind === 'sdrill') meta = { z: op.depth * Math.cos(op.angleB * Math.PI / 180), kind: 'drill' };

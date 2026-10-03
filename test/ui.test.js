@@ -91,3 +91,28 @@ test('Web-Tool: Bearbeitungsschritte mit der Maus verschieben', { skip: !chromiu
     await browser.close();
   }
 });
+
+test('Web-Tool: Schalter Hell/Dunkel', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ colorScheme: 'light' });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    const bg = () => p.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    const light = await bg();
+    assert.strictEqual(await p.getAttribute('[data-theme-set="light"]', 'aria-pressed'), 'true');
+    await p.click('[data-theme-set="dark"]');
+    assert.notStrictEqual(await bg(), light);
+    assert.strictEqual(await p.getAttribute('[data-theme-set="dark"]', 'aria-pressed'), 'true');
+    await p.reload();
+    await p.waitForSelector('.part');
+    assert.notStrictEqual(await bg(), light, 'Wahl bleibt nach dem Neuladen');
+    await p.click('[data-theme-set="light"]');
+    assert.strictEqual(await bg(), light);
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});

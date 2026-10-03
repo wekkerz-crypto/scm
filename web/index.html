@@ -78,6 +78,13 @@ button { cursor: pointer; }
 
 header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
 header.top p { margin: 2px 0 0; color: var(--muted); max-width: 90ch; font-size: 0.9rem; }
+.topright { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.theme { display: inline-flex; padding: 3px; gap: 2px; border: 1px solid var(--line); border-radius: 99px; background: var(--sunken); }
+.theme button { border: 0; background: none; color: var(--muted); font: inherit; font-size: 0.85rem; padding: 4px 12px; border-radius: 99px; cursor: pointer;
+  transition: background .15s, color .15s; }
+.theme button:hover { color: var(--ink); }
+.theme button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.18); }
+@media (max-width: 700px) { .topright { align-items: flex-start; } }
 .flow { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); flex-wrap: wrap; }
 .flow span { border: 1px solid var(--line); background: var(--surface); padding: 2px 8px; border-radius: 99px; }
 .flow span.on { border-color: var(--accent); color: var(--accent); }
@@ -232,7 +239,13 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
       <h1>STEP-zu-XCS Konverter</h1>
       <p>STEP laden oder auf die Seite ziehen, Bearbeitungen prüfen, .xcs speichern. Die Dateien bleiben im Browser.</p>
     </div>
+    <div class="topright">
+    <div class="theme" role="group" aria-label="Darstellung">
+      <button type="button" data-theme-set="light" aria-pressed="false" title="Heller Modus"><span aria-hidden="true">☀</span> Hell</button>
+      <button type="button" data-theme-set="dark" aria-pressed="false" title="Dunkler Modus"><span aria-hidden="true">☾</span> Dunkel</button>
+    </div>
     <div class="flow" aria-label="Ablauf"><span class="on">STEP</span>→<span class="on">.xcs</span>→<span>X-Konverter</span>→<span>.pgmx</span>→<span>Maestro</span></div>
+    </div>
   </header>
 
   <input id="file" type="file" accept=".step,.stp,.STEP,.STP" multiple hidden>
@@ -329,6 +342,24 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     try { if (v === null) localStorage.removeItem(key); else localStorage.setItem(key, JSON.stringify(v)); } catch (e) { /* ohne Speicher */ }
   }
   const customTools = loadJson(TOOLS_KEY, null);
+
+  // ------------------------------------------------ Hell / Dunkel
+  const THEME_KEY = 'step2xcs.theme.v1';
+  const systemDark = () => !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  function applyTheme(t) {
+    const root = document.documentElement;
+    // ohne eigene Wahl: Vorgabe der Umgebung bzw. des Systems anzeigen
+    if (t === 'dark' || t === 'light') root.setAttribute('data-theme', t);
+    const cur = root.getAttribute('data-theme');
+    const theme = cur === 'dark' || cur === 'light' ? cur : (systemDark() ? 'dark' : 'light');
+    document.querySelectorAll('[data-theme-set]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.themeSet === theme)));
+  }
+  applyTheme(loadJson(THEME_KEY, null));
+  document.querySelectorAll('[data-theme-set]').forEach((b) => b.addEventListener('click', () => {
+    storeJson(THEME_KEY, b.dataset.themeSet);
+    applyTheme(b.dataset.themeSet);
+    if (typeof drawAnim === 'function') drawAnim(); // Leinwand mit den neuen Farben neu zeichnen
+  }));
 
   const state = { parts: [], sel: 0, settings: loadSettings(),
     tools: customTools ? customTools.tools : (window.DEFAULT_TOOLS || []),

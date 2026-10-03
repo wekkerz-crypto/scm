@@ -170,20 +170,32 @@
     const info = (name) => (toolInfo && toolInfo[name]) || {};
     const moves = [];
     let pos = [-60, -60];
+    // meta: z = Frästiefe, kind = Darstellungsart (mill, saw, drill, edge, chamfer)
+    let meta = {};
     const go = (pts, d, label, tool, opIndex) => {
       if (!pts.length) return;
+      const extra = { z: meta.z || 0, through: (meta.z || 0) >= p.T - 1e-6, kind: meta.kind || 'mill',
+        group: ops[opIndex] ? ops[opIndex].group : '' };
       if (Math.hypot(pos[0] - pts[0][0], pos[1] - pts[0][1]) > 1e-6) {
-        moves.push({ type: 'rapid', pts: [pos, pts[0]], d: d, label: label, tool: tool, op: opIndex });
+        moves.push(Object.assign({ type: 'rapid', pts: [pos, pts[0]], d: d, label: label, tool: tool, op: opIndex }, extra));
       }
-      if (pts.length === 1) moves.push({ type: 'plunge', pts: [pts[0]], d: d, label: label, tool: tool, op: opIndex });
-      else moves.push({ type: 'cut', pts: pts, d: d, label: label, tool: tool, op: opIndex });
+      if (pts.length === 1) moves.push(Object.assign({ type: 'plunge', pts: [pts[0]], d: d, label: label, tool: tool, op: opIndex }, extra));
+      else moves.push(Object.assign({ type: 'cut', pts: pts, d: d, label: label, tool: tool, op: opIndex }, extra));
       pos = pts[pts.length - 1];
     };
 
     ops.forEach((op, i) => {
+      meta = { z: op.depth || 0, kind: 'mill' };
+      if (op.kind === 'slot') meta.kind = 'saw';
+      if (op.kind === 'chamfer') meta = { z: op.height, kind: 'chamfer' };
+      if (op.kind === 'drill') meta = { z: op.d.depth, kind: op.face === 'Top' ? 'drill' : 'edge' };
+      if (op.kind === 'sdrill') meta = { z: op.depth * Math.cos(op.angleB * Math.PI / 180), kind: 'drill' };
       if (op.kind === 'contour') {
         const d = info(op.tool).d || 10;
-        go(offsetPath(samplePoly(op.start, op.segs), d / 2, op.side), d, op.label, op.tool, i);
+        const raw = samplePoly(op.start, op.segs);
+        go(offsetPath(raw, d / 2, op.side), d, op.label, op.tool, i);
+        // Durchbruch/Rundloch: nach dem letzten Schnitt fällt das Innenstück heraus
+        if (/^(cutout|round)-/.test(op.key || '') && moves.length) moves[moves.length - 1].slug = raw;
       } else if (op.kind === 'pocket') {
         const d = info(op.tool).d || 10;
         const outer = sampleLoop(op.segs);
@@ -232,7 +244,7 @@
         go([[e[0], e[1]], end, [e[0], e[1]]], op.d, 'Schräge Bohrung Ø' + Math.round(op.d * 100) / 100, 'Bohrer', i);
       }
     });
-    moves.push({ type: 'rapid', pts: [pos, [-60, -60]], d: 0, label: 'Parkposition', tool: '', op: -1 });
+    moves.push({ type: 'rapid', pts: [pos, [-60, -60]], d: 0, label: 'Parkposition', tool: '', op: -1, z: 0, kind: 'mill', group: '' });
     return moves;
   }
 

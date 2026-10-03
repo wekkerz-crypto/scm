@@ -74,10 +74,13 @@ in der Bearbeitungsliste im Feld *Tiefe* absolut in mm setzen; ist sie kleiner a
 - Programm, Nummerierung und Animation folgen der Reihenfolge; nach Kantenbohrungen wird vor Fräsungen automatisch
   wieder `SelectWorkplane("Top")` gesetzt.
 
-**Animation der Werkzeugbahn:** Unter der Draufsicht lässt sich die Bearbeitung in Programmreihenfolge abspielen
-(Tempo, Schieberegler zum Spulen, Anzeige von Bearbeitung und Werkzeug). Das Werkzeug wird mit seinem Durchmesser aus
-der Werkzeugliste gezeigt, Konturen mit Radiuskorrektur, Taschen vereinfacht zeilenweise plus Nachkontur
-(`web/js/toolpath.js`). Maßgeblich bleibt die Simulation in Maestro.
+**Animation der Werkzeugbahn:** Draufsicht links, Bearbeitungsschritte rechts daneben. Beim Abspielen startet die
+Ansicht mit der Rohplatte (Holzmaserung, Aufmaß); der Fräser trägt das Material ab – je tiefer, desto dunkler,
+durchgefräst zeigt den Tisch, Innenstücke von Durchbrüchen fallen heraus. Werkzeug als drehender Fräser/Bohrer in
+echter Größe, Bohrungen maßstäblich, Vorschau der kommenden Bahnen, Eilgänge mit Pfeil. Zeitleiste mit allen
+Schritten (Klick springt hin), Klick auf einen Schritt in der Liste springt ebenfalls, der aktuelle Schritt ist
+hervorgehoben. Taschen sind vereinfacht zeilenweise dargestellt (`web/js/toolpath.js`); maßgeblich bleibt die
+Simulation in Maestro.
 
 Ausrichtung: Die längste Seite wird X, Bearbeitungsseite ist die Seite mit den meisten Bearbeitungen.
 Nullpunkt vorne links unten. Werkzeuge, Zugaben und Bohrerlisten sind im Web-Tool unter

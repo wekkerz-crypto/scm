@@ -30,6 +30,8 @@
   --warn-bg: #fbf0d9;
   --err: #b42318;
   --err-bg: #fde7e4;
+  --hl: #e4ecfa;
+  --table: #c9cdc6;
   --font-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
   --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
@@ -40,6 +42,7 @@
     --bg: #131817; --surface: #1b2220; --sunken: #111615; --ink: #e5eae7; --muted: #98a49f; --line: #2c3633;
     --accent: #79a3f2; --accent-ink: #0d1626; --board: #4b3f2b; --board-edge: #b79e70; --drill: #86acf5;
     --hdrill: #b597f2; --mill: #3dc4ae; --saw: #e2ad42; --warn: #e8b85a; --warn-bg: #30271a; --err: #f28b7f; --err-bg: #3a1f1c;
+    --hl: #1c2a40; --table: #0c100f;
     color-scheme: dark;
   }
 }
@@ -47,11 +50,12 @@
   --bg: #131817; --surface: #1b2220; --sunken: #111615; --ink: #e5eae7; --muted: #98a49f; --line: #2c3633;
   --accent: #79a3f2; --accent-ink: #0d1626; --board: #4b3f2b; --board-edge: #b79e70; --drill: #86acf5;
   --hdrill: #b597f2; --mill: #3dc4ae; --saw: #e2ad42; --warn: #e8b85a; --warn-bg: #30271a; --err: #f28b7f; --err-bg: #3a1f1c;
+  --hl: #1c2a40; --table: #0c100f;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-body); }
-.wrap { max-width: 1280px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; display: grid; gap: 16px; }
+.wrap { max-width: 1480px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; display: grid; gap: 16px; }
 h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-wrap: balance; margin: 0; letter-spacing: 0.01em; }
 h1 { font-size: 1.6rem; line-height: 1.15; }
 h2 { font-size: 1.25rem; }
@@ -78,7 +82,7 @@ header.top p { margin: 4px 0 0; color: var(--muted); max-width: 62ch; }
 .btn[disabled] { opacity: .5; cursor: default; }
 .btn.ghost { background: transparent; }
 
-.bench { display: grid; grid-template-columns: minmax(220px, 290px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.bench { display: grid; grid-template-columns: minmax(200px, 250px) minmax(0, 1fr); gap: 16px; align-items: start; }
 @media (max-width: 820px) { .bench { grid-template-columns: minmax(0, 1fr); } }
 
 .parts { display: grid; gap: 6px; }
@@ -104,7 +108,21 @@ header.top p { margin: 4px 0 0; color: var(--muted); max-width: 62ch; }
 select, input[type="text"], input[type="number"] { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 5px 8px; min-width: 0; }
 
 .view { background: var(--sunken); border-radius: var(--r); overflow: hidden; }
-.view svg { display: block; width: 100%; height: auto; max-height: 520px; }
+.view svg { display: block; width: 100%; height: auto; max-height: 600px; }
+.work { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 370px); gap: 18px; margin-top: 12px; align-items: start; }
+.steps { border-left: 1px solid var(--line); padding-left: 16px; min-width: 0; max-height: 820px; overflow: auto; }
+@media (max-width: 1150px) { .work { grid-template-columns: minmax(0, 1fr); } .steps { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 12px; max-height: none; } }
+.hud { display: flex; flex-wrap: wrap; gap: 2px 14px; align-items: baseline; min-height: 1.6em; margin-top: 8px; font-size: 0.88rem; }
+.hud b { font-weight: 600; }
+.hud .idle { color: var(--muted); }
+.hud .m { font-family: var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.tl { position: relative; display: flex; height: 16px; border-radius: 5px; overflow: hidden; background: var(--line); margin-top: 10px; }
+.tl button { border: 0; padding: 0; height: 100%; min-width: 3px; border-right: 1px solid var(--surface); opacity: 0.8; cursor: pointer; }
+.tl button:hover, .tl button:focus-visible { opacity: 1; }
+.tl .head { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1px; background: var(--ink); pointer-events: none; transition: left .05s linear; }
+table.ops tr.now td { background: var(--hl); }
+table.ops td.k .jump { border: 0; background: none; padding: 0; text-align: left; cursor: pointer; color: inherit; font: inherit; }
+table.ops td.k .jump:hover { color: var(--accent); }
 .view { position: relative; }
 .view canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .anim { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; }
@@ -115,8 +133,7 @@ select, input[type="text"], input[type="number"] { border: 1px solid var(--line)
 .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.8rem; color: var(--muted); margin-top: 8px; }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
 
-.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 16px; }
-@media (max-width: 1050px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+
 table.ops { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
 table.ops td { padding: 5px 6px; border-top: 1px solid var(--line); vertical-align: top; }
 table.ops tr:first-child td { border-top: 0; }
@@ -163,10 +180,10 @@ table.ops td.mv { width: 4.4em; white-space: nowrap; text-align: right; }
 table.ops td.v { width: 6.5em; }
 table.ops tr.has-ctl td { padding-bottom: 2px; }
 table.ops tr.ctlrow td { border-top: 0; padding-top: 0; padding-left: 38px; }
-table.ops td.ctl { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
-table.ops td.ctl select { flex: 1 1 14rem; min-width: 0; width: 100%; font-size: 0.8rem; padding: 3px 4px; }
+table.ops .ctl { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+table.ops .ctl select { flex: 1 1 14rem; min-width: 0; width: 100%; font-size: 0.8rem; padding: 3px 4px; }
 table.ops input.step { width: 4.5em; font-size: 0.8rem; padding: 3px 4px; }
-table.ops td.ctl label { font-size: 0.75rem; color: var(--muted); display: flex; gap: 4px; align-items: center; }
+table.ops .ctl label { font-size: 0.75rem; color: var(--muted); display: flex; gap: 4px; align-items: center; }
 .grid-set select { width: 100%; min-width: 0; font-size: 0.85rem; }
 details.settings summary { cursor: pointer; font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; }
 .grid-set { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px 16px; margin-top: 12px; }
@@ -594,22 +611,21 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     // Bohrungen
     for (const d of p.drills) {
       if (d.face === 'Top') {
-        const rr = Math.max(d.d / 2, u * 0.45);
-        s += '<circle cx="' + d.x + '" cy="' + Y(d.y) + '" r="' + rr + '" fill="' + (d.through ? 'var(--surface)' : 'var(--drill)') +
-          '" stroke="var(--drill)" stroke-width="1.5" ' + sw + '><title>Ø' + fmt(d.d) + ' T' + fmt(d.depth) + '</title></circle>';
+        s += '<circle cx="' + d.x + '" cy="' + Y(d.y) + '" r="' + d.d / 2 + '" fill="' + (d.through ? 'var(--sunken)' : 'var(--drill)') +
+          '" fill-opacity="' + (d.through ? 1 : 0.55) + '" stroke="var(--drill)" stroke-width="1" ' + sw + '><title>Ø' + fmt(d.d) + ' T' + fmt(d.depth) + '</title></circle>';
       } else {
-        const t = Math.max(d.d, u * 0.8);
+        const t = d.d;
         let x; let y; let w; let h;
         if (d.face === 'Left') { x = 0; y = d.along - t / 2; w = d.depth; h = t; }
         if (d.face === 'Right') { x = L - d.depth; y = d.along - t / 2; w = d.depth; h = t; }
         if (d.face === 'Front') { x = d.along - t / 2; y = 0; w = t; h = d.depth; }
         if (d.face === 'Back') { x = d.along - t / 2; y = W - d.depth; w = t; h = d.depth; }
-        s += '<rect x="' + x + '" y="' + Y(y + h) + '" width="' + w + '" height="' + h + '" fill="var(--hdrill)" opacity="0.85"><title>Ø' +
+        s += '<rect x="' + x + '" y="' + Y(y + h) + '" width="' + w + '" height="' + h + '" fill="var(--hdrill)" fill-opacity="0.35" stroke="var(--hdrill)" stroke-width="1" stroke-dasharray="3 2" ' + sw + '><title>Ø' +
           fmt(d.d) + ' ' + FACE[d.face] + ' T' + fmt(d.depth) + '</title></rect>';
       }
     }
     for (const sd of p.slantDrills) {
-      const rr = Math.max(sd.d / 2, u * 0.45);
+      const rr = sd.d / 2;
       const e = sd.entry;
       const end = [e[0] + sd.dir[0] * sd.depth, e[1] + sd.dir[1] * sd.depth];
       s += '<g><title>Schräge Bohrung Ø' + fmt(sd.d) + ' T' + fmt(sd.depth) + '</title><line x1="' + e[0] + '" y1="' + Y(e[1]) + '" x2="' + end[0] + '" y2="' + Y(end[1]) +
@@ -645,36 +661,39 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     }
     const p = r.panel;
     const fieldOpts = [state.settings.fieldShort, state.settings.fieldLong];
+    const legend = [['var(--drill)', 'Bohrung oben'], ['var(--hdrill)', 'Bohrung Kante'], ['var(--mill)', 'Fräsen / Tasche'],
+      ['var(--saw)', 'Nut / Falz'], ['var(--accent)', 'Fase / schräge Kante'], ['var(--err)', 'Nullpunkt']];
     el.innerHTML =
       '<div class="card"><div class="dhead"><div class="title"><h2>' + esc(p.name) + '</h2><span class="dims">' + fmt(p.L) + ' × ' + fmt(p.W) + ' × ' +
       fmt(p.T) + ' mm · ' + esc(part.label) + '</span></div>' +
       '<div class="tools"><button class="btn" id="rot" type="button">Drehen 90°</button><button class="btn" id="flip" type="button">Wenden</button>' +
       '<label for="field">Feld <select id="field">' + fieldOpts.map((f) => '<option' + (f === r.field ? ' selected' : '') + '>' + esc(f) + '</option>').join('') +
       '</select></label></div></div>' +
-      '<div class="view" id="view" style="margin-top:12px">' + drawPanel(r) + '<canvas id="animcv" aria-hidden="true"></canvas></div>' +
-      '<div class="anim"><button class="btn" id="aplay" type="button">▶ Werkzeugbahn abspielen</button>' +
+      '<div class="work"><div class="stage">' +
+      '<div class="view" id="view">' + drawPanel(r) + '<canvas id="animcv" aria-hidden="true"></canvas></div>' +
+      '<div class="tl" id="tl" aria-label="Zeitleiste der Bearbeitungen"></div>' +
+      '<div class="hud" id="hud" aria-live="polite"></div>' +
+      '<div class="anim"><button class="btn primary" id="aplay" type="button">▶ Werkzeugbahn abspielen</button>' +
       '<button class="btn ghost" id="areset" type="button">⟲ Neustart</button>' +
-      '<label for="aspeed" class="note">Tempo <select id="aspeed">' + [1, 2, 5, 10, 25].map((v) => '<option value="' + v + '"' +
+      '<label for="aspeed" class="note">Tempo <select id="aspeed">' + [1, 2, 5, 10, 25, 50].map((v) => '<option value="' + v + '"' +
         (v === anim.speed ? ' selected' : '') + '>' + v + '×</option>').join('') + '</select></label>' +
-      '<input type="range" id="apos" min="0" max="1000" value="0" aria-label="Position in der Werkzeugbahn">' +
-      '<div class="now" id="anow" aria-live="polite"></div></div>' +
-      '<div class="legend"><span><i style="background:var(--drill)"></i>Bohrung oben</span><span><i style="background:var(--hdrill)"></i>Bohrung Kante</span>' +
-      '<span><i style="background:var(--mill)"></i>Fräsbahn / Tasche</span><span><i style="background:var(--saw)"></i>Nut / Falz</span>' +
-      '<span><i style="background:var(--accent)"></i>Fase / schräge Kante</span><span><i style="background:var(--err)"></i>Nullpunkt</span></div></div>' +
-      '<div class="cols"><div class="card"><div class="opshead"><h3>Bearbeitungen in Programmreihenfolge</h3>' +
+      '<input type="range" id="apos" min="0" max="1000" value="0" aria-label="Position in der Werkzeugbahn"></div>' +
+      '<div class="legend">' + legend.map(([c, t]) => '<span><i style="background:' + c + '"></i>' + t + '</span>').join('') + '</div></div>' +
+      '<aside class="steps"><div class="opshead"><h3>Bearbeitungsschritte</h3>' +
       (part.overrides.order ? '<button class="btn ghost small" id="resetorder" type="button">Reihenfolge zurücksetzen</button>' : '') +
       '</div><table class="ops"><tbody>' +
-      opsSummary(r).map((x, i, all) => '<tr' + (x.op ? ' class="has-ctl"' : '') + '><td class="k"><span class="num">' + (i + 1) + '</span>' +
-        '<span class="sw" style="background:' + x.c + '"></span>' + esc(x.k) +
-        '</td><td class="v">' + esc(x.v) + '</td><td class="mv">' +
+      opsSummary(r).map((x, i, all) => '<tr data-group="' + esc(x.group) + '"' + (x.op ? ' class="has-ctl"' : '') + '><td class="k"><span class="num">' + (i + 1) + '</span>' +
+        '<span class="sw" style="background:' + x.c + '"></span><button type="button" class="jump" data-jump="' + esc(x.group) + '" title="In der Animation hierher springen">' +
+        esc(x.k) + '</button></td><td class="v">' + esc(x.v) + '</td><td class="mv">' +
         '<button type="button" class="mvb" data-move="' + esc(x.group) + '" data-dir="-1"' + (i === 0 ? ' disabled' : '') + ' aria-label="' + esc(x.k) + ' nach oben">↑</button>' +
         '<button type="button" class="mvb" data-move="' + esc(x.group) + '" data-dir="1"' + (i === all.length - 1 ? ' disabled' : '') + ' aria-label="' + esc(x.k) + ' nach unten">↓</button>' +
         '</td></tr>' +
-        (x.op ? '<tr class="ctlrow"><td colspan="3" class="ctl">' + opControls(part, x.op) + '</td></tr>' : '')).join('') +
+        (x.op ? '<tr class="ctlrow" data-group="' + esc(x.group) + '"><td colspan="3"><div class="ctl">' + opControls(part, x.op) + '</div></td></tr>' : '')).join('') +
       '</tbody></table>' + (r.warnings.length ? '<ul class="warns">' + r.warnings.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ul>' : '') +
-      '</div><div class="card code"><div class="bar"><span class="fname"><input id="fname" type="text" value="' + esc(part.fileName) + '" aria-label="Dateiname"></span>' +
+      '</aside></div></div>' +
+      '<div class="card code"><div class="bar"><span class="fname"><input id="fname" type="text" value="' + esc(part.fileName) + '" aria-label="Dateiname"></span>' +
       '<span class="tools"><button class="btn" id="copy" type="button">Kopieren</button><button class="btn primary" id="dl" type="button">Speichern</button></span></div>' +
-      '<pre class="xcs" id="xcs">' + highlight(r.xcs) + '</pre></div></div>';
+      '<pre class="xcs" id="xcs">' + highlight(r.xcs) + '</pre></div>';
 
     setupAnim(part);
     el.querySelectorAll('[data-move]').forEach((b) => b.addEventListener('click', () => {
@@ -743,9 +762,12 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
   // ------------------------------------------------ Animation der Werkzeugbahn
   const FEED = 150;    // mm/s bei 1× (Darstellung, nicht Maschinenvorschub)
   const RAPID = 1500;  // mm/s Eilgang
-  const anim = { result: null, moves: [], times: [], total: 0, t: 0, playing: false, speed: 5, last: 0 };
+  const PLUNGE = 0.45; // s je Bohrung bei 1×
+  const anim = { result: null, moves: [], times: [], total: 0, t: 0, playing: false, speed: 5, last: 0, segs: [], wood: null };
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const plen = (pts) => { let l = 0; for (let i = 1; i < pts.length; i++) l += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); return l; };
+  const KIND_TL = { contour: '--mill', pocket: '--mill', slot: '--saw', chamfer: '--accent', slant: '--accent', drill: '--drill', sdrill: '--drill' };
 
   function setupAnim(part) {
     const r = part.result;
@@ -755,14 +777,36 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
       anim.times = [];
       let t = 0;
       for (const m of anim.moves) {
-        const d = m.type === 'plunge' ? 0.35 : Math.max(0.03, plen(m.pts) / (m.type === 'rapid' ? RAPID : FEED));
+        const d = m.type === 'plunge' ? PLUNGE : Math.max(0.03, plen(m.pts) / (m.type === 'rapid' ? RAPID : FEED));
         anim.times.push([t, t + d]);
         t += d;
       }
       anim.total = t;
       anim.t = 0;
       anim.playing = false;
+      // Abschnitte der Zeitleiste: je Bearbeitungsgruppe von der ersten bis zur letzten Bewegung
+      const segs = [];
+      anim.moves.forEach((m, i) => {
+        if (m.op < 0) return;
+        const last = segs[segs.length - 1];
+        if (last && last.group === m.group) last.t1 = anim.times[i][1];
+        else segs.push({ group: m.group, t0: anim.times[i][0], t1: anim.times[i][1], label: m.label, kind: r.ops[m.op].kind });
+      });
+      anim.segs = segs;
     }
+    const tl = $('tl');
+    tl.innerHTML = anim.segs.map((g, i) => '<button type="button" data-seg="' + i + '" style="width:' + ((g.t1 - g.t0) / anim.total * 100).toFixed(3) +
+      '%;background:var(' + (KIND_TL[g.kind] || '--mill') + ')" title="' + esc((i + 1) + ': ' + g.label) + '" aria-label="' + esc('Zu ' + g.label + ' springen') + '"></button>').join('') +
+      '<span class="head" id="tlhead"></span>';
+    tl.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-seg]');
+      if (!b) return;
+      jumpTo(anim.segs[+b.dataset.seg].t0 + 1e-6);
+    });
+    document.querySelectorAll('#detail [data-jump]').forEach((b) => b.addEventListener('click', () => {
+      const g = anim.segs.find((x) => x.group === b.dataset.jump);
+      if (g) jumpTo(g.t0 + 1e-6);
+    }));
     $('aplay').addEventListener('click', () => {
       if (anim.t >= anim.total) anim.t = 0;
       anim.playing = !anim.playing;
@@ -776,36 +820,133 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     drawAnim();
   }
 
+  function jumpTo(t) {
+    anim.t = Math.max(0, Math.min(anim.total, t));
+    anim.playing = false;
+    drawAnim();
+  }
+
   function tick(now) {
     if (!anim.playing || !$('animcv')) return;
     anim.t = Math.min(anim.total, anim.t + ((now - anim.last) / 1000) * anim.speed);
     anim.last = now;
     if (anim.t >= anim.total) anim.playing = false;
-    drawAnim();
+    drawAnim(now);
     if (anim.playing) requestAnimationFrame(tick);
   }
 
   // Punkt nach Anteil f entlang einer Polylinie
   function along(pts, f) {
-    if (pts.length === 1) return { pts: pts, at: pts[0] };
+    if (pts.length === 1) return { pts: pts, at: pts[0], dir: [1, 0] };
     const total = plen(pts);
     let rest = total * f;
     const out = [pts[0]];
     for (let i = 1; i < pts.length; i++) {
       const l = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+      const dir = l ? [(pts[i][0] - pts[i - 1][0]) / l, (pts[i][1] - pts[i - 1][1]) / l] : [1, 0];
       if (rest <= l) {
         const k = l ? rest / l : 0;
         const q = [pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * k, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * k];
         out.push(q);
-        return { pts: out, at: q };
+        return { pts: out, at: q, dir: dir };
       }
       rest -= l;
       out.push(pts[i]);
     }
-    return { pts: out, at: pts[pts.length - 1] };
+    return { pts: out, at: pts[pts.length - 1], dir: [1, 0] };
   }
 
-  function drawAnim() {
+  // Farbe als RGB-Tripel (aus #rrggbb)
+  function rgb(hex) {
+    const h = hex.replace('#', '');
+    const n = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  const mix = (a, b, k) => 'rgb(' + a.map((v, i) => Math.round(v + (b[i] - v) * k)).join(',') + ')';
+
+  // Holzplatte mit Maserung (einmal je Größe/Farbe berechnet)
+  function woodTexture(w, h, base) {
+    const key = w + 'x' + h + base;
+    if (anim.wood && anim.wood.key === key) return anim.wood.cv;
+    const cv = document.createElement('canvas');
+    cv.width = Math.max(1, Math.round(w));
+    cv.height = Math.max(1, Math.round(h));
+    const c = cv.getContext('2d');
+    const b = rgb(base);
+    c.fillStyle = mix(b, b, 0);
+    c.fillRect(0, 0, cv.width, cv.height);
+    let seed = 7;
+    const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    const lines = Math.max(12, Math.round(cv.height / 5));
+    for (let i = 0; i < lines; i++) {
+      const y0 = rnd() * cv.height;
+      const amp = 1 + rnd() * 4;
+      const freq = 0.004 + rnd() * 0.01;
+      const dark = rnd() < 0.6;
+      c.strokeStyle = dark ? 'rgba(90,60,25,' + (0.05 + rnd() * 0.08) + ')' : 'rgba(255,245,225,' + (0.05 + rnd() * 0.08) + ')';
+      c.lineWidth = 0.6 + rnd() * 1.8;
+      c.beginPath();
+      for (let x = 0; x <= cv.width; x += 6) {
+        const y = y0 + Math.sin(x * freq + i) * amp + Math.sin(x * freq * 3.1) * amp * 0.3;
+        if (x) c.lineTo(x, y); else c.moveTo(x, y);
+      }
+      c.stroke();
+    }
+    anim.wood = { key: key, cv: cv };
+    return cv;
+  }
+
+  // Fräser bzw. Bohrer von oben: Schatten, metallischer Körper, drehende Schneiden
+  function drawTool(ctx, x, y, r, angle, lifted, isDrill, col) {
+    r = Math.max(4, r);
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+    ctx.shadowBlur = lifted ? 18 : 8;
+    ctx.shadowOffsetX = lifted ? 7 : 3;
+    ctx.shadowOffsetY = lifted ? 7 : 3;
+    const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r);
+    g.addColorStop(0, '#f4f6f8');
+    g.addColorStop(0.55, '#b4bcc4');
+    g.addColorStop(1, '#6d7680');
+    ctx.fillStyle = g;
+    ctx.globalAlpha = lifted ? 0.8 : 0.95;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    const flutes = isDrill ? 2 : (r > 14 ? 4 : 3);
+    ctx.strokeStyle = 'rgba(40,46,52,0.75)';
+    ctx.lineWidth = Math.max(1, r * 0.09);
+    for (let i = 0; i < flutes; i++) {
+      ctx.rotate((Math.PI * 2) / flutes);
+      ctx.beginPath();
+      ctx.moveTo(r * 0.15, 0);
+      ctx.quadraticCurveTo(r * 0.6, r * (isDrill ? 0.45 : 0.25), r * 0.95, r * (isDrill ? 0.1 : 0.35));
+      ctx.stroke();
+    }
+    ctx.restore();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y, r + 1.5, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#2b3138';
+    ctx.beginPath(); ctx.arc(x, y, Math.max(1.5, r * 0.12), 0, Math.PI * 2); ctx.fill();
+  }
+
+  function arrow(ctx, a, b, color) {
+    const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+    ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1.2;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(b[0], b[1]);
+    ctx.lineTo(b[0] - 9 * Math.cos(ang - 0.4), b[1] - 9 * Math.sin(ang - 0.4));
+    ctx.lineTo(b[0] - 9 * Math.cos(ang + 0.4), b[1] - 9 * Math.sin(ang + 0.4));
+    ctx.closePath(); ctx.fill();
+  }
+
+  function drawAnim(now) {
     const cv = $('animcv');
     const svg = document.querySelector('#view svg');
     if (!cv || !svg || !anim.result) return;
@@ -819,62 +960,125 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     const ctx = cv.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, rect.width, rect.height);
+    updateHud(null);
+    const active = anim.playing || anim.t > 0;
+    svg.style.opacity = '1';
+    if (!active) { updateControls(null); return; }
+
     const sc = Math.min(rect.width / vb.width, rect.height / vb.height);
     const ox = (rect.width - vb.width * sc) / 2;
     const oy = (rect.height - vb.height * sc) / 2;
     const X = (x) => ox + (x - vb.x) * sc;
     const Y = (y) => oy + (p.W - y - vb.y) * sc;
     const css = getComputedStyle(document.documentElement);
-    const col = (n) => css.getPropertyValue(n).trim() || '#888';
-    const stroke = (pts) => { ctx.beginPath(); pts.forEach((q, i) => (i ? ctx.lineTo(X(q[0]), Y(q[1])) : ctx.moveTo(X(q[0]), Y(q[1])))); ctx.stroke(); };
+    const col = (n) => css.getPropertyValue(n).trim() || '#888888';
+    const board = rgb(col('--board'));
+    const dark = [40, 24, 8];
+    const table = col('--table');
+    const shade = (m) => (m.through ? table : mix(board, dark, Math.min(0.75, 0.22 + 0.55 * (m.z / p.T))));
+    const path = (pts) => { ctx.beginPath(); pts.forEach((q, i) => (i ? ctx.lineTo(X(q[0]), Y(q[1])) : ctx.moveTo(X(q[0]), Y(q[1])))); };
+
+    // Rohteil mit Maserung
+    const o = state.settings.rawOversize || 0;
+    const bx = X(-o);
+    const by = Y(p.W + o);
+    const bw = (p.L + 2 * o) * sc;
+    const bh = (p.W + 2 * o) * sc;
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.18)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 3;
+    ctx.drawImage(woodTexture(bw, bh, col('--board')), bx, by, bw, bh);
+    ctx.restore();
+    ctx.strokeStyle = col('--board-edge'); ctx.lineWidth = 1; ctx.strokeRect(bx, by, bw, bh);
+    svg.style.opacity = '0';
+
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-
     let cur = null;
+    // Vorschau der noch kommenden Bahnen
+    ctx.globalAlpha = 0.45; ctx.setLineDash([2, 4]); ctx.lineWidth = 1; ctx.strokeStyle = col('--muted');
+    for (let i = 0; i < anim.moves.length; i++) {
+      const m = anim.moves[i];
+      if (anim.times[i][0] <= anim.t || m.type === 'rapid') continue;
+      if (m.type === 'plunge') { ctx.beginPath(); ctx.arc(X(m.pts[0][0]), Y(m.pts[0][1]), Math.max(1, (m.d / 2) * sc), 0, Math.PI * 2); ctx.stroke(); }
+      else { path(m.pts); ctx.stroke(); }
+    }
+    ctx.setLineDash([]); ctx.globalAlpha = 1;
+
+    // Abgetragenes Material: tiefere Bearbeitungen dunkler, durchgefräst = Tisch
     for (let i = 0; i < anim.moves.length; i++) {
       const m = anim.moves[i];
       const [t0, t1] = anim.times[i];
       if (t0 > anim.t) break;
       const f = t1 > t0 ? Math.min(1, (anim.t - t0) / (t1 - t0)) : 1;
       const part = along(m.pts, f);
-      if (m.type === 'rapid') {
-        if (f < 1) { ctx.globalAlpha = 0.7; ctx.setLineDash([4, 4]); ctx.strokeStyle = col('--muted'); ctx.lineWidth = 1; stroke(part.pts); ctx.setLineDash([]); }
-      } else if (m.type === 'plunge') {
-        ctx.globalAlpha = 0.55; ctx.fillStyle = col('--drill');
-        ctx.beginPath(); ctx.arc(X(m.pts[0][0]), Y(m.pts[0][1]), Math.max(1.5, (m.d / 2) * sc), 0, Math.PI * 2); ctx.fill();
+      cur = { m: m, at: part.at, f: f, i: i };
+      if (m.type === 'rapid') continue;
+      if (m.type === 'plunge') {
+        const rr = Math.max(0.8, (m.d / 2) * sc);
+        ctx.fillStyle = shade(m);
+        ctx.globalAlpha = Math.min(1, 0.25 + f);
+        ctx.beginPath(); ctx.arc(X(m.pts[0][0]), Y(m.pts[0][1]), rr * Math.min(1, 0.4 + f), 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+        if (!m.through && rr > 2) {
+          ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(X(m.pts[0][0]), Y(m.pts[0][1]), rr, 0, Math.PI * 2); ctx.stroke();
+        }
+      } else if (m.kind === 'edge') {
+        // Kantenbohrung liegt im Material: gestrichelt
+        const w = Math.max(1, m.d * sc);
+        ctx.strokeStyle = col('--hdrill'); ctx.globalAlpha = 0.3; ctx.lineWidth = w; path(part.pts); ctx.stroke();
+        ctx.globalAlpha = 1;
       } else {
-        ctx.globalAlpha = 0.35;
-        ctx.strokeStyle = m.tool === 'Bohrer' ? col('--hdrill') : col('--mill');
-        ctx.lineWidth = Math.max(1.5, m.d * sc);
-        stroke(part.pts);
+        ctx.strokeStyle = shade(m);
+        ctx.lineWidth = Math.max(1, m.d * sc);
+        path(part.pts); ctx.stroke();
+        if (m.slug && f >= 1 && m.through) { ctx.fillStyle = table; path(m.slug); ctx.closePath(); ctx.fill(); }
       }
-      cur = { m: m, at: part.at, i: i };
     }
-    ctx.globalAlpha = 1;
-    if (cur && cur.m.d) {
-      const rr = Math.max(3, (cur.m.d / 2) * sc);
-      ctx.strokeStyle = col('--err');
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(X(cur.at[0]), Y(cur.at[1]), rr, 0, Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = col('--err');
-      ctx.beginPath(); ctx.arc(X(cur.at[0]), Y(cur.at[1]), 2, 0, Math.PI * 2); ctx.fill();
+
+    // Eilgang mit Pfeil, Werkzeug
+    if (cur) {
+      const m = cur.m;
+      if (m.type === 'rapid' && cur.f < 1) arrow(ctx, [X(m.pts[0][0]), Y(m.pts[0][1])], [X(m.pts[1][0]), Y(m.pts[1][1])], col('--muted'));
+      if (m.d && !(anim.t >= anim.total)) {
+        const spin = reduceMotion ? 0 : ((now || performance.now()) / 1000) * 14;
+        const isDrill = m.kind === 'drill' || m.kind === 'edge';
+        drawTool(ctx, X(cur.at[0]), Y(cur.at[1]), (m.d / 2) * sc, spin, m.type === 'rapid', isDrill, m.type === 'rapid' ? col('--muted') : col('--err'));
+      }
     }
+    updateHud(cur);
+    updateControls(cur);
+  }
+
+  function updateHud(cur) {
+    const hud = $('hud');
+    if (!hud) return;
+    if (!cur || !(anim.playing || anim.t > 0)) {
+      hud.innerHTML = '<span class="idle">' + anim.segs.length + ' Bearbeitungsschritte. Abspielen zeigt den Materialabtrag in Programmreihenfolge.</span>';
+      return;
+    }
+    if (anim.t >= anim.total) {
+      hud.innerHTML = '<span class="idle">Fertig. Vereinfachte Darstellung – maßgeblich ist die Simulation in Maestro.</span>';
+      return;
+    }
+    const m = cur.m;
+    const info = ToolLibrary.infoMap(state.tools)[m.tool];
+    const dia = info && info.d ? info.d : m.d;
+    const n = anim.segs.findIndex((g) => g.group === m.group) + 1;
+    hud.innerHTML = '<b>' + (m.op >= 0 ? n + '/' + anim.segs.length + ' · ' : '') + esc(m.label) + '</b>' +
+      '<span class="m">' + esc(m.tool || '') + (dia ? ' Ø' + fmt(dia) : '') + (m.z ? ' · T ' + fmt(m.z) + ' mm' : '') + (m.type === 'rapid' ? ' · Eilgang' : '') + '</span>' +
+      '<span class="m">X ' + fmt(cur.at[0]) + ' · Y ' + fmt(cur.at[1]) + '</span>';
+  }
+
+  function updateControls(cur) {
     const pos = $('apos');
     if (pos) pos.value = anim.total ? Math.round((anim.t / anim.total) * 1000) : 0;
+    const head = $('tlhead');
+    if (head) head.style.left = (anim.total ? (anim.t / anim.total) * 100 : 0) + '%';
     const play = $('aplay');
     if (play) play.textContent = anim.playing ? '⏸ Pause' : (anim.t > 0 && anim.t < anim.total ? '▶ Weiter' : '▶ Werkzeugbahn abspielen');
-    const now = $('anow');
-    if (now) {
-      const opsN = anim.result.ops.length;
-      if (!cur || anim.t === 0) now.textContent = opsN + ' Bearbeitungen – Abspielen startet die Werkzeugbahn in Programmreihenfolge.';
-      else if (anim.t >= anim.total) now.textContent = 'Fertig. Vereinfachte Darstellung – maßgeblich ist die Simulation in Maestro.';
-      else {
-        const m = cur.m;
-        const info = ToolLibrary.infoMap(state.tools)[m.tool];
-        now.innerHTML = (m.op >= 0 ? 'Bearbeitung ' + (m.op + 1) + ' von ' + opsN + ': ' : '') + '<b>' + esc(m.label) + '</b>' +
-          (m.tool ? ' · ' + esc(m.tool) + (info && info.d ? ' Ø' + fmt(info.d) : '') : '') + (m.type === 'rapid' ? ' · Eilgang' : '');
-      }
-    }
+    const group = cur && anim.t < anim.total && (anim.playing || anim.t > 0) ? cur.m.group : null;
+    document.querySelectorAll('#detail tr[data-group]').forEach((tr) => tr.classList.toggle('now', !!group && tr.dataset.group === group));
   }
   window.addEventListener('resize', () => drawAnim());
 

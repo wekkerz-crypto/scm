@@ -96,18 +96,33 @@ header.top p { margin: 2px 0 0; color: var(--muted); max-width: 90ch; font-size:
 .btn[disabled] { opacity: .5; cursor: default; }
 .btn.ghost { background: transparent; }
 
-.bench { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
+.bench { display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 16px; align-items: start; }
 
-/* Teile als Leiste über der Arbeitsfläche */
-.parts { display: flex; gap: 8px; align-items: stretch; overflow-x: auto; padding-bottom: 4px; }
-.parts .head { display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 0 6px 0 2px; flex: 0 0 auto; }
+/* Teile als Leiste links neben der Arbeitsfläche, mit Mini-Vorschau */
+.parts { display: flex; flex-direction: column; gap: 8px; position: sticky; top: calc(12px + env(safe-area-inset-top, 0px));
+  max-height: calc(100vh - 24px); overflow-y: auto; padding: 2px 4px 4px 2px; }
+.parts .head { display: grid; gap: 6px; padding-bottom: 4px; }
+.parts .head .btn.primary { width: 100%; }
 .parts .head .tools { display: flex; gap: 6px; }
-.parts .empty { padding: 10px 14px; text-align: left; }
-.parts .part { flex: 0 0 auto; width: 210px; }
-.part { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 8px 10px;
-  display: grid; gap: 2px; width: 100%; }
-.part[aria-current="true"] { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
-.part .n { font-weight: 600; overflow-wrap: anywhere; }
+.parts .head .tools .btn { flex: 1 1 0; }
+.parts .empty { padding: 10px 4px; text-align: left; font-size: 0.88rem; color: var(--muted); }
+.part { position: relative; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; transition: border-color .15s, box-shadow .15s; }
+.part:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.part[aria-current="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.part .sel { display: grid; gap: 2px; width: 100%; text-align: left; border: 0; background: none; color: inherit; font: inherit; padding: 8px 10px 9px; cursor: pointer; border-radius: 8px; }
+.part .thumb { display: block; width: 100%; height: 74px; margin-bottom: 4px; background: var(--sunken); border-radius: 5px; }
+.part .del { position: absolute; top: 5px; right: 5px; width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid var(--line);
+  border-radius: 99px; background: var(--surface); color: var(--muted); font-size: 15px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity .15s; }
+.part:hover .del, .part:focus-within .del, .part[aria-current="true"] .del { opacity: 1; }
+.part .del:hover { color: var(--err); border-color: var(--err); }
+@media (hover: none) { .part .del { opacity: 1; } }
+@media (max-width: 900px) {
+  .bench { grid-template-columns: minmax(0, 1fr); }
+  .parts { position: static; max-height: none; flex-direction: row; overflow-x: auto; overflow-y: visible; }
+  .parts .head { flex: 0 0 180px; align-content: center; }
+  .parts .part { flex: 0 0 200px; }
+}
+.part .n { font-weight: 600; overflow-wrap: anywhere; padding-right: 22px; }
 .part .d { font-family: var(--font-mono); font-size: 0.78rem; color: var(--muted); }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
 .chip { font-size: 0.72rem; padding: 0 6px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
@@ -595,12 +610,12 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     }
     el.innerHTML = head;
     state.parts.forEach((p, i) => {
-      const b = document.createElement('button');
-      b.type = 'button';
+      const b = document.createElement('div');
       b.className = 'part';
       b.setAttribute('aria-current', i === state.sel ? 'true' : 'false');
       const r = p.result;
-      let html = '<span class="n">' + esc(p.solid ? p.solid.name : p.label) + '</span>';
+      const name = p.solid ? p.solid.name : p.label;
+      let html = (r && r.panel ? thumbSvg(r) : '') + '<span class="n">' + esc(name) + '</span>';
       if (r && r.panel) {
         const c = counts(r);
         html += '<span class="d">' + fmt(r.panel.L) + ' × ' + fmt(r.panel.W) + ' × ' + fmt(r.panel.T) + '</span>';
@@ -609,16 +624,75 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
       } else {
         html += '<span class="chips"><span class="chip err">Fehler</span></span>';
       }
-      b.innerHTML = html;
-      b.addEventListener('click', () => { state.sel = i; render(); });
+      b.innerHTML = '<button type="button" class="sel">' + html + '</button>' +
+        '<button type="button" class="del" title="Teil entfernen" aria-label="' + esc(name) + ' entfernen">×</button>';
+      b.querySelector('.sel').addEventListener('click', () => { state.sel = i; render(); });
+      b.querySelector('.del').addEventListener('click', () => removePart(i));
       el.appendChild(b);
     });
+    // ausgewähltes Teil in der Leiste sichtbar halten (ohne die Seite zu scrollen)
+    const cur = el.querySelector('.part[aria-current="true"]');
+    if (cur) {
+      const top = cur.offsetTop - el.offsetTop;
+      if (top < el.scrollTop) el.scrollTop = top - 4;
+      else if (top + cur.offsetHeight > el.scrollTop + el.clientHeight) el.scrollTop = top + cur.offsetHeight - el.clientHeight + 4;
+      const left = cur.offsetLeft - el.offsetLeft;
+      if (left + cur.offsetWidth > el.scrollLeft + el.clientWidth) el.scrollLeft = left + cur.offsetWidth - el.clientWidth + 4;
+    }
     $('zipall').addEventListener('click', downloadAll);
     $('pick').addEventListener('click', openPicker);
     $('clear').addEventListener('click', () => { state.parts = []; state.sel = 0; anim.result = null; render(); });
   }
 
   function openPicker() { $('file').click(); }
+
+  // Ein Teil aus der Liste entfernen; Auswahl bleibt beim selben Teil bzw. rückt nach
+  function removePart(i) {
+    state.parts.splice(i, 1);
+    if (i < state.sel || state.sel >= state.parts.length) state.sel = Math.max(0, state.sel - 1);
+    anim.result = null;
+    anim.playing = false;
+    render();
+  }
+
+  // Mini-Vorschau eines Teils: Kontur, Durchbrüche, Taschen, Bohrungen in den Bearbeitungsfarben
+  function thumbSvg(r) {
+    const p = r.panel;
+    const L = p.L;
+    const W = p.W;
+    const m = Math.max(L, W) * 0.04;
+    const Y = (y) => W - y;
+    const sw = 'vector-effect="non-scaling-stroke"';
+    let s = '<svg class="thumb" viewBox="' + (-m) + ' ' + (-m) + ' ' + (L + 2 * m) + ' ' + (W + 2 * m) + '" preserveAspectRatio="xMidYMid meet" aria-hidden="true">';
+    const o = loopToPoly(p.outline);
+    s += '<path d="' + svgPath(o.start, o.segs, Y) + ' Z" fill="var(--board)" stroke="var(--board-edge)" stroke-width="1" ' + sw + '/>';
+    for (const c of p.cutouts) { const q = loopToPoly(c); s += '<path d="' + svgPath(q.start, q.segs, Y) + ' Z" fill="var(--sunken)" stroke="var(--board-edge)" stroke-width="1" ' + sw + '/>'; }
+    for (const w of p.slantWalls) {
+      s += '<path d="M' + w.top.a[0] + ' ' + Y(w.top.a[1]) + ' L' + w.top.b[0] + ' ' + Y(w.top.b[1]) + ' L' + w.bottom.b[0] + ' ' + Y(w.bottom.b[1]) +
+        ' L' + w.bottom.a[0] + ' ' + Y(w.bottom.a[1]) + ' Z" fill="var(--saw)" fill-opacity="0.45"/>';
+    }
+    for (const g of p.grooves) {
+      const x = g.dir === 'X' ? 0 : g.from; const y = g.dir === 'X' ? g.from : 0;
+      const w = g.dir === 'X' ? L : g.to - g.from; const h = g.dir === 'X' ? g.to - g.from : W;
+      s += '<rect x="' + x + '" y="' + Y(y + h) + '" width="' + w + '" height="' + h + '" fill="var(--saw)" fill-opacity="0.6"/>';
+    }
+    for (const k of p.pockets) { const q = loopToPoly(k.segs); s += '<path d="' + svgPath(q.start, q.segs, Y) + ' Z" fill="var(--pocket)" fill-opacity="0.55"/>'; }
+    const dot = Math.max(L, W) * 0.012;
+    for (const d of p.drills) {
+      if (d.face === 'Top') s += '<circle cx="' + d.x + '" cy="' + Y(d.y) + '" r="' + Math.max(d.d / 2, dot) + '" fill="var(--drill)"/>';
+      else s += '<circle cx="' + d.x + '" cy="' + Y(d.y) + '" r="' + dot + '" fill="var(--hdrill)"/>';
+    }
+    for (const k of (p.sidePockets || [])) {
+      const c = k.face === 'Left' ? [0, W - (k.x0 + k.x1) / 2] : k.face === 'Right' ? [L, (k.x0 + k.x1) / 2] : k.face === 'Front' ? [(k.x0 + k.x1) / 2, 0] : [L - (k.x0 + k.x1) / 2, W];
+      s += '<circle cx="' + c[0] + '" cy="' + Y(c[1]) + '" r="' + dot * 1.4 + '" fill="var(--hdrill)"/>';
+    }
+    for (const sp of (p.slantPlanes || [])) {
+      const mp = (l) => [sp.o[0] + sp.X[0] * l[0] + sp.Y[0] * l[1], sp.o[1] + sp.X[1] * l[0] + sp.Y[1] * l[1]];
+      for (const d of sp.drills) { const c = mp([d.x, d.y]); s += '<circle cx="' + c[0] + '" cy="' + Y(c[1]) + '" r="' + Math.max(d.d / 2, dot) + '" fill="var(--sdrill)"/>'; }
+      for (const k of sp.pockets) { const c = mp([(k.x0 + k.x1) / 2, (k.y0 + k.y1) / 2]); s += '<circle cx="' + c[0] + '" cy="' + Y(c[1]) + '" r="' + dot * 1.6 + '" fill="var(--pocket)"/>'; }
+    }
+    return s + '</svg>';
+  }
 
   function svgPath(start, segs, Y) {
     let d = 'M' + start[0] + ' ' + Y(start[1]);

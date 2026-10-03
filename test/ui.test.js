@@ -63,7 +63,7 @@ test('Web-Tool: Bearbeitungsschritte mit der Maus verschieben', { skip: !chromiu
     p.on('pageerror', (e) => errors.push(e.message));
     await p.goto(page);
     await p.waitForSelector('.part');
-    await p.click('.part:nth-of-type(3)');
+    await p.locator('.part').nth(2).locator('.sel').click();
     const names = () => p.$$eval('tbody.grp .jump', (x) => x.map((e) => e.textContent));
     const before = await names();
     assert.strictEqual(before[before.length - 1], 'Formatfräsen');
@@ -111,6 +111,37 @@ test('Web-Tool: Schalter Hell/Dunkel', { skip: !chromium && 'Playwright nicht in
     assert.notStrictEqual(await bg(), light, 'Wahl bleibt nach dem Neuladen');
     await p.click('[data-theme-set="light"]');
     assert.strictEqual(await bg(), light);
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('Web-Tool: Teile links mit Vorschau, einzeln löschen', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    const names = () => p.$$eval('.part .n', (x) => x.map((n) => n.textContent));
+    const before = await names();
+    assert.ok(before.length >= 2);
+    assert.strictEqual(await p.$$eval('.part svg.thumb', (x) => x.length), before.length);
+    // Leiste steht links neben der Ansicht
+    const a = await (await p.$('#parts')).boundingBox();
+    const d = await (await p.$('#detail')).boundingBox();
+    assert.ok(a.x + a.width <= d.x + 1 && a.y < d.y + 50);
+    // zweites Teil auswählen, erstes löschen: Auswahl bleibt beim zweiten
+    await p.locator('.part').nth(1).locator('.sel').click();
+    const second = before[1];
+    await p.locator('.part').nth(0).hover();
+    await p.locator('.part').nth(0).locator('.del').click();
+    const after = await names();
+    assert.deepStrictEqual(after, before.slice(1));
+    assert.strictEqual(await p.$eval('.part[aria-current="true"] .n', (x) => x.textContent), second);
+    assert.ok((await p.$eval('#detail .title', (x) => x.textContent)).includes(second));
     assert.deepStrictEqual(errors, []);
   } finally {
     await browser.close();

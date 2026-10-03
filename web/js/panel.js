@@ -875,7 +875,11 @@
       if (!e) continue;
       const full = e.zmin < TOL && e.zmax > T - TOL;
       if (full) {
-        res.slantWalls.push({ top: e.top, bottom: e.bottom, angle: e.angle, leanOut: e.offset > 0, path: e.path });
+        // sägbar: die verlängerte Schnittebene schneidet das Teil nirgends an (alle Punkte auf der Materialseite)
+        const n = f.surf.n;
+        const p0 = f.surf.p;
+        const sawable = faces.every((g) => g.pts.every((q) => (q[0] - p0[0]) * n[0] + (q[1] - p0[1]) * n[1] + (q[2] - p0[2]) * n[2] <= 0.05));
+        res.slantWalls.push({ top: e.top, bottom: e.bottom, angle: e.angle, leanOut: e.offset > 0, path: e.path, sawable: sawable });
       } else if (e.zmax > T - TOL) {
         chamferFaces.push({ kind: 'line', side: 'top', line: e.bottomLine, width: Math.abs(e.offset), height: T - e.zmin, path: e.path });
       } else if (e.zmin < TOL) {

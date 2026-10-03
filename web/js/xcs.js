@@ -336,7 +336,7 @@
       const u = [d[0] / l, d[1] / l];
       // Gerader Schnitt von Kante zu Kante: mit der Säge (Schnittfläche wird zur neuen schrägen Ebene)
       const atEdge = (q) => q[0] < 0.05 || q[0] > p.L - 0.05 || q[1] < 0.05 || q[1] > p.W - 0.05;
-      if (cfg.slantCut === 'saw' && atEdge(w.top.a) && atEdge(w.top.b)) {
+      if (cfg.slantCut === 'saw' && (w.sawable || (atEdge(w.top.a) && atEdge(w.top.b)))) {
         const so = cfg.sawOverrun;
         ops.push({ kind: 'blade', key: 'blade-' + i, toolKind: 'saw', toolDefault: 'bladeTool',
           a: [w.top.a[0] - u[0] * so, w.top.a[1] - u[1] * so], b: [w.top.b[0] + u[0] * so, w.top.b[1] + u[1] * so],

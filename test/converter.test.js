@@ -125,7 +125,7 @@ test('5-Achs-Testplatte: Tasche mit Insel, Fasen, schräge Kante, schräge Bohru
   const { convert } = require('../web/js/convert.js');
   const T = require('../web/js/tools.js');
   const toolInfo = T.infoMap(T.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
-  const [part] = convert(read('test/fixtures/fuenfachs.step'), { toolInfo: toolInfo, stepDown: 10 });
+  const [part] = convert(read('test/fixtures/fuenfachs.step'), { toolInfo: toolInfo, stepDown: 10, slantCut: 'mill' });
   assert.strictEqual(part.error, null);
   const x = part.xcs;
   assert.match(x, /CreateCircleCenterRadius\("Island_1_1", 130, 200, 15, true\);/);
@@ -418,7 +418,7 @@ test('Prüfung: Befehlsparameter, stabile Schlüssel, Sägeblatt, Dateinamen', (
   const T = require('../web/js/tools.js');
   const toolInfo = T.infoMap(T.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
   // CreateSlantedRoughFinish: nach dem Kopf nur inputSpeed, rotSpeed, speed, overMaterial (keine Korrektur)
-  const [f] = convert(read('test/fixtures/fuenfachs.step'), { toolInfo: toolInfo });
+  const [f] = convert(read('test/fixtures/fuenfachs.step'), { toolInfo: toolInfo, slantCut: 'mill' });
   assert.ok(/CreateSlantedRoughFinish\("SlantedMilling_1", 0, 30, 2, 21, "", TypeOfProcess\.GeneralRouting, "E016", "-1", -1, -1, -1, 0\);/.test(f.xcs));
   // Bahn auf Werkzeugmitte: um r / cos(30°) zur Abfallseite versetzt (Oberkante X = 589.03, E016 Ø11.38)
   const m = /CreateSegment\("SlantSegment_1", ([\d.]+),/.exec(f.xcs);
@@ -475,4 +475,17 @@ test('Formatfräsen je Teil umschaltbar: normal / zweistufig', () => {
   assert.strictEqual(vor({ formatTwoStep: true }), true);
   assert.strictEqual(vor({}, { twoStep: true }), true);           // Teil zweistufig, Einstellung normal
   assert.strictEqual(vor({ formatTwoStep: true }, { twoStep: false }), false); // Teil normal, Einstellung zweistufig
+});
+
+test('Sägeschnitt auch nach dem Wenden (Dreieck mit schrägen Kanten)', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const [s] = readParts(read('test/fixtures/part7.step'), 'part7.step');
+  for (const o of [{ rot: 0, flip: false }, { rot: 0, flip: true }, { rot: 1, flip: true }, { rot: 3, flip: false }]) {
+    const r = convertSolid(s, {}, { orientation: o });
+    assert.strictEqual(r.ops.filter((x) => x.kind === 'blade').length, 3, JSON.stringify(o));
+    assert.ok(!r.ops.some((x) => x.kind === 'slant'), JSON.stringify(o));
+  }
+  // Einstellung „fräsen“ bleibt möglich
+  const m = convertSolid(s, { slantCut: 'mill' }, { orientation: { rot: 0, flip: true } });
+  assert.strictEqual(m.ops.filter((x) => x.kind === 'slant').length, 3);
 });

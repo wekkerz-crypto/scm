@@ -430,6 +430,9 @@ table.fmt.one .onet { display: inline; }
       ['cupSmallCode', 'Sauger schmal: Code in Maestro', 'text'],
       ['cupSmallX', 'Sauger schmal: Länge', 'number', 'mm'],
       ['cupSmallY', 'Sauger schmal: Breite', 'number', 'mm'],
+      ['cupNarrowCode', 'Sauger sehr schmal: Code in Maestro', 'text', 'leer = nicht verwenden'],
+      ['cupNarrowX', 'Sauger sehr schmal: Länge', 'number', 'mm'],
+      ['cupNarrowY', 'Sauger sehr schmal: Breite', 'number', 'mm'],
       ['barCount', 'Konsolen an der Maschine', 'number', 'Stück'],
       ['barMinGap', 'Konsolen: kleinster Abstand', 'number', 'mm'],
       ['barSpacing', 'Konsolen: angestrebter Abstand', 'number', 'mm'],
@@ -461,6 +464,8 @@ table.fmt.one .onet { display: inline; }
     try { s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { s = {}; }
     if (s.fieldThreshold === 1500) s.fieldThreshold = XcsWriter.DEFAULTS.fieldThreshold; // alte Voreinstellung
     delete s.formatLast; // ersetzt durch die Reihenfolge-Regel
+    // früherer Vorgabe-Sauger 145×50 → in Maestro heißt er H75-M-145x55
+    if (s.cupSmallCode === 'H75-M-145x50') { delete s.cupSmallCode; if (s.cupSmallY === 50) delete s.cupSmallY; }
     // frühere Standardpfade (aus dem Handbuch) auf den Pfad in der Werkstatt umstellen
     if (s.xconverterPath === 'C:\\Program Files (x86)\\Scm Group\\Maestro\\XConverter.exe') delete s.xconverterPath;
     if (s.toolsFile === 'C:\\Program Files (x86)\\Scm Group\\Maestro\\Tlgx\\def.tlgx' ||
@@ -590,7 +595,7 @@ table.fmt.one .onet { display: inline; }
 
   // Felder, die nur gelten, wenn ein Schalter an ist: ausgegraut zeigen
   const DEPENDENT = { scoreCut: ['scoreDepth', 'scoreOut'], tabsMode: ['tabsMaxSize', 'tabsCount', 'tabLength', 'tabHeight'],
-    helixOn: ['helixStep'], drillStepFrom: ['drillStep'], suctionOn: ['cupBigCode', 'cupSmallCode'] };
+    helixOn: ['helixStep'], drillStepFrom: ['drillStep'], suctionOn: ['cupBigCode', 'cupSmallCode', 'cupNarrowCode'] };
   function dimmed(k) {
     const st = state.settings;
     if (k === 'scoreDepth' || k === 'scoreOut') return !st.scoreCut;
@@ -598,7 +603,7 @@ table.fmt.one .onet { display: inline; }
     if (/^tab(sCount|Length|Height)$/.test(k)) return st.tabsMode === 'off';
     if (k === 'helixStep') return !st.helixOn;
     if (k === 'drillStep') return !(st.drillStepFrom > 0);
-    if (k === 'cupBigCode' || k === 'cupSmallCode') return !st.suctionOn;
+    if (k === 'cupBigCode' || k === 'cupSmallCode' || k === 'cupNarrowCode') return !st.suctionOn;
     return false;
   }
 

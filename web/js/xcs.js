@@ -85,7 +85,8 @@
     // Sauger (Drehsauger auf Konsolen): automatischer Vorschlag, SetBarPosition / SetSuctionCupPosition
     suctionOn: true,           // Vorschlag ins Programm schreiben
     cupBigCode: 'H75-M-145x145', cupBigX: 145, cupBigY: 145,
-    cupSmallCode: 'H75-M-145x50', cupSmallX: 145, cupSmallY: 50,
+    cupSmallCode: 'H75-M-145x55', cupSmallX: 145, cupSmallY: 55,
+    cupNarrowCode: 'H75-M-145x30', cupNarrowX: 145, cupNarrowY: 30, // für sehr schmale Teile (leer = nicht verwenden)
     barCount: 6,               // Konsolen an der Maschine
     barMinGap: 150,            // kleinster Abstand der Konsolen (Mitte zu Mitte)
     barSpacing: 500,           // angestrebter Abstand der Konsolen
@@ -214,6 +215,9 @@
     const types = [];
     for (const ang of angles) if (ang < 90) types.push({ code: cfg.cupBigCode, sx: cfg.cupBigX, sy: cfg.cupBigY, angle: ang, w: 2 });
     for (const ang of angles) types.push({ code: cfg.cupSmallCode, sx: cfg.cupSmallX, sy: cfg.cupSmallY, angle: ang, w: 1 });
+    if (cfg.cupNarrowCode && cfg.cupNarrowY > 0) {
+      for (const ang of angles) types.push({ code: cfg.cupNarrowCode, sx: cfg.cupNarrowX, sy: cfg.cupNarrowY, angle: ang, w: 0.5 });
+    }
     // passt ein Sauger (Rechteck um cx, cy, gedreht um angle) auf die Fläche?
     const fits = (cx, cy, t) => {
       const ca = Math.cos((t.angle * Math.PI) / 180);

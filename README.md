@@ -128,7 +128,7 @@ hervorgehoben. Taschen sind vereinfacht zeilenweise dargestellt (`web/js/toolpat
 Simulation in Maestro.
 
 **Sauger-Vorschlag:** Für jedes Teil schlägt das Tool Konsolen (X) und Drehsauger (Y, Winkel) vor – große Sauger
-145×145, wo sie passen, sonst schmale 145×50; Drehsauger auch parallel zu schrägen Kanten. Abstand zur Plattenkante
+145×145, wo sie passen, sonst schmale 145×55, bei sehr schmalen Teilen 145×30; Drehsauger auch parallel zu schrägen Kanten. Abstand zur Plattenkante
 (Formatfräser, Säge) und zu allem, was durchgeht (Durchbrüche, Durchgangsbohrungen), Auflagefläche = Unterseite. Anzeige
 gestrichelt in der Draufsicht und als Sauger/Konsolen unter der Platte in 3D; Ausgabe direkt nach
 `SetWorkpieceSetupPosition`. Einstellungen unter *Sauger & Konsolen* (Codes wie in Maestro, Maße, Anzahl Konsolen,
@@ -197,7 +197,7 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
   - Haltesteg `SetParametricAttribute2("TAB", 5, 2, 0.5)`: Bedeutung von 5/2 (Länge/Höhe) aus dem Beispiel abgeleitet.
   - `CreateFinishedWorkpieceFromExtrusion`: Kontur vor dem Werkstück, Nullpunkt = linke untere Ecke der Kontur.
 - **Sauger (`SetBarPosition`, `SetSuctionCupPosition`):** Codes der Sauger müssen genau wie in der Maestro-Spannmittelliste
-  heißen (Vorgabe `H75-M-145x145`, `H75-M-145x50` – anpassen!). Zu prüfen: Koordinaten zum Werkstück-Nullpunkt (fertiges
+  heißen (Vorgabe `H75-M-145x145`, `H75-M-145x55`, `H75-M-145x30` wie in der Spannmittelliste). Zu prüfen: Koordinaten zum Werkstück-Nullpunkt (fertiges
   Teil), Sauger-Nummer je Konsole ab 1, Winkel 0° = lange Seite in X.
 - **Taschen in den Kanten:** Geometrie in denselben Kantenkoordinaten wie die Kantenbohrungen (X waagerecht, Y = Höhe ab
   Plattenunterseite); in Maestro noch nicht simuliert.

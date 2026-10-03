@@ -507,7 +507,10 @@ test('Sauger-Vorschlag: Konsolen und Drehsauger', () => {
   const big = convert(read('test/fixtures/oberboden_27.step'), {}, 'x.step')[0].suction.bars[0].cups;
   assert.ok(big.every((c) => c.code === 'H75-M-145x145'));
   const thin = convert(read('test/fixtures/holz.step'), {}, 'x.step')[0].suction.bars[0].cups;
-  assert.ok(thin.every((c) => c.code === 'H75-M-145x50'));
+  assert.ok(thin.every((c) => c.code === 'H75-M-145x55'));
+  // sehr schmale Auflage: nur der 145×30 passt
+  const narrow = convert(read('test/fixtures/holz.step'), { cupSmallY: 200 }, 'x.step')[0].suction.bars.flatMap((b) => b.cups);
+  assert.ok(narrow.length && narrow.every((c) => c.code === 'H75-M-145x30'));
   const tri = convert(read('test/fixtures/part7.step'), {}, 'x.step')[0].suction.bars.flatMap((b) => b.cups);
   assert.ok(tri.some((c) => c.angle % 90 !== 0));
   // Sauger nie über einem Durchbruch: Testplatte hat einen

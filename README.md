@@ -39,9 +39,19 @@ Ausrichtung: Die längste Seite wird X, Bearbeitungsseite ist die Seite mit den 
 Nullpunkt vorne links unten. Werkzeuge, Zugaben und Bohrerlisten sind im Web-Tool unter
 *Werkzeuge & Regeln* einstellbar (Standard aus `maestro/werkzeuge/def.tlgx` und den Beispielen).
 
+## In Maestro bestätigt
+
+Die Onshape-Teile `kp1 - Oberboden` und `kp1 - Rechte Seite` (Ordner `step/`) wurden mit dem Tool
+umgewandelt, im X-Konverter als Script importiert und als Maestro-Programm angelegt. Damit belegt:
+
+- Programmkopf, Rohteil, Formatfräsen (`CreatePolyline` / `CreateRoughFinish`)
+- Bohrungen von oben inkl. Lochreihen (`CreatePattern`)
+- horizontale Bohrungen links/rechts (`SelectWorkplane("Left"/"Right")`)
+- Kreisfräsung mit Bögen (`AddArc2PointCenterToPolyline`) für das Rundloch Ø 100
+
 ## Noch zu prüfen an der Maschine
 
-Aus den Beispielen abgeleitet, aber nicht durch ein Beispiel belegt:
+Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
 
 - **Feld `IJ`/`IL`:** Regel „lang ab 1500 mm → `IL`“ ist geschätzt (Beispiele: 2305 → IL, ≤ 646 → IJ).
 - **Kantenbohrungen vorne/hinten:** Ebenennamen `"Front"`/`"Back"` und deren lokale X-Richtung.

@@ -509,7 +509,8 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
         '<button class="btn ghost small" id="clear" type="button">Liste leeren</button></span>' : '') + '</div>';
     if (!state.parts.length) {
       el.innerHTML = head + '<div class="empty">Noch keine Teile – STEP-Dateien wählen oder auf die Seite ziehen.</div>';
-          return;
+      $('pick').addEventListener('click', openPicker);
+      return;
     }
     el.innerHTML = head;
     state.parts.forEach((p, i) => {
@@ -532,7 +533,11 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
       el.appendChild(b);
     });
     $('zipall').addEventListener('click', downloadAll);
-      }
+    $('pick').addEventListener('click', openPicker);
+    $('clear').addEventListener('click', () => { state.parts = []; state.sel = 0; anim.result = null; render(); });
+  }
+
+  function openPicker() { $('file').click(); }
 
   function svgPath(start, segs, Y) {
     let d = 'M' + start[0] + ' ' + Y(start[1]);

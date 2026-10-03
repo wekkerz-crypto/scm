@@ -169,7 +169,7 @@
     this.scene.add(this.sun);
     this.scene.add(this.sun.target);
     this.groups = {};
-    for (const g of ['part', 'raw', 'trails', 'tool', 'ground']) { this.groups[g] = new THREE.Group(); this.scene.add(this.groups[g]); }
+    for (const g of ['part', 'raw', 'trails', 'tool', 'ground', 'fixture']) { this.groups[g] = new THREE.Group(); this.scene.add(this.groups[g]); }
     this.fluteTex = new THREE.CanvasTexture(fluteCanvas());
     this.fluteTex.wrapS = this.fluteTex.wrapT = THREE.RepeatWrapping;
     this.fluteTex.encoding = THREE.sRGBEncoding;
@@ -247,7 +247,37 @@
     this.clear('part');
     this.clear('raw');
     this.clear('ground');
+    this.clear('fixture');
     this.clearTrails();
+    // Sauger (Vorschlag) unter der Platte, darunter die Konsolen; der Tisch liegt unter den Konsolen
+    const CUP_H = 75;
+    const BAR_H = 45;
+    let floorZ = -0.2;
+    if (opts.suction && opts.suction.bars && opts.suction.bars.length) {
+      floorZ = -(CUP_H + BAR_H) - 0.2;
+      const rubber = new T.MeshStandardMaterial({ color: 0x2a2f33, roughness: 0.85, metalness: 0.05 });
+      const body = new T.MeshStandardMaterial({ color: 0x9aa3ab, roughness: 0.45, metalness: 0.6 });
+      const barMat = new T.MeshStandardMaterial({ color: 0x5d666f, roughness: 0.5, metalness: 0.55 });
+      for (const b of opts.suction.bars) {
+        const bar = new T.Mesh(new T.BoxGeometry(90, p.W + 400, BAR_H), barMat);
+        bar.position.set(b.x, p.W / 2, -CUP_H - BAR_H / 2);
+        bar.castShadow = bar.receiveShadow = true;
+        this.groups.fixture.add(bar);
+        for (const c of b.cups) {
+          const g = new T.Group();
+          const cup = new T.Mesh(new T.BoxGeometry(c.sx, c.sy, CUP_H - 8), body);
+          cup.position.z = -(CUP_H - 8) / 2 - 8;
+          const pad = new T.Mesh(new T.BoxGeometry(c.sx - 4, c.sy - 4, 8), rubber);
+          pad.position.z = -4;
+          g.add(cup, pad);
+          g.position.set(b.x, c.y, -0.3);
+          g.rotation.z = (c.angle * Math.PI) / 180;
+          g.traverse((x) => { if (x.isMesh) { x.castShadow = true; x.receiveShadow = true; } });
+          this.groups.fixture.add(g);
+        }
+      }
+    }
+    this.floorZ = floorZ;
     const placed = placeMesh(opts.meshes, opts.tf, p);
     if (placed) {
       const g = new T.BufferGeometry();
@@ -301,12 +331,12 @@
     // Maschinentisch: Schattenfänger und dezentes Raster
     const size = Math.max(p.L, p.W) * 3 + 600;
     const shadow = new T.Mesh(new T.PlaneGeometry(size, size), new T.ShadowMaterial({ opacity: this.dark ? 0.45 : 0.22 }));
-    shadow.position.set(p.L / 2, p.W / 2, -0.2);
+    shadow.position.set(p.L / 2, p.W / 2, floorZ);
     shadow.receiveShadow = true;
     this.groups.ground.add(shadow);
     const grid = new T.GridHelper(size, Math.round(size / 100), this.dark ? 0x2c3633 : 0xc4cbc4, this.dark ? 0x222a28 : 0xd5dbd4);
     grid.rotation.x = Math.PI / 2;
-    grid.position.set(p.L / 2, p.W / 2, -0.4);
+    grid.position.set(p.L / 2, p.W / 2, floorZ - 0.2);
     grid.material.transparent = true;
     grid.material.opacity = this.dark ? 0.35 : 0.7;
     this.groups.ground.add(grid);
@@ -390,7 +420,7 @@
     const T = this.THREE;
     if (pts.length < 2) return null;
     const flat = [];
-    for (const q of pts) flat.push(q[0], q[1], Math.max(q[2], 0) + 0.3); // unter dem Teil (Durchfräsen) auf Tischhöhe zeigen
+    for (const q of pts) flat.push(q[0], q[1], Math.max(q[2], 0) + 0.3); // unter dem Teil (Durchfräsen) an der Unterseite zeigen
     const g = new T.LineGeometry();
     g.setPositions(flat);
     const width = m.disc ? Math.max(1.5, m.disc.thick) : Math.max(1, (m.d || 4) * 0.92);

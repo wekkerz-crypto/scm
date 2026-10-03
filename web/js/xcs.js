@@ -56,6 +56,16 @@
     xconverterPath: 'C:\\Program Files\\SCM Group\\Maestro\\XConverter.exe',
     toolsFile: 'C:\\Users\\Public\\Documents\\SCM Group\\Maestro\\Tlgx\\def.tlgx',
     pgmxDir: '',               // leer = Unterordner „pgmx“ neben der .bat
+    // Sauger (Drehsauger auf Konsolen): automatischer Vorschlag, SetBarPosition / SetSuctionCupPosition
+    suctionOn: true,           // Vorschlag ins Programm schreiben
+    cupBigCode: 'H75-M-145x145', cupBigX: 145, cupBigY: 145,
+    cupSmallCode: 'H75-M-145x50', cupSmallX: 145, cupSmallY: 50,
+    barCount: 6,               // Konsolen an der Maschine
+    barMinGap: 150,            // kleinster Abstand der Konsolen (Mitte zu Mitte)
+    barSpacing: 500,           // angestrebter Abstand der Konsolen
+    cupsPerBar: 4,             // höchstens so viele Sauger je Konsole
+    cupEdgeMargin: 15,         // Abstand Sauger – Plattenkante (Formatfräser, Säge)
+    cupHoleMargin: 10,         // Abstand Sauger – Durchbrüche und Durchgangsbohrungen
   };
 
   const FACE_NAMES = { Left: 'Left', Right: 'Right', Front: 'Front', Back: 'Back' };
@@ -114,6 +124,180 @@
     return String(r);
   }
   const pt = (p) => fmt(p[0]) + ', ' + fmt(p[1]);
+
+  // ---------------------------------------------------------------- Sauger-Vorschlag
+
+  // Kontur (Segmente line/arc) als Punktliste
+  function loopPts(segs) {
+    const pts = [];
+    for (const q of segs) {
+      if (q.type === 'arc') {
+        let a0 = Math.atan2(q.a[1] - q.c[1], q.a[0] - q.c[0]);
+        let sw = q.full ? Math.PI * 2 : Math.atan2(q.b[1] - q.c[1], q.b[0] - q.c[0]) - a0;
+        if (!q.full) { if (q.ccw) { while (sw <= 0) sw += Math.PI * 2; } else { while (sw >= 0) sw -= Math.PI * 2; } }
+        if (q.full && !q.ccw) sw = -sw;
+        const n = Math.max(2, Math.ceil(Math.abs(sw) / (Math.PI / 24)));
+        for (let i = 0; i < n; i++) pts.push([q.c[0] + q.r * Math.cos(a0 + (sw * i) / n), q.c[1] + q.r * Math.sin(a0 + (sw * i) / n)]);
+      } else pts.push(q.a);
+    }
+    return pts;
+  }
+  function inPoly(p, poly) {
+    let c = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const a = poly[i];
+      const b = poly[j];
+      if ((a[1] > p[1]) !== (b[1] > p[1]) && p[0] < ((b[0] - a[0]) * (p[1] - a[1])) / (b[1] - a[1]) + a[0]) c = !c;
+    }
+    return c;
+  }
+  function distPoly(p, poly) {
+    let d = Infinity;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const a = poly[j];
+      const b = poly[i];
+      const ab = [b[0] - a[0], b[1] - a[1]];
+      const l2 = ab[0] * ab[0] + ab[1] * ab[1] || 1;
+      const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * ab[0] + (p[1] - a[1]) * ab[1]) / l2));
+      d = Math.min(d, Math.hypot(p[0] - a[0] - t * ab[0], p[1] - a[1] - t * ab[1]));
+    }
+    return d;
+  }
+
+  // Schlägt Konsolen (X) und Sauger (Y, Winkel, Typ) vor. Sauger liegen auf der Unterseite, mit Abstand zu
+  // Kanten (Formatfräser, Säge) und zu allem, was durchgeht (Durchbrüche, Durchgangsbohrungen).
+  function planSuction(p, cfg) {
+    const warnings = [];
+    const base = loopPts(p.base || p.outline || []);
+    if (base.length < 3) return { bars: [], warnings: ['Sauger: Auflagefläche nicht erkannt – Sauger von Hand setzen.'] };
+    const holes = (p.cutouts || []).map(loopPts);
+    const circles = (p.drills || []).filter((d) => d.face === 'Top' && d.through).map((d) => ({ c: [d.x, d.y], r: d.d / 2 }));
+    const em = cfg.cupEdgeMargin;
+    const hm = cfg.cupHoleMargin;
+    // Drehsauger: gerade (0°/90°) und parallel zu den Kanten der Auflagefläche
+    const angles = [0, 90];
+    for (let i = 0; i < base.length; i++) {
+      const a = base[i];
+      const b = base[(i + 1) % base.length];
+      if (Math.hypot(b[0] - a[0], b[1] - a[1]) < 100) continue;
+      let ang = Math.round((Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI);
+      ang = ((ang % 180) + 180) % 180;
+      if (!angles.some((x) => Math.abs(x - ang) < 2 || Math.abs(x - ang) > 178)) angles.push(ang);
+    }
+    const types = [];
+    for (const ang of angles) if (ang < 90) types.push({ code: cfg.cupBigCode, sx: cfg.cupBigX, sy: cfg.cupBigY, angle: ang, w: 2 });
+    for (const ang of angles) types.push({ code: cfg.cupSmallCode, sx: cfg.cupSmallX, sy: cfg.cupSmallY, angle: ang, w: 1 });
+    // passt ein Sauger (Rechteck um cx, cy, gedreht um angle) auf die Fläche?
+    const fits = (cx, cy, t) => {
+      const ca = Math.cos((t.angle * Math.PI) / 180);
+      const sa = Math.sin((t.angle * Math.PI) / 180);
+      const P = (u, v) => [cx + u * ca - v * sa, cy + u * sa + v * ca];
+      const hx = t.sx / 2;
+      const hy = t.sy / 2;
+      const nx = Math.max(2, Math.ceil(t.sx / 15));
+      const ny = Math.max(2, Math.ceil(t.sy / 15));
+      const pts = [];
+      for (let i = 0; i <= nx; i++) { const u = -hx + (t.sx * i) / nx; pts.push(P(u, -hy), P(u, hy)); }
+      for (let j = 1; j < ny; j++) { const v = -hy + (t.sy * j) / ny; pts.push(P(-hx, v), P(hx, v)); }
+      for (const q of pts) {
+        if (!inPoly(q, base) || distPoly(q, base) < em) return false;
+        for (const h of holes) if (inPoly(q, h) || distPoly(q, h) < hm) return false;
+        for (const c of circles) if (Math.hypot(q[0] - c.c[0], q[1] - c.c[1]) < c.r + hm) return false;
+      }
+      // Bohrung oder Durchbruch ganz unter dem Sauger
+      const inside = (q) => {
+        const dx = q[0] - cx;
+        const dy = q[1] - cy;
+        return Math.abs(dx * ca + dy * sa) < hx + hm && Math.abs(-dx * sa + dy * ca) < hy + hm;
+      };
+      if (circles.some((c) => inside(c.c)) || holes.some((h) => h.some(inside))) return false;
+      return true;
+    };
+    let x0 = Infinity;
+    let x1 = -Infinity;
+    let y0 = Infinity;
+    let y1 = -Infinity;
+    for (const q of base) { x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]); }
+    // Sauger entlang einer Konsole bei x: gleichmäßig verteilt, möglichst weit außen
+    const cupsAt = (x, t) => {
+      const ys = [];
+      for (let y = y0; y <= y1; y += 5) if (fits(x, y, t)) ys.push(y);
+      if (!ys.length) return [];
+      const runs = [];
+      let run = [ys[0], ys[0]];
+      for (let k = 1; k < ys.length; k++) { if (ys[k] - run[1] <= 5.01) run[1] = ys[k]; else { runs.push(run); run = [ys[k], ys[k]]; } }
+      runs.push(run);
+      // Platzbedarf eines Saugers in Y (gedreht)
+      const ca = Math.abs(Math.cos((t.angle * Math.PI) / 180));
+      const sa = Math.abs(Math.sin((t.angle * Math.PI) / 180));
+      const need = t.sx * sa + t.sy * ca + 20;
+      const out = [];
+      for (const r of runs) {
+        const span = r[1] - r[0];
+        const n = Math.max(1, Math.min(cfg.cupsPerBar, 1 + Math.floor(span / Math.max(need, 200))));
+        for (let k = 0; k < n; k++) out.push(n === 1 ? (r[0] + r[1]) / 2 : r[0] + (span * k) / (n - 1));
+      }
+      out.sort((a, b) => a - b);
+      return out.slice(0, cfg.cupsPerBar).map((y) => ({ y: y, angle: t.angle, code: t.code, sx: t.sx, sy: t.sy, w: t.w }));
+    };
+    const memo = new Map();
+    const bestAt = (x) => {
+      const key = Math.round(x);
+      if (memo.has(key)) return memo.get(key);
+      let best = [];
+      let bestScore = 0;
+      for (const t of types) {
+        const c = cupsAt(x, t);
+        const sc = c.reduce((a, q) => a + q.w, 0);
+        if (sc > bestScore) { best = c; bestScore = sc; }
+        if (t.w === 2 && c.length >= 2) break; // zwei große Sauger: gut genug
+      }
+      memo.set(key, best);
+      return best;
+    };
+    const score = (cups) => cups.reduce((a, q) => a + q.w, 0);
+    const n = Math.max(1, Math.min(cfg.barCount, Math.round((x1 - x0) / cfg.barSpacing) + 1));
+    let bars = [];
+    const inner0 = x0 + em + cfg.cupBigX / 2;
+    const inner1 = x1 - em - cfg.cupBigX / 2;
+    for (let k = 0; k < n; k++) {
+      const ideal = n === 1 || inner1 <= inner0 ? (x0 + x1) / 2 : inner0 + ((inner1 - inner0) * k) / (n - 1);
+      // in der Nähe des Idealpunkts die Stelle mit den meisten Saugern suchen
+      let best = null;
+      for (let dx = 0; dx <= Math.max(60, cfg.barSpacing / 2); dx += 10) {
+        for (const x of dx ? [ideal - dx, ideal + dx] : [ideal]) {
+          if (x < x0 || x > x1) continue;
+          if (bars.some((b) => Math.abs(b.x - x) < cfg.barMinGap)) continue;
+          const cups = bestAt(x);
+          if (cups.length && (!best || score(cups) > score(best.cups))) best = { x: x, cups: cups };
+        }
+        if (best && best.cups.length >= 2) break;
+      }
+      if (best) bars.push(best);
+    }
+    // zu wenig Halt (weniger als zwei Sauger): bestes Konsolenpaar über die ganze Länge suchen
+    if (bars.reduce((a, b) => a + b.cups.length, 0) < 2 && cfg.barCount >= 1) {
+      const xs = [];
+      for (let x = x0; x <= x1; x += 10) { const c = bestAt(x); if (c.length) xs.push({ x: x, cups: c }); }
+      let pick = bars;
+      let pickScore = bars.reduce((a, b) => a + score(b.cups), 0);
+      for (const a of xs) {
+        if (score(a.cups) > pickScore && a.cups.length >= 2) { pick = [a]; pickScore = score(a.cups); }
+        if (cfg.barCount < 2) continue;
+        for (const b of xs) {
+          if (b.x - a.x < cfg.barMinGap) continue;
+          const sc = score(a.cups) + score(b.cups);
+          if (sc > pickScore) { pick = [a, b]; pickScore = sc; }
+        }
+      }
+      bars = pick;
+    }
+    bars.sort((a, b) => a.x - b.x);
+    const total = bars.reduce((a, b) => a + b.cups.length, 0);
+    if (!total) warnings.push('Sauger: kein Platz für einen Sauger gefunden – Teil von Hand spannen.');
+    else if (total < 2) warnings.push('Sauger: nur ein Sauger passt – Spannung prüfen.');
+    return { bars: bars, warnings: warnings };
+  }
 
   // ---------------------------------------------------------------- Planung
 
@@ -675,6 +859,16 @@
     const o = fmt(cfg.rawOversize);
     L.push('CreateRawWorkpiece("Workpiece", ' + [o, o, o, o].join(', ') + ', 0, 0);'); blank();
     L.push('SetWorkpieceSetupPosition(' + o + ', ' + o + ', 0, 0);'); blank();
+    // Sauger-Vorschlag: Konsolen und Drehsauger (Koordinaten zum Werkstück-Nullpunkt)
+    const suction = cfg.suctionOn ? planSuction(p, cfg) : { bars: [], warnings: [] };
+    warnings.push(...suction.warnings);
+    if (suction.bars.length) {
+      suction.bars.forEach((b, i) => {
+        L.push('SetBarPosition(' + (i + 1) + ', ' + fmt(b.x) + ');');
+        b.cups.forEach((c, j) => L.push('SetSuctionCupPosition(' + (j + 1) + ', ' + fmt(c.y) + ', ' + fmt(c.angle) + ', "' + c.code + '");'));
+      });
+      blank();
+    }
 
     let nSlot = 0;
     let nSeg = 0;
@@ -834,8 +1028,8 @@
     }
     L.push('CreateNullOperation("XN", ' + fmt(p.L + cfg.parkOffset) + ', null, 1, 50, false, " ");');
     L.push('');
-    return { text: L.join('\r\n'), ops: ops, warnings: warnings, field: field, groups: groups, defaultGroups: defaultGroups };
+    return { text: L.join('\r\n'), ops: ops, warnings: warnings, field: field, groups: groups, defaultGroups: defaultGroups, suction: suction };
   }
 
-  return { write: write, plan: plan, DEFAULTS: DEFAULTS, CATEGORIES: CATEGORIES, ruleSequence: ruleSequence };
+  return { write: write, plan: plan, planSuction: planSuction, DEFAULTS: DEFAULTS, CATEGORIES: CATEGORIES, ruleSequence: ruleSequence };
 });

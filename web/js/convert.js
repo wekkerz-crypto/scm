@@ -54,7 +54,7 @@
       const out = XcsWriter.write(panel, settings, { field: options.field, tools: ov.tools, steps: ov.steps, order: ov.order, depths: ov.depths, twoStep: ov.twoStep });
       return { name: solid.name, fileName: safeFileName(solid.name) + '.xcs', panel: panel,
         xcs: out.text, ops: out.ops, warnings: out.warnings, field: out.field, groups: out.groups,
-        defaultGroups: out.defaultGroups, error: null };
+        defaultGroups: out.defaultGroups, suction: out.suction, error: null };
     } catch (err) {
       return { name: solid.name, fileName: safeFileName(solid.name) + '.xcs', panel: null, xcs: '',
         ops: [], warnings: [], error: err.message || String(err) };

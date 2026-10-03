@@ -8,7 +8,7 @@ const { convert } = require('../web/js/convert.js');
 const root = path.join(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 // Reihenfolge und Konturfräsen wie in den Maestro-Beispielen
-const ORIGINAL_ORDER = { orderRule: { on: false }, contourMode: 'rect' };
+const ORIGINAL_ORDER = { orderRule: { on: false }, contourMode: 'rect', suctionOn: false };
 const one = (p, settings) => {
   const parts = convert(read(p), settings);
   assert.strictEqual(parts.length, 1);
@@ -488,4 +488,42 @@ test('Sägeschnitt auch nach dem Wenden (Dreieck mit schrägen Kanten)', () => {
   // Einstellung „fräsen“ bleibt möglich
   const m = convertSolid(s, { slantCut: 'mill' }, { orientation: { rot: 0, flip: true } });
   assert.strictEqual(m.ops.filter((x) => x.kind === 'slant').length, 3);
+});
+
+test('Sauger-Vorschlag: Konsolen und Drehsauger', () => {
+  const { convert } = require('../web/js/convert.js');
+  const inside = (p, x, y) => x > 0 && x < p.L && y > 0 && y < p.W;
+  for (const f of ['seitenwand_32', 'oberboden_27', 'testplatte', 'holz', 'part7']) {
+    const [r] = convert(read('test/fixtures/' + f + '.step'), {}, f + '.step');
+    const cups = r.suction.bars.flatMap((b) => b.cups.map((c) => Object.assign({ x: b.x }, c)));
+    assert.ok(cups.length >= 2, f + ': mindestens zwei Sauger');
+    for (const c of cups) assert.ok(inside(r.panel, c.x, c.y), f);
+    // Konsolen mit Mindestabstand, Ausgabe nach SetWorkpieceSetupPosition
+    const xs = r.suction.bars.map((b) => b.x);
+    for (let i = 1; i < xs.length; i++) assert.ok(xs[i] - xs[i - 1] >= 150 - 1e-6);
+    assert.ok(/SetWorkpieceSetupPosition\(2, 2, 0, 0\);\r\n\r\nSetBarPosition\(1, /.test(r.xcs), f);
+  }
+  // großes Teil: große Sauger, schmales Teil: schmale Sauger, Dreieck: gedreht parallel zu den Kanten
+  const big = convert(read('test/fixtures/oberboden_27.step'), {}, 'x.step')[0].suction.bars[0].cups;
+  assert.ok(big.every((c) => c.code === 'H75-M-145x145'));
+  const thin = convert(read('test/fixtures/holz.step'), {}, 'x.step')[0].suction.bars[0].cups;
+  assert.ok(thin.every((c) => c.code === 'H75-M-145x50'));
+  const tri = convert(read('test/fixtures/part7.step'), {}, 'x.step')[0].suction.bars.flatMap((b) => b.cups);
+  assert.ok(tri.some((c) => c.angle % 90 !== 0));
+  // Sauger nie über einem Durchbruch: Testplatte hat einen
+  const [tp] = convert(read('test/fixtures/testplatte.step'), {}, 'x.step');
+  const PA = require('../web/js/panel.js');
+  for (const b of tp.suction.bars) for (const c of b.cups) {
+    for (const lp of tp.panel.cutouts) {
+      const pts = [];
+      for (const q of lp) for (const t of PA.segPoints(q)) pts.push(t);
+      const xs2 = pts.map((q) => q[0]);
+      const ys2 = pts.map((q) => q[1]);
+      const free = b.x + c.sx / 2 < Math.min(...xs2) || b.x - c.sx / 2 > Math.max(...xs2) || c.y + c.sy / 2 < Math.min(...ys2) || c.y - c.sy / 2 > Math.max(...ys2);
+      assert.ok(free || c.angle !== 0, 'Sauger über Durchbruch');
+    }
+  }
+  // abschaltbar
+  const [off] = convert(read('test/fixtures/holz.step'), { suctionOn: false }, 'x.step');
+  assert.ok(!off.xcs.includes('SetBarPosition'));
 });

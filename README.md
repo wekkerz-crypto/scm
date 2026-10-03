@@ -74,6 +74,7 @@ für die `.pgmx`. Beispiel: `Tür Öffnung groß` → `Tuer_Oeffnung_gross.xcs` 
 | schräge Bohrung | `CreateSlantedDrill` (5-Achs) |
 | Zustellungen | `CreateUnidirectionalMillingStrategy` (Konturen) / `CreateContourParallelStrategy` (Taschen) |
 | Bearbeitungen von unten | nur **Hinweis** – Platte wenden |
+| Auflagefläche unten | **Sauger-Vorschlag**: `SetBarPosition(Konsole, X)` und `SetSuctionCupPosition(Nr, Y, Winkel, "Code")` – siehe unten |
 
 **Einstellungen** (*Werkzeuge & Regeln*) sind nach Bearbeitungsart gruppiert: Bohren, Taschen, Formatfräsen & Konturen,
 Säge, Fasen & schräge Kanten, Arbeitsfeld & Rohteil, X-Konverter. Taschen haben eine eigene **Zustelltiefe** (0 = wie Fräsen),
@@ -120,6 +121,13 @@ Schritten (Klick springt hin), Klick auf einen Schritt in der Liste springt eben
 hervorgehoben. Taschen sind vereinfacht zeilenweise dargestellt (`web/js/toolpath.js`); maßgeblich bleibt die
 Simulation in Maestro.
 
+**Sauger-Vorschlag:** Für jedes Teil schlägt das Tool Konsolen (X) und Drehsauger (Y, Winkel) vor – große Sauger
+145×145, wo sie passen, sonst schmale 145×50; Drehsauger auch parallel zu schrägen Kanten. Abstand zur Plattenkante
+(Formatfräser, Säge) und zu allem, was durchgeht (Durchbrüche, Durchgangsbohrungen), Auflagefläche = Unterseite. Anzeige
+gestrichelt in der Draufsicht und als Sauger/Konsolen unter der Platte in 3D; Ausgabe direkt nach
+`SetWorkpieceSetupPosition`. Einstellungen unter *Sauger & Konsolen* (Codes wie in Maestro, Maße, Anzahl Konsolen,
+Abstände; Ausgabe abschaltbar).
+
 **Hell/Dunkel:** Schalter oben rechts; die Wahl wird im Browser gemerkt (ohne Wahl gilt die Systemeinstellung).
 
 **Farben:** Jede Bearbeitungsart hat eine feste Farbe, gleich in Draufsicht, Schrittliste (farbiger Balken links),
@@ -162,6 +170,9 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
   wenn die Platte unten breiter ist. Ob Maestro die Neigung zur richtigen Seite kippt, in der Simulation prüfen.
 - **Schräge Ebenen (`CreateWorkplane` mit Ursprung und Drehungen):** erst um Z, dann um die neue X-Achse; Ursprung an der
   unteren Kante der Schräge, lokales Y die Schräge hinauf. Lage der Tasche/Bohrungen in der Simulation prüfen.
+- **Sauger (`SetBarPosition`, `SetSuctionCupPosition`):** Codes der Sauger müssen genau wie in der Maestro-Spannmittelliste
+  heißen (Vorgabe `H75-M-145x145`, `H75-M-145x50` – anpassen!). Zu prüfen: Koordinaten zum Werkstück-Nullpunkt (fertiges
+  Teil), Sauger-Nummer je Konsole ab 1, Winkel 0° = lange Seite in X.
 - **Taschen in den Kanten:** Geometrie in denselben Kantenkoordinaten wie die Kantenbohrungen (X waagerecht, Y = Höhe ab
   Plattenunterseite); in Maestro noch nicht simuliert.
 - **5-Achs-Befehle** (nach Handbuch, noch nicht in Maestro getestet):

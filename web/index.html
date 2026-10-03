@@ -399,6 +399,20 @@ table.fmt.one .onet { display: inline; }
       ['chamferTool', 'Fräser Fasen', 'mill'],
       ['slantTool', 'Fräser schräge Kanten', 'mill'],
       ['slantExtra', 'Schräge Kanten: Dicke +', 'number', 'mm']] },
+    { title: 'Sauger & Konsolen', c: '--muted', fields: [
+      ['suctionOn', 'Sauger-Vorschlag ins Programm schreiben', 'bool'],
+      ['cupBigCode', 'Sauger groß: Code in Maestro', 'text'],
+      ['cupBigX', 'Sauger groß: Länge', 'number', 'mm'],
+      ['cupBigY', 'Sauger groß: Breite', 'number', 'mm'],
+      ['cupSmallCode', 'Sauger schmal: Code in Maestro', 'text'],
+      ['cupSmallX', 'Sauger schmal: Länge', 'number', 'mm'],
+      ['cupSmallY', 'Sauger schmal: Breite', 'number', 'mm'],
+      ['barCount', 'Konsolen an der Maschine', 'number', 'Stück'],
+      ['barMinGap', 'Konsolen: kleinster Abstand', 'number', 'mm'],
+      ['barSpacing', 'Konsolen: angestrebter Abstand', 'number', 'mm'],
+      ['cupsPerBar', 'Sauger je Konsole höchstens', 'number', 'Stück'],
+      ['cupEdgeMargin', 'Abstand zur Plattenkante', 'number', 'mm'],
+      ['cupHoleMargin', 'Abstand zu Durchbrüchen/Bohrungen', 'number', 'mm']] },
     { title: 'Arbeitsfeld & Rohteil', c: '--muted', fields: [
       ['fieldShort', 'Feld kurze Teile', 'text'],
       ['fieldLong', 'Feld lange Teile', 'text'],
@@ -988,6 +1002,19 @@ table.fmt.one .onet { display: inline; }
       s += '<rect x="' + x + '" y="' + Y(y + h) + '" width="' + w + '" height="' + h + '" rx="' + Math.min(w, h) * 0.15 + '" fill="var(--hdrill)" fill-opacity="0.3" stroke="var(--hdrill)" stroke-width="1.2" stroke-dasharray="4 2" ' + sw +
         '><title>Tasche ' + FACE[k.face] + ' ' + fmt(k.x1 - k.x0) + '×' + fmt(k.y1 - k.y0) + ' T' + fmt(k.depth) + '</title></rect>';
     }
+    // Sauger-Vorschlag: Konsolen (gestrichelt) und Drehsauger auf der Unterseite
+    if (r.suction && r.suction.bars.length) {
+      s += '<g class="cups">';
+      for (const b of r.suction.bars) {
+        s += '<line x1="' + b.x + '" y1="' + (-u * 4) + '" x2="' + b.x + '" y2="' + (W + u * 4) + '" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="7 5" ' + sw + '/>';
+        for (const c of b.cups) {
+          s += '<rect x="' + (b.x - c.sx / 2) + '" y="' + (Y(c.y) - c.sy / 2) + '" width="' + c.sx + '" height="' + c.sy + '" rx="' + Math.min(c.sx, c.sy) * 0.12 +
+            '" transform="rotate(' + (-c.angle) + ' ' + b.x + ' ' + Y(c.y) + ')" fill="var(--ink)" fill-opacity="0.1" stroke="var(--ink)" stroke-opacity="0.55" stroke-width="1.2" stroke-dasharray="4 3" ' + sw +
+            '><title>Sauger ' + esc(c.code) + ' · X ' + fmt(b.x) + ' Y ' + fmt(c.y) + ' · ' + fmt(c.angle) + '°</title></rect>';
+        }
+      }
+      s += '</g>';
+    }
     // Nullpunkt und Maße
     const fs = u * 2.6;
     s += '<g font-family="IBM Plex Mono, monospace" font-size="' + fs + '" fill="var(--muted)">';
@@ -1020,7 +1047,7 @@ table.fmt.one .onet { display: inline; }
       .concat([r.field]).filter((f, i, a) => f && a.indexOf(f) === i);
     const legend = [['var(--drill)', 'Bohrung oben'], ['var(--pocket)', 'Tasche'], ['var(--mill)', 'Fräsen / Kontur'],
       ['var(--saw)', 'Sägeschnitt / Nut / Falz'], ['var(--chamfer)', 'Fase / schräge Kante'], ['var(--sdrill)', 'Bohrung schräg'],
-      ['var(--hdrill)', 'Kante (Bohrung / Tasche)'], ['var(--err)', 'Nullpunkt']];
+      ['var(--hdrill)', 'Kante (Bohrung / Tasche)'], ['var(--err)', 'Nullpunkt']].concat(r.suction && r.suction.bars.length ? [['transparent;border:1.5px dashed var(--muted)', 'Sauger (Vorschlag)']] : []);
     el.innerHTML =
       '<div class="work"><div class="card stagecard" id="stagecard"><div class="dhead"><div class="title"><h2>' + esc(p.name) + '</h2><span class="dims">' + fmt(p.L) + ' × ' + fmt(p.W) + ' × ' +
       fmt(p.T) + ' mm · ' + esc(part.label) + '</span></div>' +
@@ -1571,6 +1598,7 @@ table.fmt.one .onet { display: inline; }
           meshes: View3D.stepMeshes(occt, cur.stepText), panel: cur.result.panel, tf: cur.result.panel.tf,
           raw: state.settings.rawOversize || 0, board: '#d4ae7b',
           colorOf: (m) => col(opToken(ops[m.op])),
+          suction: cur.result.suction,
         });
       }
       v3message('');

@@ -818,6 +818,14 @@
       outer = { segs: rectLoop(L, W), area: L * W };
     }
     res.outline = outer.segs;
+    // Auflagefläche unten (dort sitzen die Sauger): Außenkontur knapp über der Unterseite
+    {
+      const { loops } = chainLoops(walls.filter((w) => w.zmin <= delta + TOL && w.zmax >= delta - TOL).map((w) => wallAt(w, delta))
+        .concat(sectionsAt(delta)));
+      let base = null;
+      for (const lp of loops) { const a = loopArea(lp); if (a > 0 && (!base || a > base.area)) base = { segs: lp, area: a }; }
+      res.base = base ? base.segs : outer.segs;
+    }
     // Abschnitte aus Fasen/Gehrungen gelten als Rechteckkante – sie werden separat bearbeitet
     const onSide = (q) => q.type === 'line' && [[0, 0], [0, L], [1, 0], [1, W]].some(([i, v]) =>
       Math.abs(q.a[i] - v) < TOL && Math.abs(q.b[i] - v) < TOL);

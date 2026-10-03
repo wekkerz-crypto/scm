@@ -286,6 +286,9 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     try { s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { s = {}; }
     if (s.fieldThreshold === 1500) s.fieldThreshold = XcsWriter.DEFAULTS.fieldThreshold; // alte Voreinstellung
     delete s.formatLast; // ersetzt durch die Reihenfolge-Regel
+    // frühere Standardpfade (aus dem Handbuch) auf den Pfad in der Werkstatt umstellen
+    if (s.xconverterPath === 'C:\\Program Files (x86)\\Scm Group\\Maestro\\XConverter.exe') delete s.xconverterPath;
+    if (s.toolsFile === 'C:\\Program Files (x86)\\Scm Group\\Maestro\\Tlgx\\def.tlgx') delete s.toolsFile;
     return Object.assign({}, XcsWriter.DEFAULTS, s);
   }
   function saveSettings() {

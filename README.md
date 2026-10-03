@@ -27,10 +27,10 @@ X-Konverter (Modus 0, Handbuch Kap. 8) in `.pgmx` umgewandelt, standardmäßig i
 
 Die drei Pfade stehen oben in der `.bat` und lassen sich im Web-Tool unter *Werkzeuge & Regeln* einmalig einstellen:
 
-| Einstellung | Standard (aus dem Handbuch) |
+| Einstellung | Standard |
 |---|---|
-| X-Konverter | `C:\Program Files (x86)\Scm Group\Maestro\XConverter.exe` |
-| Werkzeugdatei | `C:\Program Files (x86)\Scm Group\Maestro\Tlgx\def.tlgx` |
+| X-Konverter | `C:\Program Files\SCM Group\Maestro\XConverter.exe` (Installation in der Werkstatt) |
+| Werkzeugdatei | `C:\Program Files\SCM Group\Maestro\Tlgx\def.tlgx` (bitte prüfen) |
 | Zielordner `.pgmx` | leer = Unterordner `pgmx` neben der `.bat` |
 
 ## Was erkannt wird

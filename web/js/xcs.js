@@ -39,8 +39,8 @@
     parkOffset: 1000,          // CreateNullOperation X = Länge + …
     usePatterns: true,
     // X-Konverter (Batch-Datei konvertieren.bat in der ZIP)
-    xconverterPath: 'C:\\Program Files (x86)\\Scm Group\\Maestro\\XConverter.exe',
-    toolsFile: 'C:\\Program Files (x86)\\Scm Group\\Maestro\\Tlgx\\def.tlgx',
+    xconverterPath: 'C:\\Program Files\\SCM Group\\Maestro\\XConverter.exe',
+    toolsFile: 'C:\\Program Files\\SCM Group\\Maestro\\Tlgx\\def.tlgx',
     pgmxDir: '',               // leer = Unterordner „pgmx“ neben der .bat
   };
 

@@ -1,3 +1,5 @@
 # FeatureScript
 
-Hier entsteht das Onshape-FeatureScript, das aus Platten `.pgmx`-Programme für SCM Maestro erzeugt.
+Ursprünglich geplant: ein Onshape-FeatureScript, das direkt `.pgmx` erzeugt.
+FeatureScript kann jedoch keine Dateien schreiben. Deshalb geht der aktuelle Weg über den
+STEP-Export aus Onshape und das Web-Tool in `web/` (STEP → `.xcs` → X-Konverter → `.pgmx`).

@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+</head>
+<body>
+<!--page-->
+<title>STEP-zu-XCS Konverter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: Werkbank – links Teileliste, rechts Draufsicht + Programm; schmal: gestapelt */
+:root {
+  --bg: #eceee9;
+  --surface: #fbfbf8;
+  --sunken: #e2e5df;
+  --ink: #1b2321;
+  --muted: #5a6561;
+  --line: #cfd5cf;
+  --accent: #1f5fbf;
+  --accent-ink: #ffffff;
+  --board: #e6d5b3;
+  --board-edge: #8c7450;
+  --drill: #1f5fbf;
+  --hdrill: #7546c2;
+  --mill: #0d8574;
+  --saw: #b97c0c;
+  --warn: #9a6410;
+  --warn-bg: #fbf0d9;
+  --err: #b42318;
+  --err-bg: #fde7e4;
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --r: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131817; --surface: #1b2220; --sunken: #111615; --ink: #e5eae7; --muted: #98a49f; --line: #2c3633;
+    --accent: #79a3f2; --accent-ink: #0d1626; --board: #4b3f2b; --board-edge: #b79e70; --drill: #86acf5;
+    --hdrill: #b597f2; --mill: #3dc4ae; --saw: #e2ad42; --warn: #e8b85a; --warn-bg: #30271a; --err: #f28b7f; --err-bg: #3a1f1c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131817; --surface: #1b2220; --sunken: #111615; --ink: #e5eae7; --muted: #98a49f; --line: #2c3633;
+  --accent: #79a3f2; --accent-ink: #0d1626; --board: #4b3f2b; --board-edge: #b79e70; --drill: #86acf5;
+  --hdrill: #b597f2; --mill: #3dc4ae; --saw: #e2ad42; --warn: #e8b85a; --warn-bg: #30271a; --err: #f28b7f; --err-bg: #3a1f1c;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-body); }
+.wrap { max-width: 1280px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; display: grid; gap: 16px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-wrap: balance; margin: 0; letter-spacing: 0.01em; }
+h1 { font-size: 1.6rem; line-height: 1.15; }
+h2 { font-size: 1.25rem; }
+h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+.mono, code, pre { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+header.top p { margin: 4px 0 0; color: var(--muted); max-width: 62ch; }
+.flow { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); flex-wrap: wrap; }
+.flow span { border: 1px solid var(--line); background: var(--surface); padding: 2px 8px; border-radius: 99px; }
+.flow span.on { border-color: var(--accent); color: var(--accent); }
+
+.drop { border: 1.5px dashed var(--line); border-radius: var(--r); background: var(--surface); padding: 14px 16px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; transition: border-color .15s, background .15s; }
+.drop.over { border-color: var(--accent); background: var(--sunken); }
+.drop .hint { color: var(--muted); flex: 1 1 260px; min-width: 0; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 6px 12px; line-height: 1.3; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 500; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn[disabled] { opacity: .5; cursor: default; }
+.btn.ghost { background: transparent; }
+
+.bench { display: grid; grid-template-columns: minmax(220px, 290px) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 820px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+
+.parts { display: grid; gap: 6px; }
+.parts .head { display: flex; justify-content: space-between; align-items: center; padding: 0 2px 4px; gap: 8px; }
+.part { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 8px 10px;
+  display: grid; gap: 2px; width: 100%; }
+.part[aria-current="true"] { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.part .n { font-weight: 600; overflow-wrap: anywhere; }
+.part .d { font-family: var(--font-mono); font-size: 0.78rem; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.chip { font-size: 0.72rem; padding: 0 6px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.chip.warn { border-color: transparent; background: var(--warn-bg); color: var(--warn); }
+.chip.err { border-color: transparent; background: var(--err-bg); color: var(--err); }
+.chip.ok { border-color: transparent; background: var(--sunken); color: var(--mill); }
+
+.detail { display: grid; gap: 16px; min-width: 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; min-width: 0; }
+.dhead { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; justify-content: space-between; }
+.dhead .title { display: grid; gap: 2px; min-width: 0; }
+.dims { font-family: var(--font-mono); color: var(--muted); font-size: 0.85rem; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tools label { font-size: 0.85rem; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+select, input[type="text"], input[type="number"] { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 5px 8px; min-width: 0; }
+
+.view { background: var(--sunken); border-radius: var(--r); overflow: hidden; }
+.view svg { display: block; width: 100%; height: auto; max-height: 520px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.8rem; color: var(--muted); margin-top: 8px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 16px; }
+@media (max-width: 1050px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+table.ops { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+table.ops td { padding: 5px 6px; border-top: 1px solid var(--line); vertical-align: top; }
+table.ops tr:first-child td { border-top: 0; }
+table.ops td.k { white-space: nowrap; }
+table.ops td.v { font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); text-align: right; }
+.sw { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.warns { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.warns li { background: var(--warn-bg); color: var(--warn); border-radius: var(--r); padding: 6px 10px; font-size: 0.85rem; }
+.warns li.err { background: var(--err-bg); color: var(--err); }
+
+.code { display: grid; gap: 8px; min-width: 0; }
+.code .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.code .fname { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1 1 220px; }
+.code .fname input { flex: 1; font-family: var(--font-mono); font-size: 0.85rem; }
+pre.xcs { margin: 0; background: var(--sunken); border-radius: var(--r); padding: 10px 12px; font-size: 0.76rem; line-height: 1.55;
+  max-height: 460px; overflow: auto; white-space: pre; }
+pre.xcs .c { color: var(--accent); }
+pre.xcs .s { color: var(--mill); }
+
+details.settings summary { cursor: pointer; font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; }
+.grid-set { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px 16px; margin-top: 12px; }
+.grid-set label { display: grid; gap: 3px; font-size: 0.82rem; color: var(--muted); }
+.grid-set input { color: var(--ink); font-family: var(--font-mono); font-size: 0.85rem; }
+.grid-set .wide { grid-column: 1 / -1; }
+.note { font-size: 0.82rem; color: var(--muted); }
+.empty { color: var(--muted); padding: 24px; text-align: center; }
+.toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: var(--r); font-size: 0.88rem; max-width: calc(100% - 32px); }
+@media (prefers-reduced-motion: no-preference) { .part, .btn { transition: border-color .12s, box-shadow .12s; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>STEP-zu-XCS Konverter</h1>
+      <p>Plattenteile als STEP laden, Bearbeitungen prüfen, Xilog-Skript (.xcs) speichern und im X-Konverter nach .pgmx übersetzen.</p>
+    </div>
+    <div class="flow" aria-label="Ablauf"><span class="on">STEP</span>→<span class="on">.xcs</span>→<span>X-Konverter</span>→<span>.pgmx</span>→<span>Maestro</span></div>
+  </header>
+
+  <section class="drop" id="drop">
+    <button class="btn primary" id="pick" type="button">STEP-Dateien wählen</button>
+    <input id="file" type="file" accept=".step,.stp,.STEP,.STP" multiple hidden>
+    <div class="hint">oder hierher ziehen. Ein Volumenkörper = ein Programm; Baugruppen werden in Einzelteile zerlegt. Die Dateien bleiben im Browser.</div>
+    <button class="btn ghost" id="clear" type="button">Liste leeren</button>
+  </section>
+
+  <section class="bench">
+    <aside class="parts" id="parts" aria-label="Teile"></aside>
+    <main class="detail" id="detail"></main>
+  </section>
+
+  <details class="card settings" id="settings">
+    <summary>Werkzeuge &amp; Regeln</summary>
+    <p class="note">Voreinstellungen aus den Beispielprogrammen und der Werkzeugliste def.tlgx. Änderungen gelten für alle Teile und bleiben in diesem Browser gespeichert.</p>
+    <div class="grid-set" id="setgrid"></div>
+    <div style="margin-top:12px"><button class="btn" id="reset" type="button">Auf Standard zurücksetzen</button></div>
+  </details>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="js/step.js"></script>
+<script src="js/panel.js"></script>
+<script src="js/xcs.js"></script>
+<script src="js/convert.js"></script>
+<script src="js/sample.js"></script>
+<script>
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const fmt = (v) => { const r = Math.round(v * 100) / 100; return String(Object.is(r, -0) ? 0 : r).replace('.', ','); };
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const FACE = { Top: 'oben', Left: 'links', Right: 'rechts', Front: 'vorne', Back: 'hinten' };
+
+  // ------------------------------------------------ Einstellungen
+  const FIELDS = [
+    ['fieldShort', 'Feld kurze Teile', 'text'], ['fieldLong', 'Feld lange Teile', 'text'],
+    ['fieldThreshold', 'Lang ab Länge (mm)', 'number'], ['rawOversize', 'Rohteil-Aufmaß je Seite', 'number'],
+    ['contourTool', 'Formatfräser', 'text'], ['contourExtra', 'Formatfräsen: Dicke +', 'number'],
+    ['cutoutTool', 'Fräser Ausschnitte', 'text'], ['cutoutExtra', 'Ausschnitte: Dicke +', 'number'],
+    ['leadLength', 'An-/Auslauf (mm)', 'number'], ['sawTool', 'Säge für Nuten', 'text'],
+    ['sawOverrun', 'Säge-Überlauf (mm)', 'number'], ['maxGrooveWidth', 'Max. Nutbreite (mm)', 'number'],
+    ['rebateTool', 'Fräser Falz', 'text'], ['rebateToolDia', 'Falzfräser Ø (mm)', 'number'],
+    ['throughExtra', 'Durchgangsbohrung: Dicke +', 'number'], ['parkOffset', 'Parkposition: Länge +', 'number'],
+    ['drillsVertical', 'Bohrer vertikal Ø (Liste)', 'list'], ['drillsHorizontal', 'Bohrer horizontal Ø (Liste)', 'list'],
+    ['usePatterns', 'Lochreihen als Muster (CreatePattern)', 'bool'],
+  ];
+  const KEY = 'step2xcs.settings.v1';
+  function loadSettings() {
+    let s = {};
+    try { s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { s = {}; }
+    return Object.assign({}, XcsWriter.DEFAULTS, s);
+  }
+  function saveSettings() {
+    try { localStorage.setItem(KEY, JSON.stringify(state.settings)); } catch (e) { /* ohne Speicher weiter */ }
+  }
+
+  const state = { parts: [], sel: 0, settings: loadSettings() };
+
+  function renderSettings() {
+    const g = $('setgrid');
+    g.innerHTML = '';
+    for (const [k, label, type] of FIELDS) {
+      const l = document.createElement('label');
+      if (type === 'list') l.className = 'wide';
+      const id = 'set-' + k;
+      l.htmlFor = id;
+      const v = state.settings[k];
+      if (type === 'bool') {
+        l.style.display = 'flex'; l.style.alignItems = 'center'; l.style.gap = '8px';
+        l.innerHTML = '<input type="checkbox" id="' + id + '"' + (v ? ' checked' : '') + '> ' + esc(label);
+      } else {
+        l.innerHTML = esc(label) + '<input id="' + id + '" type="' + (type === 'number' ? 'number' : 'text') + '" step="any" value="' +
+          esc(type === 'list' ? v.join(', ') : v) + '">';
+      }
+      g.appendChild(l);
+      l.querySelector('input').addEventListener('change', (ev) => {
+        const t = ev.target;
+        let val;
+        if (type === 'bool') val = t.checked;
+        else if (type === 'number') val = parseFloat(String(t.value).replace(',', '.'));
+        else if (type === 'list') val = t.value.split(/[;,\s]+/).map((x) => parseFloat(x.replace(',', '.'))).filter((x) => !isNaN(x));
+        else val = t.value.trim();
+        if (type === 'number' && isNaN(val)) return;
+        state.settings[k] = val;
+        saveSettings();
+        state.parts.forEach(compute);
+        render();
+      });
+    }
+  }
+
+  // ------------------------------------------------ Teile
+  function addStep(text, label) {
+    let solids;
+    try { solids = StepToXcs.readParts(text); } catch (e) {
+      state.parts.push({ label: label, error: e.message || String(e), result: null });
+      return;
+    }
+    for (const s of solids) {
+      const part = { label: label, solid: s, orientation: null, field: null, fileName: null, result: null };
+      compute(part);
+      state.parts.push(part);
+    }
+  }
+  function compute(part) {
+    if (!part.solid) return;
+    part.result = StepToXcs.convertSolid(part.solid, state.settings, { orientation: part.orientation, field: part.field });
+    if (part.result.panel && !part.orientation) part.orientation = Object.assign({}, part.result.panel.orientation);
+    if (!part.fileName) part.fileName = part.result.fileName;
+  }
+
+  async function loadFiles(list) {
+    const files = Array.from(list).filter((f) => /\.(step|stp)$/i.test(f.name));
+    if (!files.length) { toast('Bitte .step- oder .stp-Dateien wählen.'); return; }
+    const first = state.parts.length;
+    for (const f of files) addStep(await f.text(), f.name);
+    state.sel = first;
+    render();
+  }
+
+  // ------------------------------------------------ Darstellung
+  function opsSummary(r) {
+    const rows = [];
+    const drills = new Map();
+    for (const op of r.ops) {
+      if (op.kind === 'contour') rows.push({ c: 'var(--mill)', k: op.label, v: op.tool + ' · T ' + fmt(op.depth) });
+      else if (op.kind === 'slot') rows.push({ c: 'var(--saw)', k: op.label, v: 'Säge ' + op.tool });
+      else if (op.kind === 'drill') {
+        const d = op.d;
+        const key = op.face + '|' + d.d + '|' + d.depth + '|' + d.tip;
+        const n = op.pattern.nX * op.pattern.nY;
+        if (!drills.has(key)) drills.set(key, { face: op.face, d: d.d, depth: d.depth, tip: d.tip, n: 0 });
+        drills.get(key).n += n;
+      }
+    }
+    for (const g of drills.values()) {
+      rows.push({ c: g.face === 'Top' ? 'var(--drill)' : 'var(--hdrill)',
+        k: g.n + ' × Bohrung Ø' + fmt(g.d) + ' ' + FACE[g.face] + (g.tip === 'L' ? ' (durch)' : ''),
+        v: 'T ' + fmt(g.depth) });
+    }
+    return rows;
+  }
+
+  function counts(r) {
+    let drills = 0;
+    let mill = 0;
+    for (const op of r.ops) {
+      if (op.kind === 'drill') drills += op.pattern.nX * op.pattern.nY;
+      else mill++;
+    }
+    return { drills: drills, mill: mill };
+  }
+
+  function renderParts() {
+    const el = $('parts');
+    if (!state.parts.length) { el.innerHTML = '<div class="empty">Noch keine Teile.</div>'; return; }
+    el.innerHTML = '<div class="head"><h3>' + state.parts.length + ' Teil' + (state.parts.length === 1 ? '' : 'e') + '</h3>' +
+      '<button class="btn" id="zipall" type="button">Alle als ZIP</button></div>';
+    state.parts.forEach((p, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'part';
+      b.setAttribute('aria-current', i === state.sel ? 'true' : 'false');
+      const r = p.result;
+      let html = '<span class="n">' + esc(p.solid ? p.solid.name : p.label) + '</span>';
+      if (r && r.panel) {
+        const c = counts(r);
+        html += '<span class="d">' + fmt(r.panel.L) + ' × ' + fmt(r.panel.W) + ' × ' + fmt(r.panel.T) + '</span>';
+        html += '<span class="chips"><span class="chip ok">' + c.drills + ' Bohrungen</span><span class="chip ok">' + c.mill + ' Fräsungen</span>' +
+          (r.warnings.length ? '<span class="chip warn">' + r.warnings.length + ' Hinweis' + (r.warnings.length > 1 ? 'e' : '') + '</span>' : '') + '</span>';
+      } else {
+        html += '<span class="chips"><span class="chip err">Fehler</span></span>';
+      }
+      b.innerHTML = html;
+      b.addEventListener('click', () => { state.sel = i; render(); });
+      el.appendChild(b);
+    });
+    $('zipall').addEventListener('click', downloadAll);
+  }
+
+  function svgPath(start, segs, Y) {
+    let d = 'M' + start[0] + ' ' + Y(start[1]);
+    let cur = start;
+    for (const s of segs) {
+      if (s.type === 'line') d += ' L' + s.to[0] + ' ' + Y(s.to[1]);
+      else {
+        const r = Math.hypot(cur[0] - s.c[0], cur[1] - s.c[1]);
+        const a0 = Math.atan2(cur[1] - s.c[1], cur[0] - s.c[0]);
+        const a1 = Math.atan2(s.to[1] - s.c[1], s.to[0] - s.c[0]);
+        let sw = a1 - a0;
+        if (s.cw) { while (sw >= 0) sw -= 2 * Math.PI; } else { while (sw <= 0) sw += 2 * Math.PI; }
+        d += ' A' + r + ' ' + r + ' 0 ' + (Math.abs(sw) > Math.PI ? 1 : 0) + ' ' + (s.cw ? 1 : 0) + ' ' + s.to[0] + ' ' + Y(s.to[1]);
+      }
+      cur = s.to;
+    }
+    return d;
+  }
+  const loopToPoly = (loop) => ({ start: loop[0].a, segs: loop.map((s) => s.type === 'arc'
+    ? { type: 'arc', to: s.b, c: s.c, cw: !s.ccw } : { type: 'line', to: s.b }) });
+
+  function drawPanel(r) {
+    const p = r.panel;
+    const L = p.L;
+    const W = p.W;
+    const u = Math.max(L, W) / 100; // Zeichen-Einheit
+    const m = u * 9;
+    const Y = (y) => W - y;
+    const sw = 'vector-effect="non-scaling-stroke"';
+    let s = '<svg viewBox="' + (-m) + ' ' + (-m) + ' ' + (L + 2 * m) + ' ' + (W + 2 * m) + '" role="img" aria-label="Draufsicht ' + esc(p.name) + '">';
+    s += '<defs><pattern id="hatch" width="' + u * 1.5 + '" height="' + u * 1.5 + '" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">' +
+      '<line x1="0" y1="0" x2="0" y2="' + u * 1.5 + '" stroke="var(--saw)" stroke-width="' + u * 0.35 + '"/></pattern></defs>';
+    // Platte
+    const o = loopToPoly(p.outline);
+    s += '<path d="' + svgPath(o.start, o.segs, Y) + ' Z" fill="var(--board)" stroke="var(--board-edge)" stroke-width="1.5" ' + sw + '/>';
+    for (const c of p.cutouts) {
+      const q = loopToPoly(c);
+      s += '<path d="' + svgPath(q.start, q.segs, Y) + ' Z" fill="var(--sunken)" stroke="var(--board-edge)" stroke-width="1.2" ' + sw + '/>';
+    }
+    // Nuten, Falze, Taschen
+    for (const g of p.grooves) {
+      const x = g.dir === 'X' ? 0 : g.from;
+      const y = g.dir === 'X' ? g.from : 0;
+      const w = g.dir === 'X' ? L : g.to - g.from;
+      const h = g.dir === 'X' ? g.to - g.from : W;
+      s += '<rect x="' + x + '" y="' + Y(y + h) + '" width="' + w + '" height="' + h + '" fill="url(#hatch)" stroke="var(--saw)" stroke-width="1" ' + sw + '/>';
+    }
+    for (const rb of p.rebates) {
+      let x = 0; let y = 0; let w = L; let h = W;
+      if (rb.edge === 'Front') h = rb.width;
+      if (rb.edge === 'Back') { y = W - rb.width; h = rb.width; }
+      if (rb.edge === 'Left') w = rb.width;
+      if (rb.edge === 'Right') { x = L - rb.width; w = rb.width; }
+      s += '<rect x="' + x + '" y="' + Y(y + h) + '" width="' + w + '" height="' + h + '" fill="url(#hatch)" stroke="var(--mill)" stroke-width="1" ' + sw + '/>';
+    }
+    for (const k of p.pockets) {
+      s += '<rect x="' + k.x0 + '" y="' + Y(k.y1) + '" width="' + (k.x1 - k.x0) + '" height="' + (k.y1 - k.y0) +
+        '" fill="none" stroke="var(--warn)" stroke-dasharray="4 3" stroke-width="1.5" ' + sw + '/>';
+    }
+    // Fräsbahnen (außer Formatfräsen)
+    for (const op of r.ops) {
+      if (op.kind !== 'contour' || op.contour === 1) continue;
+      s += '<path d="' + svgPath(op.start, op.segs, Y) + '" fill="none" stroke="var(--mill)" stroke-width="2" stroke-dasharray="6 3" ' + sw + '/>';
+    }
+    // Bohrungen
+    for (const d of p.drills) {
+      if (d.face === 'Top') {
+        const rr = Math.max(d.d / 2, u * 0.45);
+        s += '<circle cx="' + d.x + '" cy="' + Y(d.y) + '" r="' + rr + '" fill="' + (d.through ? 'var(--surface)' : 'var(--drill)') +
+          '" stroke="var(--drill)" stroke-width="1.5" ' + sw + '><title>Ø' + fmt(d.d) + ' T' + fmt(d.depth) + '</title></circle>';
+      } else {
+        const t = Math.max(d.d, u * 0.8);
+        let x; let y; let w; let h;
+        if (d.face === 'Left') { x = 0; y = d.along - t / 2; w = d.depth; h = t; }
+        if (d.face === 'Right') { x = L - d.depth; y = d.along - t / 2; w = d.depth; h = t; }
+        if (d.face === 'Front') { x = d.along - t / 2; y = 0; w = t; h = d.depth; }
+        if (d.face === 'Back') { x = d.along - t / 2; y = W - d.depth; w = t; h = d.depth; }
+        s += '<rect x="' + x + '" y="' + Y(y + h) + '" width="' + w + '" height="' + h + '" fill="var(--hdrill)" opacity="0.85"><title>Ø' +
+          fmt(d.d) + ' ' + FACE[d.face] + ' T' + fmt(d.depth) + '</title></rect>';
+      }
+    }
+    // Nullpunkt und Maße
+    const fs = u * 3.2;
+    s += '<g font-family="IBM Plex Mono, monospace" font-size="' + fs + '" fill="var(--muted)">';
+    s += '<line x1="0" y1="' + (W + u * 4) + '" x2="' + L + '" y2="' + (W + u * 4) + '" stroke="var(--muted)" stroke-width="1" ' + sw + '/>';
+    s += '<text x="' + L / 2 + '" y="' + (W + u * 4 + fs * 1.1) + '" text-anchor="middle">X ' + fmt(L) + '</text>';
+    s += '<line x1="' + (-u * 4) + '" y1="0" x2="' + (-u * 4) + '" y2="' + W + '" stroke="var(--muted)" stroke-width="1" ' + sw + '/>';
+    s += '<text x="' + (-u * 4 - fs * 0.5) + '" y="' + W / 2 + '" text-anchor="middle" transform="rotate(-90 ' + (-u * 4 - fs * 0.5) + ' ' + W / 2 + ')">Y ' + fmt(W) + '</text>';
+    s += '</g>';
+    s += '<circle cx="0" cy="' + W + '" r="' + u * 1.2 + '" fill="var(--err)"><title>Nullpunkt X0 Y0</title></circle>';
+    s += '</svg>';
+    return s;
+  }
+
+  function highlight(xcs) {
+    return esc(xcs.replace(/\r/g, '')).replace(/^(\w+)/gm, '<span class="c">$1</span>').replace(/(&quot;[^&]*&quot;)/g, '<span class="s">$1</span>');
+  }
+
+  function renderDetail() {
+    const el = $('detail');
+    const part = state.parts[state.sel];
+    if (!part) { el.innerHTML = '<div class="card empty">STEP-Datei laden, um ein Programm zu erzeugen.</div>'; return; }
+    const r = part.result;
+    if (!r || !r.panel) {
+      el.innerHTML = '<div class="card"><h2>' + esc(part.solid ? part.solid.name : part.label) + '</h2><ul class="warns"><li class="err">' +
+        esc((r && r.error) || part.error || 'Unbekannter Fehler') + '</li></ul></div>';
+      return;
+    }
+    const p = r.panel;
+    const fieldOpts = [state.settings.fieldShort, state.settings.fieldLong];
+    el.innerHTML =
+      '<div class="card"><div class="dhead"><div class="title"><h2>' + esc(p.name) + '</h2><span class="dims">' + fmt(p.L) + ' × ' + fmt(p.W) + ' × ' +
+      fmt(p.T) + ' mm · ' + esc(part.label) + '</span></div>' +
+      '<div class="tools"><button class="btn" id="rot" type="button">Drehen 90°</button><button class="btn" id="flip" type="button">Wenden</button>' +
+      '<label for="field">Feld <select id="field">' + fieldOpts.map((f) => '<option' + (f === r.field ? ' selected' : '') + '>' + esc(f) + '</option>').join('') +
+      '</select></label></div></div>' +
+      '<div class="view" style="margin-top:12px">' + drawPanel(r) + '</div>' +
+      '<div class="legend"><span><i style="background:var(--drill)"></i>Bohrung oben</span><span><i style="background:var(--hdrill)"></i>Bohrung Kante</span>' +
+      '<span><i style="background:var(--mill)"></i>Fräsbahn</span><span><i style="background:var(--saw)"></i>Nut / Falz</span><span><i style="background:var(--err)"></i>Nullpunkt</span></div></div>' +
+      '<div class="cols"><div class="card"><h3>Bearbeitungen</h3><table class="ops"><tbody>' +
+      opsSummary(r).map((x) => '<tr><td class="k"><span class="sw" style="background:' + x.c + '"></span>' + esc(x.k) + '</td><td class="v">' + esc(x.v) + '</td></tr>').join('') +
+      '</tbody></table>' + (r.warnings.length ? '<ul class="warns">' + r.warnings.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ul>' : '') +
+      '</div><div class="card code"><div class="bar"><span class="fname"><input id="fname" type="text" value="' + esc(part.fileName) + '" aria-label="Dateiname"></span>' +
+      '<span class="tools"><button class="btn" id="copy" type="button">Kopieren</button><button class="btn primary" id="dl" type="button">Speichern</button></span></div>' +
+      '<pre class="xcs" id="xcs">' + highlight(r.xcs) + '</pre></div></div>';
+
+    $('rot').addEventListener('click', () => { part.orientation.rot = (part.orientation.rot + 1) % 4; compute(part); render(); });
+    $('flip').addEventListener('click', () => { part.orientation.flip = !part.orientation.flip; compute(part); render(); });
+    $('field').addEventListener('change', (e) => { part.field = e.target.value; compute(part); render(); });
+    $('fname').addEventListener('change', (e) => {
+      let n = e.target.value.trim() || part.result.fileName;
+      if (!/\.xcs$/i.test(n)) n += '.xcs';
+      part.fileName = n;
+      e.target.value = n;
+    });
+    $('copy').addEventListener('click', () => {
+      const text = part.result.xcs;
+      const fallback = () => {
+        const range = document.createRange();
+        range.selectNodeContents($('xcs'));
+        const sel = window.getSelection();
+        sel.removeAllRanges(); sel.addRange(range);
+        toast('Text markiert – mit Strg+C kopieren.');
+      };
+      try {
+        navigator.clipboard.writeText(text).then(() => toast('Programm kopiert.'), fallback);
+      } catch (e) { fallback(); }
+    });
+    $('dl').addEventListener('click', () => saveFiles([{ name: part.fileName, text: part.result.xcs }], part.fileName.replace(/\.xcs$/i, '') + '.zip'));
+  }
+
+  function render() { renderParts(); renderDetail(); }
+
+  // ------------------------------------------------ Speichern
+  const CRC = (() => {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
+    return (b) => { let c = 0xffffffff; for (let i = 0; i < b.length; i++) c = t[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+  })();
+  function zip(files) {
+    const enc = new TextEncoder();
+    const chunks = [];
+    const central = [];
+    let off = 0;
+    const d = new Date();
+    const time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+    const date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+    const used = new Set();
+    for (const f of files) {
+      let name = f.name;
+      for (let i = 2; used.has(name.toLowerCase()); i++) name = f.name.replace(/(\.xcs)?$/i, ' (' + i + ')$1');
+      used.add(name.toLowerCase());
+      const nb = enc.encode(name);
+      const data = enc.encode(f.text);
+      const crc = CRC(data);
+      const h = new DataView(new ArrayBuffer(30));
+      h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+      h.setUint16(10, time, true); h.setUint16(12, date, true); h.setUint32(14, crc, true);
+      h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, nb.length, true); h.setUint16(28, 0, true);
+      chunks.push(new Uint8Array(h.buffer), nb, data);
+      const c = new DataView(new ArrayBuffer(46));
+      c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true);
+      c.setUint16(10, 0, true); c.setUint16(12, time, true); c.setUint16(14, date, true); c.setUint32(16, crc, true);
+      c.setUint32(20, data.length, true); c.setUint32(24, data.length, true); c.setUint16(28, nb.length, true);
+      c.setUint32(42, off, true);
+      central.push(new Uint8Array(c.buffer), nb);
+      off += 30 + nb.length + data.length;
+    }
+    const cdSize = central.reduce((a, b) => a + b.length, 0);
+    const e = new DataView(new ArrayBuffer(22));
+    e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true);
+    e.setUint32(12, cdSize, true); e.setUint32(16, off, true);
+    return new Blob(chunks.concat(central, [new Uint8Array(e.buffer)]), { type: 'application/zip' });
+  }
+
+  // Im claude.ai-Artifact nur über die downloads-Fähigkeit (ZIP), sonst direkter Download.
+  let downloadsCap;
+  const claudeHost = !!(window.claude && window.claude.use);
+  if (claudeHost) window.claude.use('downloads').then((d) => { downloadsCap = d; }, () => { downloadsCap = null; });
+
+  async function saveFiles(files, zipName) {
+    if (claudeHost) {
+      if (!downloadsCap) { toast('Speichern ist hier nicht verfügbar – bitte „Kopieren“ verwenden.'); return; }
+      try {
+        await downloadsCap.save({ filename: zipName, data: zip(files) });
+        toast('Gespeichert: ' + zipName);
+      } catch (e) {
+        if (e && e.code !== 'declined') toast('Speichern nicht möglich (' + (e.code || 'Fehler') + ').');
+      }
+      return;
+    }
+    const blob = files.length === 1 ? new Blob([files[0].text], { type: 'text/plain' }) : zip(files);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = files.length === 1 ? files[0].name : zipName;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+
+  function downloadAll() {
+    const files = state.parts.filter((p) => p.result && p.result.panel).map((p) => ({ name: p.fileName, text: p.result.xcs }));
+    if (!files.length) { toast('Keine Programme vorhanden.'); return; }
+    saveFiles(files, 'xcs-programme.zip');
+  }
+
+  let toastTimer;
+  function toast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
+  }
+
+  // ------------------------------------------------ Ereignisse
+  $('pick').addEventListener('click', () => $('file').click());
+  $('file').addEventListener('change', (e) => { loadFiles(e.target.files); e.target.value = ''; });
+  const drop = $('drop');
+  ['dragenter', 'dragover'].forEach((t) => document.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach((t) => document.addEventListener(t, (e) => { e.preventDefault(); if (t === 'drop' || e.target === document.documentElement) drop.classList.remove('over'); }));
+  document.addEventListener('drop', (e) => { if (e.dataTransfer && e.dataTransfer.files.length) loadFiles(e.dataTransfer.files); });
+  $('clear').addEventListener('click', () => { state.parts = []; state.sel = 0; render(); });
+  $('reset').addEventListener('click', () => {
+    state.settings = Object.assign({}, XcsWriter.DEFAULTS);
+    saveSettings(); renderSettings(); state.parts.forEach(compute); render();
+  });
+
+  // Start mit Beispiel aus Onshape
+  renderSettings();
+  for (const s of (window.SAMPLE_STEPS || [])) addStep(s.text, 'Beispiel: ' + s.name);
+  render();
+})();
+</script>
+<!--/page-->
+</body>
+</html>

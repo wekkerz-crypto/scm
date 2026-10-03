@@ -66,7 +66,7 @@ test('Oberboden (Nachbau von 27_Oberboden.xcs) – horizontale Bohrungen', () =>
 
 test('Onshape-Export Oberboden (Meter-Einheiten)', () => {
   const part = one('step/Oberboden.step');
-  assert.strictEqual(part.name, 'kp1 - Oberboden');
+  assert.strictEqual(part.name, 'kp1_-_Oberboden');
   assert.match(part.xcs, /CreateFinishedWorkpieceBox\("Workpiece", 692, 530, 19\);/);
   const d = drillSet(part.xcs);
   assert.strictEqual(d.filter((s) => s.startsWith('Left ')).length, 8);
@@ -367,4 +367,26 @@ test('Schräge Enden sägen, Tasche und Bohrungen auf der schrägen Ebene (Holz)
   assert.ok(!milled.xcs.includes('CreateBladeCut') && milled.xcs.includes('CreateSlantedRoughFinish'));
   // Animation läuft durch
   assert.ok(TP.build(part, toolInfo, {}).some((m) => m.blade));
+});
+
+test('Teilename aus der STEP, bereinigt, gleich für .xcs', () => {
+  const { convert, partName } = require('../web/js/convert.js');
+  // Onshape-Standardname „Part 1“ → Name der STEP-Datei
+  const [sp] = convert(read('test/fixtures/spante.step'), {}, 'spante.step');
+  assert.strictEqual(sp.name, 'spante');
+  assert.strictEqual(sp.fileName, 'spante.xcs');
+  // sprechender Teilename aus der STEP bleibt, Leerzeichen → _
+  const [ob] = convert(read('step/Oberboden.step'), {}, 'Oberboden.step');
+  assert.strictEqual(ob.fileName, ob.name + '.xcs');
+  assert.ok(!/\s/.test(ob.name));
+  // Umlaute und Sonderzeichen
+  assert.strictEqual(partName('Tür Öffnung groß'), 'Tuer_Oeffnung_gross');
+  assert.strictEqual(partName('Schublade  Front/links'), 'Schublade_Front_links');
+  assert.strictEqual(partName('Café'), 'Cafe');
+  assert.strictEqual(partName('  '), 'Teil');
+  // Sägeschnitt heißt auch im Programm so
+  const [hz] = convert(read('test/fixtures/holz.step'), {}, 'holz.step');
+  assert.strictEqual(hz.name, 'holz');
+  assert.ok(hz.xcs.includes('CreateBladeCut("Saegeschnitt_1", "Saegeschnitt 45 Grad",'));
+  assert.ok(hz.ops.filter((o) => o.kind === 'blade').every((o) => o.label === 'Sägeschnitt 45°'));
 });

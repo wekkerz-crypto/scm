@@ -495,14 +495,18 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
   // ------------------------------------------------ Teile
   function addStep(text, label) {
     let solids;
-    try { solids = StepToXcs.readParts(text); } catch (e) {
+    try { solids = StepToXcs.readParts(text, label.replace(/^Beispiel: /, '')); } catch (e) {
       state.parts.push({ label: label, error: e.message || String(e), result: null });
       return;
     }
-    const generic = (n) => !n || /^(Open CASCADE STEP translator|Teil \d+$)/i.test(n);
-    solids.forEach((s, i) => {
-      if (generic(s.name)) s.name = label.replace(/^Beispiel: /, '').replace(/\.(step|stp)$/i, '') + (solids.length > 1 ? ' ' + (i + 1) : '');
-    });
+    // Namen über alle geladenen Teile eindeutig halten (gleicher Name = gleiche .xcs/.pgmx)
+    const taken = new Set(state.parts.filter((p) => p.solid).map((p) => p.solid.name.toLowerCase()));
+    for (const s of solids) {
+      let k = s.name;
+      for (let j = 2; taken.has(k.toLowerCase()); j++) k = s.name + '_' + j;
+      taken.add(k.toLowerCase());
+      s.name = k;
+    }
     for (const s of solids) {
       const part = { label: label, solid: s, orientation: null, field: null, fileName: null, result: null,
         overrides: { tools: {}, steps: {}, depths: {} } };
@@ -557,7 +561,8 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
       if (op.kind === 'drill' || op.kind === 'sdrill') {
         const n = row.ops.reduce((a, o) => a + (o.kind === 'drill' ? o.pattern.nX * o.pattern.nY : 1), 0);
         const d = op.kind === 'drill' ? op.d : op;
-        const where = op.kind === 'sdrill' ? 'schräg ' + fmt(op.angleB) + '°' : FACE[op.face];
+        const where = op.kind === 'sdrill' ? 'schräg ' + fmt(op.angleB) + '°'
+          : op.plane ? 'auf Schräge ' + fmt(Math.round(op.plane.xRot * 10) / 10) + '°' : FACE[op.face];
         row.c = 'var(' + opToken(op) + ')';
         row.k = n + ' × Bohrung Ø' + fmt(d.d) + ' ' + where + (d.tip === 'L' ? ' (durch)' : '');
         row.v = 'T ' + fmt(d.depth);
@@ -777,7 +782,7 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
       const wc = sawn ? 'var(--saw)' : 'var(--chamfer)';
       s += '<path d="M' + w.top.a[0] + ' ' + Y(w.top.a[1]) + ' L' + w.top.b[0] + ' ' + Y(w.top.b[1]) + ' L' + w.bottom.b[0] + ' ' + Y(w.bottom.b[1]) +
         ' L' + w.bottom.a[0] + ' ' + Y(w.bottom.a[1]) + ' Z" fill="' + wc + '" fill-opacity="0.25" stroke="' + wc + '" stroke-width="1.5" ' + sw +
-        '><title>Schräge Kante ' + fmt(w.angle) + '°' + (sawn ? ' (Sägeschnitt)' : '') + '</title></path>';
+        '><title>' + (sawn ? 'Sägeschnitt ' : 'Schräge Kante ') + fmt(w.angle) + '°</title></path>';
     }
     // Taschen und Bohrungen auf schrägen Ebenen, von oben gesehen
     for (const sp of (p.slantPlanes || [])) {
@@ -865,7 +870,7 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     const p = r.panel;
     const fieldOpts = [state.settings.fieldShort, state.settings.fieldLong];
     const legend = [['var(--drill)', 'Bohrung oben'], ['var(--pocket)', 'Tasche'], ['var(--mill)', 'Fräsen / Kontur'],
-      ['var(--saw)', 'Säge / Nut / Falz'], ['var(--chamfer)', 'Fase / schräge Kante'], ['var(--sdrill)', 'Bohrung schräg'],
+      ['var(--saw)', 'Sägeschnitt / Nut / Falz'], ['var(--chamfer)', 'Fase / schräge Kante'], ['var(--sdrill)', 'Bohrung schräg'],
       ['var(--hdrill)', 'Kante (Bohrung / Tasche)'], ['var(--err)', 'Nullpunkt']];
     el.innerHTML =
       '<div class="work"><div class="card stagecard" id="stagecard"><div class="dhead"><div class="title"><h2>' + esc(p.name) + '</h2><span class="dims">' + fmt(p.L) + ' × ' + fmt(p.W) + ' × ' +
@@ -943,8 +948,7 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     $('flip').addEventListener('click', () => { part.orientation.flip = !part.orientation.flip; compute(part); render(); });
     $('field').addEventListener('change', (e) => { part.field = e.target.value; compute(part); render(); });
     $('fname').addEventListener('change', (e) => {
-      let n = e.target.value.trim() || part.result.fileName;
-      if (!/\.xcs$/i.test(n)) n += '.xcs';
+      const n = StepToXcs.partName(e.target.value.trim().replace(/\.xcs$/i, '') || part.result.fileName.replace(/\.xcs$/i, '')) + '.xcs';
       part.fileName = n;
       e.target.value = n;
     });
@@ -1502,7 +1506,7 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     const used = new Set();
     for (const f of files) {
       let name = f.name;
-      for (let i = 2; used.has(name.toLowerCase()); i++) name = f.name.replace(/(\.xcs)?$/i, ' (' + i + ')$1');
+      for (let i = 2; used.has(name.toLowerCase()); i++) name = f.name.replace(/(\.xcs)?$/i, '_' + i + '$1');
       used.add(name.toLowerCase());
       const nb = enc.encode(name);
       const data = enc.encode(f.text);

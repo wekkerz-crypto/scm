@@ -35,7 +35,7 @@
     contourMode: 'whole',      // Sonderkontur: 'whole' = Außenkontur am Stück, 'rect' = Rechteck + Ausschnitte
     // Reihenfolge-Regel: Bearbeitungsarten in dieser Folge (abschaltbar, vom Benutzer änderbar)
     orderRule: { on: true, seq: ['drillTop', 'drillSide', 'drillSlanted', 'slot', 'pocket', 'rebate', 'chamfer', 'slant',
-      'slantPlane', 'cutout', 'notch', 'format'] },
+      'blade', 'slantPlane', 'cutout', 'notch', 'format'] },
     throughExtra: 2,           // Durchgangsbohrung: Tiefe = Dicke + …
     drillsVertical: [3, 5, 7, 8, 10, 12, 15, 20, 35],
     drillsHorizontal: [5, 8],
@@ -58,7 +58,8 @@
     pocket: 'Taschen',
     rebate: 'Falze',
     chamfer: 'Fasen',
-    slant: 'Schräge Kanten / Sägeschnitte',
+    slant: 'Schräge Kanten (fräsen)',
+    blade: 'Sägeschnitte',
     slantPlane: 'Bearbeitungen auf schrägen Ebenen',
     cutout: 'Durchbrüche und Rundlöcher',
     notch: 'Konturausschnitte',
@@ -73,13 +74,20 @@
     if (k === 'format') return 'format';
     const prefix = k.split('-')[0];
     return { notch: 'notch', cutout: 'cutout', round: 'cutout', rebate: 'rebate', pocket: 'pocket', rpocket: 'pocket', spocket: 'pocket', chamfer: 'chamfer', chamferpath: 'chamfer',
-      slant: 'slant', blade: 'slant', slot: 'slot' }[prefix] || 'notch';
+      slant: 'slant', blade: 'blade', slot: 'slot' }[prefix] || 'notch';
   }
 
   // Vollständige Regel-Reihenfolge (fehlende Arten hinten anhängen, unbekannte entfernen)
   function ruleSequence(rule) {
     const seq = ((rule && rule.seq) || []).filter((c) => CATEGORIES[c]);
-    return seq.concat(Object.keys(CATEGORIES).filter((c) => !seq.includes(c)));
+    // neue Arten (aus späteren Versionen) an ihrer Standardstelle einfügen, nicht hinten anhängen
+    const def = DEFAULTS.orderRule.seq.concat(Object.keys(CATEGORIES).filter((c) => !DEFAULTS.orderRule.seq.includes(c)));
+    for (const c of def) {
+      if (seq.includes(c)) continue;
+      const before = def.slice(0, def.indexOf(c)).reverse().find((x) => seq.includes(x));
+      seq.splice(before ? seq.indexOf(before) + 1 : 0, 0, c);
+    }
+    return seq;
   }
 
   function fmt(v) {
@@ -307,7 +315,7 @@
         ops.push({ kind: 'blade', key: 'blade-' + i, toolKind: 'saw', toolDefault: 'bladeTool',
           a: [w.top.a[0] - u[0] * so, w.top.a[1] - u[1] * so], b: [w.top.b[0] + u[0] * so, w.top.b[1] + u[1] * so],
           a0: w.top.a, b0: w.top.b, tilt: w.angle, leanOut: w.leanOut, depth: T, extra: cfg.slantExtra, tool: cfg.bladeTool,
-          label: 'Sägeschnitt schräg ' + fmt(w.angle) + '°' });
+          label: 'Sägeschnitt ' + fmt(w.angle) + '°' });
         continue;
       }
       ops.push({ kind: 'slant', key: 'slant-' + i, toolKind: 'mill', toolDefault: 'slantTool',
@@ -698,10 +706,10 @@
         // Winkel zur Senkrechten: 90 = senkrecht; < 90 Platte unten breiter (Schräge zeigt nach oben)
         const n = ++counts.blade;
         const ang = op.leanOut ? 90 - op.tilt : 90 + op.tilt;
-        L.push('CreateSegment("SawSegment_' + n + '", ' + pt(op.a) + ', ' + pt(op.b) + ');');
+        L.push('CreateSegment("Saegeschnitt_Linie_' + n + '", ' + pt(op.a) + ', ' + pt(op.b) + ');');
         L.push('ResetApproachStrategy();');
         L.push('ResetRetractStrategy();');
-        L.push('CreateBladeCut("BladeCut_' + n + '", "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", ' + fmt(ang) +
+        L.push('CreateBladeCut("Saegeschnitt_' + n + '", "Saegeschnitt ' + fmt(op.tilt) + ' Grad", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", ' + fmt(ang) +
           ', 2, -1, -1, -1, 0, true, true, 0, ' + fmt(op.extra) + ');');
         blank();
       } else if (op.kind === 'sdrill') {

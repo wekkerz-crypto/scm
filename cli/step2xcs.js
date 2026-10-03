@@ -42,7 +42,7 @@ if (fs.existsSync(toolsFile)) settings.toolInfo = infoMap(parseTlgx(fs.readFileS
 let failed = 0;
 const dirs = new Set();
 for (const file of files) {
-  const parts = convert(fs.readFileSync(file, 'utf8'), settings);
+  const parts = convert(fs.readFileSync(file, 'utf8'), settings, path.basename(file));
   const dir = outDir || path.dirname(file);
   fs.mkdirSync(dir, { recursive: true });
   dirs.add(dir);
@@ -52,7 +52,7 @@ for (const file of files) {
       console.error('✗ ' + file + ' / ' + part.name + ': ' + part.error);
       continue;
     }
-    const target = path.join(dir, parts.length === 1 ? path.basename(file).replace(/\.(step|stp)$/i, '') + '.xcs' : part.fileName);
+    const target = path.join(dir, part.fileName);
     fs.writeFileSync(target, part.xcs);
     const p = part.panel;
     console.log('✓ ' + target + '  (' + [p.L, p.W, p.T].map((v) => Math.round(v * 100) / 100).join(' × ') + ' mm, ' +

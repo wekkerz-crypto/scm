@@ -10,14 +10,37 @@
 })(typeof self !== 'undefined' ? self : this, function (StepReader, PanelAnalyzer, XcsWriter) {
   'use strict';
 
-  function safeFileName(name) {
-    return String(name).replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, ' ').trim() || 'Teil';
+  // Teilename für Anzeige, .xcs und .pgmx: Umlaute umschreiben, Leerzeichen → _, nur Zeichen, die überall gehen
+  const UMLAUT = { 'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'Ä': 'Ae', 'Ö': 'Oe', 'Ü': 'Ue', 'ß': 'ss', 'ẞ': 'SS' };
+  function partName(name) {
+    let n = String(name || '').replace(/[äöüÄÖÜßẞ]/g, (c) => UMLAUT[c]);
+    n = n.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // é → e usw.
+    n = n.trim().replace(/\s+/g, '_').replace(/[^A-Za-z0-9_.-]/g, '_').replace(/_+/g, '_').replace(/^[_.]+|[_.]+$/g, '');
+    return n || 'Teil';
+  }
+  const safeFileName = partName;
+
+  // Nichtssagende Namen aus dem CAD (Onshape „Part 1“, „Body“ …) → Dateiname der STEP verwenden
+  function genericName(n) {
+    return !n || /^(part|teil|body|k(ö|oe)rper|solid|bauteil)[\s_-]*\d*$/i.test(String(n).trim()) || /open cascade/i.test(n);
   }
 
-  // Liest alle Volumenkörper; Fehler einzelner Teile werden im Teil gemeldet.
-  function readParts(stepText) {
+  // Liest alle Volumenkörper und gibt ihnen den Namen aus der STEP (Teilename, sonst Dateiname),
+  // bereinigt und eindeutig. sourceName = Name der STEP-Datei.
+  function readParts(stepText, sourceName) {
     const { solids } = StepReader.readStep(stepText);
     if (!solids.length) throw new Error('Die STEP-Datei enthält keinen Volumenkörper.');
+    const base = sourceName ? String(sourceName).replace(/^.*[\\/]/, '').replace(/\.(step|stp)$/i, '') : '';
+    const used = new Set();
+    solids.forEach((s, i) => {
+      s.stepName = s.name;
+      let n = genericName(s.name) ? (base ? base + (solids.length > 1 ? '_' + (i + 1) : '') : s.name || 'Teil') : s.name;
+      n = partName(n);
+      let k = n;
+      for (let j = 2; used.has(k.toLowerCase()); j++) k = n + '_' + j;
+      used.add(k.toLowerCase());
+      s.name = k;
+    });
     return solids;
   }
 
@@ -36,8 +59,8 @@
     }
   }
 
-  function convert(stepText, settings) {
-    return readParts(stepText).map((s) => convertSolid(s, settings));
+  function convert(stepText, settings, sourceName) {
+    return readParts(stepText, sourceName).map((s) => convertSolid(s, settings));
   }
 
   // Batch-Datei für den X-Konverter (Handbuch Kap. 8, Modus 0 = XCS-Import → PGMX).
@@ -100,6 +123,6 @@
     return lines.join('\r\n');
   }
 
-  return { convert: convert, readParts: readParts, convertSolid: convertSolid, safeFileName: safeFileName,
+  return { convert: convert, readParts: readParts, convertSolid: convertSolid, safeFileName: safeFileName, partName: partName,
     makeBatch: makeBatch };
 });

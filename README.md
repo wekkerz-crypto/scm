@@ -57,7 +57,7 @@ für die `.pgmx`. Beispiel: `Tür Öffnung groß` → `Tuer_Oeffnung_gross.xcs` 
 | Geometrie im STEP | XCS-Ausgabe |
 |---|---|
 | Plattenmaße L × B × D | `CreateFinishedWorkpieceBox`, Rohteil +2 mm je Seite |
-| Außenkontur rechteckig | Formatfräsen Rechteck (`E014`, Tiefe D+3, Korrektur rechts) |
+| Außenkontur rechteckig | Formatfräsen Rechteck (`E014`, Tiefe D+3, Korrektur rechts), Verlassen im Bogen mit 2 mm Überlappung (`SetRetractStrategy(false, true, 2, 2)`, einstellbar) |
 | Formatfräsen zweistufig (Umschalter Normal/Zweistufig in den Einstellungen und je Teil in der Schrittliste) | Vorfräsen `CreateRoughFinish("Milling_1_Vor", …, Aufmaß)` mit Werkzeug 1, dann Werkzeug 2 auf Endmaß, gleiche Geometrie |
 | Sonderkontur (Ausschnitte, Rundungen, Schrägen) | Standard: ganze Außenkontur **am Stück** als eine Bahn; umschaltbar auf „Rechteck + Ausschnitte einzeln“ (`E016`, Tiefe D+2) |
 | Durchbrüche (innen), auch mit Fase oder Falz am Rand | geschlossene Fräsbahn (`E016`) entlang der engsten Stelle |
@@ -81,7 +81,8 @@ für die `.pgmx`. Beispiel: `Tür Öffnung groß` → `Tuer_Oeffnung_gross.xcs` 
 | Bearbeitungen von unten | nur **Hinweis** – Platte wenden |
 | Auflagefläche unten | **Sauger-Vorschlag**: `SetBarPosition(Konsole, X)` und `SetSuctionCupPosition(Nr, Y, Winkel, "Code")` – siehe unten |
 
-**Einstellungen** (*Werkzeuge & Regeln*) sind nach Bearbeitungsart gruppiert: Bohren, Taschen, Formatfräsen & Konturen,
+**Einstellungen** (*Werkzeuge & Regeln*) wirken sofort; dauerhaft gespeichert werden sie mit dem Knopf *Einstellungen
+speichern* in der Kopfzeile (zeigt ungespeicherte Änderungen an, beim Schließen kommt eine Nachfrage). Sie sind nach Bearbeitungsart gruppiert: Bohren, Taschen, Formatfräsen & Konturen,
 Säge, Fasen & schräge Kanten, Gekrümmte Flächen (Kugelfräser, Zeilenabstand, Zustellung beim Vorfräsen, Punktabstand,
 Toleranz, Abheben), Arbeitsfeld & Rohteil, X-Konverter. Taschen haben eine eigene **Zustelltiefe** (0 = wie Fräsen),
 die Säge eine eigene **Extra-Tiefe** und optional **Vorritzen** (`CreateSectioningMillingStrategy(Tiefe, Abstand außen, 0)`

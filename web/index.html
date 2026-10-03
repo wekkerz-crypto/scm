@@ -210,6 +210,9 @@ table.ops td.v { font-family: var(--font-mono); font-size: 0.8rem; color: var(--
 .code .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
 .code .fname { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1 1 220px; }
 .code .fname input { flex: 1; font-family: var(--font-mono); font-size: 0.85rem; }
+.xcsbox > summary { cursor: pointer; color: var(--muted); font-size: 0.88rem; padding: 2px 0; }
+.xcsbox > summary:hover { color: var(--ink); }
+.xcsbox[open] > summary { margin-bottom: 8px; }
 pre.xcs { margin: 0; background: var(--sunken); border-radius: var(--r); padding: 10px 12px; font-size: 0.76rem; line-height: 1.55;
   max-height: 460px; overflow: auto; white-space: pre; }
 pre.xcs .c { color: var(--accent); }
@@ -247,12 +250,14 @@ table.ops .ctl select { flex: 1 1 14rem; min-width: 0; width: 100%; font-size: 0
 table.ops input.step { width: 4.5em; font-size: 0.8rem; padding: 3px 4px; }
 table.ops .ctl label { font-size: 0.75rem; color: var(--muted); display: flex; gap: 4px; align-items: center; }
 .grid-set select { width: 100%; min-width: 0; font-size: 0.85rem; }
-details.settings .savebar { position: sticky; bottom: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px 16px;
-  margin: 16px -4px -4px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 -6px 16px rgba(0,0,0,0.12); }
-details.settings .savebar .state { color: var(--muted); font-size: 0.9rem; }
-details.settings .savebar.dirty { border-color: var(--warn); }
+details.settings > summary { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; list-style: none; }
+details.settings > summary::-webkit-details-marker { display: none; }
+details.settings > summary .sumtitle::before { content: '▸'; display: inline-block; width: 1.1em; transition: transform 0.15s; }
+details.settings[open] > summary .sumtitle::before { transform: rotate(90deg); }
+details.settings .savebar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; font-family: var(--font-body, inherit); font-weight: 400; }
+details.settings .savebar .state { color: var(--muted); font-size: 0.85rem; }
 details.settings .savebar.dirty .state { color: var(--warn); font-weight: 600; }
-details.settings .savebar .btn { padding: 9px 22px; font-size: 1rem; }
+details.settings .savebar .btn { padding: 7px 18px; font-size: 0.95rem; }
 details.settings summary { cursor: pointer; font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; }
 .grid-set { columns: 320px; column-gap: 14px; margin-top: 14px; }
 .setgroup { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 12px 14px 10px;
@@ -332,8 +337,9 @@ table.fmt.one .onet { display: inline; }
   </section>
 
   <details class="card settings" id="settings">
-    <summary>Werkzeuge &amp; Regeln</summary>
-    <p class="note">Voreinstellungen aus den Beispielprogrammen und der Werkzeugliste def.tlgx. Änderungen gelten sofort für alle Teile; dauerhaft (auch nach dem Schließen) erst mit <b>Einstellungen speichern</b> unten.</p>
+    <summary><span class="sumtitle">Werkzeuge &amp; Regeln</span><span class="savebar" id="savebar"><span class="state" id="savestate" aria-live="polite">Alle Änderungen gespeichert</span>
+      <button class="btn primary" id="savesettings" type="button">Einstellungen speichern</button></span></summary>
+    <p class="note">Voreinstellungen aus den Beispielprogrammen und der Werkzeugliste def.tlgx. Änderungen gelten sofort für alle Teile; dauerhaft (auch nach dem Schließen) erst mit <b>Einstellungen speichern</b> oben.</p>
     <div class="grid-set" id="setgrid"></div>
     <div style="margin-top:12px"><button class="btn" id="reset" type="button">Auf Standard zurücksetzen</button></div>
     <div class="rule" id="rule">
@@ -352,8 +358,6 @@ table.fmt.one .onet { display: inline; }
       <p class="note">Mit ★ markierte Werkzeuge stehen in allen Auswahllisten oben.</p>
       <div class="toolgrid" id="toolgrid"></div>
     </div>
-    <div class="savebar" id="savebar"><span class="state" id="savestate" aria-live="polite">Alle Änderungen gespeichert</span>
-      <button class="btn primary" id="savesettings" type="button">Einstellungen speichern</button></div>
   </details>
 </div>
 <div class="toast" id="toast" hidden></div>
@@ -507,7 +511,8 @@ table.fmt.one .onet { display: inline; }
     bar.classList.toggle('dirty', settingsDirty);
     document.getElementById('savestate').textContent = settingsDirty ? '● Ungespeicherte Änderungen' : 'Alle Änderungen gespeichert';
   }
-  document.getElementById('savesettings').addEventListener('click', persistSettings);
+  // Knopf sitzt in der Kopfzeile: Klick speichert, ohne den Bereich auf- oder zuzuklappen
+  document.getElementById('savesettings').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); persistSettings(); });
   window.addEventListener('beforeunload', (e) => {
     if (!settingsDirty) return;
     e.preventDefault();
@@ -547,7 +552,8 @@ table.fmt.one .onet { display: inline; }
   const state = { parts: [], sel: 0, settings: loadSettings(),
     tools: customTools ? customTools.tools : (window.DEFAULT_TOOLS || []),
     toolSource: customTools ? customTools.source : 'def.tlgx (Standard)',
-    favorites: loadJson(FAV_KEY, []), mode3d: !!loadJson('step2xcs.view3d.v1', false) };
+    favorites: loadJson(FAV_KEY, []), mode3d: !!loadJson('step2xcs.view3d.v1', false),
+    showCode: !!loadJson('step2xcs.showcode.v1', false) };
 
   const usableTools = (kind) => state.tools.filter((t) => t.kind === kind && !t.disabled);
 
@@ -1245,8 +1251,10 @@ table.fmt.one .onet { display: inline; }
       '</aside></div>' +
       '<div class="card code"><div class="bar"><span class="fname"><input id="fname" type="text" value="' + esc(part.fileName) + '" aria-label="Dateiname"></span>' +
       '<span class="tools"><button class="btn" id="copy" type="button">Kopieren</button><button class="btn primary" id="dl" type="button">Speichern</button></span></div>' +
-      '<pre class="xcs" id="xcs">' + highlight(r.xcs) + '</pre></div>';
+      '<details class="xcsbox" id="xcsbox"' + (state.showCode ? ' open' : '') + '><summary>Programmcode (.xcs) anzeigen</summary>' +
+      '<pre class="xcs" id="xcs">' + highlight(r.xcs) + '</pre></details></div>';
 
+    $('xcsbox').addEventListener('toggle', () => { state.showCode = $('xcsbox').open; storeJson('step2xcs.showcode.v1', state.showCode); });
     try { setupAnim(part); } catch (e) { console.error(e); } // Animation darf die übrige Bedienung nie lahmlegen
     el.querySelectorAll('[data-vmode]').forEach((b) => b.addEventListener('click', () => {
       state.mode3d = b.dataset.vmode === '3d';

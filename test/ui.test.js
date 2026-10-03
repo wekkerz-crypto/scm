@@ -185,12 +185,14 @@ test('Web-Tool: Schalter für gekrümmte Flächen nur bei Bedarf', { skip: !chro
     await p.goto(page);
     await p.waitForSelector('.part');
     const pick = async (files) => {
+      const before = await p.$$eval('.part', (x) => x.length);
       const [chooser] = await Promise.all([p.waitForEvent('filechooser', { timeout: 3000 }), p.click('#pick')]);
       await chooser.setFiles(files);
-      await p.waitForSelector('#xcs');
+      await p.waitForFunction((n) => document.querySelectorAll('.part').length > n && document.getElementById('xcs'), before);
     };
-    // ebenes Teil: kein Schalter
+    // ebenes Teil: kein Schalter; Programmcode zunächst eingeklappt
     await pick([fixture('testplatte.step')]);
+    assert.strictEqual(await p.$eval('#xcsbox', (d) => d.open), false);
     assert.strictEqual(await p.$('#curvedbox'), null);
     // Schräge an Rundungen: nur dieser Schalter, eingeschaltet → 5-Achs-Bahn statt Sägeschnitte
     await pick([fixture('schraege_rund.step')]);

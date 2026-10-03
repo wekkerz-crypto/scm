@@ -31,11 +31,6 @@
 
   // ---------------------------------------------------------------- Kanten abtasten (Weltkoordinaten)
 
-  function circleAngle(ax, p) {
-    const d = sub(p, ax.o);
-    return Math.atan2(dot(d, ax.y), dot(d, ax.x));
-  }
-
   // Abschnitt einer abgetasteten Kurve (B-Spline) zwischen den Eckpunkten der Kante
   function sampleSpline(edge) {
     const s = edge.curve.samples;
@@ -296,14 +291,13 @@
     const rest = segs.slice();
     const loops = [];
     const chains = [];
-    let open = 0;
     while (rest.length) {
       const loop = [rest.shift()];
       for (;;) {
         const end = loop[loop.length - 1].b;
         if (near2(end, loop[0].a)) break;
         const i = rest.findIndex((s) => near2(s.a, end));
-        if (i < 0) { open++; break; }
+        if (i < 0) break;
         loop.push(rest.splice(i, 1)[0]);
       }
       if (near2(loop[loop.length - 1].b, loop[0].a)) loops.push(mergeCollinear(loop));
@@ -318,7 +312,7 @@
         c.unshift(...chains[i].splice(0));
       }
     }
-    return { loops: loops, open: open, chains: chains.filter((c) => c.length) };
+    return { loops: loops, chains: chains.filter((c) => c.length) };
   }
 
   function mergeCollinear(loop) {

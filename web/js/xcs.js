@@ -608,7 +608,7 @@
         if (path.error) { warnings.push(label + ': ' + path.error + ' – nicht bearbeitet.'); continue; }
         for (const id of c.faceIds) curvedFaces.add(id);
         ops.push({ kind: 'slantpath', key: key, toolKind: 'mill', toolDefault: 'slantTool', tool: tool, start: path.start, segs: path.segs,
-          edge: c.segs, closed: c.closed, angle: c.tilt, approach: c.up ? 2 : 1, depth: T + cfg.slantExtra, label: label });
+          closed: c.closed, angle: c.tilt, approach: c.up ? 2 : 1, depth: T + cfg.slantExtra, label: label });
       }
     } else if (cSlants.length) {
       warnings.push('Schräge an einer Rundung erkannt (' + cSlants.length + '×) – die Rundungen werden nicht bearbeitet. ' +

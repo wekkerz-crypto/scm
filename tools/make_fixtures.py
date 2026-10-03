@@ -198,11 +198,40 @@ def woelbung():
     return body.cut(cq.Workplane("XY").box(25, 109.77, 14.65, centered=False).translate((L - 25, 70.115, 18.718)))
 
 
+def hohlkehle_r2():
+    """Hohlkehle R2 (konkav) an der Oberkante vorne – keine Kantenrundung für den Radiusfräser."""
+    L, W, T = 300, 200, 19
+    body = cq.Workplane("XY").box(L, W, T, centered=False)
+    return body.cut(cq.Workplane("YZ").center(0, T).circle(2).extrude(L))
+
+
+def viertelrund():
+    """Große Rundung R15 an der Oberkante vorne bei 19 mm Dicke (Kugelfräser bis fast nach unten)."""
+    L, W, T = 300, 200, 19
+    return cq.Workplane("XY").box(L, W, T, centered=False).edges(cq.selectors.BoxSelector((-1, -1, T - 1), (L + 1, 1, T + 1))).fillet(15)
+
+
+def woelbung_teil():
+    """Wölbung nur auf einem Teil der Länge, an den Enden volle Höhe – kein 4-Achs-Abzeilen über die ganze Länge."""
+    body = cq.Workplane("XY").box(400, 250, 40, centered=False)
+    cut = cq.Workplane("XY").box(200, 250, 25, centered=False).translate((100, 0, 15))
+    bump = cq.Workplane("YZ").center(125, -165).circle(200).extrude(400)
+    return body.cut(cut.cut(bump))
+
+
+def l_innen_r2():
+    """L-Platte, R2 oben nur an einer Kante, die an einer Innenecke endet."""
+    s = cq.Workplane("XY").polyline([(0, 0), (300, 0), (300, 100), (150, 100), (150, 200), (0, 200)]).close().extrude(19)
+    return s.edges(cq.selectors.BoxSelector((149, 99, 18), (301, 101, 20))).fillet(2)
+
+
 if __name__ == "__main__":
     for name, fn in [("seitenwand_32", seitenwand_32), ("oberboden_27", oberboden_27), ("testplatte", testplatte),
                      ("fuenfachs", fuenfachs), ("sonderkontur", sonderkontur), ("seite4", seite4),
                      ("schraege_rund", schraege_rund), ("mulde", mulde), ("schraege_innen", schraege_innen),
-                     ("kanten_r2", kanten_r2), ("kanten_r2_offen", kanten_r2_offen), ("woelbung", woelbung)]:
+                     ("kanten_r2", kanten_r2), ("kanten_r2_offen", kanten_r2_offen), ("woelbung", woelbung),
+                     ("hohlkehle_r2", hohlkehle_r2), ("viertelrund", viertelrund), ("woelbung_teil", woelbung_teil),
+                     ("l_innen_r2", l_innen_r2)]:
         path = os.path.join(OUT, name + ".step")
         cq.exporters.export(fn(), path)
         print("geschrieben:", path)

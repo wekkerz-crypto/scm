@@ -133,7 +133,7 @@
 
   /*
    * Bahn für einen Bereich. region: { rects: [{x0,y0,x1,y1}], zmin } (Kugelmitte in den Rechtecken + R,
-   * Spitze nie tiefer als zmin − R); opt: { R (Radius Kugel), stepover, res (Punktabstand), top (Plattendicke T),
+   * Spitze nie tiefer als zmin − R und nie unter 0; holes: Durchbrüche als Punktlisten – darüber nichts); opt: { R (Radius Kugel), stepover, res (Punktabstand), top (Plattendicke T),
    * layer (Zustellung, 0 = nur Schlichten), tol }
    * Ergebnis: { passes: [[ [x,y,zSpitze], … ], …], zmin } – je Pass ein zusammenhängender Weg in Plattenkoordinaten,
    * zwischen den Pässen wird abgehoben. Werkzeugspitze = tiefster Punkt der Kugel.
@@ -145,8 +145,26 @@
     const step = Math.max(0.2, opt.stepover);
     const T = opt.top;
     const tol = opt.tol || 0.02;
-    // tiefste Spitze: R unter dem tiefsten Punkt der Fläche (an gewölbten Rändern fräst die Kugelseite den unteren Teil)
-    const floor = region.zmin === undefined ? -Infinity : region.zmin - R - 0.05;
+    // tiefste Spitze: R unter dem tiefsten Punkt der Fläche (an gewölbten Rändern fräst die Kugelseite den unteren Teil),
+    // nie unter die Plattenunterseite (darunter Sauger und Tisch)
+    const floor = Math.max(0, region.zmin === undefined ? -Infinity : region.zmin - R - 0.05);
+    // über Durchbrüchen (Öffnung weiter als R vom Rand) nichts fräsen
+    const holes = region.holes || [];
+    const inHole = (x, y) => holes.some((h) => {
+      let inside = false;
+      for (let i = 0, j = h.length - 1; i < h.length; j = i++) {
+        if ((h[i][1] > y) !== (h[j][1] > y) && x < ((h[j][0] - h[i][0]) * (y - h[i][1])) / (h[j][1] - h[i][1]) + h[i][0]) inside = !inside;
+      }
+      if (!inside) return false;
+      for (let i = 0, j = h.length - 1; i < h.length; j = i++) {
+        const a = h[j];
+        const b = h[i];
+        const l2 = (b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2;
+        const t = l2 > 0 ? Math.max(0, Math.min(1, ((x - a[0]) * (b[0] - a[0]) + (y - a[1]) * (b[1] - a[1])) / l2)) : 0;
+        if (Math.hypot(x - a[0] - (b[0] - a[0]) * t, y - a[1] - (b[1] - a[1]) * t) < R) return false;
+      }
+      return true;
+    });
     const cutting = (q) => q && q[2] < T - 0.01;
     // nur dort fahren, wo der Fräser unter der Oberseite schneidet (plus ein Punkt Anlauf)
     const segsOf = (pts) => {
@@ -184,7 +202,7 @@
           const y = alongX ? v : u;
           const c = dropCenter(m, x, y);
           const z = c - R;
-          if (c === -Infinity || z < floor) { pts.push(null); continue; }
+          if (c === -Infinity || z < floor || inHole(x, y)) { pts.push(null); continue; }
           pts.push([x, y, z]);
           if (z < zmin) zmin = z;
         }

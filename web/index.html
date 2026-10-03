@@ -443,7 +443,8 @@ table.fmt.one .onet { display: inline; }
       ['cyl4Tool', '4-Achs: Schaftfräser (Zylinderflächen)', 'mill'],
       ['cyl4Step', '4-Achs: Zeilenabstand Schlichten', 'number', 'mm auf der Fläche'],
       ['cyl4RoughStep', '4-Achs: Zeilenabstand Vorfräsen', 'number', 'mm (kleiner als Ø)'],
-      ['cyl4Layer', '4-Achs: Schichtdicke Vorfräsen', 'number', 'mm senkrecht zur Fläche']] },
+      ['cyl4Layer', '4-Achs: Schichtdicke Vorfräsen', 'number', 'mm senkrecht zur Fläche'],
+      ['cyl4MaxTilt', '4-Achs: größte Neigung des Fräsers', 'number', '° · darüber Kugelfräser']] },
     { title: 'Sauger & Konsolen', c: '--muted', fields: [
       ['suctionOn', 'Sauger-Vorschlag ins Programm schreiben', 'bool'],
       ['cupBigCode', 'Sauger groß: Code in Maestro', 'text'],
@@ -821,8 +822,8 @@ table.fmt.one .onet { display: inline; }
       const b3 = (v, t) => '<button type="button" data-curved="surface" data-on="' + v + '" aria-pressed="' + (mode === v) + '">' + t + '</button>';
       html += '<div class="row"><span class="cap">Gewölbte Flächen</span><span class="seg small" role="group" aria-label="Gewölbte Flächen">' +
         b3('off', 'Aus') + b3('ball', 'Kugelfräser') + (c.hasCyl ? b3('flat4', '4-Achs Schaftfräser') : '') + '</span></div>';
-      if (mode === 'ball' && part.meshState === 'loading') html += '<span class="note">3D-Netz wird geladen, Bahn wird berechnet …</span>';
-      if (mode === 'ball' && part.meshState === 'error') html += '<span class="note">3D-Netz nicht verfügbar: ' + esc(part.meshError || '') + '</span>';
+      if (mode !== 'off' && part.meshState === 'loading') html += '<span class="note">3D-Netz wird geladen, Bahn wird berechnet …</span>';
+      if (mode !== 'off' && part.meshState === 'error') html += '<span class="note">3D-Netz nicht verfügbar: ' + esc(part.meshError || '') + '</span>';
     }
     return html + '</div>';
   }
@@ -1120,7 +1121,7 @@ table.fmt.one .onet { display: inline; }
         '><title>' + (sawn ? 'Sägeschnitt ' : 'Schräge Kante ') + fmt(w.angle) + '°</title></path>';
     }
     // Schräge an Rundungen (Oberkante) und gewölbte Flächen (Bereich); blass, solange nicht eingeschaltet
-    const cOn = { slant: r.ops.some((o) => o.kind === 'slantpath'), surface: r.ops.some((o) => o.kind === 'surface') };
+    const cOn = { slant: r.ops.some((o) => o.kind === 'slantpath'), surface: r.ops.some((o) => o.kind === 'surface' || o.kind === 'cyl4') };
     for (const c of (p.curvedSlants || [])) {
       const q = loopToPoly(c.segs); // auch ganzer Kegel (schräges Rundloch) – zwei Halbkreise
       const d = svgPath(q.start, q.segs, Y);

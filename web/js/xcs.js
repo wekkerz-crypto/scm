@@ -51,6 +51,7 @@
     cyl4Step: 10,              // Zeilenabstand Schlichten (auf der Fläche) in mm
     cyl4RoughStep: 12,         // Zeilenabstand Vorfräsen in mm
     cyl4Layer: 10,             // Schichtdicke Vorfräsen (senkrecht zur Fläche) in mm
+    cyl4MaxTilt: 45,           // größte Neigung des Fräsers gegen die Senkrechte in Grad (darüber: Kugelfräser)
     ballTool: 'E055',          // Kugelfräser
     ballToolDia: 12,           // nur falls der Kugelfräser nicht in der Werkzeugliste steht
     surfStepover: 1.5,         // Zeilenabstand in mm
@@ -126,7 +127,7 @@
     blade: 'Sägeschnitte',
     slantPlane: 'Bearbeitungen auf schrägen Ebenen',
     edge: 'Kantenrundungen (Radiusfräser)',
-    surface: 'Gewölbte Flächen (Kugelfräser)',
+    surface: 'Gewölbte Flächen',
     cutout: 'Durchbrüche und Rundlöcher',
     notch: 'Konturausschnitte',
     format: 'Formatfräsen',
@@ -302,18 +303,28 @@
         // exzentrisch: die Drehachse kann auch neben der Platte stehen – die Saugflächen gleichmäßig über die möglichen
         // Lagen verteilen (Ziel nach der Lage der Saugfläche, nicht der Achse), Achsen mit Abstand zueinander
         const pads = ys.map((v) => ({ y: v, py: orient(x, v, t).q[1] }));
-        const lo = Math.min(...pads.map((q) => q.py));
-        const hi = Math.max(...pads.map((q) => q.py));
-        const n = Math.max(1, Math.min(cfg.cupsPerBar, 1 + Math.floor((hi - lo) / Math.max(need, 200))));
-        for (let k = 0; k < n; k++) {
-          const target = n === 1 ? (lo + hi) / 2 : lo + ((hi - lo) * k) / (n - 1);
-          let pick = null;
-          for (const q of pads) {
-            if (out.some((w) => Math.abs(w - q.y) < need - 1e-6)) continue;
-            if (pick === null || Math.abs(q.py - target) < Math.abs(pick.py - target)) pick = q;
+        // Anzahl aus der Spanne der Drehachsen (sie brauchen den Platz auf der Konsole)
+        const n = Math.max(1, Math.min(cfg.cupsPerBar, 1 + Math.floor((ys[ys.length - 1] - ys[0]) / Math.max(need, 200))));
+        // Ziele gleichmäßig verteilt – einmal nach der Lage der Saugfläche, einmal nach der Drehachse; mehr Sauger gewinnt,
+        // bei Gleichstand die Verteilung nach der Saugfläche (sie sitzt dann mittiger)
+        const spread = (key) => {
+          const lo = Math.min(...pads.map((q) => q[key]));
+          const hi = Math.max(...pads.map((q) => q[key]));
+          const got = [];
+          for (let k = 0; k < n; k++) {
+            const target = n === 1 ? (lo + hi) / 2 : lo + ((hi - lo) * k) / (n - 1);
+            let pick = null;
+            for (const q of pads) {
+              if (got.some((w) => Math.abs(w - q.y) < need - 1e-6)) continue;
+              if (pick === null || Math.abs(q[key] - target) < Math.abs(pick[key] - target)) pick = q;
+            }
+            if (pick !== null) got.push(pick.y);
           }
-          if (pick !== null) out.push(pick.y);
-        }
+          return got;
+        };
+        const byPad = spread('py');
+        const byAxis = spread('y');
+        out = byAxis.length > byPad.length ? byAxis : byPad;
       } else {
         for (const r of runs) {
           const span = r[1] - r[0];
@@ -620,7 +631,7 @@
         const dt = toolD(tool, 0);
         if (!dt) warnings.push(label + ': Durchmesser von ' + tool + ' unbekannt – Bahn liegt auf der Kante (Werkzeugmitte).');
         // Ende an der Plattenkante: Oberkante liegt bei „oben schmaler“ um T·tan(Neigung) innerhalb
-        const m = 0.05 + T * Math.tan(c.tilt * Math.PI / 180);
+        const m = 0.05 + (c.up ? T * Math.tan(c.tilt * Math.PI / 180) : 0);
         const nearEdge = (q) => q[0] < m || q[0] > p.L - m || q[1] < m || q[1] > p.W - m;
         const path = offsetRun(c.segs, c.closed, dt ? dt / 2 / Math.cos(c.tilt * Math.PI / 180) : 0, cfg.leadLength, nearEdge);
         if (path.error) { warnings.push(label + ': ' + path.error + ' – nicht bearbeitet.'); continue; }
@@ -645,13 +656,19 @@
           if (!D) { warnings.push(label + ': Durchmesser von ' + tool + ' unbekannt – nicht bearbeitet.'); continue; }
           if (info && info.body && info.body !== 'Endmill') warnings.push(label + ': ' + tool + ' ist kein Schaftfräser – bitte prüfen.');
           const plan4 = cyl4Plan(c.cyl, p, cfg, D);
+          const tiltMax = Math.max(...plan4.passes.map((q) => Math.abs(q.phi))) * 180 / Math.PI;
+          if (tiltMax > cfg.cyl4MaxTilt + 1e-6) {
+            warnings.push(label + ': Neigung bis ' + fmt(Math.round(tiltMax * 10) / 10) + '° – mehr als ' + fmt(cfg.cyl4MaxTilt) + '° erlaubt, stattdessen Kugelfräser.');
+          } else {
           // Schnitttiefe je Schicht: Schicht + Abstand Ebene–Fläche am Fräserrand (D² / 8R)
           const cut = (plan4.layers > 1 ? cfg.cyl4Layer : plan4.dmax) + (D * D) / (8 * c.cyl.r);
           if (info && info.len && cut > info.len + 1e-9) warnings.push(label + ': bis ' + fmt(cut) + ' mm Schnitttiefe, Schneidenlänge ' + tool + ' nur ' + fmt(info.len) + ' mm – Schichtdicke verringern.');
-          const tilt = Math.max(...plan4.passes.map((q) => Math.abs(q.phi))) * 180 / Math.PI;
+          const tilt = tiltMax;
           ops.push({ kind: 'cyl4', key: key, toolKind: 'mill', toolDefault: 'cyl4Tool', tool: tool, passes: plan4.passes, depth: c.depth,
             tilt: tilt, layers: plan4.layers, label: label + ' (' + plan4.passes.length + ' Zeilen, bis ' + fmt(Math.round(tilt * 10) / 10) + '°)' });
+          if (D && cfg.cyl4RoughStep >= D && plan4.layers > 1) warnings.push(label + ': Zeilenabstand Vorfräsen ' + fmt(cfg.cyl4RoughStep) + ' mm ist nicht kleiner als der Fräser – es bleiben Stege stehen.');
           continue;
+          }
         }
         const key = 'surface-' + i;
         const tool = ovTool(key, cfg.ballTool);
@@ -663,7 +680,10 @@
         if (!cfg.mesh) {
           warnings.push(label + ': 3D-Netz des Teils fehlt (OpenCascade) – keine Bahn berechnet.');
         } else {
-          const r = surfacePasses(cfg.mesh, c, toolD(tool, cfg.ballToolDia) / 2, T, cfg);
+          // Öffnungen: Durchbrüche und durchgehende Bohrungen/Rundlöcher von oben (als Kreis)
+          const openings = p.cutouts.concat(p.drills.filter((d) => d.face === 'Top' && d.through)
+            .map((d) => [{ type: 'arc', a: [d.x + d.d / 2, d.y], b: [d.x + d.d / 2, d.y], c: [d.x, d.y], r: d.d / 2, ccw: true, full: true }]));
+          const r = surfacePasses(cfg.mesh, c, toolD(tool, cfg.ballToolDia) / 2, T, cfg, openings);
           passes = r.passes;
           if (!passes.length) warnings.push(label + ': keine Bahn gefunden – Fläche ist mit ' + tool + ' nicht erreichbar.');
         }
@@ -672,7 +692,7 @@
       }
     } else if (cSurf.length) {
       warnings.push('Gewölbte Fläche erkannt (' + cSurf.map((c) => c.kinds.join('/')).join(', ') + ') – nicht bearbeitet. ' +
-        'Beim Teil „Gewölbte Flächen“ Zeilenfräsen (Kugelfräser)' + (cSurf.some((c) => c.cyl) ? ' oder 4-Achs (Schaftfräser)' : '') + ' wählen.');
+        'Beim Teil „Gewölbte Flächen“ „Kugelfräser“' + (cSurf.some((c) => c.cyl) ? ' oder „4-Achs Schaftfräser“' : '') + ' wählen.');
     }
 
     // 7c) Kantenrundungen (oben/unten) mit dem Radiusfräser entlang der Kontur – nach dem Formatfräsen (Regel)
@@ -707,10 +727,19 @@
         const segs = (e.extendStart ? [{ type: 'line', to: first.a }] : []).concat(e.segs.map(toPolySeg));
         if (e.extendEnd) segs.push({ type: 'line', to: [last.b[0] + t1[0] * ll, last.b[1] + t1[1] * ll] });
         path = { start: start, segs: segs };
+        if (!e.extendStart || !e.extendEnd) {
+          warnings.push(label + ': Rundung endet ' + (!e.extendStart && !e.extendEnd ? 'an beiden Enden' : 'an einem Ende') +
+            ' an einer Innenecke oder mitten in der Kante – dort ohne Auslauf, Ein-/Austritt in der Simulation prüfen.');
+        }
       }
       ops.push({ kind: 'contour', key: key, toolKind: 'mill', toolDefault: top ? 'roundTopTool' : 'roundBottomTool', contour: ++nContour, milling: ++nMill,
         approach: e.closed, profile: true, start: path.start, segs: path.segs, depth: top ? cfg.roundTopDepth : T + cfg.roundBottomDz,
         tool: tool, side: 2, label: label });
+    }
+
+    // Haltestege und Rundung unten am Durchbruch: der Radiusfräser unten schneidet die Stege durch
+    if (cfg.tabsMode !== 'off' && (p.edgeRounds || []).some((e) => e.loop === 'cutout' && e.side === 'bottom' && Math.abs(e.r - cfg.roundRadius) <= 0.1)) {
+      warnings.push('Haltestege: der Radiusfräser unten am Durchbruch schneidet die Stege durch – Innenstück wird lose.');
     }
 
     // 8) Schräge Kanten über die ganze Dicke (5-Achs)
@@ -866,7 +895,9 @@
     }
     // Schräge an der Rundung eines Ausschnitts erst nach dem Durchbruch (der Butzen ist dann schon heraus)
     const lastCut = order.reduce((m, g, i) => (catOfG.get(g) === 'cutout' ? i : m), -1);
-    const innerSlant = new Set(ops.filter((op) => op.kind === 'slantpath' && op.inner).map((op) => op.group));
+    // ebenso gewölbte Flächen: über einem Durchbruch steht sonst noch der Butzen
+    const hasCut = ops.some((op) => category(op) === 'cutout');
+    const innerSlant = new Set(ops.filter((op) => (op.kind === 'slantpath' && op.inner) || (op.kind === 'surface' && hasCut)).map((op) => op.group));
     const earlySlant = order.filter((g, i) => i < lastCut && innerSlant.has(g));
     if (earlySlant.length) {
       order = order.filter((g) => !earlySlant.includes(g));
@@ -1090,7 +1121,7 @@
     const inside = (rad, phi) => {
       const sx = rad * Math.sin(phi);
       const z = o[2] + rad * Math.cos(phi);
-      return sx >= s0 - 1e-9 && sx <= s1 + 1e-9 && z <= p.T + 1e-9;
+      return sx >= s0 - 1e-9 && sx <= s1 + 1e-9 && z <= p.T + 1e-9 && z >= 0;
     };
     for (let k = K - 1; k >= 1; k--) {
       const d = k * a;
@@ -1117,16 +1148,31 @@
 
   // Zeilenfräsen einer gewölbten Fläche (Bahnen je Netz und Einstellung zwischengespeichert)
   const surfCache = typeof WeakMap === 'function' ? new WeakMap() : null;
-  function surfacePasses(mesh, c, R, T, cfg) {
+  function surfacePasses(mesh, c, R, T, cfg, cutouts) {
     const SP = typeof SurfacePath !== 'undefined' ? SurfacePath : require('./surface.js');
-    const key = JSON.stringify([c.rects, c.depth, R, cfg.surfStepover, cfg.surfRes, cfg.surfLayer, cfg.surfTol]);
+    // Durchbrüche: dort fehlt der Butzen im Netz – Kugelmitte nicht über der Öffnung (Abstand zum Rand > R)
+    const holes = (cutouts || []).map((lp) => { const pts = []; for (const q of lp) for (const t of segPointsLocal(q)) pts.push(t); return pts; });
+    const key = JSON.stringify([c.rects, c.depth, R, cfg.surfStepover, cfg.surfRes, cfg.surfLayer, cfg.surfTol, holes.length]);
     let m = surfCache && surfCache.get(mesh);
     if (!m) { m = new Map(); if (surfCache) surfCache.set(mesh, m); }
     if (!m.has(key)) {
-      m.set(key, SP.compute(mesh, { rects: c.rects, zmin: T - c.depth },
+      m.set(key, SP.compute(mesh, { rects: c.rects, zmin: T - c.depth, holes: holes },
         { R: R, stepover: cfg.surfStepover, res: cfg.surfRes, top: T, layer: cfg.surfLayer, tol: cfg.surfTol }));
     }
     return m.get(key);
+  }
+
+  // Punkte eines Segments (Bogen fein abgetastet)
+  function segPointsLocal(s) {
+    if (s.type !== 'arc') return [s.a];
+    const a0 = Math.atan2(s.a[1] - s.c[1], s.a[0] - s.c[0]);
+    let sw = Math.atan2(s.b[1] - s.c[1], s.b[0] - s.c[0]) - a0;
+    if (s.full) sw = s.ccw ? Math.PI * 2 : -Math.PI * 2;
+    else if (s.ccw) { while (sw <= 0) sw += Math.PI * 2; } else { while (sw >= 0) sw -= Math.PI * 2; }
+    const n = Math.max(2, Math.ceil(Math.abs(sw) / (Math.PI / 36)));
+    const out = [];
+    for (let i = 0; i < n; i++) out.push([s.c[0] + s.r * Math.cos(a0 + (sw * i) / n), s.c[1] + s.r * Math.sin(a0 + (sw * i) / n)]);
+    return out;
   }
 
   function toPolySeg(s) {

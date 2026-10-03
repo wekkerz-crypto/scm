@@ -914,3 +914,40 @@ test('Gewölbte Zylinderfläche 4-Achs mit dem Schaftfräser abzeilen', () => {
   const [mu] = readParts(read('test/fixtures/mulde.step'), 'mulde.step');
   assert.ok(convertSolid(mu, { toolInfo }).panel.curvedSurfaces.every((g) => !g.cyl));
 });
+
+test('Prüfung gekrümmte Flächen: Hohlkehle, große Rundung, Teil-Wölbung, Innenecke, Neigungsgrenze, Öffnungen', async () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const OM = require('../web/js/occtmesh.js');
+  const T = require('../web/js/tools.js');
+  const toolInfo = T.infoMap(T.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
+  const occt = await OM.loadNode();
+  const part = (f) => { const text = read('test/fixtures/' + f + '.step'); return { s: readParts(text, f)[0], meshes: OM.read(occt, text) }; };
+  const path = (xcs) => xcs.split(/\r?\n/).filter((l) => l.startsWith('AddSegmentToToolpath')).map((l) => l.slice(21, -2).split(',').map(Number));
+  // Hohlkehle (nach innen gerundet): kein Radiusfräser, sondern gewölbte Fläche
+  const h = convertSolid(part('hohlkehle_r2').s, { toolInfo });
+  assert.ok(!h.ops.some((o) => o.profile) && (h.panel.edgeRounds || []).length === 0);
+  assert.strictEqual(h.panel.curvedSurfaces.length, 1);
+  // große Rundung R15 bei 19 mm: Kugel fräst bis fast unten, aber nie unter die Platte
+  const v = part('viertelrund');
+  const rv = convertSolid(v.s, { toolInfo }, { overrides: { curved: { surface: 'ball' } }, meshes: v.meshes });
+  const zs = path(rv.xcs).map((q) => q[2] + rv.panel.T);
+  assert.ok(zs.length && Math.min(...zs) >= -1e-9 && Math.min(...zs) < 4 + 0.5, 'tiefste Spitze ' + Math.min(...zs));
+  // Wölbung nur auf einem Teil der Länge: kein 4-Achs (fiele durch die Enden), stattdessen Kugelfräser
+  const w = part('woelbung_teil');
+  const rw = convertSolid(w.s, { toolInfo }, { overrides: { curved: { surface: 'flat4' } }, meshes: w.meshes });
+  assert.ok(rw.panel.curvedSurfaces.every((c) => !c.cyl));
+  assert.ok(!rw.ops.some((o) => o.kind === 'cyl4') && rw.ops.some((o) => o.kind === 'surface'));
+  // Neigungsgrenze: darüber Hinweis und Kugelfräser statt 4-Achs
+  const wb = part('woelbung');
+  const rt = convertSolid(wb.s, { toolInfo, cyl4MaxTilt: 20 }, { overrides: { curved: { surface: 'flat4' } }, meshes: wb.meshes });
+  assert.ok(rt.warnings.some((x) => /mehr als 20° erlaubt, stattdessen Kugelfräser/.test(x)));
+  assert.ok(!rt.ops.some((o) => o.kind === 'cyl4') && rt.ops.some((o) => o.kind === 'surface'));
+  // Rundung endet an einer Innenecke: kein Auslauf ins Material, Hinweis
+  const l = convertSolid(part('l_innen_r2').s, { toolInfo });
+  const e = l.ops.find((o) => o.profile);
+  assert.ok(e && l.warnings.some((x) => /Innenecke oder mitten in der Kante/.test(x)));
+  // gewölbte Flächen erst nach den Durchbrüchen; schräge Durchbrüche: Kugel nicht über der Öffnung
+  const m = part('mulde');
+  const rm = convertSolid(m.s, { toolInfo }, { overrides: { curved: { surface: 'ball' } }, meshes: m.meshes });
+  assert.ok(path(rm.xcs).every((q) => q[2] + rm.panel.T >= -1e-9));
+});

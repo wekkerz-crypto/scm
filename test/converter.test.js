@@ -7,8 +7,9 @@ const { convert } = require('../web/js/convert.js');
 
 const root = path.join(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
-const one = (p) => {
-  const parts = convert(read(p));
+const ORIGINAL_ORDER = { orderRule: { on: false } }; // Reihenfolge wie in den Maestro-Beispielen
+const one = (p, settings) => {
+  const parts = convert(read(p), settings);
   assert.strictEqual(parts.length, 1);
   assert.strictEqual(parts[0].error, null);
   return parts[0];
@@ -39,7 +40,7 @@ function drillSet(xcs) {
 const lines = (s) => s.split(/\r?\n/).filter((l) => l.trim());
 
 test('Seitenwand (Nachbau von 32_Seitenwand_R.xcs)', () => {
-  const part = one('test/fixtures/seitenwand_32.step');
+  const part = one('test/fixtures/seitenwand_32.step', ORIGINAL_ORDER);
   const sample = read('maestro/beispiele/32_Seitenwand_R.xcs');
   assert.deepStrictEqual(drillSet(part.xcs), drillSet(sample));
   // Alles außer dem Sockelausschnitt (dort Bögen statt AddFilletToPolyline) muss 1:1 vorkommen
@@ -55,7 +56,7 @@ test('Seitenwand (Nachbau von 32_Seitenwand_R.xcs)', () => {
 });
 
 test('Oberboden (Nachbau von 27_Oberboden.xcs) – horizontale Bohrungen', () => {
-  const part = one('test/fixtures/oberboden_27.step');
+  const part = one('test/fixtures/oberboden_27.step', ORIGINAL_ORDER);
   const sample = read('maestro/beispiele/27_Oberboden.xcs');
   assert.deepStrictEqual(drillSet(part.xcs), drillSet(sample));
   const noDrills = (s) => lines(s).filter((l) => !/^(CreatePattern|CreateDrill)/.test(l));
@@ -184,20 +185,27 @@ test('Werkzeugbahn für die Animation', () => {
   assert.strictEqual(moves[moves.length - 1].label, 'Parkposition');
 });
 
-test('Reihenfolge ändern, Formatfräsen zuletzt, zurück auf die Oberseite nach Kantenbohrungen', () => {
+test('Reihenfolge-Regel (an/aus/geändert), Reihenfolge je Teil, zurück auf die Oberseite', () => {
   const { readParts, convertSolid } = require('../web/js/convert.js');
+  const X = require('../web/js/xcs.js');
   const [solid] = readParts(read('test/fixtures/oberboden_27.step'));
-  const base = convertSolid(solid, {});
-  assert.deepStrictEqual(base.groups[0], 'format');
-  // Formatfräsen per Einstellung ans Ende: nach den Kantenbohrungen muss wieder "Top" gewählt werden
-  const last = convertSolid(solid, { formatLast: true });
-  const lines = last.xcs.split('\r\n').filter((l) => l);
+  // Regel aus: Reihenfolge wie erkannt (Formatfräsen zuerst)
+  const off = convertSolid(solid, ORIGINAL_ORDER);
+  assert.strictEqual(off.groups[0], 'format');
+  // Standardregel: erst Bohrungen, Formatfräsen zuletzt – vor der Fräsung wieder "Top"
+  const std = convertSolid(solid, {});
+  assert.strictEqual(std.groups[std.groups.length - 1], 'format');
+  const lines = std.xcs.split('\r\n').filter((l) => l);
   const iTop = lines.indexOf('SelectWorkplane("Top");');
   const iMill = lines.findIndex((l) => l.startsWith('CreateRoughFinish("Milling_1"'));
   assert.ok(iTop > lines.indexOf('SelectWorkplane("Right");') && iTop < iMill, 'Top vor der Fräsung');
-  assert.strictEqual(last.groups[last.groups.length - 1], 'format');
-  // Reihenfolge je Teil: rechte Bohrungen vor die linken
-  const order = base.groups.slice();
+  // Eigene Regel: Formatfräsen vor den Kantenbohrungen
+  const seq = X.ruleSequence(X.DEFAULTS.orderRule).filter((c) => c !== 'format');
+  seq.splice(seq.indexOf('drillSide'), 0, 'format');
+  const own = convertSolid(solid, { orderRule: { on: true, seq: seq } });
+  assert.strictEqual(own.groups[0], 'format');
+  // Reihenfolge je Teil hat Vorrang: rechte Bohrungen vor die linken
+  const order = std.groups.slice();
   const [a, b] = [order.findIndex((g) => /^drill:Left/.test(g)), order.findIndex((g) => /^drill:Right/.test(g))];
   [order[a], order[b]] = [order[b], order[a]];
   const swapped = convertSolid(solid, {}, { overrides: { order: order } });

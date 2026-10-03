@@ -136,6 +136,14 @@ pre.xcs { margin: 0; background: var(--sunken); border-radius: var(--r); padding
 pre.xcs .c { color: var(--accent); }
 pre.xcs .s { color: var(--mill); }
 
+.rule { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 8px; }
+.rule .bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.ruleon { display: flex; gap: 6px; align-items: center; font-size: 0.9rem; }
+.rulelist { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-width: 30rem; }
+.rulelist li { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: var(--r); padding: 4px 6px 4px 10px;
+  background: var(--surface); font-size: 0.9rem; }
+.rulelist li .nm { flex: 1; min-width: 0; }
+.rulelist.off li { opacity: 0.45; }
 .toollib { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 8px; }
 .toollib .bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
 .toolgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 4px 12px; }
@@ -198,6 +206,14 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     <p class="note">Voreinstellungen aus den Beispielprogrammen und der Werkzeugliste def.tlgx. Änderungen gelten für alle Teile und bleiben in diesem Browser gespeichert.</p>
     <div class="grid-set" id="setgrid"></div>
     <div style="margin-top:12px"><button class="btn" id="reset" type="button">Auf Standard zurücksetzen</button></div>
+    <div class="rule" id="rule">
+      <div class="bar"><h3>Reihenfolge-Regel</h3>
+        <label class="ruleon"><input type="checkbox" id="ruleon"> Regel verwenden</label>
+        <button class="btn ghost small" id="ruledefault" type="button">Standardfolge</button></div>
+      <p class="note">Die Bearbeitungsarten kommen in dieser Folge ins Programm. Ist die Regel aus, bleibt die erkannte Reihenfolge.
+        Was du bei einem Teil von Hand verschiebst, hat Vorrang.</p>
+      <ol class="rulelist" id="rulelist"></ol>
+    </div>
     <div class="toollib">
       <div class="bar"><h3>Werkzeugliste</h3><span class="note" id="toolsrc"></span>
         <span class="tools"><button class="btn" id="loadtools" type="button">Werkzeugliste laden (.tlgx)</button>
@@ -240,7 +256,7 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     ['sawOverrun', 'Säge-Überlauf (mm)', 'number'], ['maxGrooveWidth', 'Max. Nutbreite (mm)', 'number'],
     ['throughExtra', 'Durchgangsbohrung: Dicke +', 'number'], ['parkOffset', 'Parkposition: Länge +', 'number'],
     ['drillsVertical', 'Bohrer vertikal Ø (Liste)', 'list'], ['drillsHorizontal', 'Bohrer horizontal Ø (Liste)', 'list'],
-    ['usePatterns', 'Lochreihen als Muster (CreatePattern)', 'bool'], ['formatLast', 'Formatfräsen als letzte Bearbeitung', 'bool'],
+    ['usePatterns', 'Lochreihen als Muster (CreatePattern)', 'bool'],
     ['xconverterPath', 'X-Konverter (XConverter.exe)', 'path'], ['toolsFile', 'Werkzeugdatei (.tlgx)', 'path'],
     ['pgmxDir', 'Zielordner .pgmx (leer = Unterordner „pgmx“)', 'path'],
   ];
@@ -249,6 +265,7 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     let s = {};
     try { s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { s = {}; }
     if (s.fieldThreshold === 1500) s.fieldThreshold = XcsWriter.DEFAULTS.fieldThreshold; // alte Voreinstellung
+    delete s.formatLast; // ersetzt durch die Reihenfolge-Regel
     return Object.assign({}, XcsWriter.DEFAULTS, s);
   }
   function saveSettings() {
@@ -283,6 +300,26 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     if (favs.length) html += '<optgroup label="★ Favoriten">' + favs.map(opt).join('') + '</optgroup>';
     html += '<optgroup label="' + (kind === 'saw' ? 'Alle Sägen' : 'Alle Fräser') + '">' + list.map(opt).join('') + '</optgroup></select>';
     return html;
+  }
+
+  function renderRule() {
+    const rule = state.settings.orderRule || XcsWriter.DEFAULTS.orderRule;
+    const seq = XcsWriter.ruleSequence(rule);
+    $('ruleon').checked = !!rule.on;
+    const ol = $('rulelist');
+    ol.classList.toggle('off', !rule.on);
+    ol.innerHTML = seq.map((c, i) => '<li><span class="num">' + (i + 1) + '</span><span class="nm">' + esc(XcsWriter.CATEGORIES[c]) + '</span>' +
+      '<button type="button" class="mvb" data-rule="' + c + '" data-dir="-1"' + (i === 0 ? ' disabled' : '') + ' aria-label="' +
+      esc(XcsWriter.CATEGORIES[c]) + ' nach oben">↑</button><button type="button" class="mvb" data-rule="' + c + '" data-dir="1"' +
+      (i === seq.length - 1 ? ' disabled' : '') + ' aria-label="' + esc(XcsWriter.CATEGORIES[c]) + ' nach unten">↓</button></li>').join('');
+  }
+
+  function setRule(rule) {
+    state.settings.orderRule = rule;
+    saveSettings();
+    state.parts.forEach(compute);
+    renderRule();
+    render();
   }
 
   function renderToolLib() {
@@ -927,10 +964,31 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
   document.addEventListener('drop', (e) => { if (e.dataTransfer && e.dataTransfer.files.length) loadFiles(e.dataTransfer.files); });
   $('clear').addEventListener('click', () => { state.parts = []; state.sel = 0; render(); });
   $('reset').addEventListener('click', () => {
-    state.settings = Object.assign({}, XcsWriter.DEFAULTS);
-    saveSettings(); renderSettings(); state.parts.forEach(compute); render();
+    state.settings = Object.assign({}, XcsWriter.DEFAULTS, { orderRule: { on: true, seq: XcsWriter.DEFAULTS.orderRule.seq.slice() } });
+    saveSettings(); renderSettings(); renderRule(); state.parts.forEach(compute); render();
   });
 
+  $('ruleon').addEventListener('change', (e) => {
+    const rule = state.settings.orderRule || XcsWriter.DEFAULTS.orderRule;
+    setRule({ on: e.target.checked, seq: XcsWriter.ruleSequence(rule) });
+  });
+  $('ruledefault').addEventListener('click', () => {
+    const rule = state.settings.orderRule || XcsWriter.DEFAULTS.orderRule;
+    setRule({ on: rule.on, seq: XcsWriter.DEFAULTS.orderRule.seq.slice() });
+  });
+  $('rulelist').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-rule]');
+    if (!b) return;
+    const rule = state.settings.orderRule || XcsWriter.DEFAULTS.orderRule;
+    const seq = XcsWriter.ruleSequence(rule);
+    const i = seq.indexOf(b.dataset.rule);
+    const j = i + Number(b.dataset.dir);
+    if (j < 0 || j >= seq.length) return;
+    [seq[i], seq[j]] = [seq[j], seq[i]];
+    setRule({ on: rule.on, seq: seq });
+    const again = document.querySelector('[data-rule="' + b.dataset.rule + '"][data-dir="' + b.dataset.dir + '"]');
+    if (again && !again.disabled) again.focus();
+  });
   $('toolgrid').addEventListener('click', (e) => {
     const b = e.target.closest('[data-fav]');
     if (!b) return;
@@ -963,6 +1021,7 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
 
   // Start mit Beispiel aus Onshape
   renderToolLib();
+  renderRule();
   renderSettings();
   for (const s of (window.SAMPLE_STEPS || [])) addStep(s.text, 'Beispiel: ' + s.name);
   render();

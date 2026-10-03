@@ -7,6 +7,7 @@
  *   --bat            legt zusätzlich konvertieren.bat für den Maestro X-Konverter in den Ausgabeordner
  *   --tools datei    Werkzeugliste (.tlgx) für Durchmesser/Schneidenlängen (Standard: maestro/werkzeuge/def.tlgx)
  *   --step mm        Zustellung je Durchgang beim Fräsen (Standard: aus)
+ *   --no-order-rule  Reihenfolge wie erkannt statt nach der Reihenfolge-Regel
  */
 'use strict';
 const fs = require('fs');
@@ -19,12 +20,14 @@ let outDir = null;
 let bat = false;
 let toolsFile = path.join(__dirname, '..', 'maestro', 'werkzeuge', 'def.tlgx');
 let stepDown = 0;
+let orderRule = true;
 const files = [];
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '-o' || args[i] === '--out') outDir = args[++i];
   else if (args[i] === '--bat') bat = true;
   else if (args[i] === '--tools') toolsFile = args[++i];
   else if (args[i] === '--step') stepDown = parseFloat(args[++i]);
+  else if (args[i] === '--no-order-rule') orderRule = false;
   else files.push(args[i]);
 }
 if (!files.length) {
@@ -33,6 +36,7 @@ if (!files.length) {
 }
 
 const settings = { stepDown: stepDown || 0 };
+if (!orderRule) settings.orderRule = { on: false };
 if (fs.existsSync(toolsFile)) settings.toolInfo = infoMap(parseTlgx(fs.readFileSync(toolsFile, 'utf8')));
 
 let failed = 0;

@@ -30,7 +30,9 @@
     slantExtra: 2,             // Schrägfräsen: Dicke + …
     stepDown: 0,               // Zustellung je Durchgang in mm (0 = in einem Durchgang)
     finishDepth: 0,            // letzte Zustellung in mm (0 = keine eigene)
-    formatLast: false,         // Formatfräsen als letzte Bearbeitung
+    // Reihenfolge-Regel: Bearbeitungsarten in dieser Folge (abschaltbar, vom Benutzer änderbar)
+    orderRule: { on: true, seq: ['drillTop', 'drillSide', 'drillSlanted', 'slot', 'pocket', 'rebate', 'chamfer', 'slant',
+      'cutout', 'notch', 'format'] },
     throughExtra: 2,           // Durchgangsbohrung: Tiefe = Dicke + …
     drillsVertical: [3, 5, 7, 8, 10, 12, 15, 20, 35],
     drillsHorizontal: [5, 8],
@@ -43,6 +45,37 @@
   };
 
   const FACE_NAMES = { Left: 'Left', Right: 'Right', Front: 'Front', Back: 'Back' };
+
+  // Bearbeitungsarten für die Reihenfolge-Regel
+  const CATEGORIES = {
+    drillTop: 'Bohrungen oben',
+    drillSide: 'Bohrungen in der Kante',
+    drillSlanted: 'Schräge Bohrungen',
+    slot: 'Nuten (Säge)',
+    pocket: 'Taschen',
+    rebate: 'Falze',
+    chamfer: 'Fasen',
+    slant: 'Schräge Kanten',
+    cutout: 'Durchbrüche und Rundlöcher',
+    notch: 'Konturausschnitte',
+    format: 'Formatfräsen',
+  };
+
+  function category(op) {
+    if (op.kind === 'drill') return op.face === 'Top' ? 'drillTop' : 'drillSide';
+    if (op.kind === 'sdrill') return 'drillSlanted';
+    const k = op.key || '';
+    if (k === 'format') return 'format';
+    const prefix = k.split('-')[0];
+    return { notch: 'notch', cutout: 'cutout', round: 'cutout', rebate: 'rebate', pocket: 'pocket', chamfer: 'chamfer',
+      slant: 'slant', slot: 'slot' }[prefix] || 'notch';
+  }
+
+  // Vollständige Regel-Reihenfolge (fehlende Arten hinten anhängen, unbekannte entfernen)
+  function ruleSequence(rule) {
+    const seq = ((rule && rule.seq) || []).filter((c) => CATEGORIES[c]);
+    return seq.concat(Object.keys(CATEGORIES).filter((c) => !seq.includes(c)));
+  }
 
   function fmt(v) {
     let r = Math.round(v * 1000) / 1000;
@@ -276,7 +309,13 @@
     const defaultGroups = [];
     for (const op of ops) if (!defaultGroups.includes(op.group)) defaultGroups.push(op.group);
     let order = defaultGroups.slice();
-    if (cfg.formatLast) order = order.filter((g) => g !== 'format').concat(['format']);
+    if (cfg.orderRule && cfg.orderRule.on) {
+      const seq = ruleSequence(cfg.orderRule);
+      const catOf = new Map(ops.map((op) => [op.group, category(op)]));
+      order = order.map((g, i) => ({ g: g, i: i, r: seq.indexOf(catOf.get(g)) }))
+        .sort((a, b) => a.r - b.r || a.i - b.i).map((x) => x.g);
+    }
+    const ruleGroups = order.slice();
     if (cfg.order && cfg.order.length) {
       const wanted = cfg.order.filter((g) => defaultGroups.includes(g));
       order = wanted.concat(order.filter((g) => !wanted.includes(g)));
@@ -310,7 +349,7 @@
     }
 
     for (const b of p.bottom) warnings.push(b.text + ' – nicht von oben bearbeitbar (Platte wenden / 2. Programm).');
-    return { ops: ops, warnings: warnings, groups: order, defaultGroups: defaultGroups };
+    return { ops: ops, warnings: warnings, groups: order, defaultGroups: ruleGroups };
   }
 
   function toPolySeg(s) {
@@ -507,5 +546,5 @@
     return { text: L.join('\r\n'), ops: ops, warnings: warnings, field: field, groups: groups, defaultGroups: defaultGroups };
   }
 
-  return { write: write, plan: plan, DEFAULTS: DEFAULTS };
+  return { write: write, plan: plan, DEFAULTS: DEFAULTS, CATEGORIES: CATEGORIES, ruleSequence: ruleSequence };
 });

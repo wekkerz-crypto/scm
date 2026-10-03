@@ -236,7 +236,7 @@ test('Runde Vertiefung ohne passenden Bohrer wird als Kreistasche gefräst', () 
   // Topfband Ø35 × 13 auf der Testplatte – ohne 35er Bohrer in der Liste
   const [part] = convert(read('test/fixtures/testplatte.step'), { toolInfo: toolInfo, drillsVertical: [3, 5, 7, 8], orderRule: { on: false } });
   assert.ok(!/CreateDrill \([^)]*, 35, /.test(part.xcs), 'nicht mehr als Bohrung');
-  assert.match(part.xcs, /CreateCircleCenterRadius\("Pocket_\d", 700, 22.5, 17.5, false\);\r\n\r\nResetApproachStrategy\(\);\r\nResetRetractStrategy\(\);\r\nSetPneumaticHoodPosition\(1\);\r\nCreateContourPocket\("Pocketing_\d", 13, "", TypeOfProcess.ConcentricalPocket, "E016"/);
+  assert.match(part.xcs, /CreateCircleCenterRadius\("Pocket_\d", 700, 22.5, 17.5, true\);\r\n\r\nResetApproachStrategy\(\);\r\nResetRetractStrategy\(\);\r\nSetPneumaticHoodPosition\(1\);\r\nCreateContourParallelStrategy\(true, 0\);\r\nCreateContourPocket\("Pocketing_\d", 13, "", TypeOfProcess.ConcentricalPocket, "E016"/);
   const op = part.ops.find((o) => o.round);
   assert.strictEqual(op.label, 'Rundtasche Ø35×13');
   assert.ok(!part.warnings.some((w) => /Kein Bohrer Ø35/.test(w)));
@@ -280,4 +280,30 @@ test('Umlaufende Fase über Geraden, Ausschnitt und Eckradien als geschlossene B
   assert.strictEqual(part.ops.filter((o) => o.kind === 'chamfer').length, 1);
   assert.deepStrictEqual(op.start, op.segs[op.segs.length - 1].to); // geschlossen
   assert.strictEqual(op.segs.filter((q) => q.type === 'arc').length, 3);
+});
+
+test('Runde Taschen immer im Uhrzeigersinn', () => {
+  const { convert, readParts, convertSolid } = require('../web/js/convert.js');
+  const T = require('../web/js/tools.js');
+  const TP = require('../web/js/toolpath.js');
+  const toolInfo = T.infoMap(T.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
+  const [part] = convert(read('test/fixtures/seite4.step'), { toolInfo: toolInfo });
+  const rounds = part.ops.filter((o) => o.round);
+  assert.strictEqual(rounds.length, 2);
+  // Kreis im Uhrzeigersinn, Strategie mit Drehrichtung 0 direkt vor dem Ausräumen
+  const blocks = part.xcs.split('CreateCircleCenterRadius("Pocket_').slice(1);
+  assert.strictEqual(blocks.length, 2);
+  for (const b of blocks) {
+    const head = b.split('\r\n')[0];
+    assert.ok(head.endsWith(', true);'), 'Kreis im Uhrzeigersinn: ' + head);
+    assert.ok(b.includes('SetPneumaticHoodPosition(1);\r\nCreateContourParallelStrategy(true, 0);\r\nCreateContourPocket('), 'Strategie Uhrzeigersinn');
+  }
+  // mit Zustellung: Uhrzeigersinn bleibt, Mehrfachdurchgänge dazu
+  const [solid] = readParts(read('test/fixtures/seite4.step'));
+  const st = convertSolid(solid, { toolInfo: toolInfo, stepDown: 2 });
+  assert.ok(st.xcs.includes('CreateContourParallelStrategy(true, 0, true, 2, 0);'));
+  // Animation: Kreise im Uhrzeigersinn (Fläche der Bahn negativ)
+  const moves = TP.build(part, toolInfo, {}).filter((m) => m.type === 'cut' && /^Rundtasche/.test(m.label));
+  const area = (pts) => pts.reduce((a, q, k) => (k ? a + pts[k - 1][0] * q[1] - q[0] * pts[k - 1][1] : 0), 0);
+  assert.ok(moves.length > 2 && moves.every((m) => area(m.pts) < 0));
 });

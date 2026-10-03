@@ -489,6 +489,11 @@
 
   // ---------------------------------------------------------------- Ausgabe
 
+  // Tasche mit kreisrunder Außenkontur (Kreistasche aus Bohrung oder runder Taschenboden)
+  function isRoundPocket(op) {
+    return op.kind === 'pocket' && op.segs.length === 1 && op.segs[0].type === 'arc' && !!op.segs[0].full;
+  }
+
   function writePoly(L, name, segs) {
     if (segs.length === 1 && segs[0].type === 'arc' && segs[0].full) {
       const q = segs[0];
@@ -551,12 +556,18 @@
       } else if (op.kind === 'pocket') {
         const names = op.islands.map((isl, j) => 'Island_' + op.pocket + '_' + (j + 1));
         op.islands.forEach((isl, j) => writePoly(L, names[j], isl));
-        writePoly(L, 'Pocket_' + op.pocket, op.segs);
+        // Runde Taschen: Kreis im Uhrzeigersinn anlegen
+        writePoly(L, 'Pocket_' + op.pocket, isRoundPocket(op) ? [Object.assign({}, op.segs[0], { ccw: false })] : op.segs);
         blank();
         L.push('ResetApproachStrategy();');
         L.push('ResetRetractStrategy();');
         L.push('SetPneumaticHoodPosition(1);');
-        if (op.step) L.push('CreateContourParallelStrategy(true, 1, true, ' + fmt(op.step) + ', ' + fmt(cfg.finishDepth) + ');');
+        if (isRoundPocket(op)) {
+          // Runde Taschen immer im Uhrzeigersinn ausräumen (Drehrichtung 0 = Uhrzeigersinn)
+          L.push('CreateContourParallelStrategy(true, 0' + (op.step ? ', true, ' + fmt(op.step) + ', ' + fmt(cfg.finishDepth) : '') + ');');
+        } else if (op.step) {
+          L.push('CreateContourParallelStrategy(true, 1, true, ' + fmt(op.step) + ', ' + fmt(cfg.finishDepth) + ');');
+        }
         L.push('CreateContourPocket("Pocketing_' + op.pocket + '", ' + fmt(op.depth) + ', "", TypeOfProcess.ConcentricalPocket, "' +
           op.tool + '", "-1", -1, -1, -1, ' + fmt(cfg.pocketOverlap) + ', false' + names.map((n) => ', "' + n + '"').join('') + ');');
         blank();

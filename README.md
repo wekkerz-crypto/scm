@@ -48,7 +48,7 @@ Die drei Pfade stehen oben in der `.bat` und lassen sich im Web-Tool unter *Werk
 | durchgehende Nut | Säge `066`, zwei Durchgänge wie im Beispiel |
 | Falz an einer Kante | Fräsbahn entlang der Falzflanke (ggf. mehrere Bahnen) |
 | Tasche (auch mit Inseln, Eckenradius-Prüfung) | `CreateContourPocket` (Bohrungen im Taschenboden werden von oben gebohrt) |
-| runde Vertiefung von oben ohne passenden Bohrer | Kreistasche: `CreateCircleCenterRadius` + `CreateContourPocket` (Hinweis, wenn der Fräser nicht hineinpasst) |
+| runde Vertiefung von oben ohne passenden Bohrer | Kreistasche: `CreateCircleCenterRadius` + `CreateContourPocket` (Hinweis, wenn der Fräser nicht hineinpasst). Runde Taschen werden **immer im Uhrzeigersinn** ausgeräumt (`CreateContourParallelStrategy(true, 0 …)`) |
 | Fase oben / unten | `CreateChamfer` entlang der Kontur **am Stück**, auch über Rundungen (Kegelflächen), umlaufend als geschlossene Bahn; auch um Durchbrüche |
 | schräge Kante über die ganze Dicke (Gehrung) | `CreateSlantedRoughFinish` mit geneigtem Werkzeug (5-Achs) |
 | schräge Bohrung | `CreateSlantedDrill` (5-Achs) |

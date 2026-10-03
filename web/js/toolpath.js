@@ -198,11 +198,30 @@
         if (/^(cutout|round)-/.test(op.key || '') && moves.length) moves[moves.length - 1].slug = raw;
       } else if (op.kind === 'pocket') {
         const d = info(op.tool).d || 10;
-        const outer = sampleLoop(op.segs);
-        const isl = op.islands.map(sampleLoop);
-        const pm = pocketMoves(outer, isl, d / 2, cfg.pocketOverlap);
-        for (const row of pm.rows) go(row, d, op.label, op.tool, i);
-        for (const f of pm.finish) go(f, d, op.label, op.tool, i);
+        const q0 = op.segs[0];
+        if (op.segs.length === 1 && q0.type === 'arc' && q0.full && !op.islands.length) {
+          // Kreistasche: Kreise von innen nach außen, im Uhrzeigersinn (wie im Programm)
+          const rMax = q0.r - d / 2;
+          const step = Math.max(0.5, d * (1 - (cfg.pocketOverlap || 50) / 100));
+          const rings = [];
+          for (let rr = Math.min(step, rMax); rr < rMax - 1e-6; rr += step) rings.push(rr);
+          if (rMax > 0) rings.push(rMax);
+          if (rMax <= 0) go([[q0.c[0], q0.c[1]]], d, op.label, op.tool, i);
+          for (const rr of rings) {
+            const pts = [];
+            for (let k = 0; k <= 48; k++) {
+              const a = -(Math.PI * 2 * k) / 48; // negativ = im Uhrzeigersinn
+              pts.push([q0.c[0] + rr * Math.cos(a), q0.c[1] + rr * Math.sin(a)]);
+            }
+            go(pts, d, op.label, op.tool, i);
+          }
+        } else {
+          const outer = sampleLoop(op.segs);
+          const isl = op.islands.map(sampleLoop);
+          const pm = pocketMoves(outer, isl, d / 2, cfg.pocketOverlap);
+          for (const row of pm.rows) go(row, d, op.label, op.tool, i);
+          for (const f of pm.finish) go(f, d, op.label, op.tool, i);
+        }
       } else if (op.kind === 'slot') {
         const b = info(op.tool).blade || 4;
         const dir = [op.b[0] - op.a[0], op.b[1] - op.a[1]];

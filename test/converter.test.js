@@ -591,3 +591,200 @@ test('Handbuch-Funktionen: Kopf, Werkstück-Kontur, Haltestege, Spirale, Stufenb
   assert.ok(/^SetComment\("STEP2XCS: Tuer_Ae_e"\);$/.test(L(u.xcs)[1]), L(u.xcs)[1]);
 });
 const PanelLoopArea = (lp) => require('../web/js/panel.js').loopArea(lp);
+
+// ---------------------------------------------------------------- gekrümmte Flächen
+
+// Polylinie aus dem Programm als Punkte (Bögen fein abgetastet)
+function polyPoints(xcs, name) {
+  const lines = xcs.split(/\r?\n/);
+  const i = lines.findIndex((l) => l.startsWith('CreatePolyline("' + name + '"'));
+  assert.ok(i >= 0, name + ' fehlt');
+  const num = (l) => l.slice(l.indexOf('(') + 1, l.lastIndexOf(')')).split(',').map((x) => x.trim());
+  let cur = num(lines[i]).slice(1).map(Number);
+  const pts = [cur];
+  for (let k = i + 1; k < lines.length; k++) {
+    const l = lines[k];
+    if (l.startsWith('AddSegmentToPolyline')) { cur = num(l).map(Number); pts.push(cur); continue; }
+    if (!l.startsWith('AddArc2PointCenterToPolyline')) break;
+    const [x, y, cx, cy, cw] = num(l);
+    const to = [Number(x), Number(y)];
+    const c = [Number(cx), Number(cy)];
+    const r = Math.hypot(cur[0] - c[0], cur[1] - c[1]);
+    assert.ok(Math.abs(Math.hypot(to[0] - c[0], to[1] - c[1]) - r) < 0.01, 'Bogen: Radius am Ende passt nicht');
+    const a0 = Math.atan2(cur[1] - c[1], cur[0] - c[0]);
+    let sw = Math.atan2(to[1] - c[1], to[0] - c[0]) - a0;
+    if (cw === 'true') { while (sw >= -1e-9) sw -= 2 * Math.PI; } else { while (sw <= 1e-9) sw += 2 * Math.PI; }
+    for (let j = 1; j <= 32; j++) pts.push([c[0] + r * Math.cos(a0 + (sw * j) / 32), c[1] + r * Math.sin(a0 + (sw * j) / 32)]);
+    cur = to;
+  }
+  return pts;
+}
+
+test('Gekrümmte Flächen: Erkennung, Hinweis, aus ohne Änderung', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const [sr] = readParts(read('test/fixtures/schraege_rund.step'), 'schraege_rund.step');
+  const r = convertSolid(sr, {});
+  const p = r.panel;
+  assert.strictEqual(p.curvedSlants.length, 1);
+  const c = p.curvedSlants[0];
+  assert.ok(c.closed && c.up && !c.inner);
+  assert.ok(Math.abs(c.tilt - 20) < 0.01);
+  assert.strictEqual(c.segs.filter((q) => q.type === 'arc').length, 4);
+  assert.strictEqual(p.curvedSurfaces.length, 0);
+  // ausgeschaltet: wie bisher Sägeschnitte an den Geraden, Hinweis auf die Rundungen
+  assert.strictEqual(r.ops.filter((o) => o.kind === 'blade').length, 4);
+  assert.ok(!r.ops.some((o) => o.kind === 'slantpath' || o.kind === 'surface'));
+  assert.ok(r.warnings.some((w) => /Schräge an einer Rundung erkannt/.test(w)));
+
+  const [mu] = readParts(read('test/fixtures/mulde.step'), 'mulde.step');
+  const m = convertSolid(mu, {});
+  assert.deepStrictEqual(m.panel.curvedSurfaces.map((g) => g.kinds.join('+')).sort(), ['Kugel', 'Zylinder']);
+  assert.strictEqual(m.panel.curvedSlants.length, 0);
+  assert.ok(m.warnings.some((w) => /Gewölbte Fläche erkannt/.test(w)));
+  assert.doesNotMatch(m.xcs, /CreateToolpath|CreateSlantedRoughFinish/);
+  // gewölbte Flächen oben: Teil liegt richtig herum (Mulde oben)
+  assert.ok(m.panel.curvedSurfaces.every((g) => g.depth > 9 && g.depth < 12.1));
+});
+
+test('Gekrümmte Flächen: Schräge an Rundungen 5-achsig, Bahn um r / cos(Neigung) versetzt', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const T = require('../web/js/tools.js');
+  const toolInfo = T.infoMap(T.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
+  const [sr] = readParts(read('test/fixtures/schraege_rund.step'), 'schraege_rund.step');
+  // Teil-Schalter gewinnt gegen die Einstellung
+  assert.ok(!convertSolid(sr, { curvedSlantOn: true, toolInfo }, { overrides: { curved: { slant: false } } }).ops.some((o) => o.kind === 'slantpath'));
+  const r = convertSolid(sr, { toolInfo }, { overrides: { curved: { slant: true } } });
+  assert.deepStrictEqual(r.ops.map((o) => o.kind), ['slantpath', 'contour']); // keine Sägeschnitte mehr
+  assert.deepStrictEqual(r.warnings, []);
+  assert.match(r.xcs, /CreateSlantedRoughFinish\("SlantedMilling_1", 0, 20, 2, 21, "", TypeOfProcess\.GeneralRouting, "E016", "-1", -1, -1, -1, 0\);/);
+  // jeder Punkt der Bahn liegt im Abstand r / cos 20° neben der Oberkante (abgerundetes Rechteck), geschlossen
+  const p = r.panel;
+  const off = (toolInfo.E016.d / 2) / Math.cos(20 * Math.PI / 180);
+  const x0 = Math.min(...p.curvedSlants[0].segs.map((q) => q.a[0])); // Oberkante links
+  const distOut = (q) => {
+    // Abstand außerhalb des abgerundeten Rechtecks oben (Ecken um 60/60 … 540/340, Radius 60 − x0)
+    const cx = Math.min(Math.max(q[0], 60), 540);
+    const cy = Math.min(Math.max(q[1], 60), 340);
+    return Math.hypot(q[0] - cx, q[1] - cy) - (60 - x0);
+  };
+  const pts = polyPoints(r.xcs, 'SlantPath_1');
+  assert.ok(Math.hypot(pts[0][0] - pts[pts.length - 1][0], pts[0][1] - pts[pts.length - 1][1]) < 1e-6);
+  for (const q of pts) assert.ok(Math.abs(distOut(q) - off) < 0.01, 'Abstand ' + distOut(q) + ' statt ' + off + ' bei ' + q);
+  // Animation: Achse je Punkt, um 20° geneigt, quer zur Bahn zum Material hin; Spitze auf Tiefe
+  const mv = require('../web/js/toolpath.js').build(r, toolInfo);
+  const cut = mv.find((m) => m.type === 'cut' && m.ax3s);
+  assert.ok(cut && cut.ax3s.length === cut.pts3.length);
+  assert.ok(!mv.some((m) => m.type === 'rapid' && m.ax3s));
+  for (const a of cut.ax3s) assert.ok(Math.abs(Math.hypot(...a) - 1) < 1e-9 && Math.abs(a[2] - Math.cos(20 * Math.PI / 180)) < 1e-9);
+  assert.ok(cut.pts3.every((q) => Math.abs(q[2] - (p.T - 21)) < 1e-6));
+});
+
+test('Gekrümmte Flächen: schräger Ausschnitt und schräges Rundloch (innen)', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const T = require('../web/js/tools.js');
+  const toolInfo = T.infoMap(T.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
+  const [s] = readParts(read('test/fixtures/schraege_innen.step'), 'schraege_innen.step');
+  const r = convertSolid(s, { toolInfo }, { overrides: { curved: { slant: true } } });
+  const p = r.panel;
+  assert.strictEqual(p.curvedSlants.length, 2);
+  assert.ok(p.curvedSlants.every((c) => c.closed && c.inner && c.up));
+  assert.deepStrictEqual(r.warnings, []);
+  assert.ok(!r.ops.some((o) => o.kind === 'slant'), 'gerade Schrägen gehören zur Bahn an der Rundung');
+  const off = (toolInfo.E016.d / 2) / Math.cos(15 * Math.PI / 180);
+  // Ausschnitt: Bahn liegt innen (Abfall = Öffnung), Abstand off zur Oberkante
+  const hole = p.curvedSlants.find((c) => c.segs.length > 1);
+  const xs = hole.segs.map((q) => q.a[0]);
+  const ys = hole.segs.map((q) => q.a[1]);
+  const box = { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
+  const rc = 30 + (box.x1 - box.x0 - 200) / 2; // Eckradius oben (Ausschnitt oben weiter)
+  const distIn = (q) => {
+    const cx = Math.min(Math.max(q[0], box.x0 + rc), box.x1 - rc);
+    const cy = Math.min(Math.max(q[1], box.y0 + rc), box.y1 - rc);
+    return rc - Math.hypot(q[0] - cx, q[1] - cy);
+  };
+  for (const q of polyPoints(r.xcs, 'SlantPath_1')) assert.ok(Math.abs(distIn(q) - off) < 0.02, 'Abstand ' + distIn(q) + ' bei ' + q);
+  // Rundloch: Kreis, Radius oben − off, zwei Halbkreise
+  const cone = p.curvedSlants.find((c) => c.segs.length === 1).segs[0];
+  const off20 = (toolInfo.E016.d / 2) / Math.cos(20 * Math.PI / 180);
+  for (const q of polyPoints(r.xcs, 'SlantPath_2')) assert.ok(Math.abs(Math.hypot(q[0] - cone.c[0], q[1] - cone.c[1]) - (cone.r - off20)) < 0.01);
+  // ohne Schalter: Durchbrüche wie bisher, Hinweis
+  const o = convertSolid(s, { toolInfo });
+  assert.ok(o.warnings.some((w) => /Schräge an einer Rundung erkannt \(2×\)/.test(w)));
+});
+
+test('Gekrümmte Flächen: Kugelfräser auf Fläche, Kante und Ecke (Drop-Cutter)', () => {
+  const S = require('../web/js/surface.js');
+  const mesh = (pos, index) => S.prepare({ pos: new Float32Array(pos), index: index }, 6);
+  const flat = mesh([0, 0, 5, 100, 0, 5, 100, 100, 5, 0, 100, 5], [0, 1, 2, 0, 2, 3]);
+  assert.ok(Math.abs(S.dropCenter(flat, 50, 50) - 11) < 1e-9);               // Fläche
+  assert.ok(Math.abs(S.dropCenter(flat, 103, 50) - (5 + Math.sqrt(27))) < 1e-9); // über die Kante hinaus
+  assert.strictEqual(S.dropCenter(flat, 107, 50), -Infinity);
+  const slope = mesh([0, 0, 0, 100, 0, 50, 100, 100, 50, 0, 100, 0], [0, 1, 2, 0, 2, 3]);
+  assert.ok(Math.abs(S.dropCenter(slope, 50, 50) - (25 + 6 * Math.sqrt(1.25))) < 1e-9);
+  const ridge = mesh([0, 0, 0, 50, 0, 10, 50, 100, 10, 0, 100, 0, 100, 0, 0, 100, 100, 0], [0, 1, 2, 0, 2, 3, 1, 4, 5, 1, 5, 2]);
+  assert.ok(Math.abs(S.dropCenter(ridge, 51, 50) - (10 + Math.sqrt(35))) < 1e-9); // Grat (Kante)
+  const edge = mesh([0, 50, 0, 100, 50, 50, 100, 50.0001, 50], [0, 1, 2]);
+  assert.ok(Math.abs(S.dropCenter(edge, 50, 50) - (25 + 6 * Math.sqrt(1.25))) < 1e-3); // schräge Kante
+  // Punkte zusammenfassen: Gerade bleibt zwei Punkte
+  assert.strictEqual(S.simplify([[0, 0, 0], [1, 0, 1], [2, 0, 2], [3, 0, 3]], 0.01).length, 2);
+});
+
+test('Gekrümmte Flächen: Zeilenfräsen der Mulde mit dem Kugelfräser (OpenCascade-Netz)', async () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const OM = require('../web/js/occtmesh.js');
+  const T = require('../web/js/tools.js');
+  const toolInfo = T.infoMap(T.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
+  const text = read('test/fixtures/mulde.step');
+  const occt = await OM.loadNode();
+  const [mu] = readParts(text, 'mulde.step');
+  // ohne Netz: Hinweis, keine Bahn
+  const nm = convertSolid(mu, { toolInfo }, { overrides: { curved: { surface: true } } });
+  assert.ok(nm.warnings.some((w) => /3D-Netz/.test(w)));
+  assert.doesNotMatch(nm.xcs, /CreateToolpath/);
+  const meshes = OM.read(occt, text);
+  const r = convertSolid(mu, { toolInfo }, { overrides: { curved: { surface: true } }, meshes: meshes });
+  const p = r.panel;
+  assert.deepStrictEqual(r.ops.filter((o) => o.kind === 'surface').map((o) => o.tool), ['E055', 'E055']);
+  assert.ok(!r.warnings.some((w) => /Gewölbte|3D-Netz|keine Bahn/.test(w)), r.warnings.join(' | '));
+  const R = toolInfo.E055.d / 2;
+  const lines = r.xcs.split(/\r?\n/);
+  // je Fläche: Bereich, Fräsung ohne Strategie, dann die Bahn ab Sicherheitshöhe
+  for (const n of [1, 2]) {
+    const i = lines.findIndex((l) => l.startsWith('CreateRoughFinish("Surface_' + n + '"'));
+    assert.ok(i > 0);
+    assert.match(lines[i], /"E055", "-1", 0, "-1", "-1", "-1"\);$/);
+    assert.match(lines[i + 1], new RegExp('^CreateToolpath\\("Surface_Path_' + n + '", [-\\d.]+, [-\\d.]+, 5\\);$'));
+    assert.ok(lines.slice(i - 8, i).some((l) => l.startsWith('CreatePolyline("Surface_Area_' + n + '"')));
+  }
+  // jeder Bahnpunkt: Kugel nie im Material (Kugelmulde und Hohlkehle analytisch), nie unter dem tiefsten Punkt.
+  // Mit Vorfräsen (Zustellung 4) liegt sie auf der Fläche oder darüber, nur Schlichten (0) genau auf der Fläche
+  // (Abweichung ≤ Sehnenfehler des Netzes).
+  const check = (xcs, exact) => {
+    const pts = xcs.split(/\r?\n/).filter((l) => l.startsWith('AddSegmentToToolpath')).map((l) => l.slice(21, -2).split(',').map(Number));
+    assert.ok(pts.length > 500);
+    let nSphere = 0;
+    let nGroove = 0;
+    for (const [x, y, zr] of pts) {
+      const z = zr + p.T;
+      assert.ok(zr <= 5 + 1e-9 && z >= p.T - 12 - 0.05, 'Punkt ' + [x, y, zr]);
+      if (zr === 5) continue;
+      const cz = z + R; // Kugelmittelpunkt
+      if (Math.hypot(x - 380, y - 200) < 50) {
+        nSphere++;
+        const ds = Math.hypot(x - 380, y - 200, cz - (p.T + 150 - 12)) - (150 - R); // > 0: im Material
+        assert.ok(ds < 0.002 && (!exact || ds > -0.1), 'Kugelmulde ' + ds);
+      }
+      if (Math.abs(x - 120) < 20 - R - 1 && y > 20) { // Zeilen längs Y: nach dem Zusammenfassen nur die Enden
+        nGroove++;
+        const dg = Math.hypot(x - 120, cz - (p.T + 10)) - (20 - R); // Hohlkehle R20, Achse in Y bei X 120, Z = T + 10
+        assert.ok(dg < 0.002 && (!exact || dg > -0.1), 'Hohlkehle ' + dg);
+      }
+    }
+    assert.ok(nSphere > 100 && nGroove > 10, nSphere + ' / ' + nGroove);
+  };
+  check(r.xcs, false);
+  const mv = require('../web/js/toolpath.js').build(r, toolInfo);
+  const surf = mv.filter((m) => m.type === 'cut' && r.ops[m.op].kind === 'surface');
+  assert.ok(surf.length > 50 && surf.every((m) => m.ball && m.pts3.length === m.pts.length));
+  check(convertSolid(mu, { toolInfo, surfLayer: 0 }, { overrides: { curved: { surface: true } }, meshes: meshes }).xcs, true);
+});

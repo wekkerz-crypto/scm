@@ -70,7 +70,7 @@
 
   function infoMap(tools) {
     const m = {};
-    for (const t of tools || []) m[t.name] = { d: t.d, len: t.len, blade: t.blade, kind: t.kind };
+    for (const t of tools || []) m[t.name] = { d: t.d, len: t.len, blade: t.blade, kind: t.kind, body: t.body };
     return m;
   }
 

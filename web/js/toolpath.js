@@ -195,6 +195,8 @@
       if (meta.axisScale) extra.axisScale = meta.axisScale;
       if (meta.blade) extra.blade = meta.blade;
       extra.ax3 = ax3;
+      if (meta.ax3s) extra.ax3s = meta.ax3s; // Achse je Punkt (5-Achs entlang einer Rundung)
+      if (meta.ball) extra.ball = true;
       if (meta.disc) extra.disc = meta.disc;
       if (meta.len3) extra.len3 = meta.len3;
       const start3 = pts3[0];
@@ -203,7 +205,7 @@
         const up0 = plus(pos3, lastAx, lastBack);
         const up1 = plus(start3, ax3, back);
         moves.push(Object.assign({ type: 'rapid', pts: [pos, pts[0]], d: d, label: label, tool: tool, op: opIndex }, extra,
-          { pts3: [pos3, up0, up1, start3] }));
+          { pts3: [pos3, up0, up1, start3], ax3s: undefined }));
       }
       if (pts.length === 1) {
         // Bohren: von der Oberfläche auf Tiefe (in 3D sichtbar)
@@ -305,6 +307,39 @@
         return;
       }
       if (op.kind === 'sdrill') meta = { z: op.depth * Math.cos(op.angleB * Math.PI / 180), kind: 'drill' };
+      if (op.kind === 'slantpath') {
+        // geneigter Fräser entlang der Rundung: Achse quer zur Bahn, je Punkt neu (Werkzeugmitte = versetzte Bahn)
+        const a = op.angle * Math.PI / 180;
+        const pts = dedupe(samplePoly(op.start, op.segs));
+        const lean = op.approach === 2;
+        const axes = pts.map((q, k) => {
+          const u = pts[Math.min(k + 1, pts.length - 1)];
+          const v = pts[Math.max(k - 1, 0)];
+          const dx = u[0] - v[0];
+          const dy = u[1] - v[1];
+          const l = Math.hypot(dx, dy) || 1;
+          const sc = [dy / l, -dx / l]; // Abfallseite (rechts)
+          return lean ? [-sc[0] * Math.sin(a), -sc[1] * Math.sin(a), Math.cos(a)] : [sc[0] * Math.sin(a), sc[1] * Math.sin(a), Math.cos(a)];
+        });
+        const dd = (op.depth || p.T) / Math.cos(a);
+        meta.ax3 = axes[0];
+        meta.ax3s = axes;
+        meta.back = dd + 10;
+        go(pts, info(op.tool).d || 10, op.label, op.tool, i, pts.map((q, k) => [q[0] - axes[k][0] * dd, q[1] - axes[k][1] * dd, p.T - axes[k][2] * dd]));
+        return;
+      }
+      if (op.kind === 'surface') {
+        // Kugelfräser: Zeilen mit Spitze auf der Fläche, dazwischen abheben
+        const d = info(op.tool).d || 12;
+        meta.ball = true;
+        for (const ps of op.passes) {
+          const zmin = Math.min(...ps.map((q) => q[2]));
+          meta.z = p.T - zmin;
+          meta.back = p.T + (op.safe || 5) - zmin;
+          go(ps.map((q) => [q[0], q[1]]), d, op.label, op.tool, i, ps.map((q) => [q[0], q[1], q[2]]));
+        }
+        return;
+      }
       if (op.kind === 'contour') {
         const d = info(op.tool).d || 10;
         const raw = samplePoly(op.start, op.segs);

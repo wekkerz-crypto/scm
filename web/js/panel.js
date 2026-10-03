@@ -116,7 +116,6 @@
     const warnings = [];
     for (const f of solid.faces) {
       for (const b of f.bounds) for (const e of b.edges) e.samples = sampleEdge(e);
-      if (f.surface.type === 'other') warnings.push('Fläche vom Typ ' + f.surface.name + ' wird nicht ausgewertet.');
       // Falls kein FACE_OUTER_BOUND markiert ist: größten Loop als außen annehmen
       if (f.bounds.length && !f.bounds.some((b) => b.outer)) {
         const size = (b) => {
@@ -208,7 +207,7 @@
       } else if (s.type === 'cylinder') {
         surf = { type: 'cylinder', a: unit(D(tf, s.ax.z)), o: P(tf, s.ax.o), r: s.r, concave: !f.same };
       } else if (s.type === 'cone') {
-        surf = { type: 'cone', a: unit(D(tf, s.ax.z)), o: P(tf, s.ax.o) };
+        surf = { type: 'cone', a: unit(D(tf, s.ax.z)), o: P(tf, s.ax.o), concave: !f.same };
       } else {
         surf = { type: s.type, name: s.name };
       }
@@ -296,6 +295,7 @@
   function chainLoops(segs) {
     const rest = segs.slice();
     const loops = [];
+    const chains = [];
     let open = 0;
     while (rest.length) {
       const loop = [rest.shift()];
@@ -307,8 +307,18 @@
         loop.push(rest.splice(i, 1)[0]);
       }
       if (near2(loop[loop.length - 1].b, loop[0].a)) loops.push(mergeCollinear(loop));
+      else chains.push(loop);
     }
-    return { loops: loops, open: open };
+    // offene Ketten auch rückwärts verlängern (Anfang suchen)
+    for (const c of chains) {
+      if (!c.length) continue;
+      for (;;) {
+        const i = chains.findIndex((d) => d !== c && d.length && near2(d[d.length - 1].b, c[0].a));
+        if (i < 0) break;
+        c.unshift(...chains[i].splice(0));
+      }
+    }
+    return { loops: loops, open: open, chains: chains.filter((c) => c.length) };
   }
 
   function mergeCollinear(loop) {
@@ -320,7 +330,7 @@
         const d2 = [s.b[0] - s.a[0], s.b[1] - s.a[1]];
         const crs = d1[0] * d2[1] - d1[1] * d2[0];
         if (Math.abs(crs) < 1e-6 * Math.hypot(...d1) * Math.hypot(...d2) && d1[0] * d2[0] + d1[1] * d2[1] > 0) {
-          out[out.length - 1] = { type: 'line', a: prev.a, b: s.b, inclined: !!(prev.inclined && s.inclined) };
+          out[out.length - 1] = Object.assign({}, prev, { type: 'line', a: prev.a, b: s.b, inclined: !!(prev.inclined && s.inclined) });
           continue;
         }
       }
@@ -336,7 +346,7 @@
         const crs = d1[0] * d2[1] - d1[1] * d2[0];
         if (Math.abs(crs) < 1e-6 * Math.hypot(...d1) * Math.hypot(...d2) && d1[0] * d2[0] + d1[1] * d2[1] > 0) {
           out.pop();
-          out[0] = { type: 'line', a: l.a, b: f.b, inclined: !!(l.inclined && f.inclined) };
+          out[0] = Object.assign({}, l, { type: 'line', a: l.a, b: f.b, inclined: !!(l.inclined && f.inclined) });
         }
       }
     }
@@ -520,7 +530,46 @@
       if (!hi || t > hi.t) hi = { t: t, p: p };
     }
     if (hi.t - lo.t < TOL) return null;
-    return { type: 'line', a: [lo.p[0], lo.p[1]], b: [hi.p[0], hi.p[1]], inclined: Math.abs(n[2]) > ATOL };
+    return { type: 'line', a: [lo.p[0], lo.p[1]], b: [hi.p[0], hi.p[1]], inclined: Math.abs(n[2]) > ATOL,
+      faceId: f.id, tilt: (Math.asin(Math.min(1, Math.abs(n[2]))) * 180) / Math.PI, up: n[2] > 0 };
+  }
+
+  // Kegel mit senkrechter Achse über die ganze Dicke (Schräge an einer Rundung): Schnitt auf Höhe zs als Kreisbogen
+  function coneSection(f, zs) {
+    const a = f.surf.a;
+    if (Math.abs(Math.abs(a[2]) - 1) > ATOL) return null;
+    const c = [f.surf.o[0], f.surf.o[1]];
+    const zs0 = f.pts.map((q) => q[2]);
+    const zmin = minOf(zs0);
+    const zmax = maxOf(zs0);
+    if (zmax - zmin < TOL) return null;
+    const rAt = (z) => {
+      const near = f.pts.filter((q) => Math.abs(q[2] - z) < 1e-3);
+      return near.reduce((s2, q) => s2 + Math.hypot(q[0] - c[0], q[1] - c[1]), 0) / Math.max(1, near.length);
+    };
+    const rLow = rAt(zmin);
+    const rHigh = rAt(zmax);
+    const r = rLow + ((rHigh - rLow) * (zs - zmin)) / (zmax - zmin);
+    const angs = f.pts.map((q) => Math.atan2(q[1] - c[1], q[0] - c[0])).sort((x, y) => x - y);
+    let maxGap = TWO_PI - (angs[angs.length - 1] - angs[0]);
+    let gapEnd = angs[0];
+    for (let i = 1; i < angs.length; i++) {
+      const g = angs[i] - angs[i - 1];
+      if (g > maxGap) { maxGap = g; gapEnd = angs[i]; }
+    }
+    const full = f.bounds.some((b) => b.edges.some((e) => e.curve.type === 'circle' && len(sub(e.start, e.end)) < 1e-6));
+    const s0 = gapEnd;
+    const s1 = gapEnd + (TWO_PI - maxGap);
+    let seg = full
+      ? { type: 'arc', a: [c[0] + r, c[1]], b: [c[0] + r, c[1]], c: c, r: r, ccw: true, full: true }
+      : { type: 'arc', a: [c[0] + r * Math.cos(s0), c[1] + r * Math.sin(s0)], b: [c[0] + r * Math.cos(s1), c[1] + r * Math.sin(s1)], c: c, r: r, ccw: true, full: false };
+    if (f.surf.concave) seg = reverseSeg(seg);
+    seg.inclined = true;
+    seg.cone = true;
+    seg.faceId = f.id;
+    seg.tilt = (Math.atan(Math.abs(rHigh - rLow) / (zmax - zmin)) * 180) / Math.PI;
+    seg.up = f.surf.concave ? rHigh > rLow : rHigh < rLow;
+    return seg;
   }
 
   // Obere und untere Kante einer schrägen Fläche, Neigung und Bahnrichtung (Abfall rechts).
@@ -802,7 +851,13 @@
     const wallAt = (w, zs) => (w.f.surf.type === 'plane' ? inclinedSection(w.f, zs) || w.seg : w.seg);
     const inclined = faces.filter((f) => f.surf.type === 'plane' && Math.abs(f.surf.n[2]) > ATOL &&
       Math.abs(f.surf.n[2]) < 1 - ATOL);
-    const sectionsAt = (zs) => inclined.map((f) => inclinedSection(f, zs)).filter(Boolean);
+    // Kegel über die ganze Dicke (Schräge an Rundungen) gehören wie schräge Ebenen zur Kontur
+    const fullCones = faces.filter((f) => {
+      if (f.surf.type !== 'cone' || Math.abs(Math.abs(f.surf.a[2]) - 1) > ATOL) return false;
+      const zs = f.pts.map((q) => q[2]);
+      return minOf(zs) < TOL && maxOf(zs) > T - TOL;
+    });
+    const sectionsAt = (zs) => inclined.map((f) => inclinedSection(f, zs)).concat(fullCones.map((f) => coneSection(f, zs))).filter(Boolean);
     const delta = Math.min(0.001, T / 100);
     let outer = null;
     for (const zs of [delta, T / 2, T - delta]) {
@@ -836,6 +891,43 @@
       const zs = f.pts.map((q) => q[2]);
       return minOf(zs) < TOL && maxOf(zs) > T - TOL;
     });
+    // Schräge über die ganze Dicke entlang einer Rundung (Kegel, ggf. mit anschließenden schrägen Ebenen):
+    // Oberkante als Bahn für 5-Achs-Schrägfräsen (Läufe gleicher Neigung, mindestens ein Kegel)
+    res.curvedSlants = [];
+    if (fullCones.length) {
+      const zt = T - delta;
+      const fullIds = new Set(fullInclined.map((f) => f.id).concat(fullCones.map((f) => f.id)));
+      const parts = walls.filter((w) => w.zmin <= zt + TOL && w.zmax >= zt - TOL).map((w) => wallAt(w, zt))
+        .concat(sectionsAt(zt).filter((q) => fullIds.has(q.faceId)));
+      const chained = chainLoops(parts);
+      const sameRun = (q, r) => q && r && q.inclined && r.inclined && fullIds.has(q.faceId) && fullIds.has(r.faceId) &&
+        Math.abs(q.tilt - r.tilt) < 0.2 && q.up === r.up;
+      const runsOf = (lp, closed) => {
+        const n = lp.length;
+        const ok = (q) => q.inclined && fullIds.has(q.faceId) && q.tilt > 0.05;
+        if (closed && lp.every((q) => ok(q) && sameRun(q, lp[0]))) return [{ segs: lp, closed: true }];
+        let k0 = 0;
+        if (closed) { k0 = lp.findIndex((q, i) => !ok(q) || !sameRun(q, lp[(i - 1 + n) % n])); if (k0 < 0) k0 = 0; }
+        const out = [];
+        let run = null;
+        for (let j = 0; j < n; j++) {
+          const q = lp[(k0 + j) % n];
+          if (ok(q) && run && sameRun(run.segs[run.segs.length - 1], q)) { run.segs.push(q); continue; }
+          if (run) out.push(run);
+          run = ok(q) ? { segs: [q], closed: false } : null;
+        }
+        if (run) out.push(run);
+        return out;
+      };
+      const loops = chained.loops.map((lp) => ({ lp: lp, closed: true })).concat(chained.chains.map((lp) => ({ lp: lp, closed: false })));
+      for (const { lp, closed } of loops) {
+        for (const run of runsOf(lp, closed)) {
+          if (!run.segs.some((q) => q.cone)) continue; // nur gerade Schrägen: wie bisher (Säge / Schrägfräsen)
+          res.curvedSlants.push({ segs: run.segs, closed: run.closed, tilt: run.segs[0].tilt, up: run.segs[0].up,
+            inner: closed && loopArea(lp) < 0, faceIds: Array.from(new Set(run.segs.map((q) => q.faceId))) });
+        }
+      }
+    }
     // Durchbrüche: Innenkonturen auf mehreren Höhen (auch mit Fase oder Falz am Rand). Ein Durchbruch ist es nur,
     // wenn über und unter der Öffnung keine waagerechte Fläche liegt (sonst Tasche von oben oder unten).
     const flats = faces.filter((f) => f.surf.type === 'plane' && Math.abs(Math.abs(f.surf.n[2]) - 1) < ATOL).map((f) => {
@@ -887,7 +979,7 @@
         const n = f.surf.n;
         const p0 = f.surf.p;
         const sawable = faces.every((g) => g.pts.every((q) => (q[0] - p0[0]) * n[0] + (q[1] - p0[1]) * n[1] + (q[2] - p0[2]) * n[2] <= 0.05));
-        res.slantWalls.push({ top: e.top, bottom: e.bottom, angle: e.angle, leanOut: e.offset > 0, path: e.path, sawable: sawable });
+        res.slantWalls.push({ top: e.top, bottom: e.bottom, angle: e.angle, leanOut: e.offset > 0, path: e.path, sawable: sawable, faceId: f.id });
       } else if (e.zmax > T - TOL) {
         chamferFaces.push({ kind: 'line', side: 'top', line: e.bottomLine, width: Math.abs(e.offset), height: T - e.zmin, path: e.path });
       } else if (e.zmin < TOL) {
@@ -967,6 +1059,68 @@
       else warnings.push('Fase an einer Rundung (R' + fmt(cf.r) + ') außerhalb der Kontur wird nicht automatisch erzeugt.');
     }
 
+    // --- Gewölbte Flächen (Kugel, Zylinder/Kegel mit liegender Achse, Freiform): mit dem Kugelfräser von oben
+    res.curvedSurfaces = [];
+    {
+      const cands = [];
+      for (const f of faces) {
+        if (holeFaceIds.has(f.id)) continue;
+        const t = f.surf.type;
+        const vertical = (t === 'cylinder' || t === 'cone') && Math.abs(Math.abs(f.surf.a[2]) - 1) < ATOL;
+        if (t === 'plane' || vertical) continue;
+        if (!f.pts.length) continue;
+        const kind = t === 'cylinder' ? 'Zylinder' : t === 'cone' ? 'Kegel' : /SPHER/.test(f.surf.name || '') ? 'Kugel' : /TOROID/.test(f.surf.name || '') ? 'Torus' : 'Freiform';
+        const xs = f.pts.map((q) => q[0]);
+        const ys = f.pts.map((q) => q[1]);
+        const zs = f.pts.map((q) => q[2]);
+        const c = { ids: [f.id], kinds: [kind], x0: minOf(xs), x1: maxOf(xs), y0: minOf(ys), y1: maxOf(ys), zmin: minOf(zs), zmax: maxOf(zs) };
+        // senkrechte Freiform-Wand (Kontur aus Splines): jeder Randpunkt hat einen Zwilling darüber oder darunter → Kontur, keine Fläche
+        const span = c.zmax - c.zmin;
+        if (t !== 'cylinder' && t !== 'cone' && span > TOL &&
+          f.pts.every((q) => f.pts.some((r) => Math.abs(r[2] - q[2]) > span * 0.45 && Math.hypot(r[0] - q[0], r[1] - q[1]) < 0.05))) {
+          if (t === 'other') warnings.push('Fläche vom Typ ' + f.surf.name + ' wird nicht ausgewertet.');
+          continue;
+        }
+        if (c.zmax < T - TOL) {
+          if (c.zmin < TOL) res.bottom.push({ kind: 'Fläche', text: 'Gewölbte Fläche (' + kind + ') von unten' });
+          else warnings.push('Gewölbte Fläche (' + kind + ') ist von oben nicht erreichbar – nicht bearbeitet.');
+          continue;
+        }
+        cands.push(c);
+      }
+      // Flächen mit gemeinsamer Kante (z. B. Rundung mit Ecken, Mulde mit Auslauf) zu einer Bearbeitung zusammenfassen;
+      // der Bereich bleibt die Liste der einzelnen Rechtecke, damit dazwischen nichts anderes mitgefräst wird
+      const key = (q) => q.map((v) => Math.round(v * 20)).join(',');
+      const edgeKeys = (f) => {
+        const out = new Set();
+        for (const bd of f.bounds) for (const ed of bd.edges) {
+          const m = ed.samples[Math.floor(ed.samples.length / 2)] || ed.start;
+          out.add([key(ed.start), key(ed.end)].sort().join('|') + '|' + key(m));
+        }
+        return out;
+      };
+      const groups = cands.map((c) => ({ ids: c.ids, kinds: c.kinds, rects: [{ x0: c.x0, y0: c.y0, x1: c.x1, y1: c.y1 }],
+        zmin: c.zmin, keys: edgeKeys(faces.find((f) => f.id === c.ids[0])) }));
+      for (let changed = true; changed;) {
+        changed = false;
+        for (let i = 0; i < groups.length && !changed; i++) for (let j = i + 1; j < groups.length && !changed; j++) {
+          const a = groups[i];
+          const b = groups[j];
+          if (!Array.from(b.keys).some((k) => a.keys.has(k))) continue;
+          groups.splice(j, 1);
+          a.ids.push(...b.ids);
+          for (const k of b.kinds) if (!a.kinds.includes(k)) a.kinds.push(k);
+          a.rects.push(...b.rects);
+          for (const k of b.keys) a.keys.add(k);
+          a.zmin = Math.min(a.zmin, b.zmin);
+          changed = true;
+        }
+      }
+      res.curvedSurfaces = groups.map((g) => ({ ids: g.ids, kinds: g.kinds, rects: g.rects,
+        x0: minOf(g.rects.map((r) => r.x0)), y0: minOf(g.rects.map((r) => r.y0)), x1: maxOf(g.rects.map((r) => r.x1)),
+        y1: maxOf(g.rects.map((r) => r.y1)), depth: T - g.zmin }));
+    }
+
     // --- Böden (Nut, Falz, Tasche)
     const floors = [];
     for (const f of faces) {
@@ -1039,7 +1193,8 @@
   function topScore(res) {
     return res.drills.filter((d) => d.face === 'Top' && !d.through).length + res.grooves.length * 3 +
       res.rebates.length * 3 + res.pockets.length * 3 + res.slantDrills.length +
-      res.chamfers.filter((c) => c.side === 'top').length * 2 + (res.chamferPaths || []).filter((c) => c.side === 'top').length * 2;
+      res.chamfers.filter((c) => c.side === 'top').length * 2 + (res.chamferPaths || []).filter((c) => c.side === 'top').length * 2 +
+      (res.curvedSurfaces || []).length * 3 + (res.curvedSlants || []).filter((c) => c.up).length * 2;
   }
 
   /**

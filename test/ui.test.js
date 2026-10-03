@@ -175,3 +175,39 @@ test('Web-Tool: 3D-Ansicht mit Animation', { skip: !chromium && 'Playwright nich
     await browser.close();
   }
 });
+
+test('Web-Tool: Schalter für gekrümmte Flächen nur bei Bedarf', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    const pick = async (files) => {
+      const [chooser] = await Promise.all([p.waitForEvent('filechooser', { timeout: 3000 }), p.click('#pick')]);
+      await chooser.setFiles(files);
+      await p.waitForSelector('#xcs');
+    };
+    // ebenes Teil: kein Schalter
+    await pick([fixture('testplatte.step')]);
+    assert.strictEqual(await p.$('#curvedbox'), null);
+    // Schräge an Rundungen: nur dieser Schalter, eingeschaltet → 5-Achs-Bahn statt Sägeschnitte
+    await pick([fixture('schraege_rund.step')]);
+    assert.ok(await p.$('#curvedbox'));
+    assert.strictEqual(await p.$$eval('[data-curved="surface"]', (x) => x.length), 0);
+    assert.match(await p.textContent('#xcs'), /CreateBladeCut/);
+    await p.click('[data-curved="slant"][data-on="1"]');
+    await p.waitForFunction(() => /CreateSlantedRoughFinish\("SlantedMilling_1"/.test(document.getElementById('xcs').textContent));
+    assert.doesNotMatch(await p.textContent('#xcs'), /CreateBladeCut/);
+    // Mulde: Zeilenfräsen lädt das 3D-Netz und schreibt die Bahn
+    await pick([fixture('mulde.step')]);
+    assert.strictEqual(await p.$$eval('[data-curved="slant"]', (x) => x.length), 0);
+    await p.click('[data-curved="surface"][data-on="1"]');
+    await p.waitForFunction(() => /CreateToolpath\("Surface_Path_2"/.test(document.getElementById('xcs').textContent), null, { timeout: 60000 });
+    assert.match(await p.textContent('#opstable'), /Gewölbte Fläche \(Kugel\) zeilenfräsen/);
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});

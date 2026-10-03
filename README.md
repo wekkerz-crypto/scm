@@ -28,6 +28,9 @@ Bauen: `npm run build:exe` (Go ≥ 1.21) → `dist/STEP2XCS.exe`; Quelltext in `
 node cli/step2xcs.js teil.step weitere.step -o ausgabe/ --bat
 ```
 
+Weitere Schalter: `--step mm` (Zustellung), `--no-order-rule`, `--schraege-5achs` (Schrägen an Rundungen 5-achsig fräsen),
+`--kugelfraesen` (gewölbte Flächen zeilenfräsen, lädt OpenCascade).
+
 ### Umwandeln in .pgmx mit `konvertieren.bat`
 
 Jede ZIP aus dem Web-Tool (und die CLI mit `--bat`) enthält eine `konvertieren.bat`.
@@ -72,12 +75,15 @@ für die `.pgmx`. Beispiel: `Tür Öffnung groß` → `Tuer_Oeffnung_gross.xcs` 
 | schräge Kante, die nicht durchläuft | `CreateSlantedRoughFinish` mit geneigtem Werkzeug (5-Achs) |
 | Tasche oder Bohrung senkrecht auf einer schrägen Fläche (z. B. auf der Schnittfläche der Säge) | eigene Ebene `CreateWorkplane(name, X0, Y0, Z0, Drehung Z, Neigung X)` + `SelectWorkplane`, darauf `CreateContourPocket` bzw. `CreateDrill`; kommt in der Reihenfolge nach den Sägeschnitten |
 | schräge Bohrung | `CreateSlantedDrill` (5-Achs) |
+| Schräge über die ganze Dicke **an Rundungen** (Kegelflächen, z. B. umlaufend geschrägte Platte mit Eckenradien, schräger Ausschnitt, schräges Rundloch) | Schalter je Teil *Schräge an Rundungen: Aus / 5-Achs fräsen* (erscheint nur, wenn so etwas erkannt wird). An: ganze Kontur am Stück mit `CreateSlantedRoughFinish` (Werkzeug quer zur Bahn geneigt, `E016`, Tiefe D+2), Bahn um r / cos(Neigung) zur Abfallseite versetzt, gerade Abschnitte gehören mit dazu (keine Sägeschnitte). Aus: wie bisher, Hinweis |
+| **gewölbte Flächen** von oben (Kugelmulde, Hohlkehle, gerundete Kante, Freiform) | Schalter je Teil *Gewölbte Flächen: Aus / Zeilenfräsen* (nur, wenn erkannt). An: Zeilenfräsen mit dem Kugelfräser (`E055`), Bahn aus dem 3D-Netz berechnet (Kugel berührt Fläche, Kanten und Ecken – schneidet nirgends ins Teil), Vorfräsen in Stufen und Schlichten, ausgegeben als explizite Werkzeugbahn `CreateToolpath` / `AddSegmentToToolpath`. Aus: Hinweis |
 | Zustellungen | `CreateUnidirectionalMillingStrategy` (Konturen) / `CreateContourParallelStrategy` (Taschen) |
 | Bearbeitungen von unten | nur **Hinweis** – Platte wenden |
 | Auflagefläche unten | **Sauger-Vorschlag**: `SetBarPosition(Konsole, X)` und `SetSuctionCupPosition(Nr, Y, Winkel, "Code")` – siehe unten |
 
 **Einstellungen** (*Werkzeuge & Regeln*) sind nach Bearbeitungsart gruppiert: Bohren, Taschen, Formatfräsen & Konturen,
-Säge, Fasen & schräge Kanten, Arbeitsfeld & Rohteil, X-Konverter. Taschen haben eine eigene **Zustelltiefe** (0 = wie Fräsen),
+Säge, Fasen & schräge Kanten, Gekrümmte Flächen (Kugelfräser, Zeilenabstand, Zustellung beim Vorfräsen, Punktabstand,
+Toleranz, Abheben), Arbeitsfeld & Rohteil, X-Konverter. Taschen haben eine eigene **Zustelltiefe** (0 = wie Fräsen),
 die Säge eine eigene **Extra-Tiefe** und optional **Vorritzen** (`CreateSectioningMillingStrategy(Tiefe, Abstand außen, 0)`
 vor dem `CreateBladeCut`: erster Schnitt in Ritztiefe, Rückweg auf volle Tiefe).
 
@@ -195,6 +201,19 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
   Teil), Sauger-Nummer je Konsole ab 1, Winkel 0° = lange Seite in X.
 - **Taschen in den Kanten:** Geometrie in denselben Kantenkoordinaten wie die Kantenbohrungen (X waagerecht, Y = Höhe ab
   Plattenunterseite); in Maestro noch nicht simuliert.
+- **Gekrümmte Flächen** (neu, standardmäßig aus; erst in der Maestro-Simulation prüfen):
+  - Schräge an Rundungen: `CreatePolyline` mit Bögen + `CreateSlantedRoughFinish(…, Winkel B, Anstellung 1/2, …)` wie bei
+    geraden Schrägen. Zu prüfen: ob Maestro die Neigung entlang der Bögen quer zur Bahn mitführt (Anstellung 1/2), ob die
+    Bahn = Werkzeugmitte auf der Oberseite ist (Versatz r / cos B) und wie das Werkzeug am Startpunkt (Mitte der längsten
+    Geraden) eintaucht – ohne Anfahrstrategie, ggf. Tempo/Anfahrt in Maestro ergänzen.
+  - Zeilenfräsen: Bereich als Rechteck-`CreatePolyline`, `CreateRoughFinish` ohne Strategie, dann `CreateToolpath` +
+    `AddSegmentToToolpath` (Handbuch 3.8.16). Angenommen: Koordinaten in der Ebene „Top“, Z relativ zur Oberseite
+    (negativ = ins Material, wie im Handbuch-Beispiel), Punkt = **Spitze** des Kugelfräsers, ohne Radiuskorrektur.
+    Zwischen den Zeilen wird auf +5 mm über der Oberseite abgehoben. Bahn im 3D-Netz von OpenCascade berechnet:
+    Abweichung zur echten Fläche bis etwa 0,05 mm (Sehnenfehler), immer auf der sicheren Seite (Aufmaß, nie Einschnitt).
+    Viele Punkte (Mulde 600 × 400: rund 6000 Zeilen) – Ladezeit in Maestro beobachten.
+  - Zeilenfräsen braucht das 3D-Netz: im Web-Tool lädt OpenCascade beim Einschalten automatisch, in der
+    Kommandozeile mit `--kugelfraesen`.
 - **5-Achs-Befehle** (nach Handbuch, noch nicht in Maestro getestet):
   - `CreateChamfer`: Geometrie = scharfe Kante vor dem Fasen, Werkzeugposition 2 (rechts, oben) bzw. 3 (rechts, unten).
   - `CreateSlantedRoughFinish`: Geometrie = Oberkante der schrägen Fläche, Winkel B = Neigung gegen die Senkrechte,
@@ -207,7 +226,7 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
 
 | Ordner | Inhalt |
 |---|---|
-| `web/` | Web-Tool (`index.html`) und die JS-Module `step.js` (STEP-Leser), `panel.js` (Erkennung), `xcs.js` (Ausgabe) |
+| `web/` | Web-Tool (`index.html`) und die JS-Module `step.js` (STEP-Leser), `panel.js` (Erkennung), `xcs.js` (Ausgabe), `surface.js` (Kugelfräser-Bahn), `occtmesh.js` (3D-Netz) |
 | `cli/` | Kommandozeilen-Aufruf |
 | `test/` | Tests (`npm test`) und Test-STEP-Dateien |
 | `tools/` | `make_fixtures.py` erzeugt die Test-STEP-Dateien (CadQuery), `build_defaults.js` die eingebaute Werkzeugliste und Beispiele |

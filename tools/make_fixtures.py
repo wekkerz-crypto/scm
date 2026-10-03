@@ -135,9 +135,42 @@ def seite4():
     return body
 
 
+def schraege_rund():
+    """Platte mit Eckenradien und umlaufender Schräge über die ganze Dicke (Kegelflächen an den Ecken)."""
+    L, W, T, R = 600, 400, 19, 60
+    body = cq.Workplane("XY").sketch().rect(L, W).vertices().fillet(R).finalize().extrude(T, taper=20)
+    body = body.translate((L / 2, W / 2, 0))
+    return body
+
+
+def mulde():
+    """Platte mit Kugelmulde, Hohlkehle quer und gerundeter Oberkante (gekrümmte Flächen von oben)."""
+    L, W, T = 600, 400, 30
+    body = cq.Workplane("XY").box(L, W, T, centered=False)
+    # gerundete Oberkante vorne (R 10)
+    body = body.edges(cq.selectors.BoxSelector((-1, -1, T - 1), (L + 1, 1, T + 1))).fillet(10)
+    # Kugelmulde: Kugel R150, 12 mm tief, Mitte bei (380, 200)
+    body = body.cut(cq.Workplane("XY").sphere(150).translate((380, 200, T + 150 - 12)))
+    # Hohlkehle quer (Achse in Y): Radius 20, 10 mm tief bei X = 120
+    body = body.cut(cq.Workplane("XZ").center(120, T + 10).circle(20).extrude(-W - 20).translate((0, -10, 0)))
+    return body
+
+
+def schraege_innen():
+    """Platte mit schrägem Ausschnitt (Eckenradien) und schrägem Rundloch, beide oben weiter (Kegel innen)."""
+    L, W, T = 600, 400, 19
+    body = cq.Workplane("XY").box(L, W, T, centered=False)
+    cut = cq.Workplane("XY").sketch().rect(200, 120).vertices().fillet(30).finalize().extrude(T + 2, taper=-15)
+    body = body.cut(cut.translate((180, 200, -1)))
+    t20 = 0.36397023426620234  # tan 20°
+    cone = cq.Solid.makeCone(20, 20 + (T + 2) * t20, T + 2, cq.Vector(450, 200, -1))
+    return body.cut(cq.Workplane().add(cone))
+
+
 if __name__ == "__main__":
     for name, fn in [("seitenwand_32", seitenwand_32), ("oberboden_27", oberboden_27), ("testplatte", testplatte),
-                     ("fuenfachs", fuenfachs), ("sonderkontur", sonderkontur), ("seite4", seite4)]:
+                     ("fuenfachs", fuenfachs), ("sonderkontur", sonderkontur), ("seite4", seite4),
+                     ("schraege_rund", schraege_rund), ("mulde", mulde), ("schraege_innen", schraege_innen)]:
         path = os.path.join(OUT, name + ".step")
         cq.exporters.export(fn(), path)
         print("geschrieben:", path)

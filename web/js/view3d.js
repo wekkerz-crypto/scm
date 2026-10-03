@@ -15,7 +15,6 @@
     'LineMaterial.js', 'LineSegments2.js', 'Line2.js', 'occt-import-js.js', 'occt-wasm.js'];
 
   let loading = null;
-  const meshCache = new Map(); // STEP-Text → Ergebnis von OpenCascade
 
   function vendorBase() {
     const s = document.querySelector('script[src*="view3d.js"]');
@@ -48,53 +47,9 @@
     return loading;
   }
 
-  function stepMeshes(occt, text) {
-    let r = meshCache.get(text);
-    if (!r) {
-      r = occt.ReadStepFile(new TextEncoder().encode(text), {
-        linearUnit: 'millimeter', linearDeflectionType: 'absolute_value', linearDeflection: 0.05, angularDeflection: 0.12,
-      });
-      if (!r || !r.success) throw new Error('OpenCascade konnte die STEP-Datei nicht lesen.');
-      meshCache.set(text, r);
-    }
-    return r.meshes;
-  }
-
-  // Netz in Plattenkoordinaten bringen und das zum Teil passende Netz wählen (Mehrteiler)
-  function placeMesh(meshes, tf, panel) {
-    const P = (x, y, z) => [
-      tf.m[0][0] * x + tf.m[0][1] * y + tf.m[0][2] * z + tf.t[0],
-      tf.m[1][0] * x + tf.m[1][1] * y + tf.m[1][2] * z + tf.t[1],
-      tf.m[2][0] * x + tf.m[2][1] * y + tf.m[2][2] * z + tf.t[2],
-    ];
-    let best = null;
-    for (const m of meshes) {
-      const a = m.attributes.position.array;
-      const pos = new Float32Array(a.length);
-      const lo = [Infinity, Infinity, Infinity];
-      const hi = [-Infinity, -Infinity, -Infinity];
-      for (let i = 0; i < a.length; i += 3) {
-        const q = P(a[i], a[i + 1], a[i + 2]);
-        for (let k = 0; k < 3; k++) { pos[i + k] = q[k]; if (q[k] < lo[k]) lo[k] = q[k]; if (q[k] > hi[k]) hi[k] = q[k]; }
-      }
-      const err = Math.abs(lo[0]) + Math.abs(lo[1]) + Math.abs(lo[2]) + Math.abs(hi[0] - panel.L) + Math.abs(hi[1] - panel.W) + Math.abs(hi[2] - panel.T);
-      if (!best || err < best.err) best = { m: m, pos: pos, lo: lo, err: err };
-    }
-    if (!best) return null;
-    // Baugruppe mit eigener Lage: auf den Nullpunkt schieben (Drehung bleibt wie erkannt)
-    if (best.err > 1) {
-      for (let i = 0; i < best.pos.length; i += 3) for (let k = 0; k < 3; k++) best.pos[i + k] -= best.lo[k];
-    }
-    const nrm = best.m.attributes.normal ? best.m.attributes.normal.array : null;
-    let normals = null;
-    if (nrm) {
-      normals = new Float32Array(nrm.length);
-      for (let i = 0; i < nrm.length; i += 3) {
-        for (let k = 0; k < 3; k++) normals[i + k] = tf.m[k][0] * nrm[i] + tf.m[k][1] * nrm[i + 1] + tf.m[k][2] * nrm[i + 2];
-      }
-    }
-    return { pos: best.pos, normals: normals, index: best.m.index.array };
-  }
+  const OM = typeof OcctMesh !== 'undefined' ? OcctMesh : (typeof require === 'function' ? require('./occtmesh.js') : null);
+  const stepMeshes = (occt, text) => OM.read(occt, text);
+  const placeMesh = (meshes, tf, panel) => OM.place(meshes, tf, panel);
 
   // Holzmaserung als Textur (Fasern in X)
   function woodCanvas(base) {
@@ -407,7 +362,7 @@
         const k = seg[i - 1] > 1e-9 ? Math.min(1, rest / seg[i - 1]) : 1;
         const at = [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
         part.push(at);
-        return { at: at, part: part, dir: dir };
+        return { at: at, part: part, dir: dir, i: i, k: k };
       }
       rest -= seg[i - 1];
       part.push(b);
@@ -433,9 +388,9 @@
   };
 
   // Werkzeugmodell (Fräser, Bohrer) entlang +Z ab der Spitze
-  Viewer.prototype.toolModel = function (d, len, drill) {
+  Viewer.prototype.toolModel = function (d, len, drill, ball) {
     const T = this.THREE;
-    const key = d.toFixed(2) + '|' + len.toFixed(1) + '|' + drill;
+    const key = d.toFixed(2) + '|' + len.toFixed(1) + '|' + drill + '|' + !!ball;
     if (this.toolCache.has(key)) return this.toolCache.get(key);
     const r = Math.max(0.6, d / 2);
     const grp = new T.Group();
@@ -443,10 +398,17 @@
     grp.add(spin);
     const steel = new T.MeshStandardMaterial({ map: this.fluteTex, metalness: 0.85, roughness: 0.28 });
     steel.keep = true;
-    const cutter = new T.Mesh(new T.CylinderGeometry(r, r, len, 40, 1), steel);
+    const cyl = ball ? Math.max(1, len - r) : len; // Kugelfräser: Halbkugel an der Spitze
+    const cutter = new T.Mesh(new T.CylinderGeometry(r, r, cyl, 40, 1), steel);
     cutter.rotation.x = Math.PI / 2;
-    cutter.position.z = len / 2 + (drill ? r * 0.6 : 0);
+    cutter.position.z = cyl / 2 + (drill ? r * 0.6 : 0) + (ball ? r : 0);
     spin.add(cutter);
+    if (ball) {
+      const tip = new T.Mesh(new T.SphereGeometry(r, 40, 20, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), steel);
+      tip.rotation.x = Math.PI / 2;
+      tip.position.z = r;
+      spin.add(tip);
+    }
     if (drill) {
       const tip = new T.Mesh(new T.ConeGeometry(r, r * 0.6 * 2, 40), steel);
       tip.rotation.x = -Math.PI / 2;
@@ -524,7 +486,14 @@
     if (m.type !== 'rapid' && pos.part.length > 1) this.live = this.trail(m, pos.part);
     // Werkzeug
     while (this.groups.tool.children.length) this.groups.tool.remove(this.groups.tool.children[0]);
-    const ax = new T.Vector3(...(m.ax3 || [0, 0, 1])).normalize();
+    let ax3 = m.ax3 || [0, 0, 1];
+    if (m.ax3s && pos.i !== undefined && m.ax3s[pos.i]) {
+      // Achse je Punkt: zwischen den Punkten überblenden
+      const a = m.ax3s[pos.i - 1];
+      const b = m.ax3s[pos.i];
+      ax3 = [a[0] + (b[0] - a[0]) * pos.k, a[1] + (b[1] - a[1]) * pos.k, a[2] + (b[2] - a[2]) * pos.k];
+    } else if (m.ax3s && m.type !== 'rapid') ax3 = m.ax3s[0];
+    const ax = new T.Vector3(...ax3).normalize();
     const color = m.type === 'rapid' ? 0x9aa5a0 : this.opts.colorOf(m);
     if (m.disc) {
       const tool = this.discModel(m.disc.d, m.disc.thick);
@@ -545,7 +514,7 @@
       const d = info.d || m.d || 8;
       const len = m.len3 || Math.max(12, Math.min(info.len || 30, (m.z || 10) + 12));
       const drill = m.kind === 'drill' || /^Bohr/.test(m.tool || '') || (this.opts.isDrill && this.opts.isDrill(m));
-      const tool = this.toolModel(d, len, drill);
+      const tool = this.toolModel(d, len, drill, !!m.ball);
       tool.grp.quaternion.setFromUnitVectors(new T.Vector3(0, 0, 1), ax);
       tool.grp.position.set(...pos.at);
       tool.spin.rotation.z = spinAngle;

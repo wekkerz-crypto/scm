@@ -273,6 +273,10 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.18); }
 .seg.small button { font-size: 0.78rem; padding: 2px 10px; }
 .ctl .rough { font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
+.curved { display: grid; gap: 6px; margin: 4px 0 10px; padding: 8px 10px; border-radius: var(--r); background: var(--sunken); border-left: 3px solid var(--pocket); }
+.curved .row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px; font-size: 0.82rem; }
+.curved .cap { color: var(--ink); }
+.curved .note { font-size: 0.75rem; color: var(--muted); }
 .fmtbox { padding: 4px 0 8px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
 .fmtbox .row { border-top: 0; }
 table.fmt { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.85rem; margin-top: 4px;
@@ -354,6 +358,8 @@ table.fmt.one .onet { display: inline; }
 <script src="js/toolpath.js"></script>
 <script src="js/tools-default.js"></script>
 <script src="js/sample.js"></script>
+<script src="js/surface.js"></script>
+<script src="js/occtmesh.js"></script>
 <script src="js/view3d.js"></script>
 <script>
 (function () {
@@ -408,6 +414,14 @@ table.fmt.one .onet { display: inline; }
       ['chamferTool', 'Fräser Fasen', 'mill'],
       ['slantTool', 'Fräser schräge Kanten', 'mill'],
       ['slantExtra', 'Schräge Kanten: Dicke +', 'number', 'mm']] },
+    { title: 'Gekrümmte Flächen', c: '--pocket', fields: [
+      ['ballTool', 'Kugelfräser (gewölbte Flächen)', 'mill'],
+      ['ballToolDia', 'Kugelfräser Ø, falls nicht in der Liste', 'number', 'mm'],
+      ['surfStepover', 'Zeilenabstand', 'number', 'mm'],
+      ['surfLayer', 'Zustellung beim Vorfräsen', 'number', 'mm · 0 = nur Schlichten'],
+      ['surfRes', 'Punktabstand längs der Zeile', 'number', 'mm'],
+      ['surfTol', 'Toleranz', 'number', 'mm'],
+      ['surfSafe', 'Abheben zwischen den Zeilen', 'number', 'mm über der Oberseite']] },
     { title: 'Sauger & Konsolen', c: '--muted', fields: [
       ['suctionOn', 'Sauger-Vorschlag ins Programm schreiben', 'bool'],
       ['cupBigCode', 'Sauger groß: Code in Maestro', 'text'],
@@ -694,9 +708,58 @@ table.fmt.one .onet { display: inline; }
   function compute(part) {
     if (!part.solid) return;
     const cfg = Object.assign({}, state.settings, { toolInfo: ToolLibrary.infoMap(state.tools) });
-    part.result = StepToXcs.convertSolid(part.solid, cfg, { orientation: part.orientation, field: part.field, overrides: part.overrides });
+    part.result = StepToXcs.convertSolid(part.solid, cfg, { orientation: part.orientation, field: part.field, overrides: part.overrides,
+      meshes: part.occtMeshes || null });
     if (part.result.panel && !part.orientation) part.orientation = Object.assign({}, part.result.panel.orientation);
     if (!part.fileName) part.fileName = part.result.fileName;
+    if (curvedState(part).surface && !part.occtMeshes) loadMesh(part);
+  }
+
+  // Gekrümmte Flächen: Schalter je Teil (sonst Einstellung), nur sinnvoll, wenn welche erkannt wurden
+  function curvedState(part) {
+    const p = part.result && part.result.panel;
+    const ov = (part.overrides && part.overrides.curved) || {};
+    const pick = (k, def) => (typeof ov[k] === 'boolean' ? ov[k] : !!def);
+    return {
+      hasSlant: !!(p && p.curvedSlants && p.curvedSlants.length),
+      hasSurface: !!(p && p.curvedSurfaces && p.curvedSurfaces.length),
+      slant: !!(p && p.curvedSlants && p.curvedSlants.length) && pick('slant', state.settings.curvedSlantOn),
+      surface: !!(p && p.curvedSurfaces && p.curvedSurfaces.length) && pick('surface', state.settings.curvedSurfaceOn),
+    };
+  }
+
+  // Dreiecksnetz aus OpenCascade für das Zeilenfräsen (einmal je Teil, wie die 3D-Ansicht)
+  function loadMesh(part) {
+    if (part.meshState === 'loading' || part.meshState === 'error' || !part.stepText) return;
+    part.meshState = 'loading';
+    View3D.load().then((occt) => {
+      part.occtMeshes = View3D.stepMeshes(occt, part.stepText);
+      part.meshState = 'ok';
+    }).catch((e) => {
+      part.meshState = 'error';
+      part.meshError = e.message || String(e);
+    }).then(() => {
+      compute(part);
+      if (state.parts[state.sel] === part) render();
+    });
+  }
+
+  function curvedBox(part) {
+    const c = curvedState(part);
+    if (!c.hasSlant && !c.hasSurface) return '';
+    const seg = (k, on, a, b, label) => '<span class="seg small" role="group" aria-label="' + esc(label) + '">' +
+      '<button type="button" data-curved="' + k + '" data-on="0" aria-pressed="' + !on + '">' + a + '</button>' +
+      '<button type="button" data-curved="' + k + '" data-on="1" aria-pressed="' + on + '">' + b + '</button></span>';
+    let html = '<div class="curved" id="curvedbox">';
+    if (c.hasSlant) {
+      html += '<div class="row"><span class="cap">Schräge an Rundungen</span>' + seg('slant', c.slant, 'Aus', '5-Achs fräsen', 'Schräge an Rundungen') + '</div>';
+    }
+    if (c.hasSurface) {
+      html += '<div class="row"><span class="cap">Gewölbte Flächen</span>' + seg('surface', c.surface, 'Aus', 'Zeilenfräsen', 'Gewölbte Flächen') + '</div>';
+      if (c.surface && part.meshState === 'loading') html += '<span class="note">3D-Netz wird geladen, Bahn wird berechnet …</span>';
+      if (c.surface && part.meshState === 'error') html += '<span class="note">3D-Netz nicht verfügbar: ' + esc(part.meshError || '') + '</span>';
+    }
+    return html + '</div>';
   }
 
   async function loadFiles(list) {
@@ -715,7 +778,8 @@ table.fmt.one .onet { display: inline; }
     if (op.kind === 'drill') return op.plane ? '--sdrill' : op.face === 'Top' ? '--drill' : '--hdrill';
     if (op.kind === 'sdrill') return '--sdrill';
     if (op.kind === 'pocket') return op.face && op.face !== 'Top' ? '--hdrill' : '--pocket';
-    if (op.kind === 'chamfer' || op.kind === 'slant') return '--chamfer';
+    if (op.kind === 'chamfer' || op.kind === 'slant' || op.kind === 'slantpath') return '--chamfer';
+    if (op.kind === 'surface') return '--pocket';
     if (op.kind === 'slot' || op.kind === 'blade' || /^rebate-/.test(op.key || '')) return '--saw';
     return '--mill';
   }
@@ -975,6 +1039,20 @@ table.fmt.one .onet { display: inline; }
         ' L' + w.bottom.a[0] + ' ' + Y(w.bottom.a[1]) + ' Z" fill="' + wc + '" fill-opacity="0.25" stroke="' + wc + '" stroke-width="1.5" ' + sw +
         '><title>' + (sawn ? 'Sägeschnitt ' : 'Schräge Kante ') + fmt(w.angle) + '°</title></path>';
     }
+    // Schräge an Rundungen (Oberkante) und gewölbte Flächen (Bereich); blass, solange nicht eingeschaltet
+    const cOn = { slant: r.ops.some((o) => o.kind === 'slantpath'), surface: r.ops.some((o) => o.kind === 'surface') };
+    for (const c of (p.curvedSlants || [])) {
+      const f = c.segs.length === 1 && c.segs[0].full ? c.segs[0] : null; // Kegel ringsum (schräges Rundloch)
+      const d = f ? 'M' + (f.c[0] + f.r) + ' ' + Y(f.c[1]) + ' A' + f.r + ' ' + f.r + ' 0 1 0 ' + (f.c[0] - f.r) + ' ' + Y(f.c[1]) + ' A' + f.r + ' ' + f.r + ' 0 1 0 ' + (f.c[0] + f.r) + ' ' + Y(f.c[1])
+        : (() => { const q = loopToPoly(c.segs); return svgPath(q.start, q.segs, Y); })();
+      s += '<path d="' + d + (c.closed ? ' Z' : '') + '" fill="none" stroke="var(--chamfer)" stroke-width="3" stroke-opacity="' +
+        (cOn.slant ? 1 : 0.45) + '" stroke-linejoin="round" ' + sw + '><title>Schräge an Rundung ' + fmt(c.tilt) + '°' + (cOn.slant ? '' : ' (nicht bearbeitet)') + '</title></path>';
+    }
+    for (const c of (p.curvedSurfaces || [])) {
+      const rects = c.rects.map((b) => 'M' + b.x0 + ' ' + Y(b.y0) + ' H' + b.x1 + ' V' + Y(b.y1) + ' H' + b.x0 + ' Z').join(' ');
+      s += '<path d="' + rects + '" fill="var(--pocket)" fill-opacity="' + (cOn.surface ? 0.3 : 0.12) + '" stroke="var(--pocket)" stroke-width="1" stroke-dasharray="4 3" ' + sw +
+        '><title>Gewölbte Fläche (' + esc(c.kinds.join(', ')) + ') T' + fmt(c.depth) + (cOn.surface ? '' : ' (nicht bearbeitet)') + '</title></path>';
+    }
     // Taschen und Bohrungen auf schrägen Ebenen, von oben gesehen
     for (const sp of (p.slantPlanes || [])) {
       const mp = (l) => [sp.o[0] + sp.X[0] * l[0] + sp.Y[0] * l[1], sp.o[1] + sp.X[1] * l[0] + sp.Y[1] * l[1]];
@@ -994,7 +1072,7 @@ table.fmt.one .onet { display: inline; }
     }
     // Fräsbahnen (außer Formatfräsen)
     for (const op of r.ops) {
-      if (op.kind !== 'contour' || op.key === 'format') continue;
+      if ((op.kind !== 'contour' && op.kind !== 'slantpath') || op.key === 'format') continue;
       s += '<path d="' + svgPath(op.start, op.segs, Y) + '" fill="none" stroke="var(' + opToken(op) + ')" stroke-width="2" stroke-dasharray="6 3" ' + sw + '/>';
     }
     // Bohrungen
@@ -1102,7 +1180,7 @@ table.fmt.one .onet { display: inline; }
       '<div class="legend">' + legend.map(([c, t]) => '<span><i style="background:' + c + '"></i>' + t + '</span>').join('') + '</div></div></div>' +
       '<aside class="card steps" aria-label="Bearbeitungsschritte"><div class="opshead"><h3>Bearbeitungsschritte</h3>' +
       (part.overrides.order ? '<button class="btn ghost small" id="resetorder" type="button">Reihenfolge zurücksetzen</button>' : '') +
-      '</div><table class="ops" id="opstable">' +
+      '</div>' + curvedBox(part) + '<table class="ops" id="opstable">' +
       opsSummary(r).map((x, i, all) => '<tbody class="grp" data-grp="' + esc(x.group) + '" style="--c:' + x.c + '"><tr data-group="' + esc(x.group) + '"' + (x.op ? ' class="has-ctl"' : '') + '><td class="k">' +
         '<span class="grip" data-grip="' + esc(x.group) + '" title="Gedrückt halten und ziehen, um die Reihenfolge zu ändern" aria-hidden="true">⠿</span><span class="num">' + (i + 1) + '</span>' +
         '<span class="sw" style="background:' + x.c + '"></span><button type="button" class="jump" data-jump="' + esc(x.group) + '" title="' + esc(x.k) + ' – in der Animation hierher springen">' +
@@ -1145,6 +1223,10 @@ table.fmt.one .onet { display: inline; }
     }));
     if ($('resetorder')) $('resetorder').addEventListener('click', () => { delete part.overrides.order; compute(part); render(); });
     setupStepDrag(part);
+    el.querySelectorAll('[data-curved]').forEach((b) => b.addEventListener('click', () => {
+      part.overrides.curved = Object.assign({}, part.overrides.curved, { [b.dataset.curved]: b.dataset.on === '1' });
+      compute(part); render();
+    }));
     el.querySelectorAll('[data-twostep]').forEach((b) => b.addEventListener('click', () => {
       part.overrides.twoStep = b.dataset.twostep === '1';
       compute(part); render();

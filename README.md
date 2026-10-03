@@ -53,10 +53,13 @@ umgewandelt, im X-Konverter als Script importiert und als Maestro-Programm angel
 
 Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
 
-- **Feld `IJ`/`IL`:** Regel „lang ab 1500 mm → `IL`“ ist geschätzt (Beispiele: 2305 → IL, ≤ 646 → IJ).
-- **Kantenbohrungen vorne/hinten:** Ebenennamen `"Front"`/`"Back"` und deren lokale X-Richtung.
-  Links/rechts ist durch `27_Oberboden.xcs` belegt.
-- **Nut:** Lage des Segments auf der Flanke und Bedeutung des Versatzes beim 2. Sägedurchgang.
+- **Feld `IJ`/`IL`:** laut Handbuch der Parameter `executionFields` (Arbeitsfelder) von
+  `SetMachiningParameters`. Die Regel „lang ab 1500 mm → `IL`“ ist geschätzt (Beispiele: 2305 → IL, ≤ 646 → IJ).
+- **Kantenbohrungen vorne/hinten:** Ebenennamen `"Front"`/`"Back"` sind laut Handbuch Standardebenen;
+  lokales System: Ursprung unten links, X waagerecht, Z aus der Ebene heraus (passt zur Umsetzung).
+  Links/rechts ist durch `27_Oberboden.xcs` und den Maestro-Import belegt.
+- **Nut:** Der Wert `-8,8` beim 2. Sägedurchgang ist laut Handbuch das Aufmaß (`overMaterial`) von `CreateSlot`.
+  Die Lage der Nut (Flanke + Breite zur positiven Seite) passt dazu, ist aber noch nicht in Maestro geprüft.
 - **Falz und Durchbrüche:** gibt es in den Beispielen nicht.
 
 ## Ordner
@@ -71,4 +74,5 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
 | `maestro/beispiele/` | Beispiel-Programme (.xcs) aus Maestro – Referenz für das Format |
 | `maestro/werkzeuge/` | Werkzeugdaten (`def.tlgx`) |
 | `maestro/makros/` | SCM-Makros |
+| `maestro/doku/` | Handbuch der Script-Sprache (MSL-Referenz, Rev. 17) |
 | `featurescript/` | ursprünglich geplanter Weg über Onshape-FeatureScript (derzeit nicht verfolgt) |

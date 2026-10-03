@@ -38,8 +38,8 @@ Die drei Pfade stehen oben in der `.bat` und lassen sich im Web-Tool unter *Werk
 | Geometrie im STEP | XCS-Ausgabe |
 |---|---|
 | Plattenmaße L × B × D | `CreateFinishedWorkpieceBox`, Rohteil +2 mm je Seite |
-| Außenkontur | Formatfräsen Rechteck (`E014`, Tiefe D+3, Korrektur rechts) |
-| Abweichungen vom Rechteck (Sockelausschnitt, Rundungen, Schrägen) | offene Fräsbahn mit Linien/Bögen (`E016`, Tiefe D+2) |
+| Außenkontur rechteckig | Formatfräsen Rechteck (`E014`, Tiefe D+3, Korrektur rechts) |
+| Sonderkontur (Ausschnitte, Rundungen, Schrägen) | Standard: ganze Außenkontur **am Stück** als eine Bahn; umschaltbar auf „Rechteck + Ausschnitte einzeln“ (`E016`, Tiefe D+2) |
 | Durchbrüche (innen) | geschlossene Fräsbahn (`E016`) |
 | Bohrung von oben (Sackloch / durch) | `CreateDrill` Spitze `"P"` / `"L"` (durch: Tiefe D+2) |
 | Bohrung, für die kein Bohrer existiert und die durchgeht | Kreisfräsung entlang der Kontur (`E016`) |
@@ -49,11 +49,11 @@ Die drei Pfade stehen oben in der `.bat` und lassen sich im Web-Tool unter *Werk
 | Falz an einer Kante | Fräsbahn entlang der Falzflanke (ggf. mehrere Bahnen) |
 | Tasche (auch mit Inseln, Eckenradius-Prüfung) | `CreateContourPocket` (Bohrungen im Taschenboden werden von oben gebohrt) |
 | runde Vertiefung von oben ohne passenden Bohrer | Kreistasche: `CreateCircleCenterRadius` + `CreateContourPocket` (Hinweis, wenn der Fräser nicht hineinpasst) |
-| Fase oben / unten an einer geraden Kante | `CreateChamfer` (Breite × Höhe, Werkzeugposition oben/unten) |
+| Fase oben / unten | `CreateChamfer` entlang der Kontur **am Stück**, auch über Rundungen (Kegelflächen), umlaufend als geschlossene Bahn; auch um Durchbrüche |
 | schräge Kante über die ganze Dicke (Gehrung) | `CreateSlantedRoughFinish` mit geneigtem Werkzeug (5-Achs) |
 | schräge Bohrung | `CreateSlantedDrill` (5-Achs) |
 | Zustellungen | `CreateUnidirectionalMillingStrategy` (Konturen) / `CreateContourParallelStrategy` (Taschen) |
-| Bearbeitungen von unten, Fasen an Rundungen | nur **Hinweis** – Platte wenden bzw. in Maestro ergänzen |
+| Bearbeitungen von unten | nur **Hinweis** – Platte wenden |
 
 **Werkzeuge:** Das Web-Tool liest die Werkzeugliste (`.tlgx`) mit Durchmesser und Schneidenlänge.
 Für jede Fräsbearbeitung gibt es eine Auswahlliste mit allen Fräsern, Favoriten (★ unter *Werkzeuge & Regeln*)

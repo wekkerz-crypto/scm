@@ -213,7 +213,8 @@
         go([[op.a[0] + n[0] * off1, op.a[1] + n[1] * off1], [op.b[0] + n[0] * off1, op.b[1] + n[1] * off1]], b, op.label, op.tool, i);
         go([[op.b[0] + n[0] * off2, op.b[1] + n[1] * off2], [op.a[0] + n[0] * off2, op.a[1] + n[1] * off2]], b, op.label, op.tool, i);
       } else if (op.kind === 'chamfer') {
-        go([op.a, op.b], Math.max(op.width, 1) * 2, op.label, op.tool, i);
+        const pts = op.segs ? samplePoly(op.start, op.segs) : [op.a, op.b];
+        go(pts, Math.max(op.width, 1) * 2, op.label, op.tool, i);
       } else if (op.kind === 'slant') {
         go([op.a, op.b], info(op.tool).d || 10, op.label, op.tool, i);
       } else if (op.kind === 'drill') {

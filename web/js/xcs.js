@@ -30,6 +30,7 @@
     slantExtra: 2,             // Schrägfräsen: Dicke + …
     stepDown: 0,               // Zustellung je Durchgang in mm (0 = in einem Durchgang)
     finishDepth: 0,            // letzte Zustellung in mm (0 = keine eigene)
+    contourMode: 'whole',      // Sonderkontur: 'whole' = Außenkontur am Stück, 'rect' = Rechteck + Ausschnitte
     // Reihenfolge-Regel: Bearbeitungsarten in dieser Folge (abschaltbar, vom Benutzer änderbar)
     orderRule: { on: true, seq: ['drillTop', 'drillSide', 'drillSlanted', 'slot', 'pocket', 'rebate', 'chamfer', 'slant',
       'cutout', 'notch', 'format'] },
@@ -67,7 +68,7 @@
     const k = op.key || '';
     if (k === 'format') return 'format';
     const prefix = k.split('-')[0];
-    return { notch: 'notch', cutout: 'cutout', round: 'cutout', rebate: 'rebate', pocket: 'pocket', rpocket: 'pocket', chamfer: 'chamfer',
+    return { notch: 'notch', cutout: 'cutout', round: 'cutout', rebate: 'rebate', pocket: 'pocket', rpocket: 'pocket', chamfer: 'chamfer', chamferpath: 'chamfer',
       slant: 'slant', slot: 'slot' }[prefix] || 'notch';
   }
 
@@ -161,13 +162,22 @@
       return t && t.d ? t.d : fallback;
     };
 
-    // 1) Formatfräsen (immer Rechteck L×B wie in den Beispielen)
-    ops.push({
-      kind: 'contour', key: 'format', toolKind: 'mill', toolDefault: 'contourTool', contour: ++nContour, milling: ++nMill, approach: true,
-      start: [0, p.W / 2],
-      segs: [[0, 0], [p.L, 0], [p.L, p.W], [0, p.W], [0, p.W / 2]].map((q) => ({ type: 'line', to: q })),
-      depth: T + cfg.contourExtra, tool: cfg.contourTool, side: 2, label: 'Formatfräsen',
-    });
+    // 1) Formatfräsen: Rechteck L×B wie in den Beispielen, bei Sonderkontur die ganze Außenkontur am Stück
+    const whole = !p.outlineIsRect && cfg.contourMode !== 'rect';
+    if (whole) {
+      const path = wholeContour(p.outline);
+      ops.push({
+        kind: 'contour', key: 'format', toolKind: 'mill', toolDefault: 'contourTool', contour: ++nContour, milling: ++nMill, approach: true,
+        start: path.start, segs: path.segs, depth: T + cfg.contourExtra, tool: cfg.contourTool, side: 2, label: 'Formatfräsen (Sonderkontur)',
+      });
+    } else {
+      ops.push({
+        kind: 'contour', key: 'format', toolKind: 'mill', toolDefault: 'contourTool', contour: ++nContour, milling: ++nMill, approach: true,
+        start: [0, p.W / 2],
+        segs: [[0, 0], [p.L, 0], [p.L, p.W], [0, p.W], [0, p.W / 2]].map((q) => ({ type: 'line', to: q })),
+        depth: T + cfg.contourExtra, tool: cfg.contourTool, side: 2, label: 'Formatfräsen',
+      });
+    }
 
     // 2) Nuten mit Säge
     for (const g of p.grooves) {
@@ -181,7 +191,7 @@
     }
 
     // 3) Abweichungen der Außenkontur vom Rechteck (Ausschnitte, Rundungen, Schrägen)
-    for (const [i, path] of notchPaths(p, cfg).entries()) {
+    for (const [i, path] of (whole ? [] : notchPaths(p, cfg)).entries()) {
       ops.push({ kind: 'contour', key: 'notch-' + i, toolKind: 'mill', toolDefault: 'cutoutTool', contour: ++nContour, milling: ++nMill, approach: false,
         start: path.start, segs: path.segs, depth: T + cfg.cutoutExtra, tool: cfg.cutoutTool, side: 1, label: 'Kontur-Ausschnitt' });
     }
@@ -227,7 +237,13 @@
         depth: k.depth, tool: cfg.pocketTool, label: 'Tasche ' + size + '×' + fmt(k.depth) + (k.islands.length ? ' mit Insel' : '') });
     }
 
-    // 7) Fasen
+    // 7) Fasen: entlang der Kontur am Stück (auch über Rundungen), sonst einzelne Kanten
+    for (const [i, c] of (p.chamferPaths || []).entries()) {
+      const path = c.closed ? wholeContour(c.segs) : { start: c.segs[0].a, segs: c.segs.map(toPolySeg) };
+      ops.push({ kind: 'chamfer', key: 'chamferpath-' + i, toolKind: 'mill', toolDefault: 'chamferTool', start: path.start, segs: path.segs,
+        width: c.width, height: c.height, toolPos: c.side === 'top' ? 2 : 3, tool: cfg.chamferTool,
+        label: 'Fase ' + fmt(c.width) + '×' + fmt(c.height) + (c.side === 'top' ? ' oben' : ' unten') + (c.closed ? ' umlaufend' : ' (Kontur)') });
+    }
     for (const [i, c] of p.chamfers.entries()) {
       ops.push({ kind: 'chamfer', key: 'chamfer-' + i, toolKind: 'mill', toolDefault: 'chamferTool', a: c.line.a, b: c.line.b,
         width: c.width, height: c.height, toolPos: c.side === 'top' ? 2 : 3, tool: cfg.chamferTool,
@@ -386,6 +402,31 @@
       : { type: 'line', to: s.b };
   }
 
+  // Geschlossene Kontur als Polylinie, Start in der Mitte der längsten Geraden (wie im Beispiel)
+  function wholeContour(loop) {
+    let k = -1;
+    let best = -1;
+    loop.forEach((q, i) => {
+      if (q.type !== 'line') return;
+      const l = Math.hypot(q.b[0] - q.a[0], q.b[1] - q.a[1]);
+      if (l > best) { best = l; k = i; }
+    });
+    if (k < 0) {
+      if (loop.length === 1 && loop[0].full) {
+        const q = loop[0];
+        const opp = [2 * q.c[0] - q.a[0], 2 * q.c[1] - q.a[1]];
+        return { start: q.a, segs: [{ type: 'arc', to: opp, c: q.c, cw: !q.ccw }, { type: 'arc', to: q.a, c: q.c, cw: !q.ccw }] };
+      }
+      return { start: loop[0].a, segs: loop.map(toPolySeg) };
+    }
+    const q = loop[k];
+    const mid = [(q.a[0] + q.b[0]) / 2, (q.a[1] + q.b[1]) / 2];
+    const segs = [{ type: 'line', to: q.b }];
+    for (let j = 1; j < loop.length; j++) segs.push(toPolySeg(loop[(k + j) % loop.length]));
+    segs.push({ type: 'line', to: mid });
+    return { start: mid, segs: segs };
+  }
+
   // Liegt ein Liniensegment auf einer Seite des Rechtecks L×B?
   function onRectSide(s, L, W) {
     if (s.type !== 'line') return null;
@@ -521,7 +562,15 @@
         blank();
       } else if (op.kind === 'chamfer') {
         const n = ++counts.chamfer;
-        L.push('CreateSegment("ChamferSegment_' + n + '", ' + pt(op.a) + ', ' + pt(op.b) + ');');
+        if (op.segs) {
+          L.push('CreatePolyline("ChamferPath_' + n + '", ' + pt(op.start) + ');');
+          for (const q of op.segs) {
+            if (q.type === 'line') L.push('AddSegmentToPolyline(' + pt(q.to) + ');');
+            else L.push('AddArc2PointCenterToPolyline(' + pt(q.to) + ', ' + pt(q.c) + ', ' + (q.cw ? 'true' : 'false') + ');');
+          }
+        } else {
+          L.push('CreateSegment("ChamferSegment_' + n + '", ' + pt(op.a) + ', ' + pt(op.b) + ');');
+        }
         L.push('ResetApproachStrategy();');
         L.push('ResetRetractStrategy();');
         L.push('CreateChamfer("Chamfer_' + n + '", ' + fmt(op.width) + ', ' + fmt(op.height) + ', 0, ' + op.toolPos +

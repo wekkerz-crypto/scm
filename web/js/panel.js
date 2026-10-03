@@ -174,6 +174,8 @@
         surf = { type: 'plane', n: unit(D(tf, faceNormal(f))), p: P(tf, s.ax.o) };
       } else if (s.type === 'cylinder') {
         surf = { type: 'cylinder', a: unit(D(tf, s.ax.z)), o: P(tf, s.ax.o), r: s.r, concave: !f.same };
+      } else if (s.type === 'cone') {
+        surf = { type: 'cone', a: unit(D(tf, s.ax.z)), o: P(tf, s.ax.o) };
       } else {
         surf = { type: s.type, name: s.name };
       }
@@ -641,7 +643,8 @@
       .concat(fullInclined.map((f) => inclinedSection(f, T / 2)).filter(Boolean)));
     for (const lp of through.loops) if (loopArea(lp) < 0) res.cutouts.push(lp);
 
-    // --- Schräge ebene Flächen: Fasen (oben/unten) und schräge Kanten über die ganze Dicke
+    // --- Schräge Flächen: schräge Kanten über die ganze Dicke, Fasen an Geraden (Ebene) und Rundungen (Kegel)
+    const chamferFaces = [];
     for (const f of inclined) {
       const e = inclinedEdges(f);
       if (!e) continue;
@@ -649,19 +652,82 @@
       if (full) {
         res.slantWalls.push({ top: e.top, bottom: e.bottom, angle: e.angle, leanOut: e.offset > 0, path: e.path });
       } else if (e.zmax > T - TOL) {
-        res.chamfers.push({ side: 'top', line: e.bottomLine, width: Math.abs(e.offset), height: T - e.zmin, path: e.path });
+        chamferFaces.push({ kind: 'line', side: 'top', line: e.bottomLine, width: Math.abs(e.offset), height: T - e.zmin, path: e.path });
       } else if (e.zmin < TOL) {
-        res.chamfers.push({ side: 'bottom', line: e.topLine, width: Math.abs(e.offset), height: e.zmax, path: e.path });
+        chamferFaces.push({ kind: 'line', side: 'bottom', line: e.topLine, width: Math.abs(e.offset), height: e.zmax, path: e.path });
       } else {
         warnings.push('Schräge Fläche ohne Verbindung zu Ober- oder Unterseite (Z ' + fmt(e.zmin) + '–' + fmt(e.zmax) + ') – ignoriert.');
       }
     }
     for (const f of faces) {
-      if (f.surf.type === 'cone' && !holeFaceIds.has(f.id)) {
-        const zs = f.pts.map((q) => q[2]);
-        const isHoleTip = Math.max(...zs) < T - TOL && Math.min(...zs) > TOL;
-        if (!isHoleTip) warnings.push('Fase an einer Rundung (Kegelfläche) wird nicht automatisch erzeugt.');
+      if (f.surf.type !== 'cone' || holeFaceIds.has(f.id)) continue;
+      const zs = f.pts.map((q) => q[2]);
+      const zmin = Math.min(...zs);
+      const zmax = Math.max(...zs);
+      if (zmax < T - TOL && zmin > TOL) continue; // Bohrerspitze o. Ä.
+      if (Math.abs(Math.abs(f.surf.a[2]) - 1) > ATOL) { warnings.push('Schräge Fase an einer Rundung wird nicht unterstützt.'); continue; }
+      const c = [f.surf.o[0], f.surf.o[1]];
+      const rAt = (z) => {
+        const near = f.pts.filter((q) => Math.abs(q[2] - z) < 1e-3);
+        return near.reduce((a, q) => a + Math.hypot(q[0] - c[0], q[1] - c[1]), 0) / Math.max(1, near.length);
+      };
+      const rLow = rAt(zmin);
+      const rHigh = rAt(zmax);
+      if (zmax > T - TOL && zmin > TOL) {
+        chamferFaces.push({ kind: 'arc', side: 'top', c: c, r: rLow, width: Math.abs(rHigh - rLow), height: T - zmin });
+      } else if (zmin < TOL && zmax < T - TOL) {
+        chamferFaces.push({ kind: 'arc', side: 'bottom', c: c, r: rHigh, width: Math.abs(rHigh - rLow), height: zmax });
       }
+    }
+    // Fasen den Kantenabschnitten von Außenkontur und Durchbrüchen zuordnen und am Stück verketten
+    const matches = (q, cf) => {
+      if (q.type === 'line' && cf.kind === 'line') {
+        const d = [q.b[0] - q.a[0], q.b[1] - q.a[1]];
+        const l = Math.hypot(d[0], d[1]);
+        if (l < TOL) return false;
+        const u = [d[0] / l, d[1] / l];
+        const off = (pt) => Math.abs((pt[0] - q.a[0]) * u[1] - (pt[1] - q.a[1]) * u[0]);
+        const t = (pt) => (pt[0] - q.a[0]) * u[0] + (pt[1] - q.a[1]) * u[1];
+        const t0 = Math.min(t(cf.line.a), t(cf.line.b));
+        const t1 = Math.max(t(cf.line.a), t(cf.line.b));
+        return off(cf.line.a) < 0.05 && off(cf.line.b) < 0.05 && t1 > TOL && t0 < l - TOL;
+      }
+      if (q.type === 'arc' && cf.kind === 'arc') return near2(q.c, cf.c, 0.05) && near(q.r, cf.r, 0.05);
+      return false;
+    };
+    res.chamferPaths = [];
+    for (const lp of [res.outline].concat(res.cutouts)) {
+      for (const side of ['top', 'bottom']) {
+        const hit = lp.map((q) => {
+          const cf = chamferFaces.find((x) => x.side === side && matches(q, x));
+          return cf || null;
+        });
+        if (!hit.some(Boolean)) continue;
+        chamferFaces.forEach((cf) => { if (cf.side === side && lp.some((q) => matches(q, cf))) cf.used = true; });
+        const same = (a, b) => a && b && near(a.width, b.width, 0.05) && near(a.height, b.height, 0.05);
+        const n = lp.length;
+        if (hit.every((h) => same(h, hit[0]))) {
+          res.chamferPaths.push({ side: side, segs: lp, closed: true, width: hit[0].width, height: hit[0].height });
+          continue;
+        }
+        // offene Abschnitte: am Anfang eines Laufs beginnen
+        let k0 = hit.findIndex((h, i) => h && !same(hit[(i - 1 + n) % n], h));
+        if (k0 < 0) k0 = 0;
+        let run = null;
+        for (let j = 0; j < n; j++) {
+          const i = (k0 + j) % n;
+          if (hit[i] && run && same(run.cf, hit[i])) { run.segs.push(lp[i]); continue; }
+          if (run) res.chamferPaths.push({ side: side, segs: run.segs, closed: false, width: run.cf.width, height: run.cf.height });
+          run = hit[i] ? { cf: hit[i], segs: [lp[i]] } : null;
+        }
+        if (run) res.chamferPaths.push({ side: side, segs: run.segs, closed: false, width: run.cf.width, height: run.cf.height });
+      }
+    }
+    // Fasen, die zu keiner Kontur gehören: gerade einzeln, an Rundungen nur Hinweis
+    for (const cf of chamferFaces) {
+      if (cf.used) continue;
+      if (cf.kind === 'line') res.chamfers.push({ side: cf.side, line: cf.line, width: cf.width, height: cf.height, path: cf.path });
+      else warnings.push('Fase an einer Rundung (R' + fmt(cf.r) + ') außerhalb der Kontur wird nicht automatisch erzeugt.');
     }
 
     // --- Böden (Nut, Falz, Tasche)
@@ -736,7 +802,7 @@
   function topScore(res) {
     return res.drills.filter((d) => d.face === 'Top' && !d.through).length + res.grooves.length * 3 +
       res.rebates.length * 3 + res.pockets.length * 3 + res.slantDrills.length +
-      res.chamfers.filter((c) => c.side === 'top').length * 2;
+      res.chamfers.filter((c) => c.side === 'top').length * 2 + (res.chamferPaths || []).filter((c) => c.side === 'top').length * 2;
   }
 
   /**

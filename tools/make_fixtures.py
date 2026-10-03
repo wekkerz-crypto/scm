@@ -108,9 +108,36 @@ def fuenfachs():
     return body
 
 
+def sonderkontur():
+    """Sonderkontur: runder Ausschnitt an der Vorderkante, Eckradien, umlaufende Fase 3×3 oben, Bohrungen."""
+    L, W, T = 800, 450, 19
+    body = cq.Workplane("XY").box(L, W, T, centered=False)
+    body = body.cut(cq.Workplane("XY").center(400, -40).circle(140).extrude(T))   # runder Ausschnitt vorne
+    body = body.edges("|Z").edges(cq.selectors.BoxSelector((-1, -1, -1), (L + 1, W + 1, T + 1))).edges(
+        cq.selectors.BoxSelector((L - 1, -1, -1), (L + 1, W + 1, T + 1))).fillet(40)  # rechte Ecken R40
+    body = body.faces(">Z").edges().chamfer(3)                                     # Fase oben rundum
+    for x in (60, 740):
+        body = drill_top(body, x, 380, 8, 12, T)
+    return body
+
+
+def seite4():
+    """Nachbau des Teils aus dem Screenshot: runder Ausschnitt an der Hinterkante, Fase 10×10 nur entlang der
+    Hinterkante (gerade – Bogen – gerade), zwei Rundtaschen 5 tief, ein Rundloch."""
+    L, W, T = 800, 400, 19
+    body = cq.Workplane("XY").box(L, W, T, centered=False)
+    body = body.cut(cq.Workplane("XY").center(350, 470).circle(220).extrude(T))
+    back = cq.selectors.BoxSelector((-1, 200, T - 1), (L + 1, W + 1, T + 1))
+    body = body.edges(back).chamfer(10)
+    body = body.cut(cq.Workplane("XY").workplane(offset=T - 5).center(530, 160).circle(131.71 / 2).extrude(6))
+    body = body.cut(cq.Workplane("XY").workplane(offset=T - 5).center(165, 115).circle(60.827 / 2).extrude(6))
+    body = body.cut(cq.Workplane("XY").center(325, 165).circle(112.841 / 2).extrude(T))
+    return body
+
+
 if __name__ == "__main__":
     for name, fn in [("seitenwand_32", seitenwand_32), ("oberboden_27", oberboden_27), ("testplatte", testplatte),
-                     ("fuenfachs", fuenfachs)]:
+                     ("fuenfachs", fuenfachs), ("sonderkontur", sonderkontur), ("seite4", seite4)]:
         path = os.path.join(OUT, name + ".step")
         cq.exporters.export(fn(), path)
         print("geschrieben:", path)

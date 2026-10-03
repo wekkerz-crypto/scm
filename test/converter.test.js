@@ -7,7 +7,8 @@ const { convert } = require('../web/js/convert.js');
 
 const root = path.join(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
-const ORIGINAL_ORDER = { orderRule: { on: false } }; // Reihenfolge wie in den Maestro-Beispielen
+// Reihenfolge und Konturfräsen wie in den Maestro-Beispielen
+const ORIGINAL_ORDER = { orderRule: { on: false }, contourMode: 'rect' };
 const one = (p, settings) => {
   const parts = convert(read(p), settings);
   assert.strictEqual(parts.length, 1);
@@ -247,4 +248,36 @@ test('Runde Vertiefung ohne passenden Bohrer wird als Kreistasche gefräst', () 
   const [solid] = readParts(read('test/fixtures/testplatte.step'));
   const big = convertSolid(solid, { toolInfo: toolInfo, drillsVertical: [7, 8] }, { overrides: { tools: { [op.key]: 'E014' } } });
   assert.ok(big.warnings.some((w) => /Rundtasche Ø35×13: Fräser E014 .* passt nicht hinein/.test(w)), big.warnings.join('|'));
+});
+
+test('Sonderkontur am Stück, Fase entlang der Kontur über Rundungen (Nachbau seite4)', () => {
+  const { convert } = require('../web/js/convert.js');
+  const [part] = convert(read('test/fixtures/seite4.step'));
+  const x = part.xcs;
+  assert.deepStrictEqual(part.warnings, []);
+  // eine Fasen-Bahn mit dem Bogen um den Ausschnitt, keine Einzelstücke
+  assert.strictEqual((x.match(/CreateChamfer\(/g) || []).length, 1);
+  const chamferPath = ['CreatePolyline("ChamferPath_1", 0, 400);', 'AddSegmentToPolyline(0, 0);', 'AddSegmentToPolyline(241.433, 0);',
+    'AddArc2PointCenterToPolyline(658.567, 0, 450, -70, true);', 'AddSegmentToPolyline(800, 0);', 'AddSegmentToPolyline(800, 400);'].join('\r\n');
+  assert.ok(x.includes(chamferPath), 'Fasen-Bahn über den Bogen');
+  assert.match(x, /CreateChamfer\("Chamfer_1", 10, 10, 0, 2,/);
+  // Formatfräsen: ganze Außenkontur als eine Bahn, kein Konturausschnitt
+  const fmt = part.ops.find((o) => o.key === 'format');
+  assert.strictEqual(fmt.label, 'Formatfräsen (Sonderkontur)');
+  assert.ok(fmt.segs.some((q) => q.type === 'arc'));
+  assert.ok(!part.ops.some((o) => /^notch-/.test(o.key || '')));
+  // alte Variante weiterhin wählbar
+  const [rect] = convert(read('test/fixtures/seite4.step'), { contourMode: 'rect' });
+  assert.ok(rect.ops.some((o) => /^notch-/.test(o.key || '')));
+});
+
+test('Umlaufende Fase über Geraden, Ausschnitt und Eckradien als geschlossene Bahn', () => {
+  const { convert } = require('../web/js/convert.js');
+  const [part] = convert(read('test/fixtures/sonderkontur.step'));
+  assert.deepStrictEqual(part.warnings, []);
+  const op = part.ops.find((o) => o.kind === 'chamfer');
+  assert.strictEqual(op.label, 'Fase 3×3 oben umlaufend');
+  assert.strictEqual(part.ops.filter((o) => o.kind === 'chamfer').length, 1);
+  assert.deepStrictEqual(op.start, op.segs[op.segs.length - 1].to); // geschlossen
+  assert.strictEqual(op.segs.filter((q) => q.type === 'arc').length, 3);
 });

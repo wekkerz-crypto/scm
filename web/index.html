@@ -267,6 +267,7 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     ['fieldShort', 'Feld kurze Teile', 'text'], ['fieldLong', 'Feld lange Teile', 'text'],
     ['fieldThreshold', 'Feld kurz bis Länge (mm)', 'number'], ['rawOversize', 'Rohteil-Aufmaß je Seite', 'number'],
     ['contourTool', 'Formatfräser', 'mill'], ['contourExtra', 'Formatfräsen: Dicke +', 'number'],
+    ['contourMode', 'Sonderkontur fräsen', 'choice', [['whole', 'Außenkontur am Stück'], ['rect', 'Rechteck + Ausschnitte einzeln']]],
     ['cutoutTool', 'Fräser Ausschnitte', 'mill'], ['cutoutExtra', 'Ausschnitte: Dicke +', 'number'],
     ['pocketTool', 'Fräser Taschen', 'mill'], ['pocketOverlap', 'Taschen: Überdeckung %', 'number'],
     ['chamferTool', 'Fräser Fasen', 'mill'], ['slantTool', 'Fräser schräge Kanten', 'mill'],
@@ -361,12 +362,24 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
   function renderSettings() {
     const g = $('setgrid');
     g.innerHTML = '';
-    for (const [k, label, type] of FIELDS) {
+    for (const [k, label, type, choices] of FIELDS) {
       const l = document.createElement('label');
       if (type === 'list' || type === 'path') l.className = 'wide';
       const id = 'set-' + k;
       l.htmlFor = id;
       const v = state.settings[k];
+      if (type === 'choice') {
+        l.innerHTML = esc(label) + '<select id="' + id + '">' + choices.map(([v, t]) => '<option value="' + v + '"' + (v === state.settings[k] ? ' selected' : '') +
+          '>' + esc(t) + '</option>').join('') + '</select>';
+        g.appendChild(l);
+        l.querySelector('select').addEventListener('change', (ev) => {
+          state.settings[k] = ev.target.value;
+          saveSettings();
+          state.parts.forEach(compute);
+          render();
+        });
+        continue;
+      }
       if (type === 'mill' || type === 'saw') {
         l.innerHTML = esc(label) + toolSelect('id="' + id + '"', type, v);
         g.appendChild(l);
@@ -614,6 +627,12 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
       s += '<line x1="' + c.line.a[0] + '" y1="' + Y(c.line.a[1]) + '" x2="' + c.line.b[0] + '" y2="' + Y(c.line.b[1]) +
         '" stroke="var(--accent)" stroke-width="' + (c.side === 'top' ? 4 : 2) + '" stroke-dasharray="' + (c.side === 'top' ? '0' : '5 3') + '" ' + sw +
         '><title>Fase ' + fmt(c.width) + '×' + fmt(c.height) + (c.side === 'top' ? ' oben' : ' unten') + '</title></line>';
+    }
+    for (const c of (p.chamferPaths || [])) {
+      const q = loopToPoly(c.segs);
+      s += '<path d="' + svgPath(q.start, q.segs, Y) + (c.closed ? ' Z' : '') + '" fill="none" stroke="var(--accent)" stroke-width="' + (c.side === 'top' ? 4 : 2) +
+        '" stroke-dasharray="' + (c.side === 'top' ? '0' : '5 3') + '" stroke-linejoin="round" ' + sw + '><title>Fase ' + fmt(c.width) + '×' + fmt(c.height) +
+        (c.side === 'top' ? ' oben' : ' unten') + '</title></path>';
     }
     for (const w of p.slantWalls) {
       s += '<path d="M' + w.top.a[0] + ' ' + Y(w.top.a[1]) + ' L' + w.top.b[0] + ' ' + Y(w.top.b[1]) + ' L' + w.bottom.b[0] + ' ' + Y(w.bottom.b[1]) +

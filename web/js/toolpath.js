@@ -163,6 +163,8 @@
     return r >= 0 ? offsetPath(loop, r, side) : offsetPath(loop, -r, side === 1 ? 2 : 1);
   }
 
+  const EDGE_AXIS = { Left: [1, 0], Right: [-1, 0], Front: [0, 1], Back: [0, -1] };
+
   function build(result, toolInfo, cfg) {
     const p = result.panel;
     const ops = result.ops;
@@ -176,6 +178,7 @@
       if (!pts.length) return;
       const extra = { z: meta.z || 0, through: (meta.z || 0) >= p.T - 1e-6, kind: meta.kind || 'mill',
         group: ops[opIndex] ? ops[opIndex].group : '' };
+      if (meta.axis) extra.axis = meta.axis;
       if (Math.hypot(pos[0] - pts[0][0], pos[1] - pts[0][1]) > 1e-6) {
         moves.push(Object.assign({ type: 'rapid', pts: [pos, pts[0]], d: d, label: label, tool: tool, op: opIndex }, extra));
       }
@@ -189,6 +192,8 @@
       if (op.kind === 'slot') meta.kind = 'saw';
       if (op.kind === 'chamfer') meta = { z: op.height, kind: 'chamfer' };
       if (op.kind === 'drill') meta = { z: op.d.depth, kind: op.face === 'Top' ? 'drill' : 'edge' };
+      // Bearbeitung von der Kante: Werkzeug liegt waagerecht, axis = Richtung in die Platte (Draufsicht)
+      if (op.face && op.face !== 'Top' && EDGE_AXIS[op.face]) meta.axis = EDGE_AXIS[op.face];
       if (op.kind === 'sdrill') meta = { z: op.depth * Math.cos(op.angleB * Math.PI / 180), kind: 'drill' };
       if (op.kind === 'contour') {
         const d = info(op.tool).d || 10;
@@ -199,6 +204,7 @@
       } else if (op.kind === 'pocket' && op.face && op.face !== 'Top') {
         // Tasche in der Kante: in der Draufsicht als Ein- und Ausfahren über die Taschenbreite
         meta.kind = 'edge';
+        meta.axis = EDGE_AXIS[op.face];
         const d = info(op.tool).d || 10;
         const xs = op.segs.flatMap((q) => [q.a[0], q.b[0]]);
         const x0 = Math.min(...xs) + d / 2;

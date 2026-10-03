@@ -1126,6 +1126,65 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     ctx.beginPath(); ctx.arc(x, y, Math.max(1.5, r * 0.12), 0, Math.PI * 2); ctx.fill();
   }
 
+  // Liegendes Werkzeug (Bearbeitung von der Kante), von oben gesehen: Spitze bei (x, y),
+  // ax = Richtung in die Platte (Bildschirm), len = Schneidenlänge, sc = Maßstab mm → px
+  function drawSideTool(ctx, x, y, r, ax, len, spin, lifted, isDrill, col) {
+    r = Math.max(3, r);
+    const lc = Math.max(len, r * 2.5);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.atan2(-ax[1], -ax[0])); // lokales +x zeigt aus der Platte heraus
+    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+    ctx.shadowBlur = lifted ? 16 : 7;
+    ctx.shadowOffsetX = lifted ? 6 : 3;
+    ctx.shadowOffsetY = lifted ? 6 : 3;
+    const steel = (h) => {
+      const g = ctx.createLinearGradient(0, -h, 0, h);
+      g.addColorStop(0, '#5f6872'); g.addColorStop(0.35, '#eef1f4'); g.addColorStop(0.6, '#b4bcc4'); g.addColorStop(1, '#4f5760');
+      return g;
+    };
+    ctx.globalAlpha = lifted ? 0.85 : 1;
+    // Aggregat / Spindelkopf
+    const hx = lc + r * 2.2;
+    const hh = Math.max(r * 1.7, 9);
+    const hl = Math.max(r * 3.2, 22);
+    const hg = ctx.createLinearGradient(0, -hh, 0, hh);
+    hg.addColorStop(0, '#2f353b'); hg.addColorStop(0.4, '#5d656e'); hg.addColorStop(1, '#262b30');
+    ctx.fillStyle = hg;
+    ctx.beginPath(); ctx.roundRect(hx, -hh, hl, hh * 2, Math.min(6, hh * 0.4)); ctx.fill();
+    ctx.shadowColor = 'transparent';
+    // Spannzange / Schaft
+    ctx.fillStyle = steel(r * 0.8);
+    ctx.fillRect(lc, -r * 0.8, hx - lc, r * 1.6);
+    ctx.fillStyle = '#3a4148';
+    ctx.fillRect(hx - Math.max(2, r * 0.5), -r * 1.15, Math.max(2, r * 0.5), r * 2.3);
+    // Schneide mit umlaufenden Spannuten
+    const t0 = isDrill ? r * 0.55 : 0;
+    ctx.fillStyle = steel(r);
+    ctx.beginPath();
+    if (isDrill) { ctx.moveTo(0, 0); ctx.lineTo(t0, -r); ctx.lineTo(lc, -r); ctx.lineTo(lc, r); ctx.lineTo(t0, r); ctx.closePath(); }
+    else ctx.rect(0, -r, lc, r * 2);
+    ctx.fill();
+    ctx.save();
+    ctx.clip();
+    ctx.strokeStyle = 'rgba(40,46,52,0.55)';
+    ctx.lineWidth = Math.max(1, r * 0.16);
+    const pitch = Math.max(5, r * 1.3);
+    const off = ((spin * r * 0.25) % pitch + pitch) % pitch;
+    for (let u = -2 * r - pitch + off; u < lc + 2 * r; u += pitch) {
+      ctx.beginPath(); ctx.moveTo(u, -r); ctx.lineTo(u + r * 0.9, r); ctx.stroke();
+    }
+    ctx.restore();
+    // Rahmen in der Farbe der Bearbeitung
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    if (isDrill) { ctx.moveTo(-1.5, 0); ctx.lineTo(t0, -r - 1.5); ctx.lineTo(lc, -r - 1.5); ctx.moveTo(lc, r + 1.5); ctx.lineTo(t0, r + 1.5); ctx.closePath(); }
+    else ctx.rect(-1.5, -r - 1.5, lc + 1.5, r * 2 + 3);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function arrow(ctx, a, b, color) {
     const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
     ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1.2;
@@ -1235,8 +1294,17 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
       if (m.type === 'rapid' && cur.f < 1) arrow(ctx, [X(m.pts[0][0]), Y(m.pts[0][1])], [X(m.pts[1][0]), Y(m.pts[1][1])], col('--muted'));
       if (m.d && !(anim.t >= anim.total)) {
         const spin = reduceMotion ? 0 : ((now || performance.now()) / 1000) * 14;
-        const isDrill = m.kind === 'drill' || m.kind === 'edge';
-        drawTool(ctx, X(cur.at[0]), Y(cur.at[1]), (m.d / 2) * sc, spin, m.type === 'rapid', isDrill, m.type === 'rapid' ? col('--muted') : col(opToken(anim.result.ops[m.op])));
+        const op = anim.result.ops[m.op];
+        const isDrill = m.kind === 'drill' || (op && op.kind === 'drill');
+        const ring = m.type === 'rapid' ? col('--muted') : col(opToken(op));
+        if (m.axis) {
+          // von der Kante: Werkzeug liegt waagerecht, Schneidenlänge mindestens Bearbeitungstiefe
+          const info = ToolLibrary.infoMap(state.tools)[m.tool] || {};
+          const len = Math.max(m.z + 3, Math.min(info.len || 0, m.z * 1.6)) * sc;
+          drawSideTool(ctx, X(cur.at[0]), Y(cur.at[1]), (m.d / 2) * sc, [m.axis[0], -m.axis[1]], len, spin, m.type === 'rapid', isDrill, ring);
+        } else {
+          drawTool(ctx, X(cur.at[0]), Y(cur.at[1]), (m.d / 2) * sc, spin, m.type === 'rapid', isDrill, ring);
+        }
       }
     }
     updateHud(cur);

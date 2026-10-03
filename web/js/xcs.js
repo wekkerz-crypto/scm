@@ -12,6 +12,9 @@
     fieldShort: 'IJ',          // SetMachiningParameters – Arbeitsfeld für kurze Teile
     fieldLong: 'IL',           // … für lange Teile
     fieldThreshold: 1300,      // bis zu dieser Länge (mm) fieldShort, darüber fieldLong
+    fieldWideShort: 'AB',      // breite Teile (Y > fieldWidth) bis fieldThreshold lang
+    fieldWideLong: 'AD',       // breite und lange Teile
+    fieldWidth: 620,           // ab dieser Breite Y (mm) die Felder für breite Teile
     rawOversize: 2,            // CreateRawWorkpiece: Aufmaß je Seite
     contourTool: 'E014',       // Formatfräsen außen
     contourExtra: 3,           // Frästiefe = Dicke + …
@@ -88,6 +91,13 @@
       seq.splice(before ? seq.indexOf(before) + 1 : 0, 0, c);
     }
     return seq;
+  }
+
+  // Arbeitsfeld nach Teilegröße: Länge X bis 1300 → IJ, darüber IL; Breite Y über 620 → AB bzw. AD
+  function autoField(p, cfg) {
+    const long = p.L > cfg.fieldThreshold + 1e-6;
+    if (p.W > cfg.fieldWidth + 1e-6) return long ? cfg.fieldWideLong : cfg.fieldWideShort;
+    return long ? cfg.fieldLong : cfg.fieldShort;
   }
 
   function fmt(v) {
@@ -608,7 +618,7 @@
     if (override && override.order) cfg.order = override.order;
     if (override && override.depths) cfg.depthOverrides = override.depths;
     const { ops, warnings, groups, defaultGroups } = plan(p, cfg);
-    const field = (override && override.field) || (p.L > cfg.fieldThreshold + 1e-6 ? cfg.fieldLong : cfg.fieldShort);
+    const field = (override && override.field) || autoField(p, cfg);
     const L = [];
     const blank = () => L.push('');
     L.push('SetMachiningParameters("' + field + '", 1, 10, 196608, false);'); blank();

@@ -315,7 +315,9 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
   // ------------------------------------------------ Einstellungen
   const FIELDS = [
     ['fieldShort', 'Feld kurze Teile', 'text'], ['fieldLong', 'Feld lange Teile', 'text'],
-    ['fieldThreshold', 'Feld kurz bis Länge (mm)', 'number'], ['rawOversize', 'Rohteil-Aufmaß je Seite', 'number'],
+    ['fieldThreshold', 'Feld kurz bis Länge (mm)', 'number'],
+    ['fieldWideShort', 'Feld breite Teile', 'text'], ['fieldWideLong', 'Feld breite, lange Teile', 'text'],
+    ['fieldWidth', 'Feld breit ab Breite Y über (mm)', 'number'], ['rawOversize', 'Rohteil-Aufmaß je Seite', 'number'],
     ['contourTool', 'Formatfräser', 'mill'], ['contourExtra', 'Formatfräsen: Dicke +', 'number'],
     ['contourMode', 'Sonderkontur fräsen', 'choice', [['whole', 'Außenkontur am Stück'], ['rect', 'Rechteck + Ausschnitte einzeln']]],
     ['cutoutTool', 'Fräser Ausschnitte', 'mill'], ['cutoutExtra', 'Ausschnitte: Dicke +', 'number'],
@@ -873,7 +875,8 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
       return;
     }
     const p = r.panel;
-    const fieldOpts = [state.settings.fieldShort, state.settings.fieldLong];
+    const fieldOpts = [state.settings.fieldShort, state.settings.fieldLong, state.settings.fieldWideShort, state.settings.fieldWideLong]
+      .filter((f, i, a) => f && a.indexOf(f) === i);
     const legend = [['var(--drill)', 'Bohrung oben'], ['var(--pocket)', 'Tasche'], ['var(--mill)', 'Fräsen / Kontur'],
       ['var(--saw)', 'Sägeschnitt / Nut / Falz'], ['var(--chamfer)', 'Fase / schräge Kante'], ['var(--sdrill)', 'Bohrung schräg'],
       ['var(--hdrill)', 'Kante (Bohrung / Tasche)'], ['var(--err)', 'Nullpunkt']];

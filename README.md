@@ -110,8 +110,12 @@ Nullpunkt vorne links unten. Werkzeuge, Zugaben und Bohrerlisten sind im Web-Too
 
 ## In Maestro bestätigt
 
-- **Arbeitsfeld** (`SetMachiningParameters`): Teile bis 1300 mm Länge `IJ`, darüber `IL` (Vorgabe aus der Werkstatt,
-  im Web-Tool unter *Werkzeuge & Regeln* änderbar).
+- **Arbeitsfeld** (`SetMachiningParameters`, Vorgabe aus der Werkstatt, im Web-Tool unter *Werkzeuge & Regeln* änderbar):
+
+  | Breite Y | Länge X bis 1300 mm | Länge X über 1300 mm |
+  |---|---|---|
+  | bis 620 mm | `IJ` | `IL` |
+  | über 620 mm | `AB` | `AD` |
 
 Die Onshape-Teile `kp1 - Oberboden` und `kp1 - Rechte Seite` (Ordner `step/`) wurden mit dem Tool
 umgewandelt, im X-Konverter als Script importiert und als Maestro-Programm angelegt. Damit belegt:

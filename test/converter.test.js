@@ -155,15 +155,20 @@ test('Werkzeugwahl je Bearbeitung und Warnung bei zu kurzer Schneide', () => {
   assert.ok(part.warnings.some((w) => /Schneidenlänge E040/.test(w)), part.warnings.join('|'));
 });
 
-test('Arbeitsfeld: bis 1300 mm IJ, darüber IL', () => {
+test('Arbeitsfeld: bis 1300 mm IJ, darüber IL; breiter als 620 mm AB bzw. AD', () => {
   const X = require('../web/js/xcs.js');
-  const panel = (L) => ({ L: L, W: 500, T: 19, outline: [], outlineIsRect: true, cutouts: [], drills: [], grooves: [], rebates: [],
+  const panel = (L, W) => ({ L: L, W: W || 500, T: 19, outline: [], outlineIsRect: true, cutouts: [], drills: [], grooves: [], rebates: [],
     pockets: [], chamfers: [], slantWalls: [], slantDrills: [], bottom: [], warnings: [] });
-  const field = (L) => /SetMachiningParameters\("(\w+)"/.exec(X.write(panel(L)).text)[1];
+  const field = (L, W) => /SetMachiningParameters\("(\w+)"/.exec(X.write(panel(L, W)).text)[1];
   assert.strictEqual(field(612), 'IJ');
   assert.strictEqual(field(1300), 'IJ');
   assert.strictEqual(field(1300.5), 'IL');
   assert.strictEqual(field(2305), 'IL');
+  assert.strictEqual(field(2305, 620), 'IL');
+  assert.strictEqual(field(1000, 620.5), 'AB');
+  assert.strictEqual(field(1300, 800), 'AB');
+  assert.strictEqual(field(1300.5, 621), 'AD');
+  assert.strictEqual(field(2800, 1200), 'AD');
 });
 
 test('Werkzeugbahn für die Animation', () => {

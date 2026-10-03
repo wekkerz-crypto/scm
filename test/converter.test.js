@@ -336,3 +336,35 @@ test('Taschen in den Stirnseiten (Spante)', () => {
   const moves = TP.build(part, toolInfo, {}).filter((m) => m.kind === 'edge');
   assert.ok(moves.length >= 2);
 });
+
+test('Schräge Enden sägen, Tasche und Bohrungen auf der schrägen Ebene (Holz)', () => {
+  const T = require('../web/js/tools.js');
+  const TP = require('../web/js/toolpath.js');
+  const toolInfo = T.infoMap(T.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
+  const part = one('test/fixtures/holz.step', { toolInfo: toolInfo });
+  const x = part.xcs;
+  assert.ok(!part.warnings.some((w) => /Schräge Bohrung|Schräge Fläche/.test(w)), part.warnings.join('\n'));
+  // zwei Sägeschnitte 45° über die ganze Breite, Material links, Säge rechts
+  const cuts = x.match(/CreateBladeCut\([^)]*\);/g) || [];
+  assert.strictEqual(cuts.length, 2);
+  for (const c of cuts) assert.ok(c.includes('"E070", "-1", 45, 2,'), c);
+  // je Schräge eine eigene Ebene, erst nach den Sägeschnitten
+  const planes = x.match(/CreateWorkplane\("Slanted_\d", [^)]*\);/g) || [];
+  assert.strictEqual(planes.length, 2);
+  assert.ok(x.lastIndexOf('CreateBladeCut(') < x.indexOf('CreateWorkplane('));
+  assert.ok(planes.every((pl) => / 45\);$/.test(pl)));
+  // Bohrungen Ø10 senkrecht zur Schräge, Langloch als Tasche mit passendem Fräser
+  const drills = part.ops.filter((o) => o.kind === 'drill' && o.plane);
+  assert.strictEqual(drills.length, 2);
+  for (const d of drills) assert.ok(Math.abs(d.d.depth - 15) < 1e-6);
+  const pk = part.ops.filter((o) => o.kind === 'pocket' && o.plane);
+  assert.strictEqual(pk.length, 1);
+  assert.ok(Math.abs(pk[0].depth - 10) < 1e-6);
+  assert.ok(toolInfo[pk[0].tool].d < 11);
+  assert.ok(/SelectWorkplane\("Slanted_\d"\);\r\n\r\nCreatePolyline\("Pocket_1"/.test(x));
+  // mit Einstellung „fräsen“ wieder 5-Achs-Fräsen statt Säge
+  const milled = one('test/fixtures/holz.step', { toolInfo: toolInfo, slantCut: 'mill' });
+  assert.ok(!milled.xcs.includes('CreateBladeCut') && milled.xcs.includes('CreateSlantedRoughFinish'));
+  // Animation läuft durch
+  assert.ok(TP.build(part, toolInfo, {}).some((m) => m.blade));
+});

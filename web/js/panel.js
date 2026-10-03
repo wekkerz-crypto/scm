@@ -93,7 +93,15 @@
       for (const b of f.bounds) for (const e of b.edges) e.samples = sampleEdge(e);
       if (f.surface.type === 'other') warnings.push('Fläche vom Typ ' + f.surface.name + ' wird nicht ausgewertet.');
       // Falls kein FACE_OUTER_BOUND markiert ist: größten Loop als außen annehmen
-      if (f.bounds.length && !f.bounds.some((b) => b.outer)) f.bounds[0].outer = true;
+      if (f.bounds.length && !f.bounds.some((b) => b.outer)) {
+        const size = (b) => {
+          const lo = [Infinity, Infinity, Infinity];
+          const hi = [-Infinity, -Infinity, -Infinity];
+          for (const e of b.edges) for (const p of e.samples) for (let i = 0; i < 3; i++) { lo[i] = Math.min(lo[i], p[i]); hi[i] = Math.max(hi[i], p[i]); }
+          return len(sub(hi, lo));
+        };
+        f.bounds.reduce((x, y) => (size(y) > size(x) ? y : x)).outer = true;
+      }
     }
 
     // Größte ebene Fläche bestimmt die Plattennormale
@@ -370,7 +378,7 @@
         tmin = Math.min(tmin, t); tmax = Math.max(tmax, t);
       }
       g.faces.forEach((f) => holeFaceIds.add(f.id));
-      holes.push({ axis: g.a, c: g.c, d: 2 * g.r, tmin: tmin, tmax: tmax });
+      holes.push({ axis: g.a, c: g.c, d: 2 * g.r, tmin: tmin, tmax: tmax, ids: g.faces.map((f) => f.id) });
     }
     return { holes: holes, holeFaceIds: holeFaceIds };
   }
@@ -556,50 +564,138 @@
     return { tf: compose({ m: S.m, t: S.t }, fr.tf), L: S.dims[0], W: S.dims[1], T: S.dims[2] };
   }
 
-  // Sucht Taschen, die von einer Kante aus senkrecht in die Platte gehen (Boden parallel zur Kante,
-  // ringsum geschlossen). Liefert die Taschen in lokalen Koordinaten der Kante und die beteiligten Flächen.
+  // Taschen in einem lokalen System (Kante oder schräge Ebene): Boden parallel zur Bearbeitungsebene z' = sf.T,
+  // ringsum geschlossen. Liefert Taschen in lokalen Koordinaten und die beteiligten Flächen.
+  function pocketsInFrame(faces, sf, claimed) {
+    const out = [];
+    const ids = new Set();
+    for (const f of faces) {
+      if (claimed.has(f.id) || f.surf.type !== 'plane' || f.surf.n[2] < 1 - ATOL) continue;
+      const z = f.surf.p[2];
+      if (z < TOL || z > sf.T - TOL) continue;
+      const ob = f.bounds.find((b) => b.outer) || f.bounds[0];
+      const segs = ob.edges.map(seg2DFromEdge);
+      if (segs.every((q) => q.type === 'arc')) continue; // Bohrungsgrund
+      const bb = loopBBox(segs);
+      // ringsum geschlossen: nicht an Ober-/Unterseite oder Nachbarkanten offen (sonst Falz, Nut o. Ä.)
+      if (bb.x0 < TOL || bb.y0 < TOL || bb.x1 > sf.L - TOL || bb.y1 > sf.W - TOL) continue;
+      const inBox = (q) => q[0] > bb.x0 - TOL && q[0] < bb.x1 + TOL && q[1] > bb.y0 - TOL && q[1] < bb.y1 + TOL &&
+        q[2] > z - TOL && q[2] < sf.T + TOL;
+      const walls = faces.filter((g) => g !== f && !claimed.has(g.id) && g.pts.length && g.pts.every(inBox) &&
+        !(g.surf.type === 'plane' && Math.abs(g.surf.n[2]) > ATOL));
+      if (!walls.length || !walls.some((g) => g.pts.some((q) => q[2] > sf.T - TOL))) continue;
+      const inner = f.bounds.filter((b) => b !== ob).map((b) => b.edges.map(seg2DFromEdge));
+      const islands = inner.filter((lp) => !lp.every((q) => q.type === 'arc'));
+      const outerLoop = orient(segs, true);
+      out.push({ x0: bb.x0, y0: bb.y0, x1: bb.x1, y1: bb.y1, depth: sf.T - z, segs: outerLoop,
+        islands: islands.map((lp) => orient(lp, false)), minRadius: minConcaveRadius(outerLoop), holes: inner.length - islands.length });
+      ids.add(f.id);
+      for (const g of walls) ids.add(g.id);
+    }
+    return { pockets: out, faceIds: ids };
+  }
+
+  // Sucht Taschen, die von einer Kante aus senkrecht in die Platte gehen.
   function findSidePockets(prep, fr) {
     const out = [];
     const ids = new Set();
     for (const face of ['Left', 'Right', 'Front', 'Back']) {
       const sf = sideFrame(fr, face);
-      const faces = transformSolid(prep, sf);
-      for (const f of faces) {
-        if (f.surf.type !== 'plane' || f.surf.n[2] < 1 - ATOL) continue;
-        const z = f.surf.p[2];
-        if (z < TOL || z > sf.T - TOL) continue;
-        const ob = f.bounds.find((b) => b.outer) || f.bounds[0];
-        const segs = ob.edges.map(seg2DFromEdge);
-        if (segs.every((q) => q.type === 'arc')) continue; // Bohrungsgrund
-        const bb = loopBBox(segs);
-        // ringsum geschlossen: nicht an Ober-/Unterseite oder Nachbarkanten offen (sonst Falz, Nut o. Ä.)
-        if (bb.x0 < TOL || bb.y0 < TOL || bb.x1 > sf.L - TOL || bb.y1 > sf.W - TOL) continue;
-        const inBox = (q) => q[0] > bb.x0 - TOL && q[0] < bb.x1 + TOL && q[1] > bb.y0 - TOL && q[1] < bb.y1 + TOL &&
-          q[2] > z - TOL && q[2] < sf.T + TOL;
-        const walls = faces.filter((g) => g !== f && g.pts.length && g.pts.every(inBox) &&
-          !(g.surf.type === 'plane' && Math.abs(g.surf.n[2]) > ATOL));
-        if (!walls.length || !walls.some((g) => g.pts.some((q) => q[2] > sf.T - TOL))) continue;
-        const inner = f.bounds.filter((b) => b !== ob).map((b) => b.edges.map(seg2DFromEdge));
-        const islands = inner.filter((lp) => !lp.every((q) => q.type === 'arc'));
-        const outerLoop = orient(segs, true);
-        out.push({ face: face, x0: bb.x0, y0: bb.y0, x1: bb.x1, y1: bb.y1, depth: sf.T - z, segs: outerLoop,
-          islands: islands.map((lp) => orient(lp, false)), minRadius: minConcaveRadius(outerLoop), holes: inner.length - islands.length });
-        ids.add(f.id);
-        for (const g of walls) ids.add(g.id);
-      }
+      const r = pocketsInFrame(transformSolid(prep, sf), sf, ids);
+      for (const k of r.pockets) out.push(Object.assign({ face: face }, k));
+      r.faceIds.forEach((id) => ids.add(id));
     }
     return { pockets: out, faceIds: ids };
   }
 
+  // ---------------------------------------------------------------- Schräge Ebenen (z. B. nach Sägeschnitt)
+
+  // Lokales System einer schrägen Ebene wie Maestro CreateWorkplane(name, X0, Y0, Z0, ZRotation, XRotation):
+  // erst um Z drehen, dann um die neue X-Achse kippen. z' = Abstand über der Ebene + T (Materialstärke darunter).
+  function slantFrame(fr, f, allPts) {
+    const n = f.surf.n;
+    const b = Math.acos(Math.max(-1, Math.min(1, n[2])));
+    const a = Math.atan2(n[0], -n[1]);
+    const X = [Math.cos(a), Math.sin(a), 0];
+    const Y = cross(n, X);
+    const p0 = f.surf.p;
+    const lx = f.pts.map((q) => dot(sub(q, p0), X));
+    const ly = f.pts.map((q) => dot(sub(q, p0), Y));
+    const o = add(p0, add(mul(X, Math.min(...lx)), mul(Y, Math.min(...ly))));
+    let T = 0;
+    for (const q of allPts) T = Math.max(T, -dot(sub(q, o), n));
+    const tf = compose({ m: [X, Y, n], t: [-dot(X, o), -dot(Y, o), -dot(n, o) + T] }, fr.tf);
+    return { tf: tf, L: Math.max(...lx) - Math.min(...lx), W: Math.max(...ly) - Math.min(...ly), T: T,
+      o: o, X: X, Y: Y, n: n, zRot: a * 180 / Math.PI, xRot: b * 180 / Math.PI };
+  }
+
+  // Taschen und Bohrungen senkrecht zu schrägen ebenen Flächen.
+  function findSlantPlanes(prep, fr, faces, claimedIn) {
+    const claimed = new Set(claimedIn);
+    const planes = [];
+    const allPts = [];
+    for (const f of faces) for (const q of f.pts) allPts.push(q);
+    const cands = faces.filter((f) => f.surf.type === 'plane' && Math.abs(f.surf.n[2]) > ATOL && Math.abs(f.surf.n[2]) < 1 - ATOL)
+      .map((f) => {
+        const n = f.surf.n;
+        const u = unit(Math.abs(n[2]) < 0.9 ? cross(n, [0, 0, 1]) : cross(n, [1, 0, 0]));
+        const v = cross(n, u);
+        let area = 0;
+        for (const bd of f.bounds) {
+          const pts = [];
+          for (const e of bd.edges) for (const q of e.samples.slice(0, -1)) pts.push([dot(q, u), dot(q, v)]);
+          area += (bd.outer ? 1 : -1) * Math.abs(polyArea2D(pts));
+        }
+        return { f: f, area: Math.abs(area) };
+      })
+      .sort((x, y) => y.area - x.area);
+    for (const { f } of cands) {
+      if (claimed.has(f.id)) continue;
+      const ob = f.bounds.find((b) => b.outer) || f.bounds[0];
+      if (ob.edges.every((e) => e.curve.type === 'circle')) continue; // Bohrungsgrund
+      const sf = slantFrame(fr, f, allPts);
+      const lf = transformSolid(prep, sf);
+      const pk = pocketsInFrame(lf, sf, claimed);
+      const drills = [];
+      const { holes } = findHoles(lf.filter((g) => !claimed.has(g.id) && !pk.faceIds.has(g.id)));
+      for (const h of holes) {
+        if (Math.abs(h.axis[2]) < 1 - ATOL) continue;
+        const hf = lf.filter((g) => h.ids.includes(g.id));
+        const zs = [];
+        for (const g of hf) for (const q of g.pts) zs.push(q[2]);
+        const zmax = Math.max(...zs);
+        const zmin = Math.min(...zs);
+        const c = h.c;
+        if (zmax < sf.T - TOL || sf.T - zmin < TOL || c[0] < -TOL || c[0] > sf.L + TOL || c[1] < -TOL || c[1] > sf.W + TOL) continue;
+        drills.push({ x: c[0], y: c[1], d: h.d, depth: sf.T - zmin });
+        h.ids.forEach((id) => pk.faceIds.add(id));
+        // Bohrungsgrund (Kegel/Ebene innerhalb des Lochs) mitnehmen
+        for (const g of lf) {
+          if (g.pts.length && g.pts.every((q) => Math.hypot(q[0] - c[0], q[1] - c[1]) < h.d / 2 + TOL && q[2] < sf.T + TOL)) pk.faceIds.add(g.id);
+        }
+      }
+      if (!pk.pockets.length && !drills.length) continue;
+      pk.faceIds.forEach((id) => claimed.add(id));
+      claimed.add(f.id);
+      planes.push({ o: sf.o, X: sf.X, Y: sf.Y, n: sf.n, zRot: sf.zRot, xRot: sf.xRot, L: sf.L, W: sf.W,
+        up: sf.n[2] > 0, pockets: pk.pockets, drills: drills, faceIds: Array.from(pk.faceIds) });
+    }
+    return planes;
+  }
+
   function extract(prep, fr) {
     const side = findSidePockets(prep, fr);
-    const faces = transformSolid(prep, fr).filter((f) => !side.faceIds.has(f.id));
+    const all = transformSolid(prep, fr);
+    const slant = findSlantPlanes(prep, fr, all, side.faceIds);
+    const skip = new Set(side.faceIds);
+    for (const sp of slant) sp.faceIds.forEach((id) => skip.add(id));
+    const faces = all.filter((f) => !skip.has(f.id));
     const L = fr.L;
     const W = fr.W;
     const T = fr.T;
     const warnings = prep.warnings.slice();
     const res = { L: L, W: W, T: T, outline: null, cutouts: [], drills: [], circles: [], grooves: [], rebates: [],
-      pockets: [], sidePockets: side.pockets, chamfers: [], slantWalls: [], slantDrills: [], bottom: [], warnings: warnings };
+      pockets: [], sidePockets: side.pockets, slantPlanes: slant.filter((sp) => sp.up), chamfers: [], slantWalls: [], slantDrills: [], bottom: [], warnings: warnings };
 
     // Höhen der nach oben offenen Böden (Taschen, Nuten): Bohrungen dort beginnen „oben“
     const upFloors = faces.filter((f) => f.surf.type === 'plane' && f.surf.n[2] > 1 - ATOL &&
@@ -610,6 +706,11 @@
       return { z: f.surf.p[2], poly: poly };
     });
     const onUpFloor = (x, y, z) => upFloors.some((fl) => near(fl.z, z) && pointInPoly([x, y], fl.poly));
+
+    for (const sp of slant) {
+      if (sp.up) continue;
+      res.bottom.push({ kind: 'Ebene', text: 'Schräge Ebene nach unten mit ' + (sp.pockets.length + sp.drills.length) + ' Bearbeitung(en)' });
+    }
 
     // --- Bohrungen
     const { holes, holeFaceIds } = findHoles(faces);

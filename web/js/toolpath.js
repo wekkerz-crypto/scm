@@ -174,11 +174,15 @@
     let pos = [-60, -60];
     // meta: z = Frästiefe, kind = Darstellungsart (mill, saw, drill, edge, chamfer)
     let meta = {};
+    let mapPt = null; // Bearbeitung auf schräger Ebene: lokale Koordinaten → Draufsicht
     const go = (pts, d, label, tool, opIndex) => {
       if (!pts.length) return;
+      if (mapPt) pts = pts.map(mapPt);
       const extra = { z: meta.z || 0, through: (meta.z || 0) >= p.T - 1e-6, kind: meta.kind || 'mill',
         group: ops[opIndex] ? ops[opIndex].group : '' };
       if (meta.axis) extra.axis = meta.axis;
+      if (meta.axisScale) extra.axisScale = meta.axisScale;
+      if (meta.blade) extra.blade = meta.blade;
       if (Math.hypot(pos[0] - pts[0][0], pos[1] - pts[0][1]) > 1e-6) {
         moves.push(Object.assign({ type: 'rapid', pts: [pos, pts[0]], d: d, label: label, tool: tool, op: opIndex }, extra));
       }
@@ -191,9 +195,35 @@
       meta = { z: op.depth || 0, kind: 'mill' };
       if (op.kind === 'slot') meta.kind = 'saw';
       if (op.kind === 'chamfer') meta = { z: op.height, kind: 'chamfer' };
-      if (op.kind === 'drill') meta = { z: op.d.depth, kind: op.face === 'Top' ? 'drill' : 'edge' };
+      if (op.kind === 'drill') meta = { z: op.d.depth, kind: op.face === 'Top' || op.plane ? 'drill' : 'edge' };
+      mapPt = null;
+      if (op.plane) {
+        // Werkzeug steht senkrecht zur schrägen Ebene: von oben gesehen gekippt
+        const q = op.plane;
+        mapPt = (l) => [q.o[0] + q.X[0] * l[0] + q.Y[0] * l[1], q.o[1] + q.X[1] * l[0] + q.Y[1] * l[1]];
+        const h = Math.hypot(q.n[0], q.n[1]) || 1;
+        meta.axis = [-q.n[0] / h, -q.n[1] / h];
+        meta.axisScale = h; // sin(Neigung)
+      }
+      if (op.kind === 'blade') {
+        // Sägeschnitt: Abtrag = Keil zwischen Ober- und Unterkante der Schräge
+        meta = { z: p.T * 0.3, kind: 'saw', blade: { tilt: op.tilt } };
+      }
       // Bearbeitung von der Kante: Werkzeug liegt waagerecht, axis = Richtung in die Platte (Draufsicht)
       if (op.face && op.face !== 'Top' && EDGE_AXIS[op.face]) meta.axis = EDGE_AXIS[op.face];
+      if (op.kind === 'blade') {
+        const info0 = info(op.tool);
+        const dir = [op.b[0] - op.a[0], op.b[1] - op.a[1]];
+        const l = Math.hypot(dir[0], dir[1]) || 1;
+        const right = [dir[1] / l, -dir[0] / l]; // Abfallseite
+        const w = Math.tan(op.tilt * Math.PI / 180) * p.T; // waagerechter Versatz der Schräge
+        const off = op.leanOut ? w / 2 : -w / 2;
+        const sh = (q) => [q[0] + right[0] * off, q[1] + right[1] * off];
+        meta.blade.d = info0.d || 300;
+        meta.blade.thick = info0.blade || 3;
+        go([sh(op.a0 || op.a), sh(op.b0 || op.b)], Math.max(w, info0.blade || 3), op.label, op.tool, i);
+        return;
+      }
       if (op.kind === 'sdrill') meta = { z: op.depth * Math.cos(op.angleB * Math.PI / 180), kind: 'drill' };
       if (op.kind === 'contour') {
         const d = info(op.tool).d || 10;
@@ -269,7 +299,8 @@
         for (let r = 0; r < pat.nY; r++) for (let c = 0; c < pat.nX; c++) {
           const lx = d.x + c * pat.dX;
           const ly = d.y + r * pat.dY;
-          if (op.face === 'Top') go([[lx, ly]], d.d, label + ' oben', 'Bohrer', i);
+          if (op.plane) go([[lx, ly]], d.d, label + ' auf Schräge', 'Bohrer', i);
+          else if (op.face === 'Top') go([[lx, ly]], d.d, label + ' oben', 'Bohrer', i);
           else {
             // lokale Kantenkoordinate → Draufsicht
             let a;
@@ -290,6 +321,7 @@
         go([[e[0], e[1]], end, [e[0], e[1]]], op.d, 'Schräge Bohrung Ø' + Math.round(op.d * 100) / 100, 'Bohrer', i);
       }
     });
+    mapPt = null;
     moves.push({ type: 'rapid', pts: [pos, [-60, -60]], d: 0, label: 'Parkposition', tool: '', op: -1, z: 0, kind: 'mill', group: '' });
     return moves;
   }

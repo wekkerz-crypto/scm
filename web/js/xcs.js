@@ -28,12 +28,14 @@
     chamferTool: 'E050',       // Fasen (CreateChamfer)
     slantTool: 'E016',         // schräge Kanten / Gehrung (CreateSlantedRoughFinish)
     slantExtra: 2,             // Schrägfräsen: Dicke + …
+    slantCut: 'saw',           // schräge Kanten über die ganze Länge: 'saw' = Sägeschnitt (CreateBladeCut), 'mill' = fräsen
+    bladeTool: 'E070',         // Säge für schräge Schnitte
     stepDown: 0,               // Zustellung je Durchgang in mm (0 = in einem Durchgang)
     finishDepth: 0,            // letzte Zustellung in mm (0 = keine eigene)
     contourMode: 'whole',      // Sonderkontur: 'whole' = Außenkontur am Stück, 'rect' = Rechteck + Ausschnitte
     // Reihenfolge-Regel: Bearbeitungsarten in dieser Folge (abschaltbar, vom Benutzer änderbar)
     orderRule: { on: true, seq: ['drillTop', 'drillSide', 'drillSlanted', 'slot', 'pocket', 'rebate', 'chamfer', 'slant',
-      'cutout', 'notch', 'format'] },
+      'slantPlane', 'cutout', 'notch', 'format'] },
     throughExtra: 2,           // Durchgangsbohrung: Tiefe = Dicke + …
     drillsVertical: [3, 5, 7, 8, 10, 12, 15, 20, 35],
     drillsHorizontal: [5, 8],
@@ -56,20 +58,22 @@
     pocket: 'Taschen',
     rebate: 'Falze',
     chamfer: 'Fasen',
-    slant: 'Schräge Kanten',
+    slant: 'Schräge Kanten / Sägeschnitte',
+    slantPlane: 'Bearbeitungen auf schrägen Ebenen',
     cutout: 'Durchbrüche und Rundlöcher',
     notch: 'Konturausschnitte',
     format: 'Formatfräsen',
   };
 
   function category(op) {
+    if (op.plane) return 'slantPlane';
     if (op.kind === 'drill') return op.face === 'Top' ? 'drillTop' : 'drillSide';
     if (op.kind === 'sdrill') return 'drillSlanted';
     const k = op.key || '';
     if (k === 'format') return 'format';
     const prefix = k.split('-')[0];
     return { notch: 'notch', cutout: 'cutout', round: 'cutout', rebate: 'rebate', pocket: 'pocket', rpocket: 'pocket', spocket: 'pocket', chamfer: 'chamfer', chamferpath: 'chamfer',
-      slant: 'slant', slot: 'slot' }[prefix] || 'notch';
+      slant: 'slant', blade: 'slant', slot: 'slot' }[prefix] || 'notch';
   }
 
   // Vollständige Regel-Reihenfolge (fehlende Arten hinten anhängen, unbekannte entfernen)
@@ -296,10 +300,52 @@
       const d = [w.top.b[0] - w.top.a[0], w.top.b[1] - w.top.a[1]];
       const l = Math.hypot(d[0], d[1]) || 1;
       const u = [d[0] / l, d[1] / l];
+      // Gerader Schnitt von Kante zu Kante: mit der Säge (Schnittfläche wird zur neuen schrägen Ebene)
+      const atEdge = (q) => q[0] < 0.05 || q[0] > p.L - 0.05 || q[1] < 0.05 || q[1] > p.W - 0.05;
+      if (cfg.slantCut === 'saw' && atEdge(w.top.a) && atEdge(w.top.b)) {
+        const so = cfg.sawOverrun;
+        ops.push({ kind: 'blade', key: 'blade-' + i, toolKind: 'saw', toolDefault: 'bladeTool',
+          a: [w.top.a[0] - u[0] * so, w.top.a[1] - u[1] * so], b: [w.top.b[0] + u[0] * so, w.top.b[1] + u[1] * so],
+          a0: w.top.a, b0: w.top.b, tilt: w.angle, leanOut: w.leanOut, depth: T, extra: cfg.slantExtra, tool: cfg.bladeTool,
+          label: 'Sägeschnitt schräg ' + fmt(w.angle) + '°' });
+        continue;
+      }
       ops.push({ kind: 'slant', key: 'slant-' + i, toolKind: 'mill', toolDefault: 'slantTool',
         a: [w.top.a[0] - u[0] * ll, w.top.a[1] - u[1] * ll], b: [w.top.b[0] + u[0] * ll, w.top.b[1] + u[1] * ll],
         angle: w.angle, approach: w.leanOut ? 2 : 1, depth: T + cfg.slantExtra, tool: cfg.slantTool,
         label: 'Schräge Kante ' + fmt(w.angle) + '°' });
+    }
+
+    // 8b) Taschen und Bohrungen auf schrägen Ebenen (eigene Bearbeitungsebene, z. B. Schnittfläche der Säge)
+    for (const [j, sp] of (p.slantPlanes || []).entries()) {
+      const plane = { name: 'Slanted_' + (j + 1), o: sp.o, zRot: sp.zRot, xRot: sp.xRot, X: sp.X, Y: sp.Y, n: sp.n };
+      const where = 'auf Schräge ' + fmt(Math.round(sp.xRot * 10) / 10) + '°';
+      for (const [i, k] of sp.pockets.entries()) {
+        const key = 'ppocket-' + j + '-' + i;
+        const w = Math.min(k.x1 - k.x0, k.y1 - k.y0, narrowest(k.segs));
+        const auto = fittingMill(w, k.depth, cfg.pocketTool);
+        const tool = (cfg.toolOverrides && cfg.toolOverrides[key]) || auto;
+        const dia = toolD(tool, null);
+        const r1 = (v) => fmt(Math.round(v * 10) / 10);
+        const label = 'Tasche ' + where + ' ' + r1(k.x1 - k.x0) + '×' + r1(k.y1 - k.y0);
+        if (dia && w < dia) warnings.push(label + ' ist schmaler (' + fmt(w) + ') als Fräser ' + tool + ' (Ø' + fmt(dia) + ') – kleineren Fräser wählen.');
+        else if (dia && k.minRadius < dia / 2 - 0.01) warnings.push(label + ': Eckenradius R' + fmt(k.minRadius) + ' kleiner als Fräserradius ' + fmt(dia / 2) + ' – Ecken bleiben runder.');
+        ops.push({ kind: 'pocket', plane: plane, key: key, toolKind: 'mill', toolDefault: 'pocketTool', pocket: 0, segs: k.segs, islands: k.islands,
+          depth: k.depth, tool: auto, label: label });
+      }
+      const byD = new Map();
+      for (const d of sp.drills) {
+        const k = fmt(d.d) + '|' + fmt(d.depth);
+        if (!byD.has(k)) byD.set(k, []);
+        byD.get(k).push(d);
+      }
+      for (const list of byD.values()) {
+        for (const d of list) {
+          if (!hasDrill(cfg.drillsVertical, d.d)) warnings.push('Kein Bohrer Ø' + fmt(d.d) + ' für die Bohrung ' + where + ' in der Werkzeugliste – Bohrung trotzdem ausgegeben.');
+          ops.push({ kind: 'drill', face: plane.name, plane: plane, pattern: { nX: 1, nY: 1, dX: 0, dY: 0 },
+            d: { x: d.x, y: d.y, d: d.d, depth: d.depth, tip: 'P' } });
+        }
+      }
     }
 
     // 9) Bohrungen
@@ -566,12 +612,21 @@
     let nSlot = 0;
     let nSeg = 0;
     const nDrill = { V: 0, H: 0 };
-    const counts = { chamfer: 0, slant: 0, sdrill: 0 };
+    const counts = { chamfer: 0, slant: 0, sdrill: 0, blade: 0, pdrill: 0 };
     let plane = 'Top';
+    const madePlanes = new Set();
     for (const op of ops) {
-      // Fräsungen und schräge Bohrungen beziehen sich auf die Oberseite, Kantentaschen auf ihre Kante
-      if (op.kind !== 'drill') {
-        const want = (op.kind === 'pocket' && op.face) || 'Top';
+      // Fräsungen und schräge Bohrungen beziehen sich auf die Oberseite, Kantentaschen auf ihre Kante,
+      // Bearbeitungen auf schrägen Ebenen auf eine eigene Ebene (einmal angelegt)
+      if (op.plane && !madePlanes.has(op.plane.name)) {
+        const q = op.plane;
+        if (plane !== 'Top') { L.push('SelectWorkplane("Top");'); blank(); plane = 'Top'; }
+        L.push('CreateWorkplane("' + q.name + '", ' + fmt(q.o[0]) + ', ' + fmt(q.o[1]) + ', ' + fmt(q.o[2]) + ', ' + fmt(q.zRot) + ', ' + fmt(q.xRot) + ');');
+        blank();
+        madePlanes.add(q.name);
+      }
+      if (op.kind !== 'drill' || op.plane) {
+        const want = op.plane ? op.plane.name : (op.kind === 'pocket' && op.face) || 'Top';
         if (plane !== want) {
           L.push('SelectWorkplane("' + (FACE_NAMES[want] || want) + '");');
           blank();
@@ -638,6 +693,17 @@
         L.push('CreateSlantedRoughFinish("SlantedMilling_' + n + '", 0, ' + fmt(op.angle) + ', ' + op.approach + ', ' + fmt(op.depth) +
           ', "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", 2, -1, -1, -1, 0);');
         blank();
+      } else if (op.kind === 'blade') {
+        // Sägeschnitt über die ganze Dicke, geneigt. Material links der Schnittrichtung, Säge rechts (Korrektur 2).
+        // Winkel zur Senkrechten: 90 = senkrecht; < 90 Platte unten breiter (Schräge zeigt nach oben)
+        const n = ++counts.blade;
+        const ang = op.leanOut ? 90 - op.tilt : 90 + op.tilt;
+        L.push('CreateSegment("SawSegment_' + n + '", ' + pt(op.a) + ', ' + pt(op.b) + ');');
+        L.push('ResetApproachStrategy();');
+        L.push('ResetRetractStrategy();');
+        L.push('CreateBladeCut("BladeCut_' + n + '", "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", ' + fmt(ang) +
+          ', 2, -1, -1, -1, 0, true, true, 0, ' + fmt(op.extra) + ');');
+        blank();
       } else if (op.kind === 'sdrill') {
         const e = op.entry;
         L.push('CreateSlantedDrill("Drill_Slanted_' + (++counts.sdrill) + '", ' + fmt(e[0]) + ', ' + fmt(e[1]) + ', ' + fmt(e[2]) + ', ' +
@@ -662,7 +728,10 @@
         const d = op.d;
         const usePat = pat.nX > 1 || pat.nY > 1;
         if (usePat) L.push('CreatePattern(' + pat.nY + ', ' + pat.nX + ', ' + fmt(pat.dY) + ', ' + fmt(pat.dX) + ', 0, 90);');
-        if (op.face === 'Top') {
+        if (op.plane) {
+          L.push('CreateDrill ("Drill_Slanted_Plane_' + (++counts.pdrill) + '", ' + fmt(d.x) + ', ' + fmt(d.y) + ', ' + fmt(d.depth) + ', ' +
+            fmt(d.d) + ', "", TypeOfProcess.Drilling, "-1", "-1", 1, -1, -1, "' + d.tip + '");');
+        } else if (op.face === 'Top') {
           L.push('CreateDrill ("Drill_Vertical_' + (++nDrill.V) + '", ' + fmt(d.x) + ', ' + fmt(d.y) + ', ' + fmt(d.depth) + ', ' +
             fmt(d.d) + ', "", TypeOfProcess.Drilling, "-1", "-1", 1, -1, -1, "' + d.tip + '");');
         } else {

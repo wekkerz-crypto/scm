@@ -17,6 +17,9 @@ dann *Speichern* (einzeln) oder *Alle als ZIP*.
 komplette Web-Tool, entpackt es nach `%LOCALAPPDATA%\STEP2XCS\app` und öffnet es im Standardbrowser – ohne Internet,
 ohne Server. Einstellungen und Favoriten bleiben erhalten, weil der Ort immer gleich ist. Beim ersten Start meldet
 Windows ggf. „Der Computer wurde durch Windows geschützt“ (unsigniert) → *Weitere Informationen* → *Trotzdem ausführen*.
+Meldet der Virenscanner die unsignierte .exe fälschlich als Virus, die **portable Variante** nehmen
+(`STEP2XCS-portabel.zip`: Ordner an festen Ort kopieren, `index.html` bzw. `STEP2XCS starten.cmd` doppelklicken) –
+gleicher Funktionsumfang, ohne .exe. Dauerhaft hilft nur eine Code-Signatur.
 Bauen: `npm run build:exe` (Go ≥ 1.21) → `dist/STEP2XCS.exe`; Quelltext in `exe/`.
 
 **Kommandozeile** (Node.js ≥ 18):

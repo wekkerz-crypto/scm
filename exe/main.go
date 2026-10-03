@@ -11,9 +11,7 @@ import (
 	"encoding/hex"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 )
 
 //go:embed all:web
@@ -88,19 +86,6 @@ func extract(dir string) error {
 		return err
 	}
 	return os.WriteFile(stamp, []byte(sum), 0o644)
-}
-
-func openFile(path string) error {
-	switch runtime.GOOS {
-	case "windows":
-		// Standardprogramm für .html (Edge/Chrome/Firefox), ohne Konsolenfenster
-		cmd := exec.Command("rundll32", "url.dll,FileProtocolHandler", path)
-		return cmd.Start()
-	case "darwin":
-		return exec.Command("open", path).Start()
-	default:
-		return exec.Command("xdg-open", path).Start()
-	}
 }
 
 func fail(msg string) {

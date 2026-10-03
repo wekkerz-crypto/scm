@@ -30,7 +30,7 @@ Die drei Pfade stehen oben in der `.bat` und lassen sich im Web-Tool unter *Werk
 | Einstellung | Standard |
 |---|---|
 | X-Konverter | `C:\Program Files\SCM Group\Maestro\XConverter.exe` (Installation in der Werkstatt) |
-| Werkzeugdatei | `C:\Program Files\SCM Group\Maestro\Tlgx\def.tlgx` (bitte prüfen) |
+| Werkzeugdatei | `C:\Users\Public\Documents\SCM Group\Maestro\Tlgx\def.tlgx` (Installation in der Werkstatt) |
 | Zielordner `.pgmx` | leer = Unterordner `pgmx` neben der `.bat` |
 
 ## Was erkannt wird

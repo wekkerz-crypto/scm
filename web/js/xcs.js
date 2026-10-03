@@ -40,7 +40,7 @@
     usePatterns: true,
     // X-Konverter (Batch-Datei konvertieren.bat in der ZIP)
     xconverterPath: 'C:\\Program Files\\SCM Group\\Maestro\\XConverter.exe',
-    toolsFile: 'C:\\Program Files\\SCM Group\\Maestro\\Tlgx\\def.tlgx',
+    toolsFile: 'C:\\Users\\Public\\Documents\\SCM Group\\Maestro\\Tlgx\\def.tlgx',
     pgmxDir: '',               // leer = Unterordner „pgmx“ neben der .bat
   };
 

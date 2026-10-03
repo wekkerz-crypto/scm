@@ -105,3 +105,15 @@ test('Wenden: Bohrung von unten wird oben', () => {
   assert.match(flipped.xcs, /CreateDrill \("Drill_Vertical_\d+", 50, 350, 10, 8,.*"P"\);/);
   assert.ok(flipped.warnings.some((w) => /von unten/.test(w))); // Topfband jetzt unten
 });
+
+test('konvertieren.bat für den X-Konverter', () => {
+  const { makeBatch } = require('../web/js/convert.js');
+  const bat = makeBatch({ xconverterPath: 'D:\\Maestro\\XConverter.exe', toolsFile: 'D:\\Tlgx\\def.tlgx' });
+  assert.ok(/^[\x20-\x7e\r\n]*$/.test(bat), 'nur ASCII');
+  assert.ok(!/[^\r]\n/.test(bat), 'nur CRLF');
+  assert.match(bat, /set "XCONV=D:\\Maestro\\XConverter.exe"/);
+  assert.match(bat, /set "TOOLS=D:\\Tlgx\\def.tlgx"/);
+  assert.match(bat, /set "OUT=%~dp0pgmx"/);
+  assert.match(bat, /call "%XCONV%" -s -m 0 -t "%TOOLS%" -i "%~1" -o "%OUT%\\%~2.pgmx"/);
+  assert.match(makeBatch({ pgmxDir: 'C:\\Maestro\\Programme' }), /set "OUT=C:\\Maestro\\Programme"/);
+});

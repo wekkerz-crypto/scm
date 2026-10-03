@@ -16,8 +16,22 @@ dann *Speichern* (einzeln) oder *Alle als ZIP*.
 **Kommandozeile** (Node.js ≥ 18):
 
 ```bash
-node cli/step2xcs.js teil.step weitere.step -o ausgabe/
+node cli/step2xcs.js teil.step weitere.step -o ausgabe/ --bat
 ```
+
+### Umwandeln in .pgmx mit `konvertieren.bat`
+
+Jede ZIP aus dem Web-Tool (und die CLI mit `--bat`) enthält eine `konvertieren.bat`.
+ZIP auf dem Maestro-PC entpacken, `konvertieren.bat` doppelklicken: alle `.xcs` im Ordner werden mit dem
+X-Konverter (Modus 0, Handbuch Kap. 8) in `.pgmx` umgewandelt, standardmäßig in den Unterordner `pgmx`.
+
+Die drei Pfade stehen oben in der `.bat` und lassen sich im Web-Tool unter *Werkzeuge & Regeln* einmalig einstellen:
+
+| Einstellung | Standard (aus dem Handbuch) |
+|---|---|
+| X-Konverter | `C:\Program Files (x86)\Scm Group\Maestro\XConverter.exe` |
+| Werkzeugdatei | `C:\Program Files (x86)\Scm Group\Maestro\Tlgx\def.tlgx` |
+| Zielordner `.pgmx` | leer = Unterordner `pgmx` neben der `.bat` |
 
 ## Was erkannt wird
 

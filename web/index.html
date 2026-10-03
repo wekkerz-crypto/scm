@@ -196,6 +196,8 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     ['throughExtra', 'Durchgangsbohrung: Dicke +', 'number'], ['parkOffset', 'Parkposition: Länge +', 'number'],
     ['drillsVertical', 'Bohrer vertikal Ø (Liste)', 'list'], ['drillsHorizontal', 'Bohrer horizontal Ø (Liste)', 'list'],
     ['usePatterns', 'Lochreihen als Muster (CreatePattern)', 'bool'],
+    ['xconverterPath', 'X-Konverter (XConverter.exe)', 'path'], ['toolsFile', 'Werkzeugdatei (.tlgx)', 'path'],
+    ['pgmxDir', 'Zielordner .pgmx (leer = Unterordner „pgmx“)', 'path'],
   ];
   const KEY = 'step2xcs.settings.v1';
   function loadSettings() {
@@ -214,7 +216,7 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     g.innerHTML = '';
     for (const [k, label, type] of FIELDS) {
       const l = document.createElement('label');
-      if (type === 'list') l.className = 'wide';
+      if (type === 'list' || type === 'path') l.className = 'wide';
       const id = 'set-' + k;
       l.htmlFor = id;
       const v = state.settings[k];
@@ -226,19 +228,26 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
           esc(type === 'list' ? v.join(', ') : v) + '">';
       }
       g.appendChild(l);
-      l.querySelector('input').addEventListener('change', (ev) => {
-        const t = ev.target;
+      // Schon während der Eingabe übernehmen (verzögert). Sonst baut das „change“ beim Verlassen des Feldes
+      // die Liste neu auf, während der Benutzer gerade einen Knopf klickt, und der Klick geht verloren.
+      const input = l.querySelector('input');
+      let timer;
+      const apply = () => {
+        clearTimeout(timer);
         let val;
-        if (type === 'bool') val = t.checked;
-        else if (type === 'number') val = parseFloat(String(t.value).replace(',', '.'));
-        else if (type === 'list') val = t.value.split(/[;,\s]+/).map((x) => parseFloat(x.replace(',', '.'))).filter((x) => !isNaN(x));
-        else val = t.value.trim();
+        if (type === 'bool') val = input.checked;
+        else if (type === 'number') val = parseFloat(String(input.value).replace(',', '.'));
+        else if (type === 'list') val = input.value.split(/[;,\s]+/).map((x) => parseFloat(x.replace(',', '.'))).filter((x) => !isNaN(x));
+        else val = input.value.trim();
         if (type === 'number' && isNaN(val)) return;
+        if (JSON.stringify(val) === JSON.stringify(state.settings[k])) return;
         state.settings[k] = val;
         saveSettings();
         state.parts.forEach(compute);
         render();
-      });
+      };
+      input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(apply, 400); });
+      input.addEventListener('change', apply);
     }
   }
 
@@ -530,21 +539,25 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
   const claudeHost = !!(window.claude && window.claude.use);
   if (claudeHost) window.claude.use('downloads').then((d) => { downloadsCap = d; }, () => { downloadsCap = null; });
 
-  async function saveFiles(files, zipName) {
+  // Jede ZIP bekommt die konvertieren.bat für den X-Konverter dazu.
+  const withBatch = (files) => files.concat([{ name: 'konvertieren.bat', text: StepToXcs.makeBatch(state.settings) }]);
+
+  async function saveFiles(files, zipName, forceZip) {
     if (claudeHost) {
       if (!downloadsCap) { toast('Speichern ist hier nicht verfügbar – bitte „Kopieren“ verwenden.'); return; }
       try {
-        await downloadsCap.save({ filename: zipName, data: zip(files) });
+        await downloadsCap.save({ filename: zipName, data: zip(withBatch(files)) });
         toast('Gespeichert: ' + zipName);
       } catch (e) {
         if (e && e.code !== 'declined') toast('Speichern nicht möglich (' + (e.code || 'Fehler') + ').');
       }
       return;
     }
-    const blob = files.length === 1 ? new Blob([files[0].text], { type: 'text/plain' }) : zip(files);
+    const single = files.length === 1 && !forceZip;
+    const blob = single ? new Blob([files[0].text], { type: 'text/plain' }) : zip(withBatch(files));
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = files.length === 1 ? files[0].name : zipName;
+    a.download = single ? files[0].name : zipName;
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
@@ -553,7 +566,7 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
   function downloadAll() {
     const files = state.parts.filter((p) => p.result && p.result.panel).map((p) => ({ name: p.fileName, text: p.result.xcs }));
     if (!files.length) { toast('Keine Programme vorhanden.'); return; }
-    saveFiles(files, 'xcs-programme.zip');
+    saveFiles(files, 'xcs-programme.zip', true);
   }
 
   let toastTimer;

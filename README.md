@@ -59,6 +59,10 @@ Für jede Fräsbearbeitung gibt es eine Auswahlliste mit allen Fräsern, Favorit
 stehen oben. Zustellung global oder je Bearbeitung; Warnung, wenn die Zustellung länger als die Schneide ist.
 `node tools/build_defaults.js` erzeugt die eingebaute Standardliste neu.
 
+**Frästiefe:** Durchgehende Fräsungen (Formatfräsen, Konturausschnitte, Durchbrüche, Rundlöcher) fräsen
+Plattendicke + Zugabe (Einstellungen *Formatfräsen: Dicke +* bzw. *Ausschnitte: Dicke +*). Je Teil lässt sich die Tiefe
+in der Bearbeitungsliste im Feld *Tiefe* absolut in mm setzen; ist sie kleiner als die Plattendicke, gibt es einen Hinweis.
+
 **Reihenfolge:**
 - *Reihenfolge-Regel* unter *Werkzeuge & Regeln*: die Bearbeitungsarten (Bohrungen oben, Kantenbohrungen, schräge
   Bohrungen, Nuten, Taschen, Falze, Fasen, schräge Kanten, Durchbrüche, Konturausschnitte, Formatfräsen) mit ↑/↓ in

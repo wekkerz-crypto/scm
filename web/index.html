@@ -398,7 +398,7 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     });
     for (const s of solids) {
       const part = { label: label, solid: s, orientation: null, field: null, fileName: null, result: null,
-        overrides: { tools: {}, steps: {} } };
+        overrides: { tools: {}, steps: {}, depths: {} } };
       compute(part);
       state.parts.push(part);
     }
@@ -458,6 +458,11 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
   function opControls(part, op) {
     if (!op) return '';
     let html = toolSelect('data-tool="' + esc(op.key) + '" aria-label="Werkzeug für ' + esc(op.label) + '"', op.toolKind, op.tool);
+    if (op.depthAdjustable) {
+      const ownD = part.overrides.depths[op.key];
+      html += '<label title="Frästiefe in mm, leer = Plattendicke + Zugabe aus den Einstellungen">Tiefe <input class="step" type="number" min="0" step="0.5" data-depth="' +
+        esc(op.key) + '" value="' + (ownD !== undefined ? ownD : '') + '" placeholder="' + fmt(op.depth) + '"> mm</label>';
+    }
     if (op.kind === 'contour' || op.kind === 'pocket') {
       const own = part.overrides.steps[op.key];
       html += '<label title="Tiefe je Durchgang in mm, leer = Einstellung für alle Teile, 0 = ein Durchgang">Zustellung <input class="step" type="number" min="0" step="0.5" data-step="' + esc(op.key) + '" value="' +
@@ -688,17 +693,21 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
       part.overrides.tools[sel.dataset.tool] = sel.value;
       compute(part); render();
     }));
-    el.querySelectorAll('input[data-step]').forEach((inp) => {
+    el.querySelectorAll('input[data-step], input[data-depth]').forEach((inp) => {
       let timer;
+      const isDepth = inp.dataset.depth !== undefined;
+      const map = isDepth ? part.overrides.depths : part.overrides.steps;
+      const key = isDepth ? inp.dataset.depth : inp.dataset.step;
       const apply = () => {
         clearTimeout(timer);
         const v = String(inp.value).trim();
-        const cur = part.overrides.steps[inp.dataset.step];
-        const next = v === '' ? undefined : parseFloat(v.replace(',', '.'));
+        const cur = map[key];
+        let next = v === '' ? undefined : parseFloat(v.replace(',', '.'));
         if (next !== undefined && isNaN(next)) return;
+        if (isDepth && next !== undefined && next <= 0) next = undefined;
         if (next === cur) return;
-        if (next === undefined) delete part.overrides.steps[inp.dataset.step];
-        else part.overrides.steps[inp.dataset.step] = next;
+        if (next === undefined) delete map[key];
+        else map[key] = next;
         compute(part); render();
       };
       inp.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(apply, 500); });

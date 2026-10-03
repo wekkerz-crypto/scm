@@ -333,10 +333,21 @@
       if (op.kind === 'pocket') op.pocket = ++np;
     }
 
-    // Werkzeug je Bearbeitung (Auswahl im Web-Tool) und Zustellungen
+    // Werkzeug, Tiefe (durchgehende Fräsungen) und Zustellungen je Bearbeitung
+    const throughKey = (k) => k === 'format' || /^(notch|cutout|round)-/.test(k);
+    const depthWarned = new Set();
     for (const op of ops) {
       if (!op.key) continue;
       if (cfg.toolOverrides && cfg.toolOverrides[op.key]) op.tool = cfg.toolOverrides[op.key];
+      op.depthAdjustable = op.kind === 'contour' && throughKey(op.key);
+      const dz = cfg.depthOverrides && cfg.depthOverrides[op.key];
+      if (op.depthAdjustable && dz > 0) {
+        op.depth = dz;
+        if (dz < T - 1e-9 && !depthWarned.has(op.key)) {
+          depthWarned.add(op.key);
+          warnings.push(op.label + ': Tiefe ' + fmt(dz) + ' mm ist kleiner als die Plattendicke ' + fmt(T) + ' mm – es wird nicht durchgefräst.');
+        }
+      }
       if (op.kind === 'contour' || op.kind === 'pocket') {
         const st = cfg.stepOverrides && cfg.stepOverrides[op.key] !== undefined ? cfg.stepOverrides[op.key] : cfg.stepDown;
         op.step = st > 0 && op.depth > st + 1e-9 ? st : 0;
@@ -438,6 +449,7 @@
     if (override && override.tools) cfg.toolOverrides = override.tools;
     if (override && override.steps) cfg.stepOverrides = override.steps;
     if (override && override.order) cfg.order = override.order;
+    if (override && override.depths) cfg.depthOverrides = override.depths;
     const { ops, warnings, groups, defaultGroups } = plan(p, cfg);
     const field = (override && override.field) || (p.L > cfg.fieldThreshold + 1e-6 ? cfg.fieldLong : cfg.fieldShort);
     const L = [];

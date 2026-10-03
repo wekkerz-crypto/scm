@@ -212,3 +212,18 @@ test('Reihenfolge-Regel (an/aus/geändert), Reihenfolge je Teil, zurück auf die
   assert.ok(swapped.xcs.indexOf('SelectWorkplane("Right")') < swapped.xcs.indexOf('SelectWorkplane("Left")'));
   assert.deepStrictEqual(swapped.groups, order);
 });
+
+test('Frästiefe je Bearbeitung (Formatfräsen)', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const [solid] = readParts(read('step/Oberboden.step'));
+  const std = convertSolid(solid, {});
+  assert.match(std.xcs, /CreateRoughFinish\("Milling_1", 22,/);
+  assert.ok(std.ops.find((o) => o.key === 'format').depthAdjustable);
+  const own = convertSolid(solid, {}, { overrides: { depths: { format: 19.5 } } });
+  assert.match(own.xcs, /CreateRoughFinish\("Milling_1", 19.5,/);
+  assert.deepStrictEqual(own.warnings, []);
+  const shallow = convertSolid(solid, { contourExtra: 1 }, { overrides: { depths: { format: 18 } } });
+  assert.match(shallow.xcs, /CreateRoughFinish\("Milling_1", 18,/);
+  assert.ok(shallow.warnings.some((w) => /nicht durchgefräst/.test(w)));
+  assert.match(convertSolid(solid, { contourExtra: 1 }).xcs, /CreateRoughFinish\("Milling_1", 20,/);
+});

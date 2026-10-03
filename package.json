@@ -4,7 +4,8 @@
   "description": "STEP-Plattenteile in Xilog-Skripte (.xcs) für SCM Maestro umwandeln",
   "private": true,
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "build:exe": "sh tools/build_exe.sh"
   },
   "bin": {
     "step2xcs": "cli/step2xcs.js"

@@ -82,8 +82,35 @@ def testplatte():
     return body
 
 
+def fuenfachs():
+    """5-Achs-Merkmale: Fase oben/unten, Gehrung, Tasche mit Insel und Bohrung, schräge Bohrung."""
+    L, W, T = 600, 400, 19
+    body = cq.Workplane("XY").box(L, W, T, centered=False)
+    # Fase 3×3 oben an der Vorderkante (Y=0)
+    body = body.edges(cq.selectors.BoxSelector((-1, -1, T - 1), (L + 1, 1, T + 1))).chamfer(3)
+    # Fase 2×2 unten an der Hinterkante (Y=W)
+    body = body.edges(cq.selectors.BoxSelector((-1, W - 1, -1), (L + 1, W + 1, 1))).chamfer(2)
+    # Gehrung an der rechten Kante: oben 30° nach innen (unten bleibt X=L)
+    off = T * math.tan(math.radians(30))
+    wedge = (cq.Workplane("XZ").polyline([(L - off, T), (L + 1, T), (L + 1, -1), (L, -1), (L, 0)]).close()
+             .extrude(-(W + 2)).translate((0, -1, 0)))
+    body = body.cut(wedge)
+    # Tasche 120×80, 8 tief, Ecken R10, mit runder Insel Ø30 und Bohrung Ø8 (5 tief ab Taschenboden)
+    pocket = cq.Workplane("XY").workplane(offset=T - 8).center(150, 200).rect(120, 80).extrude(9).edges("|Z").fillet(10)
+    island = cq.Workplane("XY").workplane(offset=T - 8).center(130, 200).circle(15).extrude(9)
+    body = body.cut(pocket.cut(island))
+    body = body.cut(cq.Workplane("XY").workplane(offset=T - 13).center(185, 200).circle(4).extrude(6))
+    # Schräge Bohrung Ø8, 30° aus der Senkrechten in Richtung +X geneigt, Eintritt (350, 250, T), Tiefe 15
+    ang = math.radians(30)
+    d = cq.Vector(math.sin(ang), 0, -math.cos(ang))
+    pl = cq.Plane(origin=(350, 250, T), xDir=(0, 1, 0), normal=(d.x, d.y, d.z))
+    body = body.cut(cq.Workplane(pl).circle(4).extrude(15).union(cq.Workplane(pl).circle(4).extrude(-5)))
+    return body
+
+
 if __name__ == "__main__":
-    for name, fn in [("seitenwand_32", seitenwand_32), ("oberboden_27", oberboden_27), ("testplatte", testplatte)]:
+    for name, fn in [("seitenwand_32", seitenwand_32), ("oberboden_27", oberboden_27), ("testplatte", testplatte),
+                     ("fuenfachs", fuenfachs)]:
         path = os.path.join(OUT, name + ".step")
         cq.exporters.export(fn(), path)
         print("geschrieben:", path)

@@ -129,6 +129,23 @@ pre.xcs { margin: 0; background: var(--sunken); border-radius: var(--r); padding
 pre.xcs .c { color: var(--accent); }
 pre.xcs .s { color: var(--mill); }
 
+.toollib { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 8px; }
+.toollib .bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.toolgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 4px 12px; }
+.tool { display: flex; align-items: center; gap: 8px; padding: 3px 4px; border-radius: var(--r); font-size: 0.85rem; min-width: 0; }
+.tool .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tool .nm b { font-family: var(--font-mono); font-weight: 500; }
+.star { border: 0; background: none; font-size: 1.05rem; line-height: 1; padding: 2px 4px; color: var(--muted); }
+.star.on { color: var(--saw); }
+table.ops { table-layout: fixed; }
+table.ops td.v { width: 6.5em; }
+table.ops tr.has-ctl td { padding-bottom: 2px; }
+table.ops tr.ctlrow td { border-top: 0; padding-top: 0; padding-left: 20px; }
+table.ops td.ctl { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+table.ops td.ctl select { flex: 1 1 14rem; min-width: 0; width: 100%; font-size: 0.8rem; padding: 3px 4px; }
+table.ops input.step { width: 4.5em; font-size: 0.8rem; padding: 3px 4px; }
+table.ops td.ctl label { font-size: 0.75rem; color: var(--muted); display: flex; gap: 4px; align-items: center; }
+.grid-set select { width: 100%; min-width: 0; font-size: 0.85rem; }
 details.settings summary { cursor: pointer; font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; }
 .grid-set { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px 16px; margin-top: 12px; }
 .grid-set label { display: grid; gap: 3px; font-size: 0.82rem; color: var(--muted); }
@@ -167,6 +184,14 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     <p class="note">Voreinstellungen aus den Beispielprogrammen und der Werkzeugliste def.tlgx. Änderungen gelten für alle Teile und bleiben in diesem Browser gespeichert.</p>
     <div class="grid-set" id="setgrid"></div>
     <div style="margin-top:12px"><button class="btn" id="reset" type="button">Auf Standard zurücksetzen</button></div>
+    <div class="toollib">
+      <div class="bar"><h3>Werkzeugliste</h3><span class="note" id="toolsrc"></span>
+        <span class="tools"><button class="btn" id="loadtools" type="button">Werkzeugliste laden (.tlgx)</button>
+        <button class="btn ghost" id="resettools" type="button">Standardliste</button></span>
+        <input id="tlgx" type="file" accept=".tlgx,.xml" hidden></div>
+      <p class="note">Mit ★ markierte Werkzeuge stehen in allen Auswahllisten oben.</p>
+      <div class="toolgrid" id="toolgrid"></div>
+    </div>
   </details>
 </div>
 <div class="toast" id="toast" hidden></div>
@@ -175,6 +200,8 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
 <script src="js/panel.js"></script>
 <script src="js/xcs.js"></script>
 <script src="js/convert.js"></script>
+<script src="js/tools.js"></script>
+<script src="js/tools-default.js"></script>
 <script src="js/sample.js"></script>
 <script>
 (function () {
@@ -188,11 +215,14 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
   const FIELDS = [
     ['fieldShort', 'Feld kurze Teile', 'text'], ['fieldLong', 'Feld lange Teile', 'text'],
     ['fieldThreshold', 'Lang ab Länge (mm)', 'number'], ['rawOversize', 'Rohteil-Aufmaß je Seite', 'number'],
-    ['contourTool', 'Formatfräser', 'text'], ['contourExtra', 'Formatfräsen: Dicke +', 'number'],
-    ['cutoutTool', 'Fräser Ausschnitte', 'text'], ['cutoutExtra', 'Ausschnitte: Dicke +', 'number'],
-    ['leadLength', 'An-/Auslauf (mm)', 'number'], ['sawTool', 'Säge für Nuten', 'text'],
+    ['contourTool', 'Formatfräser', 'mill'], ['contourExtra', 'Formatfräsen: Dicke +', 'number'],
+    ['cutoutTool', 'Fräser Ausschnitte', 'mill'], ['cutoutExtra', 'Ausschnitte: Dicke +', 'number'],
+    ['pocketTool', 'Fräser Taschen', 'mill'], ['pocketOverlap', 'Taschen: Überdeckung %', 'number'],
+    ['chamferTool', 'Fräser Fasen', 'mill'], ['slantTool', 'Fräser schräge Kanten', 'mill'],
+    ['slantExtra', 'Schräge Kanten: Dicke +', 'number'], ['rebateTool', 'Fräser Falz', 'mill'],
+    ['stepDown', 'Zustellung je Durchgang (mm, 0 = aus)', 'number'], ['finishDepth', 'Letzte Zustellung (mm, 0 = aus)', 'number'],
+    ['leadLength', 'An-/Auslauf (mm)', 'number'], ['sawTool', 'Säge für Nuten', 'saw'],
     ['sawOverrun', 'Säge-Überlauf (mm)', 'number'], ['maxGrooveWidth', 'Max. Nutbreite (mm)', 'number'],
-    ['rebateTool', 'Fräser Falz', 'text'], ['rebateToolDia', 'Falzfräser Ø (mm)', 'number'],
     ['throughExtra', 'Durchgangsbohrung: Dicke +', 'number'], ['parkOffset', 'Parkposition: Länge +', 'number'],
     ['drillsVertical', 'Bohrer vertikal Ø (Liste)', 'list'], ['drillsHorizontal', 'Bohrer horizontal Ø (Liste)', 'list'],
     ['usePatterns', 'Lochreihen als Muster (CreatePattern)', 'bool'],
@@ -209,7 +239,47 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     try { localStorage.setItem(KEY, JSON.stringify(state.settings)); } catch (e) { /* ohne Speicher weiter */ }
   }
 
-  const state = { parts: [], sel: 0, settings: loadSettings() };
+  // ------------------------------------------------ Werkzeuge und Favoriten
+  const TOOLS_KEY = 'step2xcs.tools.v1';
+  const FAV_KEY = 'step2xcs.favorites.v1';
+  function loadJson(key, fallback) {
+    try { const v = JSON.parse(localStorage.getItem(key)); return v || fallback; } catch (e) { return fallback; }
+  }
+  function storeJson(key, v) {
+    try { if (v === null) localStorage.removeItem(key); else localStorage.setItem(key, JSON.stringify(v)); } catch (e) { /* ohne Speicher */ }
+  }
+  const customTools = loadJson(TOOLS_KEY, null);
+
+  const state = { parts: [], sel: 0, settings: loadSettings(),
+    tools: customTools ? customTools.tools : (window.DEFAULT_TOOLS || []),
+    toolSource: customTools ? customTools.source : 'def.tlgx (Standard)',
+    favorites: loadJson(FAV_KEY, []) };
+
+  const usableTools = (kind) => state.tools.filter((t) => t.kind === kind && !t.disabled);
+
+  // Auswahlliste: Favoriten oben, dann alle Werkzeuge der Art
+  function toolSelect(attrs, kind, value) {
+    const list = usableTools(kind);
+    const favs = list.filter((t) => state.favorites.includes(t.name));
+    const opt = (t) => '<option value="' + esc(t.name) + '"' + (t.name === value ? ' selected' : '') + '>' + esc(ToolLibrary.label(t)) + '</option>';
+    let html = '<select ' + attrs + '>';
+    if (value && !list.some((t) => t.name === value)) html += '<option value="' + esc(value) + '" selected>' + esc(value) + ' (nicht in der Werkzeugliste)</option>';
+    if (favs.length) html += '<optgroup label="★ Favoriten">' + favs.map(opt).join('') + '</optgroup>';
+    html += '<optgroup label="' + (kind === 'saw' ? 'Alle Sägen' : 'Alle Fräser') + '">' + list.map(opt).join('') + '</optgroup></select>';
+    return html;
+  }
+
+  function renderToolLib() {
+    $('toolsrc').textContent = state.tools.length + ' Werkzeuge aus ' + state.toolSource;
+    const g = $('toolgrid');
+    const list = usableTools('mill').concat(usableTools('saw'));
+    g.innerHTML = list.map((t) => {
+      const on = state.favorites.includes(t.name);
+      return '<div class="tool"><button type="button" class="star' + (on ? ' on' : '') + '" data-fav="' + esc(t.name) + '" aria-pressed="' + on +
+        '" aria-label="Favorit ' + esc(t.name) + '">' + (on ? '★' : '☆') + '</button><span class="nm" title="' + esc(ToolLibrary.label(t)) + '">' +
+        esc(ToolLibrary.label(t)).replace(esc(t.name), '<b>' + esc(t.name) + '</b>') + '</span></div>';
+    }).join('');
+  }
 
   function renderSettings() {
     const g = $('setgrid');
@@ -220,6 +290,17 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
       const id = 'set-' + k;
       l.htmlFor = id;
       const v = state.settings[k];
+      if (type === 'mill' || type === 'saw') {
+        l.innerHTML = esc(label) + toolSelect('id="' + id + '"', type, v);
+        g.appendChild(l);
+        l.querySelector('select').addEventListener('change', (ev) => {
+          state.settings[k] = ev.target.value;
+          saveSettings();
+          state.parts.forEach(compute);
+          render();
+        });
+        continue;
+      }
       if (type === 'bool') {
         l.style.display = 'flex'; l.style.alignItems = 'center'; l.style.gap = '8px';
         l.innerHTML = '<input type="checkbox" id="' + id + '"' + (v ? ' checked' : '') + '> ' + esc(label);
@@ -258,15 +339,21 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
       state.parts.push({ label: label, error: e.message || String(e), result: null });
       return;
     }
+    const generic = (n) => !n || /^(Open CASCADE STEP translator|Teil \d+$)/i.test(n);
+    solids.forEach((s, i) => {
+      if (generic(s.name)) s.name = label.replace(/^Beispiel: /, '').replace(/\.(step|stp)$/i, '') + (solids.length > 1 ? ' ' + (i + 1) : '');
+    });
     for (const s of solids) {
-      const part = { label: label, solid: s, orientation: null, field: null, fileName: null, result: null };
+      const part = { label: label, solid: s, orientation: null, field: null, fileName: null, result: null,
+        overrides: { tools: {}, steps: {} } };
       compute(part);
       state.parts.push(part);
     }
   }
   function compute(part) {
     if (!part.solid) return;
-    part.result = StepToXcs.convertSolid(part.solid, state.settings, { orientation: part.orientation, field: part.field });
+    const cfg = Object.assign({}, state.settings, { toolInfo: ToolLibrary.infoMap(state.tools) });
+    part.result = StepToXcs.convertSolid(part.solid, cfg, { orientation: part.orientation, field: part.field, overrides: part.overrides });
     if (part.result.panel && !part.orientation) part.orientation = Object.assign({}, part.result.panel.orientation);
     if (!part.fileName) part.fileName = part.result.fileName;
   }
@@ -281,26 +368,46 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
   }
 
   // ------------------------------------------------ Darstellung
+  const KIND_COLOR = { contour: 'var(--mill)', pocket: 'var(--mill)', chamfer: 'var(--accent)', slant: 'var(--accent)', slot: 'var(--saw)' };
+
+  // Eine Zeile je Bearbeitung mit Werkzeug-Auswahl; Bohrungen zusammengefasst.
   function opsSummary(r) {
     const rows = [];
+    const seen = new Set();
     const drills = new Map();
     for (const op of r.ops) {
-      if (op.kind === 'contour') rows.push({ c: 'var(--mill)', k: op.label, v: op.tool + ' · T ' + fmt(op.depth) });
-      else if (op.kind === 'slot') rows.push({ c: 'var(--saw)', k: op.label, v: 'Säge ' + op.tool });
-      else if (op.kind === 'drill') {
-        const d = op.d;
-        const key = op.face + '|' + d.d + '|' + d.depth + '|' + d.tip;
-        const n = op.pattern.nX * op.pattern.nY;
-        if (!drills.has(key)) drills.set(key, { face: op.face, d: d.d, depth: d.depth, tip: d.tip, n: 0 });
+      if (op.kind === 'drill' || op.kind === 'sdrill') {
+        const d = op.kind === 'drill' ? op.d : op;
+        const face = op.kind === 'drill' ? op.face : 'Slanted';
+        const key = face + '|' + d.d + '|' + d.depth + '|' + d.tip;
+        const n = op.kind === 'drill' ? op.pattern.nX * op.pattern.nY : 1;
+        if (!drills.has(key)) drills.set(key, { face: face, d: d.d, depth: d.depth, tip: d.tip, n: 0, angle: op.angleB });
         drills.get(key).n += n;
+        continue;
       }
+      if (!op.key || seen.has(op.key)) continue;
+      seen.add(op.key);
+      const passes = op.kind === 'contour' && op.key.indexOf('rebate') === 0 ? r.ops.filter((o) => o.key === op.key).length : 1;
+      rows.push({ c: KIND_COLOR[op.kind] || 'var(--mill)', k: op.label + (passes > 1 ? ' (' + passes + ' Bahnen)' : ''),
+        v: 'T ' + fmt(op.depth || op.height || 0), op: op });
     }
     for (const g of drills.values()) {
+      const where = g.face === 'Slanted' ? 'schräg ' + fmt(g.angle) + '°' : FACE[g.face];
       rows.push({ c: g.face === 'Top' ? 'var(--drill)' : 'var(--hdrill)',
-        k: g.n + ' × Bohrung Ø' + fmt(g.d) + ' ' + FACE[g.face] + (g.tip === 'L' ? ' (durch)' : ''),
-        v: 'T ' + fmt(g.depth) });
+        k: g.n + ' × Bohrung Ø' + fmt(g.d) + ' ' + where + (g.tip === 'L' ? ' (durch)' : ''), v: 'T ' + fmt(g.depth) });
     }
     return rows;
+  }
+
+  function opControls(part, op) {
+    if (!op) return '';
+    let html = toolSelect('data-tool="' + esc(op.key) + '" aria-label="Werkzeug für ' + esc(op.label) + '"', op.toolKind, op.tool);
+    if (op.kind === 'contour' || op.kind === 'pocket') {
+      const own = part.overrides.steps[op.key];
+      html += '<label>Zustellung <input class="step" type="number" min="0" step="0.5" data-step="' + esc(op.key) + '" value="' +
+        (own !== undefined ? own : '') + '" placeholder="' + (state.settings.stepDown || 'aus') + '"></label>';
+    }
+    return html;
   }
 
   function counts(r) {
@@ -308,6 +415,7 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     let mill = 0;
     for (const op of r.ops) {
       if (op.kind === 'drill') drills += op.pattern.nX * op.pattern.nY;
+      else if (op.kind === 'sdrill') drills++;
       else mill++;
     }
     return { drills: drills, mill: mill };
@@ -394,9 +502,28 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
       if (rb.edge === 'Right') { x = L - rb.width; w = rb.width; }
       s += '<rect x="' + x + '" y="' + Y(y + h) + '" width="' + w + '" height="' + h + '" fill="url(#hatch)" stroke="var(--mill)" stroke-width="1" ' + sw + '/>';
     }
+    const loopPath = (lp) => {
+      if (lp.length === 1 && lp[0].type === 'arc' && lp[0].full) {
+        const q = lp[0];
+        return 'M' + (q.c[0] + q.r) + ' ' + Y(q.c[1]) + ' A' + q.r + ' ' + q.r + ' 0 1 0 ' + (q.c[0] - q.r) + ' ' + Y(q.c[1]) +
+          ' A' + q.r + ' ' + q.r + ' 0 1 0 ' + (q.c[0] + q.r) + ' ' + Y(q.c[1]) + ' Z';
+      }
+      const q = loopToPoly(lp);
+      return svgPath(q.start, q.segs, Y) + ' Z';
+    };
     for (const k of p.pockets) {
-      s += '<rect x="' + k.x0 + '" y="' + Y(k.y1) + '" width="' + (k.x1 - k.x0) + '" height="' + (k.y1 - k.y0) +
-        '" fill="none" stroke="var(--warn)" stroke-dasharray="4 3" stroke-width="1.5" ' + sw + '/>';
+      s += '<path d="' + loopPath(k.segs) + ' ' + k.islands.map(loopPath).join(' ') + '" fill="var(--sunken)" fill-rule="evenodd" stroke="var(--mill)" stroke-width="1.5" ' + sw +
+        '><title>Tasche T' + fmt(k.depth) + '</title></path>';
+    }
+    for (const c of p.chamfers) {
+      s += '<line x1="' + c.line.a[0] + '" y1="' + Y(c.line.a[1]) + '" x2="' + c.line.b[0] + '" y2="' + Y(c.line.b[1]) +
+        '" stroke="var(--accent)" stroke-width="' + (c.side === 'top' ? 4 : 2) + '" stroke-dasharray="' + (c.side === 'top' ? '0' : '5 3') + '" ' + sw +
+        '><title>Fase ' + fmt(c.width) + '×' + fmt(c.height) + (c.side === 'top' ? ' oben' : ' unten') + '</title></line>';
+    }
+    for (const w of p.slantWalls) {
+      s += '<path d="M' + w.top.a[0] + ' ' + Y(w.top.a[1]) + ' L' + w.top.b[0] + ' ' + Y(w.top.b[1]) + ' L' + w.bottom.b[0] + ' ' + Y(w.bottom.b[1]) +
+        ' L' + w.bottom.a[0] + ' ' + Y(w.bottom.a[1]) + ' Z" fill="var(--accent)" fill-opacity="0.25" stroke="var(--accent)" stroke-width="1.5" ' + sw +
+        '><title>Schräge Kante ' + fmt(w.angle) + '°</title></path>';
     }
     // Fräsbahnen (außer Formatfräsen)
     for (const op of r.ops) {
@@ -419,6 +546,14 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
         s += '<rect x="' + x + '" y="' + Y(y + h) + '" width="' + w + '" height="' + h + '" fill="var(--hdrill)" opacity="0.85"><title>Ø' +
           fmt(d.d) + ' ' + FACE[d.face] + ' T' + fmt(d.depth) + '</title></rect>';
       }
+    }
+    for (const sd of p.slantDrills) {
+      const rr = Math.max(sd.d / 2, u * 0.45);
+      const e = sd.entry;
+      const end = [e[0] + sd.dir[0] * sd.depth, e[1] + sd.dir[1] * sd.depth];
+      s += '<g><title>Schräge Bohrung Ø' + fmt(sd.d) + ' T' + fmt(sd.depth) + '</title><line x1="' + e[0] + '" y1="' + Y(e[1]) + '" x2="' + end[0] + '" y2="' + Y(end[1]) +
+        '" stroke="var(--drill)" stroke-width="2" ' + sw + '/><circle cx="' + e[0] + '" cy="' + Y(e[1]) + '" r="' + rr +
+        '" fill="var(--drill)" fill-opacity="0.5" stroke="var(--drill)" stroke-width="1.5" ' + sw + '/></g>';
     }
     // Nullpunkt und Maße
     const fs = u * 3.2;
@@ -457,14 +592,37 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
       '</select></label></div></div>' +
       '<div class="view" style="margin-top:12px">' + drawPanel(r) + '</div>' +
       '<div class="legend"><span><i style="background:var(--drill)"></i>Bohrung oben</span><span><i style="background:var(--hdrill)"></i>Bohrung Kante</span>' +
-      '<span><i style="background:var(--mill)"></i>Fräsbahn</span><span><i style="background:var(--saw)"></i>Nut / Falz</span><span><i style="background:var(--err)"></i>Nullpunkt</span></div></div>' +
+      '<span><i style="background:var(--mill)"></i>Fräsbahn / Tasche</span><span><i style="background:var(--saw)"></i>Nut / Falz</span>' +
+      '<span><i style="background:var(--accent)"></i>Fase / schräge Kante</span><span><i style="background:var(--err)"></i>Nullpunkt</span></div></div>' +
       '<div class="cols"><div class="card"><h3>Bearbeitungen</h3><table class="ops"><tbody>' +
-      opsSummary(r).map((x) => '<tr><td class="k"><span class="sw" style="background:' + x.c + '"></span>' + esc(x.k) + '</td><td class="v">' + esc(x.v) + '</td></tr>').join('') +
+      opsSummary(r).map((x) => '<tr' + (x.op ? ' class="has-ctl"' : '') + '><td class="k"><span class="sw" style="background:' + x.c + '"></span>' + esc(x.k) +
+        '</td><td class="v">' + esc(x.v) + '</td></tr>' +
+        (x.op ? '<tr class="ctlrow"><td colspan="2" class="ctl">' + opControls(part, x.op) + '</td></tr>' : '')).join('') +
       '</tbody></table>' + (r.warnings.length ? '<ul class="warns">' + r.warnings.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ul>' : '') +
       '</div><div class="card code"><div class="bar"><span class="fname"><input id="fname" type="text" value="' + esc(part.fileName) + '" aria-label="Dateiname"></span>' +
       '<span class="tools"><button class="btn" id="copy" type="button">Kopieren</button><button class="btn primary" id="dl" type="button">Speichern</button></span></div>' +
       '<pre class="xcs" id="xcs">' + highlight(r.xcs) + '</pre></div></div>';
 
+    el.querySelectorAll('select[data-tool]').forEach((sel) => sel.addEventListener('change', () => {
+      part.overrides.tools[sel.dataset.tool] = sel.value;
+      compute(part); render();
+    }));
+    el.querySelectorAll('input[data-step]').forEach((inp) => {
+      let timer;
+      const apply = () => {
+        clearTimeout(timer);
+        const v = String(inp.value).trim();
+        const cur = part.overrides.steps[inp.dataset.step];
+        const next = v === '' ? undefined : parseFloat(v.replace(',', '.'));
+        if (next !== undefined && isNaN(next)) return;
+        if (next === cur) return;
+        if (next === undefined) delete part.overrides.steps[inp.dataset.step];
+        else part.overrides.steps[inp.dataset.step] = next;
+        compute(part); render();
+      };
+      inp.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(apply, 500); });
+      inp.addEventListener('change', apply);
+    });
     $('rot').addEventListener('click', () => { part.orientation.rot = (part.orientation.rot + 1) % 4; compute(part); render(); });
     $('flip').addEventListener('click', () => { part.orientation.flip = !part.orientation.flip; compute(part); render(); });
     $('field').addEventListener('change', (e) => { part.field = e.target.value; compute(part); render(); });
@@ -591,7 +749,38 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     saveSettings(); renderSettings(); state.parts.forEach(compute); render();
   });
 
+  $('toolgrid').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-fav]');
+    if (!b) return;
+    const n = b.dataset.fav;
+    state.favorites = state.favorites.includes(n) ? state.favorites.filter((x) => x !== n) : state.favorites.concat([n]);
+    storeJson(FAV_KEY, state.favorites);
+    renderToolLib(); renderSettings(); renderDetail();
+  });
+  $('loadtools').addEventListener('click', () => $('tlgx').click());
+  $('tlgx').addEventListener('change', async (e) => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    const tools = ToolLibrary.parseTlgx(await f.text());
+    if (!tools.length) { toast('In dieser Datei wurden keine Werkzeuge gefunden.'); return; }
+    state.tools = tools;
+    state.toolSource = f.name;
+    storeJson(TOOLS_KEY, { tools: tools, source: f.name });
+    state.parts.forEach(compute);
+    renderToolLib(); renderSettings(); render();
+    toast(tools.length + ' Werkzeuge geladen.');
+  });
+  $('resettools').addEventListener('click', () => {
+    state.tools = window.DEFAULT_TOOLS || [];
+    state.toolSource = 'def.tlgx (Standard)';
+    storeJson(TOOLS_KEY, null);
+    state.parts.forEach(compute);
+    renderToolLib(); renderSettings(); render();
+  });
+
   // Start mit Beispiel aus Onshape
+  renderToolLib();
   renderSettings();
   for (const s of (window.SAMPLE_STEPS || [])) addStep(s.text, 'Beispiel: ' + s.name);
   render();

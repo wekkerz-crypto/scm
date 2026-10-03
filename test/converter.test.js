@@ -89,7 +89,8 @@ test('Testplatte: Drehen, Falz, Quernut in Falz, Tasche, Durchbruch, Bohrung von
   assert.match(part.xcs, /CreateSegment\("SlotSegment_1", 800, -50, 800, 450\);/);
   assert.match(part.xcs, /CreateDrill \("Drill_Vertical_\d+", 700, 22.5, 13, 35,.*"P"\);/);
   assert.match(part.xcs, /CreateDrill \("Drill_Vertical_\d+", 100, 300, 20, 7,.*"L"\);/);
-  assert.ok(part.warnings.some((w) => /Tasche 60×80/.test(w)));
+  assert.match(part.xcs, /CreatePolyline\("Pocket_1", /);
+  assert.match(part.xcs, /CreateContourPocket\("Pocketing_1", 5, "", TypeOfProcess.ConcentricalPocket, "E016"/);
   assert.ok(part.warnings.some((w) => /von unten/.test(w)));
   assert.ok(part.xcs.endsWith('CreateNullOperation("XN", 1900, null, 1, 50, false, " ");\r\n'));
 });
@@ -116,4 +117,38 @@ test('konvertieren.bat für den X-Konverter', () => {
   assert.match(bat, /set "OUT=%~dp0pgmx"/);
   assert.match(bat, /call "%XCONV%" -s -m 0 -t "%TOOLS%" -i "%~1" -o "%OUT%\\%~2.pgmx"/);
   assert.match(makeBatch({ pgmxDir: 'C:\\Maestro\\Programme' }), /set "OUT=C:\\Maestro\\Programme"/);
+});
+
+test('5-Achs-Testplatte: Tasche mit Insel, Fasen, schräge Kante, schräge Bohrung, Zustellung', () => {
+  const { convert } = require('../web/js/convert.js');
+  const T = require('../web/js/tools.js');
+  const toolInfo = T.infoMap(T.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
+  const [part] = convert(read('test/fixtures/fuenfachs.step'), { toolInfo: toolInfo, stepDown: 10 });
+  assert.strictEqual(part.error, null);
+  const x = part.xcs;
+  assert.match(x, /CreateCircleCenterRadius\("Island_1_1", 130, 200, 15, true\);/);
+  assert.match(x, /CreateContourPocket\("Pocketing_1", 8, "", TypeOfProcess.ConcentricalPocket, "E016", "-1", -1, -1, -1, 50, false, "Island_1_1"\);/);
+  assert.match(x, /CreateChamfer\("Chamfer_\d", 3, 3, 0, 2,/);
+  assert.match(x, /CreateChamfer\("Chamfer_\d", 2, 2, 0, 3,/);
+  assert.match(x, /CreateSlantedRoughFinish\("SlantedMilling_1", 0, 30, 2, 21,/);
+  assert.match(x, /CreateSlantedDrill\("Drill_Slanted_1", 350, 250, 19, 180, 30, 15, 8,/);
+  assert.match(x, /CreateDrill \("Drill_Vertical_1", 185, 200, 13, 8,/); // Bohrung im Taschenboden
+  assert.match(x, /CreateUnidirectionalMillingStrategy\(true, 10, 0, 1, false\);\r\nCreateRoughFinish\("Milling_1", 22,/);
+  assert.ok(!/Contour_2/.test(x), 'keine Konturfräsung für Fasen/Gehrung');
+  assert.deepStrictEqual(part.warnings, []);
+});
+
+test('Werkzeugwahl je Bearbeitung und Warnung bei zu kurzer Schneide', () => {
+  const { convert } = require('../web/js/convert.js');
+  const T = require('../web/js/tools.js');
+  const tools = T.parseTlgx(read('maestro/werkzeuge/def.tlgx'));
+  assert.ok(tools.filter((t) => t.kind === 'mill').length > 30);
+  assert.strictEqual(tools.find((t) => t.name === '066').blade, 5.1);
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const [solid] = readParts(read('test/fixtures/fuenfachs.step'));
+  const part = convertSolid(solid, { toolInfo: T.infoMap(tools) },
+    { overrides: { tools: { 'pocket-0': 'E020', format: 'E040' }, steps: { 'pocket-0': 3 } } });
+  assert.match(part.xcs, /CreateContourParallelStrategy\(true, 1, true, 3, 0\);\r\nCreateContourPocket\("Pocketing_1", 8, "", TypeOfProcess.ConcentricalPocket, "E020"/);
+  assert.match(part.xcs, /CreateRoughFinish\("Milling_1", 22, "", TypeOfProcess.GeneralRouting, "E040"/);
+  assert.ok(part.warnings.some((w) => /Schneidenlänge E040/.test(w)), part.warnings.join('|'));
 });

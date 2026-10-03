@@ -285,7 +285,7 @@
         const d2 = [s.b[0] - s.a[0], s.b[1] - s.a[1]];
         const crs = d1[0] * d2[1] - d1[1] * d2[0];
         if (Math.abs(crs) < 1e-6 * Math.hypot(...d1) * Math.hypot(...d2) && d1[0] * d2[0] + d1[1] * d2[1] > 0) {
-          out[out.length - 1] = { type: 'line', a: prev.a, b: s.b };
+          out[out.length - 1] = { type: 'line', a: prev.a, b: s.b, inclined: !!(prev.inclined && s.inclined) };
           continue;
         }
       }
@@ -301,7 +301,7 @@
         const crs = d1[0] * d2[1] - d1[1] * d2[0];
         if (Math.abs(crs) < 1e-6 * Math.hypot(...d1) * Math.hypot(...d2) && d1[0] * d2[0] + d1[1] * d2[1] > 0) {
           out.pop();
-          out[0] = { type: 'line', a: l.a, b: f.b };
+          out[0] = { type: 'line', a: l.a, b: f.b, inclined: !!(l.inclined && f.inclined) };
         }
       }
     }
@@ -420,6 +420,125 @@
     return near(area, (bb.x1 - bb.x0) * (bb.y1 - bb.y0), 0.01 * Math.max(1, area / 1000)) && segs.length === 4;
   }
 
+  function pointInPoly(p, poly) {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const a = poly[i];
+      const b = poly[j];
+      if ((a[1] > p[1]) !== (b[1] > p[1]) && p[0] < ((b[0] - a[0]) * (p[1] - a[1])) / (b[1] - a[1]) + a[0]) inside = !inside;
+    }
+    return inside;
+  }
+
+  // Kontur in gewünschte Umlaufrichtung bringen (ccw = gegen den Uhrzeigersinn)
+  function orient(segs, ccw) {
+    const a = loopArea(segs);
+    if ((a > 0) === ccw) return segs;
+    return segs.slice().reverse().map(reverseSeg);
+  }
+
+  // Kleinster Eckenradius einer Tasche (Bögen gegen den Uhrzeigersinn bei Umlauf gegen den Uhrzeigersinn)
+  function minConcaveRadius(segs) {
+    let r = Infinity;
+    for (const s of segs) if (s.type === 'arc' && s.ccw) r = Math.min(r, s.r);
+    return r;
+  }
+
+  function openSides(bb, L, W) {
+    const o = [];
+    if (bb.x0 < TOL) o.push('links');
+    if (bb.x1 > L - TOL) o.push('rechts');
+    if (bb.y0 < TOL) o.push('vorne');
+    if (bb.y1 > W - TOL) o.push('hinten');
+    return o;
+  }
+
+  // Schnitt einer schrägen ebenen Fläche mit der Ebene Z = zs als 2D-Strecke (Material links).
+  function inclinedSection(f, zs) {
+    const n = f.surf.n;
+    const h = Math.hypot(n[0], n[1]);
+    if (h < ATOL) return null;
+    const d = [-n[1] / h, n[0] / h];
+    const pts = [];
+    for (const b of f.bounds) for (const e of b.edges) {
+      const sm = e.samples;
+      for (let i = 0; i + 1 < sm.length; i++) {
+        const p = sm[i];
+        const q = sm[i + 1];
+        if ((p[2] - zs) * (q[2] - zs) > 0) continue;
+        if (Math.abs(q[2] - p[2]) < 1e-9) { pts.push(p, q); continue; }
+        const t = (zs - p[2]) / (q[2] - p[2]);
+        pts.push([p[0] + t * (q[0] - p[0]), p[1] + t * (q[1] - p[1])]);
+      }
+    }
+    if (pts.length < 2) return null;
+    let lo = null;
+    let hi = null;
+    for (const p of pts) {
+      const t = p[0] * d[0] + p[1] * d[1];
+      if (!lo || t < lo.t) lo = { t: t, p: p };
+      if (!hi || t > hi.t) hi = { t: t, p: p };
+    }
+    if (hi.t - lo.t < TOL) return null;
+    return { type: 'line', a: [lo.p[0], lo.p[1]], b: [hi.p[0], hi.p[1]], inclined: Math.abs(n[2]) > ATOL };
+  }
+
+  // Obere und untere Kante einer schrägen Fläche, Neigung und Bahnrichtung (Abfall rechts).
+  function inclinedEdges(f) {
+    const zs = f.pts.map((q) => q[2]);
+    const zmin = Math.min(...zs);
+    const zmax = Math.max(...zs);
+    const top = inclinedSection(f, zmax - 1e-6);
+    const bottom = inclinedSection(f, zmin + 1e-6);
+    if (!top || !bottom) return null;
+    const n = f.surf.n;
+    const h = Math.hypot(n[0], n[1]);
+    const u = [n[0] / h, n[1] / h]; // waagerecht nach außen (Abfallseite)
+    // Abstand unten gegenüber oben, positiv = untere Kante liegt weiter außen
+    const offset = (bottom.a[0] - top.a[0]) * u[0] + (bottom.a[1] - top.a[1]) * u[1];
+    const dir = [-u[1], u[0]]; // Bahnrichtung mit Abfall rechts
+    const line = (seg) => {
+      const ta = seg.a[0] * dir[0] + seg.a[1] * dir[1];
+      const tb = seg.b[0] * dir[0] + seg.b[1] * dir[1];
+      return ta <= tb ? { a: seg.a, b: seg.b } : { a: seg.b, b: seg.a };
+    };
+    const angle = Math.atan2(Math.abs(offset), zmax - zmin) * 180 / Math.PI;
+    return { zmin: zmin, zmax: zmax, top: line(top), bottom: line(bottom), topLine: line(top), bottomLine: line(bottom),
+      offset: offset, angle: angle, path: dir };
+  }
+
+  // Schräge Bohrung: Eintrittspunkt auf einer Plattenfläche, Bohrrichtung und Tiefe.
+  function slantedHole(h, L, W, T) {
+    const a = h.axis;
+    const c = h.c;
+    const r = h.d / 2;
+    const hits = [];
+    const lims = [[0, 0], [0, L], [1, 0], [1, W], [2, 0], [2, T]];
+    for (const [i, v] of lims) {
+      if (Math.abs(a[i]) < ATOL) continue;
+      const t = (v - c[i]) / a[i];
+      const p = [c[0] + t * a[0], c[1] + t * a[1], c[2] + t * a[2]];
+      if (p[0] < -TOL || p[0] > L + TOL || p[1] < -TOL || p[1] > W + TOL || p[2] < -TOL || p[2] > T + TOL) continue;
+      if (t < h.tmin - r - TOL || t > h.tmax + r + TOL) continue;
+      if (!hits.some((q) => near(q.t, t))) hits.push({ t: t, p: p });
+    }
+    if (!hits.length) return null;
+    let entry;
+    let far;
+    let through = false;
+    if (hits.length >= 2) {
+      hits.sort((x, y) => y.p[2] - x.p[2]); // von oben eintreten
+      entry = hits[0];
+      far = hits[hits.length - 1].t;
+      through = true;
+    } else {
+      entry = hits[0];
+      far = Math.abs(h.tmax - entry.t) > Math.abs(h.tmin - entry.t) ? h.tmax : h.tmin;
+    }
+    const sgn = far > entry.t ? 1 : -1;
+    return { entry: entry.p, dir: [a[0] * sgn, a[1] * sgn, a[2] * sgn], d: h.d, depth: Math.abs(far - entry.t), through: through };
+  }
+
   function extract(prep, fr) {
     const faces = transformSolid(prep, fr);
     const L = fr.L;
@@ -427,7 +546,17 @@
     const T = fr.T;
     const warnings = prep.warnings.slice();
     const res = { L: L, W: W, T: T, outline: null, cutouts: [], drills: [], circles: [], grooves: [], rebates: [],
-      pockets: [], bottom: [], warnings: warnings };
+      pockets: [], chamfers: [], slantWalls: [], slantDrills: [], bottom: [], warnings: warnings };
+
+    // Höhen der nach oben offenen Böden (Taschen, Nuten): Bohrungen dort beginnen „oben“
+    const upFloors = faces.filter((f) => f.surf.type === 'plane' && f.surf.n[2] > 1 - ATOL &&
+      f.surf.p[2] > TOL && f.surf.p[2] < T - TOL).map((f) => {
+      const ob = f.bounds.find((b) => b.outer) || f.bounds[0];
+      const poly = [];
+      for (const q of ob.edges.map(seg2DFromEdge)) for (const pt of segPoints(q)) poly.push(pt);
+      return { z: f.surf.p[2], poly: poly };
+    });
+    const onUpFloor = (x, y, z) => upFloors.some((fl) => near(fl.z, z) && pointInPoly([x, y], fl.poly));
 
     // --- Bohrungen
     const { holes, holeFaceIds } = findHoles(faces);
@@ -437,7 +566,7 @@
       if (Math.abs(a[2]) > 1 - ATOL) {
         const x = h.c[0];
         const y = h.c[1];
-        const atTop = h.tmax > T - TOL;
+        const atTop = h.tmax > T - TOL || onUpFloor(x, y, h.tmax);
         const atBottom = h.tmin < TOL;
         if (atTop && atBottom) res.drills.push({ face: 'Top', x: x, y: y, d: d, depth: T, through: true });
         else if (atTop) res.drills.push({ face: 'Top', x: x, y: y, d: d, depth: T - h.tmin, through: false });
@@ -463,7 +592,11 @@
         res.drills.push({ face: face, along: along, z: z, d: d, depth: depth, through: false,
           x: alongX ? (face === 'Left' ? 0 : L) : along, y: alongX ? along : (face === 'Front' ? 0 : W) });
       } else {
-        warnings.push('Schräge Bohrung Ø' + fmt(d) + ' wird nicht unterstützt.');
+        const sd = slantedHole(h, L, W, T);
+        if (!sd) warnings.push('Schräge Bohrung Ø' + fmt(d) + ' beginnt nicht an einer Plattenfläche – ignoriert.');
+        else if (sd.entry[2] < TOL && sd.dir[2] > 0) {
+          res.bottom.push({ kind: 'Bohrung', text: 'Schräge Bohrung Ø' + fmt(d) + ' von unten bei X=' + fmt(sd.entry[0]) + ' Y=' + fmt(sd.entry[1]) });
+        } else res.slantDrills.push(sd);
       }
     }
 
@@ -472,12 +605,18 @@
     for (const f of faces) {
       if (holeFaceIds.has(f.id)) continue;
       const w = wallSegment(f);
-      if (w) walls.push(w);
+      if (w) { w.f = f; walls.push(w); }
     }
-    const delta = Math.min(0.5, T / 10);
+    // Ebene Wände auf der jeweiligen Schnitthöhe auswerten (wichtig neben Fasen und Gehrungen)
+    const wallAt = (w, zs) => (w.f.surf.type === 'plane' ? inclinedSection(w.f, zs) || w.seg : w.seg);
+    const inclined = faces.filter((f) => f.surf.type === 'plane' && Math.abs(f.surf.n[2]) > ATOL &&
+      Math.abs(f.surf.n[2]) < 1 - ATOL);
+    const sectionsAt = (zs) => inclined.map((f) => inclinedSection(f, zs)).filter(Boolean);
+    const delta = Math.min(0.001, T / 100);
     let outer = null;
     for (const zs of [delta, T / 2, T - delta]) {
-      const { loops } = chainLoops(walls.filter((w) => w.zmin <= zs + TOL && w.zmax >= zs - TOL).map((w) => w.seg));
+      const { loops } = chainLoops(walls.filter((w) => w.zmin <= zs + TOL && w.zmax >= zs - TOL).map((w) => wallAt(w, zs))
+        .concat(sectionsAt(zs)));
       for (const lp of loops) {
         const a = loopArea(lp);
         if (a > 0 && (!outer || a > outer.area + TOL)) outer = { segs: lp, area: a };
@@ -488,10 +627,42 @@
       outer = { segs: rectLoop(L, W), area: L * W };
     }
     res.outline = outer.segs;
-    res.outlineIsRect = isRectLoop(outer.segs, { x0: 0, y0: 0, x1: L, y1: W });
+    // Abschnitte aus Fasen/Gehrungen gelten als Rechteckkante – sie werden separat bearbeitet
+    const onSide = (q) => q.type === 'line' && [[0, 0], [0, L], [1, 0], [1, W]].some(([i, v]) =>
+      Math.abs(q.a[i] - v) < TOL && Math.abs(q.b[i] - v) < TOL);
+    res.outlineIsRect = isRectLoop(outer.segs, { x0: 0, y0: 0, x1: L, y1: W }) ||
+      outer.segs.every((q) => onSide(q) || q.inclined);
 
-    const through = chainLoops(walls.filter((w) => w.zmin < TOL && w.zmax > T - TOL).map((w) => w.seg));
+    const fullInclined = inclined.filter((f) => {
+      const zs = f.pts.map((q) => q[2]);
+      return Math.min(...zs) < TOL && Math.max(...zs) > T - TOL;
+    });
+    const through = chainLoops(walls.filter((w) => w.zmin < TOL && w.zmax > T - TOL).map((w) => wallAt(w, T / 2))
+      .concat(fullInclined.map((f) => inclinedSection(f, T / 2)).filter(Boolean)));
     for (const lp of through.loops) if (loopArea(lp) < 0) res.cutouts.push(lp);
+
+    // --- Schräge ebene Flächen: Fasen (oben/unten) und schräge Kanten über die ganze Dicke
+    for (const f of inclined) {
+      const e = inclinedEdges(f);
+      if (!e) continue;
+      const full = e.zmin < TOL && e.zmax > T - TOL;
+      if (full) {
+        res.slantWalls.push({ top: e.top, bottom: e.bottom, angle: e.angle, leanOut: e.offset > 0, path: e.path });
+      } else if (e.zmax > T - TOL) {
+        res.chamfers.push({ side: 'top', line: e.bottomLine, width: Math.abs(e.offset), height: T - e.zmin, path: e.path });
+      } else if (e.zmin < TOL) {
+        res.chamfers.push({ side: 'bottom', line: e.topLine, width: Math.abs(e.offset), height: e.zmax, path: e.path });
+      } else {
+        warnings.push('Schräge Fläche ohne Verbindung zu Ober- oder Unterseite (Z ' + fmt(e.zmin) + '–' + fmt(e.zmax) + ') – ignoriert.');
+      }
+    }
+    for (const f of faces) {
+      if (f.surf.type === 'cone' && !holeFaceIds.has(f.id)) {
+        const zs = f.pts.map((q) => q[2]);
+        const isHoleTip = Math.max(...zs) < T - TOL && Math.min(...zs) > TOL;
+        if (!isHoleTip) warnings.push('Fase an einer Rundung (Kegelfläche) wird nicht automatisch erzeugt.');
+      }
+    }
 
     // --- Böden (Nut, Falz, Tasche)
     const floors = [];
@@ -508,7 +679,10 @@
         res.bottom.push({ kind: 'Boden', text: 'Bearbeitung von unten (Boden auf Z=' + fmt(z) + ', ' + fmt(bb.x1 - bb.x0) + '×' + fmt(bb.y1 - bb.y0) + ')' });
         continue;
       }
-      floors.push({ z: z, segs: segs, bb: bb, rect: isRectLoop(segs, bb) });
+      const inner = f.bounds.filter((b) => b !== ob).map((b) => b.edges.map(seg2DFromEdge))
+        .filter((lp) => !lp.every((q) => q.type === 'arc' && holes.some((h) => Math.abs(h.axis[2]) > 1 - ATOL &&
+          near2([h.c[0], h.c[1]], q.c, 0.01) && near(h.d / 2, q.r))));
+      floors.push({ z: z, segs: segs, bb: bb, rect: isRectLoop(segs, bb), inner: inner });
     }
     // Endet ein Boden an der Plattenkante oder in einem tieferen Boden (z. B. Nut läuft in Falz)?
     const reaches = (fl, axis, v) => {
@@ -535,10 +709,14 @@
         else if (bb.x1 > L - TOL) res.rebates.push({ edge: 'Right', depth: depth, width: L - bb.x0, flank: bb.x0 });
         else res.grooves.push({ dir: 'Y', from: bb.x0, to: bb.x1, depth: depth });
       } else {
-        res.pockets.push({ x0: bb.x0, y0: bb.y0, x1: bb.x1, y1: bb.y1, depth: depth, segs: fl.segs });
+        const outerLoop = orient(fl.segs, true);
+        res.pockets.push({ x0: bb.x0, y0: bb.y0, x1: bb.x1, y1: bb.y1, depth: depth, segs: outerLoop,
+          islands: fl.inner.map((lp) => orient(lp, false)), minRadius: minConcaveRadius(outerLoop),
+          open: openSides(bb, L, W) });
       }
     }
 
+    res.pockets.sort((a, b) => a.depth - b.depth);
     if (T > Math.min(L, W) / 3) warnings.push('Teil ist sehr dick (' + fmt(T) + ' mm) – wirklich eine Platte?');
     return res;
   }
@@ -557,7 +735,8 @@
 
   function topScore(res) {
     return res.drills.filter((d) => d.face === 'Top' && !d.through).length + res.grooves.length * 3 +
-      res.rebates.length * 3 + res.pockets.length * 3;
+      res.rebates.length * 3 + res.pockets.length * 3 + res.slantDrills.length +
+      res.chamfers.filter((c) => c.side === 'top').length * 2;
   }
 
   /**

@@ -25,7 +25,8 @@
     options = options || {};
     try {
       const panel = PanelAnalyzer.analyze(solid, options.orientation);
-      const out = XcsWriter.write(panel, settings, { field: options.field });
+      const ov = options.overrides || {};
+      const out = XcsWriter.write(panel, settings, { field: options.field, tools: ov.tools, steps: ov.steps });
       return { name: solid.name, fileName: safeFileName(solid.name) + '.xcs', panel: panel,
         xcs: out.text, ops: out.ops, warnings: out.warnings, field: out.field, error: null };
     } catch (err) {

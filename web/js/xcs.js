@@ -22,7 +22,14 @@
     sawOverrun: 50,            // Säge-Überlauf an beiden Enden
     maxGrooveWidth: 12,        // breitere Nuten → Warnung
     rebateTool: 'E016',        // Falz
-    rebateToolDia: 12,
+    rebateToolDia: 12,         // nur falls der Fräser nicht in der Werkzeugliste steht
+    pocketTool: 'E016',        // Taschen (CreateContourPocket)
+    pocketOverlap: 50,         // Überdeckung in %
+    chamferTool: 'E050',       // Fasen (CreateChamfer)
+    slantTool: 'E016',         // schräge Kanten / Gehrung (CreateSlantedRoughFinish)
+    slantExtra: 2,             // Schrägfräsen: Dicke + …
+    stepDown: 0,               // Zustellung je Durchgang in mm (0 = in einem Durchgang)
+    finishDepth: 0,            // letzte Zustellung in mm (0 = keine eigene)
     throughExtra: 2,           // Durchgangsbohrung: Tiefe = Dicke + …
     drillsVertical: [3, 5, 7, 8, 10, 12, 15, 20, 35],
     drillsHorizontal: [5, 8],
@@ -115,9 +122,14 @@
     let nContour = 0;
     let nMill = 0;
 
+    const toolD = (name, fallback) => {
+      const t = cfg.toolInfo && cfg.toolInfo[name];
+      return t && t.d ? t.d : fallback;
+    };
+
     // 1) Formatfräsen (immer Rechteck L×B wie in den Beispielen)
     ops.push({
-      kind: 'contour', contour: ++nContour, milling: ++nMill, approach: true,
+      kind: 'contour', key: 'format', toolKind: 'mill', toolDefault: 'contourTool', contour: ++nContour, milling: ++nMill, approach: true,
       start: [0, p.W / 2],
       segs: [[0, 0], [p.L, 0], [p.L, p.W], [0, p.W], [0, p.W / 2]].map((q) => ({ type: 'line', to: q })),
       depth: T + cfg.contourExtra, tool: cfg.contourTool, side: 2, label: 'Formatfräsen',
@@ -130,26 +142,29 @@
       // Segment auf der Nutflanke, Nut links der Fahrtrichtung (wie im Beispiel 32_Seitenwand_R)
       const a = g.dir === 'X' ? [-cfg.sawOverrun, g.from] : [g.to, -cfg.sawOverrun];
       const b = g.dir === 'X' ? [p.L + cfg.sawOverrun, g.from] : [g.to, p.W + cfg.sawOverrun];
-      ops.push({ kind: 'slot', a: a, b: b, depth: g.depth, width: width, tool: cfg.sawTool,
+      ops.push({ kind: 'slot', key: 'slot-' + ops.length, toolKind: 'saw', toolDefault: 'sawTool', a: a, b: b, depth: g.depth, width: width, tool: cfg.sawTool,
         label: 'Nut ' + fmt(width) + '×' + fmt(g.depth) });
     }
 
     // 3) Abweichungen der Außenkontur vom Rechteck (Ausschnitte, Rundungen, Schrägen)
-    for (const path of notchPaths(p, cfg)) {
-      ops.push({ kind: 'contour', contour: ++nContour, milling: ++nMill, approach: false,
+    for (const [i, path] of notchPaths(p, cfg).entries()) {
+      ops.push({ kind: 'contour', key: 'notch-' + i, toolKind: 'mill', toolDefault: 'cutoutTool', contour: ++nContour, milling: ++nMill, approach: false,
         start: path.start, segs: path.segs, depth: T + cfg.cutoutExtra, tool: cfg.cutoutTool, side: 1, label: 'Kontur-Ausschnitt' });
     }
 
     // 4) Durchbrüche (Innenkonturen)
-    for (const lp of p.cutouts) {
-      ops.push({ kind: 'contour', contour: ++nContour, milling: ++nMill, approach: false,
+    for (const [i, lp] of p.cutouts.entries()) {
+      ops.push({ kind: 'contour', key: 'cutout-' + i, toolKind: 'mill', toolDefault: 'cutoutTool', contour: ++nContour, milling: ++nMill, approach: false,
         start: lp[0].a, segs: lp.map(toPolySeg), depth: T + cfg.cutoutExtra, tool: cfg.cutoutTool, side: 2, label: 'Durchbruch' });
     }
 
     // 5) Falze
-    for (const r of p.rebates) {
-      const n = Math.max(1, Math.ceil(r.width / (cfg.rebateToolDia * 0.9)));
-      if (n > 1) warnings.push('Falz ' + fmt(r.width) + ' mm breiter als Fräser Ø' + cfg.rebateToolDia + ' – ' + n + ' Bahnen.');
+    for (const [ri, r] of p.rebates.entries()) {
+      const key = 'rebate-' + ri;
+      const rTool = (cfg.toolOverrides && cfg.toolOverrides[key]) || cfg.rebateTool;
+      const dia = toolD(rTool, cfg.rebateToolDia);
+      const n = Math.max(1, Math.ceil(r.width / (dia * 0.9)));
+      if (n > 1) warnings.push('Falz ' + fmt(r.width) + ' mm breiter als Fräser Ø' + fmt(dia) + ' – ' + n + ' Bahnen.');
       for (let i = 0; i < n; i++) {
         const off = (i * r.width) / n;
         let a;
@@ -159,19 +174,45 @@
         if (r.edge === 'Back') { const y = r.flank + off; a = [p.L + ll, y]; b = [-ll, y]; }
         if (r.edge === 'Left') { const x = r.flank - off; a = [x, p.W + ll]; b = [x, -ll]; }
         if (r.edge === 'Right') { const x = r.flank + off; a = [x, -ll]; b = [x, p.W + ll]; }
-        ops.push({ kind: 'contour', contour: ++nContour, milling: ++nMill, approach: false,
+        ops.push({ kind: 'contour', key: key, toolKind: 'mill', toolDefault: 'rebateTool', contour: ++nContour, milling: ++nMill, approach: false,
           start: a, segs: [{ type: 'line', to: b }], depth: r.depth, tool: cfg.rebateTool, side: 2,
           label: 'Falz ' + fmt(r.width) + '×' + fmt(r.depth) });
       }
     }
 
-    // 6) Taschen – nur Hinweis
-    for (const k of p.pockets) {
-      warnings.push('Tasche ' + fmt(k.x1 - k.x0) + '×' + fmt(k.y1 - k.y0) + ' Tiefe ' + fmt(k.depth) + ' bei X=' + fmt(k.x0) +
-        ' Y=' + fmt(k.y0) + ' wird nicht automatisch erzeugt – bitte in Maestro ergänzen.');
+    // 6) Taschen (flachste zuerst)
+    for (const [i, k] of p.pockets.entries()) {
+      const key = 'pocket-' + i;
+      const tool = (cfg.toolOverrides && cfg.toolOverrides[key]) || cfg.pocketTool;
+      const dia = toolD(tool, null);
+      const size = fmt(k.x1 - k.x0) + '×' + fmt(k.y1 - k.y0);
+      if (dia && Math.min(k.x1 - k.x0, k.y1 - k.y0) < dia) warnings.push('Tasche ' + size + ' ist schmaler als Fräser ' + tool + ' (Ø' + fmt(dia) + ').');
+      if (dia && k.minRadius < dia / 2 - 0.01) warnings.push('Tasche ' + size + ': Eckenradius R' + fmt(k.minRadius) + ' kleiner als Fräserradius ' + fmt(dia / 2) + ' – Ecken bleiben runder.');
+      if (k.open && k.open.length) warnings.push('Tasche ' + size + ' ist zur Kante offen (' + k.open.join(', ') + ') – Anfahrt in Maestro prüfen.');
+      ops.push({ kind: 'pocket', key: key, toolKind: 'mill', toolDefault: 'pocketTool', pocket: i + 1, segs: k.segs, islands: k.islands,
+        depth: k.depth, tool: cfg.pocketTool, label: 'Tasche ' + size + '×' + fmt(k.depth) + (k.islands.length ? ' mit Insel' : '') });
     }
 
-    // 7) Bohrungen
+    // 7) Fasen
+    for (const [i, c] of p.chamfers.entries()) {
+      ops.push({ kind: 'chamfer', key: 'chamfer-' + i, toolKind: 'mill', toolDefault: 'chamferTool', a: c.line.a, b: c.line.b,
+        width: c.width, height: c.height, toolPos: c.side === 'top' ? 2 : 3, tool: cfg.chamferTool,
+        label: 'Fase ' + fmt(c.width) + '×' + fmt(c.height) + (c.side === 'top' ? ' oben' : ' unten') });
+    }
+
+    // 8) Schräge Kanten über die ganze Dicke (5-Achs)
+    for (const [i, w] of p.slantWalls.entries()) {
+      const ll = cfg.leadLength;
+      const d = [w.top.b[0] - w.top.a[0], w.top.b[1] - w.top.a[1]];
+      const l = Math.hypot(d[0], d[1]) || 1;
+      const u = [d[0] / l, d[1] / l];
+      ops.push({ kind: 'slant', key: 'slant-' + i, toolKind: 'mill', toolDefault: 'slantTool',
+        a: [w.top.a[0] - u[0] * ll, w.top.a[1] - u[1] * ll], b: [w.top.b[0] + u[0] * ll, w.top.b[1] + u[1] * ll],
+        angle: w.angle, approach: w.leanOut ? 2 : 1, depth: T + cfg.slantExtra, tool: cfg.slantTool,
+        label: 'Schräge Kante ' + fmt(w.angle) + '°' });
+    }
+
+    // 9) Bohrungen
     const drillOps = [];
     for (const d of p.drills) {
       const vertical = d.face === 'Top';
@@ -179,7 +220,7 @@
       if (!hasDrill(list, d.d)) {
         if (vertical && d.through) {
           const r = d.d / 2;
-          ops.push({ kind: 'contour', contour: ++nContour, milling: ++nMill, approach: false,
+          ops.push({ kind: 'contour', key: 'round-' + ops.length, toolKind: 'mill', toolDefault: 'cutoutTool', contour: ++nContour, milling: ++nMill, approach: false,
             start: [d.x + r, d.y],
             segs: [
               { type: 'arc', to: [d.x - r, d.y], c: [d.x, d.y], cw: false },
@@ -215,6 +256,31 @@
       for (const pat of patterns) ops.push({ kind: 'drill', face: face, pattern: pat, d: pat.p });
     }
 
+    // 10) Schräge Bohrungen (5-Achs). Winkel A = Richtung der Werkzeugachse in XY zu X, B = Neigung zu Z.
+    for (const sd of p.slantDrills) {
+      const v = [-sd.dir[0], -sd.dir[1], -sd.dir[2]];
+      const angleB = Math.acos(Math.max(-1, Math.min(1, v[2]))) * 180 / Math.PI;
+      let angleA = Math.abs(v[0]) + Math.abs(v[1]) < 1e-9 ? 0 : Math.atan2(v[1], v[0]) * 180 / Math.PI;
+      if (angleA < 0) angleA += 360;
+      ops.push({ kind: 'sdrill', entry: sd.entry, angleA: angleA, angleB: angleB, d: sd.d,
+        depth: sd.through ? sd.depth + cfg.throughExtra : sd.depth, tip: sd.through ? 'L' : 'P' });
+    }
+
+    // Werkzeug je Bearbeitung (Auswahl im Web-Tool) und Zustellungen
+    for (const op of ops) {
+      if (!op.key) continue;
+      if (cfg.toolOverrides && cfg.toolOverrides[op.key]) op.tool = cfg.toolOverrides[op.key];
+      if (op.kind === 'contour' || op.kind === 'pocket') {
+        const st = cfg.stepOverrides && cfg.stepOverrides[op.key] !== undefined ? cfg.stepOverrides[op.key] : cfg.stepDown;
+        op.step = st > 0 && op.depth > st + 1e-9 ? st : 0;
+        const info = cfg.toolInfo && cfg.toolInfo[op.tool];
+        const pass = op.step || op.depth;
+        if (info && info.len && pass > info.len + 1e-9) {
+          warnings.push(op.label + ': ' + fmt(pass) + ' mm je Durchgang, Schneidenlänge ' + op.tool + ' nur ' + fmt(info.len) + ' mm – Zustellung verringern.');
+        }
+      }
+    }
+
     for (const b of p.bottom) warnings.push(b.text + ' – nicht von oben bearbeitbar (Platte wenden / 2. Programm).');
     return { ops: ops, warnings: warnings };
   }
@@ -242,7 +308,7 @@
   function notchPaths(p, cfg) {
     if (p.outlineIsRect) return [];
     const segs = p.outline;
-    const isB = segs.map((s) => !!onRectSide(s, p.L, p.W));
+    const isB = segs.map((s) => !!onRectSide(s, p.L, p.W) || !!s.inclined);
     if (!isB.some(Boolean)) {
       // Keine einzige Kante auf dem Rechteck: komplette Kontur im Uhrzeigersinn fräsen
       const rev = segs.slice().reverse().map(revSeg);
@@ -261,8 +327,8 @@
       const next = segs[(k0 + i) % n];
       const A = chain[0].a;
       const B = chain[chain.length - 1].b;
-      const uPrev = onRectSide(prev, p.L, p.W);
-      const uNext = onRectSide(next, p.L, p.W);
+      const uPrev = lineDir(prev);
+      const uNext = lineDir(next);
       const ll = cfg.leadLength;
       const start = [B[0] + uNext[0] * ll, B[1] + uNext[1] * ll];
       const out = [{ type: 'line', to: B }];
@@ -273,6 +339,12 @@
     return paths;
   }
 
+  function lineDir(s) {
+    const d = [s.b[0] - s.a[0], s.b[1] - s.a[1]];
+    const l = Math.hypot(d[0], d[1]) || 1;
+    return [d[0] / l, d[1] / l];
+  }
+
   function revSeg(s) {
     return s.type === 'arc'
       ? { type: 'arc', a: s.b, b: s.a, c: s.c, r: s.r, ccw: !s.ccw, full: s.full }
@@ -281,8 +353,23 @@
 
   // ---------------------------------------------------------------- Ausgabe
 
+  function writePoly(L, name, segs) {
+    if (segs.length === 1 && segs[0].type === 'arc' && segs[0].full) {
+      const q = segs[0];
+      L.push('CreateCircleCenterRadius("' + name + '", ' + pt(q.c) + ', ' + fmt(q.r) + ', ' + (q.ccw ? 'false' : 'true') + ');');
+      return;
+    }
+    L.push('CreatePolyline("' + name + '", ' + pt(segs[0].a) + ');');
+    for (const q of segs) {
+      if (q.type === 'line') L.push('AddSegmentToPolyline(' + pt(q.b) + ');');
+      else L.push('AddArc2PointCenterToPolyline(' + pt(q.b) + ', ' + pt(q.c) + ', ' + (q.ccw ? 'false' : 'true') + ');');
+    }
+  }
+
   function write(p, cfgIn, override) {
     const cfg = Object.assign({}, DEFAULTS, cfgIn || {});
+    if (override && override.tools) cfg.toolOverrides = override.tools;
+    if (override && override.steps) cfg.stepOverrides = override.steps;
     const { ops, warnings } = plan(p, cfg);
     const field = (override && override.field) || (p.L >= cfg.fieldThreshold ? cfg.fieldLong : cfg.fieldShort);
     const L = [];
@@ -296,6 +383,7 @@
     let nSlot = 0;
     let nSeg = 0;
     const nDrill = { V: 0, H: 0 };
+    const counts = { chamfer: 0, slant: 0, sdrill: 0 };
     let plane = 'Top';
     for (const op of ops) {
       if (op.kind === 'contour') {
@@ -312,8 +400,43 @@
           L.push('SetRetractStrategy(false, true, 2, 0);');
         }
         L.push('SetPneumaticHoodPosition(1);');
+        if (op.step) L.push('CreateUnidirectionalMillingStrategy(true, ' + fmt(op.step) + ', ' + fmt(cfg.finishDepth) + ', 1, false);');
         L.push('CreateRoughFinish("Milling_' + op.milling + '", ' + fmt(op.depth) + ', "", TypeOfProcess.GeneralRouting, "' +
           op.tool + '", "-1", ' + op.side + ', "-1", "-1", "-1");');
+        blank();
+      } else if (op.kind === 'pocket') {
+        const names = op.islands.map((isl, j) => 'Island_' + op.pocket + '_' + (j + 1));
+        op.islands.forEach((isl, j) => writePoly(L, names[j], isl));
+        writePoly(L, 'Pocket_' + op.pocket, op.segs);
+        blank();
+        L.push('ResetApproachStrategy();');
+        L.push('ResetRetractStrategy();');
+        L.push('SetPneumaticHoodPosition(1);');
+        if (op.step) L.push('CreateContourParallelStrategy(true, 1, true, ' + fmt(op.step) + ', ' + fmt(cfg.finishDepth) + ');');
+        L.push('CreateContourPocket("Pocketing_' + op.pocket + '", ' + fmt(op.depth) + ', "", TypeOfProcess.ConcentricalPocket, "' +
+          op.tool + '", "-1", -1, -1, -1, ' + fmt(cfg.pocketOverlap) + ', false' + names.map((n) => ', "' + n + '"').join('') + ');');
+        blank();
+      } else if (op.kind === 'chamfer') {
+        const n = ++counts.chamfer;
+        L.push('CreateSegment("ChamferSegment_' + n + '", ' + pt(op.a) + ', ' + pt(op.b) + ');');
+        L.push('ResetApproachStrategy();');
+        L.push('ResetRetractStrategy();');
+        L.push('CreateChamfer("Chamfer_' + n + '", ' + fmt(op.width) + ', ' + fmt(op.height) + ', 0, ' + op.toolPos +
+          ', "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", -1, -1, -1, 0);');
+        blank();
+      } else if (op.kind === 'slant') {
+        const n = ++counts.slant;
+        L.push('CreateSegment("SlantSegment_' + n + '", ' + pt(op.a) + ', ' + pt(op.b) + ');');
+        L.push('ResetApproachStrategy();');
+        L.push('ResetRetractStrategy();');
+        L.push('CreateSlantedRoughFinish("SlantedMilling_' + n + '", 0, ' + fmt(op.angle) + ', ' + op.approach + ', ' + fmt(op.depth) +
+          ', "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", 2, -1, -1, -1, 0);');
+        blank();
+      } else if (op.kind === 'sdrill') {
+        const e = op.entry;
+        L.push('CreateSlantedDrill("Drill_Slanted_' + (++counts.sdrill) + '", ' + fmt(e[0]) + ', ' + fmt(e[1]) + ', ' + fmt(e[2]) + ', ' +
+          fmt(op.angleA) + ', ' + fmt(op.angleB) + ', ' + fmt(op.depth) + ', ' + fmt(op.d) +
+          ', "", TypeOfProcess.Drilling, "-1", "-1", 1, -1, -1, "' + op.tip + '");');
         blank();
       } else if (op.kind === 'slot') {
         L.push('CreateSegment("SlotSegment_' + (++nSeg) + '", ' + pt(op.a) + ', ' + pt(op.b) + ');');

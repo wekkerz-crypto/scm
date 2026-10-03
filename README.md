@@ -47,7 +47,17 @@ Die drei Pfade stehen oben in der `.bat` und lassen sich im Web-Tool unter *Werk
 | gleichabständige Lochreihen | `CreatePattern(...)` |
 | durchgehende Nut | Säge `066`, zwei Durchgänge wie im Beispiel |
 | Falz an einer Kante | Fräsbahn entlang der Falzflanke (ggf. mehrere Bahnen) |
-| Taschen, Bearbeitungen von unten, schräge Bohrungen | nur **Hinweis** – in Maestro ergänzen bzw. Platte wenden |
+| Tasche (auch mit Inseln, Eckenradius-Prüfung) | `CreateContourPocket` (Bohrungen im Taschenboden werden von oben gebohrt) |
+| Fase oben / unten an einer geraden Kante | `CreateChamfer` (Breite × Höhe, Werkzeugposition oben/unten) |
+| schräge Kante über die ganze Dicke (Gehrung) | `CreateSlantedRoughFinish` mit geneigtem Werkzeug (5-Achs) |
+| schräge Bohrung | `CreateSlantedDrill` (5-Achs) |
+| Zustellungen | `CreateUnidirectionalMillingStrategy` (Konturen) / `CreateContourParallelStrategy` (Taschen) |
+| Bearbeitungen von unten, Fasen an Rundungen | nur **Hinweis** – Platte wenden bzw. in Maestro ergänzen |
+
+**Werkzeuge:** Das Web-Tool liest die Werkzeugliste (`.tlgx`) mit Durchmesser und Schneidenlänge.
+Für jede Fräsbearbeitung gibt es eine Auswahlliste mit allen Fräsern, Favoriten (★ unter *Werkzeuge & Regeln*)
+stehen oben. Zustellung global oder je Bearbeitung; Warnung, wenn die Zustellung länger als die Schneide ist.
+`node tools/build_defaults.js` erzeugt die eingebaute Standardliste neu.
 
 Ausrichtung: Die längste Seite wird X, Bearbeitungsseite ist die Seite mit den meisten Bearbeitungen.
 Nullpunkt vorne links unten. Werkzeuge, Zugaben und Bohrerlisten sind im Web-Tool unter
@@ -75,6 +85,13 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
 - **Nut:** Der Wert `-8,8` beim 2. Sägedurchgang ist laut Handbuch das Aufmaß (`overMaterial`) von `CreateSlot`.
   Die Lage der Nut (Flanke + Breite zur positiven Seite) passt dazu, ist aber noch nicht in Maestro geprüft.
 - **Falz und Durchbrüche:** gibt es in den Beispielen nicht.
+- **5-Achs-Befehle** (nach Handbuch, noch nicht in Maestro getestet):
+  - `CreateChamfer`: Geometrie = scharfe Kante vor dem Fasen, Werkzeugposition 2 (rechts, oben) bzw. 3 (rechts, unten).
+  - `CreateSlantedRoughFinish`: Geometrie = Oberkante der schrägen Fläche, Winkel B = Neigung gegen die Senkrechte,
+    Werkzeuganstellung 1/2 je nach Neigungsrichtung, Korrektur rechts.
+  - `CreateSlantedDrill`: Eintrittspunkt in Werkstückkoordinaten; Winkel A = Richtung der Werkzeugachse in XY
+    gegen X, Winkel B = Neigung gegen Z (0° = senkrecht von oben). Im Handbuch widersprechen sich Tabelle und Beispiel.
+  - Zustellungs-Strategien: Parameterreihenfolge laut Handbuch-Tabelle.
 
 ## Ordner
 
@@ -83,7 +100,7 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
 | `web/` | Web-Tool (`index.html`) und die JS-Module `step.js` (STEP-Leser), `panel.js` (Erkennung), `xcs.js` (Ausgabe) |
 | `cli/` | Kommandozeilen-Aufruf |
 | `test/` | Tests (`npm test`) und Test-STEP-Dateien |
-| `tools/` | `make_fixtures.py` erzeugt die Test-STEP-Dateien mit CadQuery |
+| `tools/` | `make_fixtures.py` erzeugt die Test-STEP-Dateien (CadQuery), `build_defaults.js` die eingebaute Werkzeugliste und Beispiele |
 | `step/` | Original-STEP-Exporte aus Onshape |
 | `maestro/beispiele/` | Beispiel-Programme (.xcs) aus Maestro – Referenz für das Format |
 | `maestro/werkzeuge/` | Werkzeugdaten (`def.tlgx`) |

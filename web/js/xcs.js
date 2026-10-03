@@ -68,7 +68,7 @@
     const k = op.key || '';
     if (k === 'format') return 'format';
     const prefix = k.split('-')[0];
-    return { notch: 'notch', cutout: 'cutout', round: 'cutout', rebate: 'rebate', pocket: 'pocket', rpocket: 'pocket', chamfer: 'chamfer', chamferpath: 'chamfer',
+    return { notch: 'notch', cutout: 'cutout', round: 'cutout', rebate: 'rebate', pocket: 'pocket', rpocket: 'pocket', spocket: 'pocket', chamfer: 'chamfer', chamferpath: 'chamfer',
       slant: 'slant', slot: 'slot' }[prefix] || 'notch';
   }
 
@@ -162,6 +162,27 @@
       return t && t.d ? t.d : fallback;
     };
 
+    // Engste Stelle einer Tasche: Halbkreise (Langloch-Enden) geben die Breite vor
+    const narrowest = (segs) => {
+      let w = Infinity;
+      for (const q of segs) {
+        if (q.type !== 'arc' || !q.ccw) continue;
+        let sw = Math.atan2(q.b[1] - q.c[1], q.b[0] - q.c[0]) - Math.atan2(q.a[1] - q.c[1], q.a[0] - q.c[0]);
+        while (sw <= 1e-9) sw += Math.PI * 2;
+        if (q.full || sw > Math.PI - 0.01) w = Math.min(w, 2 * q.r);
+      }
+      return w;
+    };
+    // Passt der Standardfräser nicht hinein: größten Fräser wählen, der passt (Schneide möglichst ≥ Tiefe)
+    const fittingMill = (width, depth, fallback) => {
+      const info = cfg.toolInfo || {};
+      const fd = toolD(fallback, null);
+      if (!fd || fd < width - 1e-6) return fallback;
+      const cands = Object.keys(info).filter((n) => info[n].kind === 'mill' && info[n].d > 0 && info[n].d < width - 1e-6);
+      cands.sort((a, b) => ((info[b].len || 0) >= depth) - ((info[a].len || 0) >= depth) || info[b].d - info[a].d);
+      return cands[0] || fallback;
+    };
+
     // 1) Formatfräsen: Rechteck L×B wie in den Beispielen, bei Sonderkontur die ganze Außenkontur am Stück
     const whole = !p.outlineIsRect && cfg.contourMode !== 'rect';
     if (whole) {
@@ -227,14 +248,33 @@
     // 6) Taschen (flachste zuerst)
     for (const [i, k] of p.pockets.entries()) {
       const key = 'pocket-' + i;
-      const tool = (cfg.toolOverrides && cfg.toolOverrides[key]) || cfg.pocketTool;
+      const kw = Math.min(k.x1 - k.x0, k.y1 - k.y0, narrowest(k.segs));
+      const auto = fittingMill(kw, k.depth, cfg.pocketTool);
+      const tool = (cfg.toolOverrides && cfg.toolOverrides[key]) || auto;
       const dia = toolD(tool, null);
       const size = fmt(k.x1 - k.x0) + '×' + fmt(k.y1 - k.y0);
-      if (dia && Math.min(k.x1 - k.x0, k.y1 - k.y0) < dia) warnings.push('Tasche ' + size + ' ist schmaler als Fräser ' + tool + ' (Ø' + fmt(dia) + ').');
+      if (dia && kw < dia) warnings.push('Tasche ' + size + ' ist schmaler als Fräser ' + tool + ' (Ø' + fmt(dia) + ').');
       if (dia && k.minRadius < dia / 2 - 0.01) warnings.push('Tasche ' + size + ': Eckenradius R' + fmt(k.minRadius) + ' kleiner als Fräserradius ' + fmt(dia / 2) + ' – Ecken bleiben runder.');
       if (k.open && k.open.length) warnings.push('Tasche ' + size + ' ist zur Kante offen (' + k.open.join(', ') + ') – Anfahrt in Maestro prüfen.');
       ops.push({ kind: 'pocket', key: key, toolKind: 'mill', toolDefault: 'pocketTool', pocket: i + 1, segs: k.segs, islands: k.islands,
-        depth: k.depth, tool: cfg.pocketTool, label: 'Tasche ' + size + '×' + fmt(k.depth) + (k.islands.length ? ' mit Insel' : '') });
+        depth: k.depth, tool: auto, label: 'Tasche ' + size + '×' + fmt(k.depth) + (k.islands.length ? ' mit Insel' : '') });
+    }
+
+    // 6b) Taschen in den Kanten (Stirn-/Längsseiten, eigene Bearbeitungsebene)
+    const SIDE_DE = { Left: 'links', Right: 'rechts', Front: 'vorne', Back: 'hinten' };
+    for (const [i, k] of (p.sidePockets || []).entries()) {
+      const key = 'spocket-' + i;
+      const w = Math.min(k.x1 - k.x0, k.y1 - k.y0, narrowest(k.segs));
+      const auto = fittingMill(w, k.depth, cfg.pocketTool);
+      const tool = (cfg.toolOverrides && cfg.toolOverrides[key]) || auto;
+      const dia = toolD(tool, null);
+      const r1 = (v) => fmt(Math.round(v * 10) / 10);
+      const label = 'Tasche ' + SIDE_DE[k.face] + ' ' + r1(k.x1 - k.x0) + '×' + r1(k.y1 - k.y0);
+      if (dia && w < dia) warnings.push(label + ' ist schmaler (' + fmt(w) + ') als Fräser ' + tool + ' (Ø' + fmt(dia) + ') – kleineren Fräser wählen.');
+      else if (dia && k.minRadius < dia / 2 - 0.01) warnings.push(label + ': Eckenradius R' + fmt(k.minRadius) + ' kleiner als Fräserradius ' + fmt(dia / 2) + ' – Ecken bleiben runder.');
+      if (k.holes) warnings.push(label + ': Bohrung im Taschenboden wird nicht ausgegeben.');
+      ops.push({ kind: 'pocket', face: k.face, key: key, toolKind: 'mill', toolDefault: 'pocketTool', pocket: 0, segs: k.segs, islands: k.islands,
+        depth: k.depth, tool: auto, autoTool: auto !== cfg.pocketTool, label: label + (k.islands.length ? ' mit Insel' : '') });
     }
 
     // 7) Fasen: entlang der Kontur am Stück (auch über Rundungen), sonst einzelne Kanten
@@ -529,11 +569,14 @@
     const counts = { chamfer: 0, slant: 0, sdrill: 0 };
     let plane = 'Top';
     for (const op of ops) {
-      // Fräsungen und schräge Bohrungen beziehen sich auf die Oberseite
-      if (op.kind !== 'drill' && plane !== 'Top') {
-        L.push('SelectWorkplane("Top");');
-        blank();
-        plane = 'Top';
+      // Fräsungen und schräge Bohrungen beziehen sich auf die Oberseite, Kantentaschen auf ihre Kante
+      if (op.kind !== 'drill') {
+        const want = (op.kind === 'pocket' && op.face) || 'Top';
+        if (plane !== want) {
+          L.push('SelectWorkplane("' + (FACE_NAMES[want] || want) + '");');
+          blank();
+          plane = want;
+        }
       }
       if (op.kind === 'contour') {
         L.push('CreatePolyline("Contour_' + op.contour + '", ' + pt(op.start) + ');');

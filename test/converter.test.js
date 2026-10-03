@@ -307,3 +307,32 @@ test('Runde Taschen immer im Uhrzeigersinn', () => {
   const area = (pts) => pts.reduce((a, q, k) => (k ? a + pts[k - 1][0] * q[1] - q[0] * pts[k - 1][1] : 0), 0);
   assert.ok(moves.length > 2 && moves.every((m) => area(m.pts) < 0));
 });
+
+test('Taschen in den Stirnseiten (Spante)', () => {
+  const T = require('../web/js/tools.js');
+  const TP = require('../web/js/toolpath.js');
+  const toolInfo = T.infoMap(T.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
+  const part = one('test/fixtures/spante.step', { toolInfo: toolInfo });
+  const side = part.ops.filter((o) => o.kind === 'pocket' && o.face);
+  assert.deepStrictEqual(side.map((o) => o.face).sort(), ['Left', 'Right']);
+  for (const o of side) {
+    assert.strictEqual(o.depth, 20);
+    // Langloch 11 mm breit: E016 (Ø11,38) passt nicht, es wird automatisch ein kleinerer Fräser gewählt
+    assert.ok(toolInfo[o.tool].d < 11, o.tool);
+  }
+  assert.ok(!part.warnings.some((w) => /Schräge Fläche ohne Verbindung/.test(w)), part.warnings.join('\n'));
+  // eigene Bearbeitungsebene je Kante, danach zurück auf die Oberseite
+  const x = part.xcs;
+  const iL = x.indexOf('SelectWorkplane("Left");');
+  const iR = x.indexOf('SelectWorkplane("Right");');
+  assert.ok(iL > 0 && iR > 0);
+  assert.ok(x.indexOf('CreateContourPocket(', iL) > iL);
+  assert.ok(x.indexOf('SelectWorkplane("Top");', Math.max(iL, iR)) > 0);
+  // lokale Koordinaten: innerhalb der Kante (Breite 120, Dicke 30)
+  for (const o of side) for (const q of o.segs) for (const pt of [q.a, q.b]) {
+    assert.ok(pt[0] > 0 && pt[0] < 120 && pt[1] > 0 && pt[1] < 30);
+  }
+  // Animation zeigt die Kantentaschen als Ein-/Ausfahren an der Kante
+  const moves = TP.build(part, toolInfo, {}).filter((m) => m.kind === 'edge');
+  assert.ok(moves.length >= 2);
+});

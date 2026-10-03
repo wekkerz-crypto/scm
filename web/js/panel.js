@@ -541,14 +541,65 @@
     return { entry: entry.p, dir: [a[0] * sgn, a[1] * sgn, a[2] * sgn], d: h.d, depth: Math.abs(far - entry.t), through: through };
   }
 
+  // ---------------------------------------------------------------- Taschen in den Kanten (Stirn-/Längsseiten)
+
+  // Bearbeitungsebene einer Kante als eigenes Koordinatensystem: lokales X waagerecht, Y = Plattendicke,
+  // Z aus der Kante heraus (wie bei den Kantenbohrungen). T' = Abstand bis zur gegenüberliegenden Kante.
+  function sideFrame(fr, face) {
+    const { L, W, T } = fr;
+    const S = {
+      Right: { m: [[0, 1, 0], [0, 0, 1], [1, 0, 0]], t: [0, 0, 0], dims: [W, T, L] },
+      Left: { m: [[0, -1, 0], [0, 0, 1], [-1, 0, 0]], t: [W, 0, L], dims: [W, T, L] },
+      Front: { m: [[1, 0, 0], [0, 0, 1], [0, -1, 0]], t: [0, 0, W], dims: [L, T, W] },
+      Back: { m: [[-1, 0, 0], [0, 0, 1], [0, 1, 0]], t: [L, 0, 0], dims: [L, T, W] },
+    }[face];
+    return { tf: compose({ m: S.m, t: S.t }, fr.tf), L: S.dims[0], W: S.dims[1], T: S.dims[2] };
+  }
+
+  // Sucht Taschen, die von einer Kante aus senkrecht in die Platte gehen (Boden parallel zur Kante,
+  // ringsum geschlossen). Liefert die Taschen in lokalen Koordinaten der Kante und die beteiligten Flächen.
+  function findSidePockets(prep, fr) {
+    const out = [];
+    const ids = new Set();
+    for (const face of ['Left', 'Right', 'Front', 'Back']) {
+      const sf = sideFrame(fr, face);
+      const faces = transformSolid(prep, sf);
+      for (const f of faces) {
+        if (f.surf.type !== 'plane' || f.surf.n[2] < 1 - ATOL) continue;
+        const z = f.surf.p[2];
+        if (z < TOL || z > sf.T - TOL) continue;
+        const ob = f.bounds.find((b) => b.outer) || f.bounds[0];
+        const segs = ob.edges.map(seg2DFromEdge);
+        if (segs.every((q) => q.type === 'arc')) continue; // Bohrungsgrund
+        const bb = loopBBox(segs);
+        // ringsum geschlossen: nicht an Ober-/Unterseite oder Nachbarkanten offen (sonst Falz, Nut o. Ä.)
+        if (bb.x0 < TOL || bb.y0 < TOL || bb.x1 > sf.L - TOL || bb.y1 > sf.W - TOL) continue;
+        const inBox = (q) => q[0] > bb.x0 - TOL && q[0] < bb.x1 + TOL && q[1] > bb.y0 - TOL && q[1] < bb.y1 + TOL &&
+          q[2] > z - TOL && q[2] < sf.T + TOL;
+        const walls = faces.filter((g) => g !== f && g.pts.length && g.pts.every(inBox) &&
+          !(g.surf.type === 'plane' && Math.abs(g.surf.n[2]) > ATOL));
+        if (!walls.length || !walls.some((g) => g.pts.some((q) => q[2] > sf.T - TOL))) continue;
+        const inner = f.bounds.filter((b) => b !== ob).map((b) => b.edges.map(seg2DFromEdge));
+        const islands = inner.filter((lp) => !lp.every((q) => q.type === 'arc'));
+        const outerLoop = orient(segs, true);
+        out.push({ face: face, x0: bb.x0, y0: bb.y0, x1: bb.x1, y1: bb.y1, depth: sf.T - z, segs: outerLoop,
+          islands: islands.map((lp) => orient(lp, false)), minRadius: minConcaveRadius(outerLoop), holes: inner.length - islands.length });
+        ids.add(f.id);
+        for (const g of walls) ids.add(g.id);
+      }
+    }
+    return { pockets: out, faceIds: ids };
+  }
+
   function extract(prep, fr) {
-    const faces = transformSolid(prep, fr);
+    const side = findSidePockets(prep, fr);
+    const faces = transformSolid(prep, fr).filter((f) => !side.faceIds.has(f.id));
     const L = fr.L;
     const W = fr.W;
     const T = fr.T;
     const warnings = prep.warnings.slice();
     const res = { L: L, W: W, T: T, outline: null, cutouts: [], drills: [], circles: [], grooves: [], rebates: [],
-      pockets: [], chamfers: [], slantWalls: [], slantDrills: [], bottom: [], warnings: warnings };
+      pockets: [], sidePockets: side.pockets, chamfers: [], slantWalls: [], slantDrills: [], bottom: [], warnings: warnings };
 
     // Höhen der nach oben offenen Böden (Taschen, Nuten): Bohrungen dort beginnen „oben“
     const upFloors = faces.filter((f) => f.surf.type === 'plane' && f.surf.n[2] > 1 - ATOL &&

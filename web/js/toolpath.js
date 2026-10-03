@@ -196,6 +196,26 @@
         go(offsetPath(raw, d / 2, op.side), d, op.label, op.tool, i);
         // Durchbruch/Rundloch: nach dem letzten Schnitt fällt das Innenstück heraus
         if (/^(cutout|round)-/.test(op.key || '') && moves.length) moves[moves.length - 1].slug = raw;
+      } else if (op.kind === 'pocket' && op.face && op.face !== 'Top') {
+        // Tasche in der Kante: in der Draufsicht als Ein- und Ausfahren über die Taschenbreite
+        meta.kind = 'edge';
+        const d = info(op.tool).d || 10;
+        const xs = op.segs.flatMap((q) => [q.a[0], q.b[0]]);
+        const x0 = Math.min(...xs) + d / 2;
+        const x1 = Math.max(...xs) - d / 2;
+        const n = Math.max(1, Math.ceil((x1 - x0) / (d * 0.5)));
+        const at = (lx, t) => {
+          if (op.face === 'Left') return [t, p.W - lx];
+          if (op.face === 'Right') return [p.L - t, lx];
+          if (op.face === 'Front') return [lx, t];
+          return [p.L - lx, p.W - t];
+        };
+        const pts = [];
+        for (let k = 0; k <= n; k++) {
+          const lx = x1 > x0 ? x0 + ((x1 - x0) * k) / n : (x0 + x1) / 2;
+          pts.push(at(lx, 0), at(lx, op.depth), at(lx, 0));
+        }
+        go(pts, d, op.label, op.tool, i);
       } else if (op.kind === 'pocket') {
         const d = info(op.tool).d || 10;
         const q0 = op.segs[0];

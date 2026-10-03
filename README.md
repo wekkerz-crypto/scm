@@ -74,7 +74,9 @@ in der Bearbeitungsliste im Feld *Tiefe* absolut in mm setzen; ist sie kleiner a
 - Programm, Nummerierung und Animation folgen der Reihenfolge; nach Kantenbohrungen wird vor Fräsungen automatisch
   wieder `SelectWorkplane("Top")` gesetzt.
 
-**Animation der Werkzeugbahn:** Draufsicht links, Bearbeitungsschritte rechts daneben. Beim Abspielen startet die
+**Animation der Werkzeugbahn:** Große Draufsicht (fast volle Bildschirmhöhe, Knopf *Vollbild*), die
+Bearbeitungsschritte als eigenes Fenster rechts daneben, das beim Scrollen stehen bleibt. Teile und Laden stehen als
+Leiste darüber; STEP-Dateien können überall auf die Seite gezogen werden. Beim Abspielen startet die
 Ansicht mit der Rohplatte (Holzmaserung, Aufmaß); der Fräser trägt das Material ab – je tiefer, desto dunkler,
 durchgefräst zeigt den Tisch, Innenstücke von Durchbrüchen fallen heraus. Werkzeug als drehender Fräser/Bohrer in
 echter Größe, Bohrungen maßstäblich, Vorschau der kommenden Bahnen, Eilgänge mit Pfeil. Zeitleiste mit allen

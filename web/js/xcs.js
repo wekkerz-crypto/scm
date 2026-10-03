@@ -235,7 +235,7 @@
       // Vorfräsen mit Werkzeug 1 und Aufmaß, danach Werkzeug 2 auf Endmaß (gleiche Geometrie)
       const f = ops[ops.length - 1];
       f.rough = { tool: cfg.formatRoughTool || cfg.contourTool, allowance: Math.max(0, cfg.formatAllowance || 0) };
-      f.label += ' vor + nach';
+      f.label += ' zweistufig';
     }
 
     // 2) Nuten mit Säge
@@ -665,6 +665,7 @@
     if (override && override.steps) cfg.stepOverrides = override.steps;
     if (override && override.order) cfg.order = override.order;
     if (override && override.depths) cfg.depthOverrides = override.depths;
+    if (override && typeof override.twoStep === 'boolean') cfg.formatTwoStep = override.twoStep; // je Teil: normal / zweistufig
     const { ops, warnings, groups, defaultGroups } = plan(p, cfg);
     const field = (override && override.field) || autoField(p, cfg);
     const L = [];

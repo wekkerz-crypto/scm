@@ -257,6 +257,12 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
 .setrows .num input { width: 7em; }
 .setrows .num small { color: var(--muted); font-family: var(--font-body); font-size: 0.75rem; line-height: 1.2; }
 .setrows .row.dim { opacity: 0.45; }
+.seg { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--line); border-radius: 99px; background: var(--sunken); justify-self: start; }
+.seg button { border: 0; background: none; color: var(--muted); font: inherit; font-size: 0.82rem; padding: 3px 12px; border-radius: 99px; cursor: pointer; }
+.seg button:hover { color: var(--ink); }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.18); }
+.seg.small button { font-size: 0.78rem; padding: 2px 10px; }
+.ctl .rough { font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
 .fmtbox { padding: 4px 0 8px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
 .fmtbox .row { border-top: 0; }
 table.fmt { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.85rem; margin-top: 4px;
@@ -497,8 +503,9 @@ table.fmt.one .onet { display: inline; }
     const st = state.settings;
     const box = document.createElement('div');
     box.className = 'fmtbox';
-    box.innerHTML = '<label class="row check"><input type="checkbox" id="set-formatTwoStep"' + (st.formatTwoStep ? ' checked' : '') +
-      '> <span class="cap">Mit zwei Werkzeugen formatieren</span></label>' +
+    box.innerHTML = '<div class="row"><span class="cap">Formatfräsen</span><span class="seg" role="group" aria-label="Formatfräsen">' +
+      '<button type="button" data-fmt="0" aria-pressed="' + !st.formatTwoStep + '">Normal</button>' +
+      '<button type="button" data-fmt="1" aria-pressed="' + !!st.formatTwoStep + '">Zweistufig</button></span></div>' +
       '<table class="fmt' + (st.formatTwoStep ? '' : ' one') + '"><thead><tr><th></th><th>Werkzeug</th><th>Aufmaß</th></tr></thead><tbody>' +
       '<tr class="r1"><th>1 Vorfräsen</th><td>' + toolSelect('id="set-formatRoughTool" aria-label="Werkzeug 1 Vorfräsen"', 'mill', st.formatRoughTool) + '</td>' +
       '<td><span class="num"><input id="set-formatAllowance" type="number" min="0" step="0.1" value="' + esc(st.formatAllowance) + '" aria-label="Aufmaß Vorfräsen"><small>mm</small></span></td></tr>' +
@@ -511,10 +518,12 @@ table.fmt.one .onet { display: inline; }
       state.parts.forEach(compute);
       renderSoon();
     };
-    box.querySelector('#set-formatTwoStep').addEventListener('change', (e) => {
-      box.querySelector('table').classList.toggle('one', !e.target.checked);
-      apply('formatTwoStep', e.target.checked);
-    });
+    box.querySelectorAll('[data-fmt]').forEach((b) => b.addEventListener('click', () => {
+      const on = b.dataset.fmt === '1';
+      box.querySelectorAll('[data-fmt]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      box.querySelector('table').classList.toggle('one', !on);
+      apply('formatTwoStep', on);
+    }));
     box.querySelector('#set-formatRoughTool').addEventListener('change', (e) => apply('formatRoughTool', e.target.value));
     box.querySelector('#set-contourTool').addEventListener('change', (e) => apply('contourTool', e.target.value));
     const al = box.querySelector('#set-formatAllowance');
@@ -691,7 +700,16 @@ table.fmt.one .onet { display: inline; }
 
   function opControls(part, op) {
     if (!op) return '';
-    let html = toolSelect('data-tool="' + esc(op.key) + '" aria-label="Werkzeug für ' + esc(op.label) + '"', op.toolKind, op.tool);
+    let html = '';
+    if (op.key === 'format') {
+      // je Teil umschaltbar: normal (ein Werkzeug) oder zweistufig (vorfräsen mit Aufmaß, nachfräsen)
+      const two = !!op.rough;
+      html += '<span class="seg small" role="group" aria-label="Formatfräsen für dieses Teil">' +
+        '<button type="button" data-twostep="0" aria-pressed="' + !two + '">Normal</button>' +
+        '<button type="button" data-twostep="1" aria-pressed="' + two + '">Zweistufig</button></span>' +
+        (two ? '<span class="rough" title="Werkzeug 1 und Aufmaß unter Werkzeuge &amp; Regeln">vor: ' + esc(op.rough.tool) + ' +' + fmt(op.rough.allowance) + ' mm · nach:</span>' : '');
+    }
+    html += toolSelect('data-tool="' + esc(op.key) + '" aria-label="Werkzeug für ' + esc(op.label) + '"', op.toolKind, op.tool);
     if (op.depthAdjustable) {
       const ownD = part.overrides.depths[op.key];
       html += '<label title="Frästiefe in mm, leer = Plattendicke + Zugabe aus den Einstellungen">Tiefe <input class="step" type="number" min="0" step="0.5" data-depth="' +
@@ -1040,6 +1058,10 @@ table.fmt.one .onet { display: inline; }
     }));
     if ($('resetorder')) $('resetorder').addEventListener('click', () => { delete part.overrides.order; compute(part); render(); });
     setupStepDrag(part);
+    el.querySelectorAll('[data-twostep]').forEach((b) => b.addEventListener('click', () => {
+      part.overrides.twoStep = b.dataset.twostep === '1';
+      compute(part); render();
+    }));
     el.querySelectorAll('select[data-tool]').forEach((sel) => sel.addEventListener('change', () => {
       part.overrides.tools[sel.dataset.tool] = sel.value;
       compute(part); render();

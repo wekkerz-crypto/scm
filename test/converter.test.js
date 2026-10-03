@@ -466,3 +466,13 @@ test('Prüfung: Geometrie-Sonderfälle', () => {
   const c = one('C_inch2');
   assert.ok(Math.abs(c.panel.L - 600 * 25.4) < 0.01, String(c.panel.L));
 });
+
+test('Formatfräsen je Teil umschaltbar: normal / zweistufig', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const [s] = readParts(read('test/fixtures/seitenwand_32.step'), 'x.step');
+  const vor = (cfg, ov) => convertSolid(s, cfg, { overrides: ov || {} }).xcs.includes('_Vor"');
+  assert.strictEqual(vor({}), false);
+  assert.strictEqual(vor({ formatTwoStep: true }), true);
+  assert.strictEqual(vor({}, { twoStep: true }), true);           // Teil zweistufig, Einstellung normal
+  assert.strictEqual(vor({ formatTwoStep: true }, { twoStep: false }), false); // Teil normal, Einstellung zweistufig
+});

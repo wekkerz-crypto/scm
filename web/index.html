@@ -430,9 +430,12 @@ table.fmt.one .onet { display: inline; }
       ['cupSmallCode', 'Sauger schmal: Code in Maestro', 'text'],
       ['cupSmallX', 'Sauger schmal: Länge', 'number', 'mm'],
       ['cupSmallY', 'Sauger schmal: Breite', 'number', 'mm'],
+      ['cupSmallEcc', 'Sauger schmal: Versatz zur Drehachse', 'number', 'mm · exzentrisch, 0 = mittig'],
       ['cupNarrowCode', 'Sauger sehr schmal: Code in Maestro', 'text', 'leer = nicht verwenden'],
       ['cupNarrowX', 'Sauger sehr schmal: Länge', 'number', 'mm'],
       ['cupNarrowY', 'Sauger sehr schmal: Breite', 'number', 'mm'],
+      ['cupNarrowEcc', 'Sauger sehr schmal: Versatz zur Drehachse', 'number', 'mm · 0 = mittig'],
+      ['cupAngleCw', 'Saugerwinkel im Uhrzeigersinn zählen', 'bool'],
       ['barCount', 'Konsolen an der Maschine', 'number', 'Stück'],
       ['barMinGap', 'Konsolen: kleinster Abstand', 'number', 'mm'],
       ['barSpacing', 'Konsolen: angestrebter Abstand', 'number', 'mm'],
@@ -1120,9 +1123,17 @@ table.fmt.one .onet { display: inline; }
       for (const b of r.suction.bars) {
         s += '<line x1="' + b.x + '" y1="' + (-u * 4) + '" x2="' + b.x + '" y2="' + (W + u * 4) + '" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="7 5" ' + sw + '/>';
         for (const c of b.cups) {
-          s += '<rect x="' + (b.x - c.sx / 2) + '" y="' + (Y(c.y) - c.sy / 2) + '" width="' + c.sx + '" height="' + c.sy + '" rx="' + Math.min(c.sx, c.sy) * 0.12 +
-            '" transform="rotate(' + (-c.angle) + ' ' + b.x + ' ' + Y(c.y) + ')" fill="var(--ink)" fill-opacity="0.1" stroke="var(--ink)" stroke-opacity="0.55" stroke-width="1.2" stroke-dasharray="4 3" ' + sw +
-            '><title>Sauger ' + esc(c.code) + ' · X ' + fmt(b.x) + ' Y ' + fmt(c.y) + ' · ' + fmt(c.angle) + '°</title></rect>';
+          // exzentrischer Sauger: Gehäuse um die Drehachse (blass), Saugfläche daneben
+          const px = c.px !== undefined ? c.px : b.x;
+          const py = c.py !== undefined ? c.py : c.y;
+          const rot = c.rot !== undefined ? c.rot : c.angle;
+          if (c.e > 0) {
+            s += '<circle cx="' + b.x + '" cy="' + Y(c.y) + '" r="' + (c.sx / 2) + '" fill="none" stroke="var(--muted)" stroke-opacity="0.6" stroke-width="1" stroke-dasharray="2 3" ' + sw + '/>' +
+              '<circle cx="' + b.x + '" cy="' + Y(c.y) + '" r="' + u * 0.6 + '" fill="var(--muted)"/>';
+          }
+          s += '<rect x="' + (px - c.sx / 2) + '" y="' + (Y(py) - c.sy / 2) + '" width="' + c.sx + '" height="' + c.sy + '" rx="' + Math.min(c.sx, c.sy) * 0.12 +
+            '" transform="rotate(' + (-rot) + ' ' + px + ' ' + Y(py) + ')" fill="var(--ink)" fill-opacity="0.1" stroke="var(--ink)" stroke-opacity="0.55" stroke-width="1.2" stroke-dasharray="4 3" ' + sw +
+            '><title>Sauger ' + esc(c.code) + ' · X ' + fmt(b.x) + ' Y ' + fmt(c.y) + ' · ' + fmt(c.angle) + '°' + (c.e > 0 ? ' (exzentrisch)' : '') + '</title></rect>';
         }
       }
       s += '</g>';

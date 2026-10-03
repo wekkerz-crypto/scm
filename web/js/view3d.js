@@ -219,14 +219,20 @@
         bar.castShadow = bar.receiveShadow = true;
         this.groups.fixture.add(bar);
         for (const c of b.cups) {
+          // Drehachse bei (b.x, c.y); exzentrisch: rundes Gehäuse, Saugfläche um e versetzt (bei 0° in +Y)
           const g = new T.Group();
-          const cup = new T.Mesh(new T.BoxGeometry(c.sx, c.sy, CUP_H - 8), body);
+          const e = c.e || 0;
+          let cup;
+          if (e > 0) {
+            cup = new T.Mesh(new T.CylinderGeometry(c.sx / 2, c.sx / 2, CUP_H - 8, 48), body);
+            cup.rotation.x = Math.PI / 2;
+          } else cup = new T.Mesh(new T.BoxGeometry(c.sx, c.sy, CUP_H - 8), body);
           cup.position.z = -(CUP_H - 8) / 2 - 8;
           const pad = new T.Mesh(new T.BoxGeometry(c.sx - 4, c.sy - 4, 8), rubber);
-          pad.position.z = -4;
+          pad.position.set(0, e, -4);
           g.add(cup, pad);
           g.position.set(b.x, c.y, -0.3);
-          g.rotation.z = (c.angle * Math.PI) / 180;
+          g.rotation.z = ((c.rot !== undefined ? c.rot : c.angle) * Math.PI) / 180;
           g.traverse((x) => { if (x.isMesh) { x.castShadow = true; x.receiveShadow = true; } });
           this.groups.fixture.add(g);
         }

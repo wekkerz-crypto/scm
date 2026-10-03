@@ -497,7 +497,19 @@ test('Sauger-Vorschlag: Konsolen und Drehsauger', () => {
     const [r] = convert(read('test/fixtures/' + f + '.step'), {}, f + '.step');
     const cups = r.suction.bars.flatMap((b) => b.cups.map((c) => Object.assign({ x: b.x }, c)));
     assert.ok(cups.length >= 2, f + ': mindestens zwei Sauger');
-    for (const c of cups) assert.ok(inside(r.panel, c.x, c.y), f);
+    // Saugfläche ganz auf dem Teil (mit Randabstand); exzentrisch: Fläche 45 mm neben der Drehachse, gedreht mit dem Winkel
+    for (const c of cups) {
+      const a = (c.rot * Math.PI) / 180;
+      assert.ok(Math.abs(c.px - (c.x - c.e * Math.sin(a))) < 1e-6 && Math.abs(c.py - (c.y + c.e * Math.cos(a))) < 1e-6, f);
+      assert.strictEqual(c.e, c.code === 'H75-M-145x55' ? 45 : 0, f);
+      for (const [u, v] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+        const qx = c.px + (u * c.sx / 2) * Math.cos(a) - (v * c.sy / 2) * Math.sin(a);
+        const qy = c.py + (u * c.sx / 2) * Math.sin(a) + (v * c.sy / 2) * Math.cos(a);
+        assert.ok(inside(r.panel, qx, qy), f + ': Saugfläche ragt über das Teil');
+      }
+    }
+    // Sauger auf einer Konsole berühren sich nicht (Gehäuse 145)
+    for (const b of r.suction.bars) for (let i = 1; i < b.cups.length; i++) assert.ok(b.cups[i].y - b.cups[i - 1].y >= 145 - 1e-6, f);
     // Konsolen mit Mindestabstand, Ausgabe nach SetWorkpieceSetupPosition
     const xs = r.suction.bars.map((b) => b.x);
     for (let i = 1; i < xs.length; i++) assert.ok(xs[i] - xs[i - 1] >= 150 - 1e-6);
@@ -522,8 +534,8 @@ test('Sauger-Vorschlag: Konsolen und Drehsauger', () => {
       for (const q of lp) for (const t of PA.segPoints(q)) pts.push(t);
       const xs2 = pts.map((q) => q[0]);
       const ys2 = pts.map((q) => q[1]);
-      const free = b.x + c.sx / 2 < Math.min(...xs2) || b.x - c.sx / 2 > Math.max(...xs2) || c.y + c.sy / 2 < Math.min(...ys2) || c.y - c.sy / 2 > Math.max(...ys2);
-      assert.ok(free || c.angle !== 0, 'Sauger über Durchbruch');
+      const free = c.px + c.sx / 2 < Math.min(...xs2) || c.px - c.sx / 2 > Math.max(...xs2) || c.py + c.sy / 2 < Math.min(...ys2) || c.py - c.sy / 2 > Math.max(...ys2);
+      assert.ok(free || c.rot % 180 !== 0, 'Sauger über Durchbruch');
     }
   }
   // abschaltbar

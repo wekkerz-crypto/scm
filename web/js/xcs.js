@@ -86,7 +86,11 @@
     suctionOn: true,           // Vorschlag ins Programm schreiben
     cupBigCode: 'H75-M-145x145', cupBigX: 145, cupBigY: 145,
     cupSmallCode: 'H75-M-145x55', cupSmallX: 145, cupSmallY: 55,
+    cupSmallEcc: 45,           // exzentrisch: Saugfläche 45 mm neben der Drehachse (im Gehäuse 145 × 145 am Rand)
     cupNarrowCode: 'H75-M-145x30', cupNarrowX: 145, cupNarrowY: 30, // für sehr schmale Teile (leer = nicht verwenden)
+    cupNarrowEcc: 0,           // Versatz der Saugfläche zur Drehachse in mm (0 = mittig)
+    cupHousing: 145,           // Gehäuse der Drehsauger (Mindestabstand auf der Konsole)
+    cupAngleCw: false,         // Saugerwinkel in Maestro im Uhrzeigersinn (false = gegen den Uhrzeigersinn)
     barCount: 6,               // Konsolen an der Maschine
     barMinGap: 150,            // kleinster Abstand der Konsolen (Mitte zu Mitte)
     barSpacing: 500,           // angestrebter Abstand der Konsolen
@@ -212,16 +216,22 @@
       ang = ((ang % 180) + 180) % 180;
       if (!angles.some((x) => Math.abs(x - ang) < 2 || Math.abs(x - ang) > 178)) angles.push(ang);
     }
+    // Sauger-Arten. Exzentrische Sauger (e > 0): Saugfläche sitzt e neben der Drehachse (bei 0° in +Y) und läuft beim
+    // Drehen um sie herum – je Winkel auch die Gegenrichtung (+180°) probieren. Winkel hier mathematisch (gegen den Uhrzeigersinn).
     const types = [];
-    for (const ang of angles) if (ang < 90) types.push({ code: cfg.cupBigCode, sx: cfg.cupBigX, sy: cfg.cupBigY, angle: ang, w: 2 });
-    for (const ang of angles) types.push({ code: cfg.cupSmallCode, sx: cfg.cupSmallX, sy: cfg.cupSmallY, angle: ang, w: 1 });
+    const kind = (code, sx, sy, e, ang, w) => ({ code: code, sx: sx, sy: sy, e: e || 0, angles: e > 0 ? [ang, ang + 180] : [ang], w: w });
+    for (const ang of angles) if (ang < 90) types.push(kind(cfg.cupBigCode, cfg.cupBigX, cfg.cupBigY, 0, ang, 2));
+    for (const ang of angles) types.push(kind(cfg.cupSmallCode, cfg.cupSmallX, cfg.cupSmallY, cfg.cupSmallEcc, ang, 1));
     if (cfg.cupNarrowCode && cfg.cupNarrowY > 0) {
-      for (const ang of angles) types.push({ code: cfg.cupNarrowCode, sx: cfg.cupNarrowX, sy: cfg.cupNarrowY, angle: ang, w: 0.5 });
+      for (const ang of angles) types.push(kind(cfg.cupNarrowCode, cfg.cupNarrowX, cfg.cupNarrowY, cfg.cupNarrowEcc, ang, 0.5));
     }
-    // passt ein Sauger (Rechteck um cx, cy, gedreht um angle) auf die Fläche?
-    const fits = (cx, cy, t) => {
-      const ca = Math.cos((t.angle * Math.PI) / 180);
-      const sa = Math.sin((t.angle * Math.PI) / 180);
+    const rad = (a) => (a * Math.PI) / 180;
+    // Mitte der Saugfläche zur Drehachse (bx, y) bei Winkel a
+    const padAt = (bx, y, t, a) => [bx - t.e * Math.sin(rad(a)), y + t.e * Math.cos(rad(a))];
+    // passt die Saugfläche (Rechteck um cx, cy, gedreht um a) auf die Fläche?
+    const fits = (cx, cy, t, a) => {
+      const ca = Math.cos(rad(a));
+      const sa = Math.sin(rad(a));
       const P = (u, v) => [cx + u * ca - v * sa, cy + u * sa + v * ca];
       const hx = t.sx / 2;
       const hy = t.sy / 2;
@@ -249,27 +259,64 @@
     let y0 = Infinity;
     let y1 = -Infinity;
     for (const q of base) { x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]); }
-    // Sauger entlang einer Konsole bei x: gleichmäßig verteilt, möglichst weit außen
+    // Sauger entlang einer Konsole bei x: gleichmäßig verteilt, möglichst weit außen (y = Drehachse)
+    const orient = (x, y, t) => {
+      // passende Winkel; bei zwei Möglichkeiten die Saugfläche näher zur Plattenmitte
+      let best = null;
+      for (const a of t.angles) {
+        const q = padAt(x, y, t, a);
+        if (!fits(q[0], q[1], t, a)) continue;
+        const d = Math.abs(q[1] - (y0 + y1) / 2);
+        if (!best || d < best.d - 1e-9) best = { a: a, q: q, d: d };
+      }
+      return best;
+    };
     const cupsAt = (x, t) => {
       const ys = [];
-      for (let y = y0; y <= y1; y += 5) if (fits(x, y, t)) ys.push(y);
+      for (let y = y0 - t.e; y <= y1 + t.e; y += 5) if (orient(x, y, t)) ys.push(y);
       if (!ys.length) return [];
       const runs = [];
       let run = [ys[0], ys[0]];
       for (let k = 1; k < ys.length; k++) { if (ys[k] - run[1] <= 5.01) run[1] = ys[k]; else { runs.push(run); run = [ys[k], ys[k]]; } }
       runs.push(run);
-      // Platzbedarf eines Saugers in Y (gedreht)
-      const ca = Math.abs(Math.cos((t.angle * Math.PI) / 180));
-      const sa = Math.abs(Math.sin((t.angle * Math.PI) / 180));
-      const need = t.sx * sa + t.sy * ca + 20;
-      const out = [];
-      for (const r of runs) {
-        const span = r[1] - r[0];
-        const n = Math.max(1, Math.min(cfg.cupsPerBar, 1 + Math.floor(span / Math.max(need, 200))));
-        for (let k = 0; k < n; k++) out.push(n === 1 ? (r[0] + r[1]) / 2 : r[0] + (span * k) / (n - 1));
+      // Platzbedarf eines Saugers in Y (gedreht); exzentrische Sauger: ganzes Gehäuse
+      const ca = Math.abs(Math.cos(rad(t.angles[0])));
+      const sa = Math.abs(Math.sin(rad(t.angles[0])));
+      const need = (t.e > 0 ? Math.max(cfg.cupHousing, t.sx * sa + t.sy * ca) : t.sx * sa + t.sy * ca) + 20;
+      const size = need - 20; // Sauger dürfen sich auf der Konsole nicht berühren
+      let out = [];
+      if (t.e > 0) {
+        // exzentrisch: die Drehachse kann auch neben der Platte stehen – über alle passenden Stellen gleichmäßig verteilen,
+        // jede Stelle mit Abstand zu den schon gewählten
+        const lo = ys[0];
+        const hi = ys[ys.length - 1];
+        const n = Math.max(1, Math.min(cfg.cupsPerBar, 1 + Math.floor((hi - lo) / Math.max(need, 200))));
+        for (let k = 0; k < n; k++) {
+          const target = n === 1 ? (lo + hi) / 2 : lo + ((hi - lo) * k) / (n - 1);
+          let pick = null;
+          for (const v of ys) {
+            if (out.some((w) => Math.abs(w - v) < need - 1e-6)) continue;
+            if (pick === null || Math.abs(v - target) < Math.abs(pick - target)) pick = v;
+          }
+          if (pick !== null) out.push(pick);
+        }
+      } else {
+        for (const r of runs) {
+          const span = r[1] - r[0];
+          const n = Math.max(1, Math.min(cfg.cupsPerBar, 1 + Math.floor(span / Math.max(need, 200))));
+          for (let k = 0; k < n; k++) out.push(n === 1 ? (r[0] + r[1]) / 2 : r[0] + (span * k) / (n - 1));
+        }
       }
       out.sort((a, b) => a - b);
-      return out.slice(0, cfg.cupsPerBar).map((y) => ({ y: y, angle: t.angle, code: t.code, sx: t.sx, sy: t.sy, w: t.w }));
+      out = out.filter((y, k) => !out.slice(0, k).some((w) => y - w < size - 1e-6));
+      // gleichmäßig verteilte Stellen liegen in einem Lauf passender Stellen; Werte auf das 5-mm-Raster der Suche
+      return out.slice(0, cfg.cupsPerBar).map((y) => {
+        let o = orient(x, y, t);
+        if (!o) { y = ys.reduce((m, v) => (Math.abs(v - y) < Math.abs(m - y) ? v : m), ys[0]); o = orient(x, y, t); }
+        const a = ((o.a % 360) + 360) % 360;
+        const outA = cfg.cupAngleCw ? (360 - a) % 360 : a; // Winkel so, wie Maestro ihn zählt
+        return { y: y, angle: outA, rot: a, code: t.code, sx: t.sx, sy: t.sy, e: t.e, px: o.q[0], py: o.q[1], w: t.w };
+      });
     };
     const memo = new Map();
     const bestAt = (x) => {
@@ -302,7 +349,7 @@
           const cups = bestAt(x);
           if (cups.length && (!best || score(cups) > score(best.cups))) best = { x: x, cups: cups };
         }
-        if (best && best.cups.length >= 2) break;
+        if (best && best.cups.length >= 2 && score(best.cups) >= 4) break; // zwei große Sauger: gut genug
       }
       if (best) bars.push(best);
     }

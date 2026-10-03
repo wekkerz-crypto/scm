@@ -460,8 +460,8 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     let html = toolSelect('data-tool="' + esc(op.key) + '" aria-label="Werkzeug für ' + esc(op.label) + '"', op.toolKind, op.tool);
     if (op.kind === 'contour' || op.kind === 'pocket') {
       const own = part.overrides.steps[op.key];
-      html += '<label>Zustellung <input class="step" type="number" min="0" step="0.5" data-step="' + esc(op.key) + '" value="' +
-        (own !== undefined ? own : '') + '" placeholder="' + (state.settings.stepDown || 'aus') + '"></label>';
+      html += '<label title="Tiefe je Durchgang in mm, leer = Einstellung für alle Teile, 0 = ein Durchgang">Zustellung <input class="step" type="number" min="0" step="0.5" data-step="' + esc(op.key) + '" value="' +
+        (own !== undefined ? own : '') + '" placeholder="' + (state.settings.stepDown || 'aus') + '"> mm</label>';
     }
     return html;
   }

@@ -8,7 +8,8 @@ const { convert } = require('../web/js/convert.js');
 const root = path.join(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 // Reihenfolge und Konturfräsen wie in den Maestro-Beispielen
-const ORIGINAL_ORDER = { orderRule: { on: false }, contourMode: 'rect', suctionOn: false, commentOn: false };
+// (Überlappung beim Verlassen in den alten Beispielen 0, heute Vorgabe 2)
+const ORIGINAL_ORDER = { orderRule: { on: false }, contourMode: 'rect', suctionOn: false, commentOn: false, retractOverlap: 0 };
 const one = (p, settings) => {
   const parts = convert(read(p), settings);
   assert.strictEqual(parts.length, 1);
@@ -62,6 +63,11 @@ test('Oberboden (Nachbau von 27_Oberboden.xcs) – horizontale Bohrungen', () =>
   assert.deepStrictEqual(drillSet(part.xcs), drillSet(sample));
   const noDrills = (s) => lines(s).filter((l) => !/^(CreatePattern|CreateDrill)/.test(l));
   assert.deepStrictEqual(noDrills(part.xcs), noDrills(sample));
+});
+
+test('Umfräsen: Überlappung beim Verlassen (Vorgabe 2, einstellbar)', () => {
+  assert.match(one('test/fixtures/oberboden_27.step').xcs, /SetApproachStrategy\(false, true, 2\);\r\nSetRetractStrategy\(false, true, 2, 2\);/);
+  assert.match(one('test/fixtures/oberboden_27.step', { retractOverlap: 5 }).xcs, /SetRetractStrategy\(false, true, 2, 5\);/);
 });
 
 test('Onshape-Export Oberboden (Meter-Einheiten)', () => {

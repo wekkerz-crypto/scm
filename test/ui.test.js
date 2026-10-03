@@ -211,3 +211,31 @@ test('Web-Tool: Schalter für gekrümmte Flächen nur bei Bedarf', { skip: !chro
     await browser.close();
   }
 });
+
+test('Web-Tool: Einstellungen erst mit „Einstellungen speichern“ dauerhaft', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    await p.evaluate(() => { document.getElementById('settings').open = true; });
+    assert.match(await p.textContent('#savestate'), /Alle Änderungen gespeichert/);
+    // Regel ändern: wirkt sofort, ist aber noch nicht gespeichert
+    await p.click('#ruleon');
+    assert.match(await p.textContent('#savestate'), /Ungespeicherte Änderungen/);
+    assert.ok(await p.$eval('#savebar', (b) => b.classList.contains('dirty')));
+    const stored = () => p.evaluate(() => JSON.parse(localStorage.getItem('step2xcs.settings.v1') || '{}'));
+    assert.notStrictEqual((await stored()).orderRule && (await stored()).orderRule.on, false);
+    await p.click('#savesettings');
+    assert.match(await p.textContent('#savestate'), /Alle Änderungen gespeichert/);
+    assert.strictEqual((await stored()).orderRule.on, false);
+    await p.reload();
+    await p.waitForSelector('.part');
+    assert.strictEqual(await p.$eval('#ruleon', (c) => c.checked), false);
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});

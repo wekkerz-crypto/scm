@@ -247,6 +247,12 @@ table.ops .ctl select { flex: 1 1 14rem; min-width: 0; width: 100%; font-size: 0
 table.ops input.step { width: 4.5em; font-size: 0.8rem; padding: 3px 4px; }
 table.ops .ctl label { font-size: 0.75rem; color: var(--muted); display: flex; gap: 4px; align-items: center; }
 .grid-set select { width: 100%; min-width: 0; font-size: 0.85rem; }
+details.settings .savebar { position: sticky; bottom: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px 16px;
+  margin: 16px -4px -4px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 -6px 16px rgba(0,0,0,0.12); }
+details.settings .savebar .state { color: var(--muted); font-size: 0.9rem; }
+details.settings .savebar.dirty { border-color: var(--warn); }
+details.settings .savebar.dirty .state { color: var(--warn); font-weight: 600; }
+details.settings .savebar .btn { padding: 9px 22px; font-size: 1rem; }
 details.settings summary { cursor: pointer; font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; }
 .grid-set { columns: 320px; column-gap: 14px; margin-top: 14px; }
 .setgroup { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 12px 14px 10px;
@@ -327,7 +333,7 @@ table.fmt.one .onet { display: inline; }
 
   <details class="card settings" id="settings">
     <summary>Werkzeuge &amp; Regeln</summary>
-    <p class="note">Voreinstellungen aus den Beispielprogrammen und der Werkzeugliste def.tlgx. Änderungen gelten für alle Teile und bleiben in diesem Browser gespeichert.</p>
+    <p class="note">Voreinstellungen aus den Beispielprogrammen und der Werkzeugliste def.tlgx. Änderungen gelten sofort für alle Teile; dauerhaft (auch nach dem Schließen) erst mit <b>Einstellungen speichern</b> unten.</p>
     <div class="grid-set" id="setgrid"></div>
     <div style="margin-top:12px"><button class="btn" id="reset" type="button">Auf Standard zurücksetzen</button></div>
     <div class="rule" id="rule">
@@ -346,6 +352,8 @@ table.fmt.one .onet { display: inline; }
       <p class="note">Mit ★ markierte Werkzeuge stehen in allen Auswahllisten oben.</p>
       <div class="toolgrid" id="toolgrid"></div>
     </div>
+    <div class="savebar" id="savebar"><span class="state" id="savestate" aria-live="polite">Alle Änderungen gespeichert</span>
+      <button class="btn primary" id="savesettings" type="button">Einstellungen speichern</button></div>
   </details>
 </div>
 <div class="toast" id="toast" hidden></div>
@@ -386,6 +394,7 @@ table.fmt.one .onet { display: inline; }
     { title: 'Formatfräsen & Konturen', c: '--mill', fields: [
       ['formatTable', 'Formatfräsen', 'formatTable'],
       ['contourExtra', 'Formatfräsen: Dicke +', 'number', 'mm'],
+      ['retractOverlap', 'Formatfräsen: Überlappung beim Verlassen', 'number', 'mm'],
       ['contourMode', 'Sonderkontur', 'choice', [['whole', 'Außenkontur am Stück'], ['rect', 'Rechteck + Ausschnitte einzeln']]],
       ['cutoutTool', 'Fräser Ausschnitte', 'mill'],
       ['cutoutExtra', 'Ausschnitte: Dicke +', 'number', 'mm'],
@@ -475,9 +484,35 @@ table.fmt.one .onet { display: inline; }
       s.toolsFile === 'C:\\Program Files\\SCM Group\\Maestro\\Tlgx\\def.tlgx') delete s.toolsFile;
     return Object.assign({}, XcsWriter.DEFAULTS, s);
   }
+  // Einstellungen und Regel wirken sofort; gespeichert (dauerhaft) erst mit dem Knopf „Einstellungen speichern“
+  let settingsDirty = false;
   function saveSettings() {
-    try { localStorage.setItem(KEY, JSON.stringify(state.settings)); } catch (e) { /* ohne Speicher weiter */ }
+    settingsDirty = true;
+    showSaveState();
   }
+  function persistSettings() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(state.settings));
+    } catch (e) {
+      toast('Speichern nicht möglich – der Browser erlaubt hier keinen Speicher.');
+      return;
+    }
+    settingsDirty = false;
+    showSaveState();
+    toast('Einstellungen gespeichert.');
+  }
+  function showSaveState() {
+    const bar = document.getElementById('savebar');
+    if (!bar) return;
+    bar.classList.toggle('dirty', settingsDirty);
+    document.getElementById('savestate').textContent = settingsDirty ? '● Ungespeicherte Änderungen' : 'Alle Änderungen gespeichert';
+  }
+  document.getElementById('savesettings').addEventListener('click', persistSettings);
+  window.addEventListener('beforeunload', (e) => {
+    if (!settingsDirty) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
 
   // ------------------------------------------------ Werkzeuge und Favoriten
   const TOOLS_KEY = 'step2xcs.tools.v1';

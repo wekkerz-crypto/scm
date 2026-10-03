@@ -21,6 +21,7 @@
     formatTwoStep: false,      // Formatfräsen mit zwei Werkzeugen: vorfräsen mit Aufmaß, nachfräsen auf Endmaß
     formatRoughTool: 'E014',   // Werkzeug 1 (vorfräsen); Werkzeug 2 = contourTool
     formatAllowance: 1,        // Aufmaß beim Vorfräsen in mm (overMaterial)
+    retractOverlap: 2,         // Umfräsen: Überlappung beim Verlassen in mm (SetRetractStrategy overlapLength)
     cutoutTool: 'E016',        // Ausschnitte / Durchbrüche / Konturabweichungen
     cutoutExtra: 2,
     leadLength: 20,            // Ein-/Auslauf entlang der Kante bei Ausschnitten
@@ -1194,7 +1195,7 @@
         L.push('ResetRetractStrategy();');
         if (op.approach) {
           L.push('SetApproachStrategy(false, true, 2);');
-          L.push('SetRetractStrategy(false, true, 2, 0);');
+          L.push('SetRetractStrategy(false, true, 2, ' + fmt(cfg.retractOverlap) + ');');
         }
         L.push('SetPneumaticHoodPosition(1);');
         if (op.rough) {
@@ -1207,7 +1208,7 @@
           L.push('ResetRetractStrategy();');
           if (op.approach) {
             L.push('SetApproachStrategy(false, true, 2);');
-            L.push('SetRetractStrategy(false, true, 2, 0);');
+            L.push('SetRetractStrategy(false, true, 2, ' + fmt(cfg.retractOverlap) + ');');
           }
           L.push('SetPneumaticHoodPosition(1);');
         }

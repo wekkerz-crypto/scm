@@ -27,6 +27,7 @@
   // Minimum/Maximum ohne Spread (große Teile mit vielen Punkten sprengen sonst den Aufrufstapel)
   const minOf = (a) => { let m = Infinity; for (const v of a) if (v < m) m = v; return m; };
   const maxOf = (a) => { let m = -Infinity; for (const v of a) if (v > m) m = v; return m; };
+  const EDGE_R_MAX = 5.5; // Rundungen bis zu diesem Radius an Kanten: Radiusfräser statt Kugelfräser
   const near2 = (p, q, t) => Math.hypot(p[0] - q[0], p[1] - q[1]) <= (t === undefined ? 0.05 : t);
 
   // ---------------------------------------------------------------- Kanten abtasten (Weltkoordinaten)
@@ -1053,12 +1054,90 @@
       else warnings.push('Fase an einer Rundung (R' + fmt(cf.r) + ') außerhalb der Kontur wird nicht automatisch erzeugt.');
     }
 
+    // --- Kantenrundungen: kleine Radien (bis EDGE_R_MAX) an der Oberkante oder Unterkante der Außenkontur bzw. eines
+    // Durchbruchs (Zylinder mit liegender Achse, Torus an den Ecken) – mit dem Radiusfräser entlang der Kontur
+    const edgeLoops = [res.outline].concat(res.cutouts);
+    const edgeHits = [];
+    const segDist = (q, sg) => {
+      const pts = segPoints(sg).concat([sg.b]);
+      let d = Infinity;
+      for (let i = 0; i + 1 < pts.length; i++) {
+        const a = pts[i];
+        const b = pts[i + 1];
+        const ab = [b[0] - a[0], b[1] - a[1]];
+        const l2 = ab[0] * ab[0] + ab[1] * ab[1];
+        const t = l2 > 0 ? Math.max(0, Math.min(1, ((q[0] - a[0]) * ab[0] + (q[1] - a[1]) * ab[1]) / l2)) : 0;
+        d = Math.min(d, Math.hypot(q[0] - a[0] - ab[0] * t, q[1] - a[1] - ab[1] * t));
+      }
+      return d;
+    };
+    const edgeRound = (f) => {
+      const t = f.surf.type;
+      const zs = f.pts.map((q) => q[2]);
+      const zmin = minOf(zs);
+      const zmax = maxOf(zs);
+      let r;
+      if (t === 'cylinder' && Math.abs(f.surf.a[2]) < ATOL) r = f.surf.r;
+      else if (t === 'other' && /TOROID/.test(f.surf.name || '')) r = zmax - zmin;
+      else return null;
+      if (!(r > TOL && r <= EDGE_R_MAX)) return null;
+      const side = zmax > T - TOL && zmin > T - r - 0.1 ? 'top' : zmin < TOL && zmax < r + 0.1 ? 'bottom' : null;
+      if (!side) return null;
+      const segs = [];
+      edgeLoops.forEach((lp, li) => lp.forEach((sg, si) => {
+        if (f.pts.every((q) => segDist(q, sg) <= r + 0.15)) segs.push([li, si]);
+      }));
+      return segs.length ? { r: r, side: side, segs: segs, faceId: f.id } : null;
+    };
+    const edgeFaceIds = new Set();
+    for (const f of faces) {
+      if (holeFaceIds.has(f.id)) continue;
+      const e = edgeRound(f);
+      if (e) { edgeHits.push(e); edgeFaceIds.add(f.id); }
+    }
+    // je Kontur, Seite und Radius: zusammenhängende Läufe der gerundeten Segmente (Material links)
+    res.edgeRounds = [];
+    const roundKey = (e) => e.side + '|' + (Math.round(e.r * 20) / 20);
+    const byKey = new Map();
+    for (const e of edgeHits) for (const [li, si] of e.segs) {
+      const k = li + '|' + roundKey(e);
+      if (!byKey.has(k)) byKey.set(k, { li: li, side: e.side, r: Math.round(e.r * 20) / 20, idx: new Set(), faceIds: new Set() });
+      byKey.get(k).idx.add(si);
+      byKey.get(k).faceIds.add(e.faceId);
+    }
+    for (const g of byKey.values()) {
+      const lp = edgeLoops[g.li];
+      const n = lp.length;
+      const turn = (a, b) => { // Knick von Segment a nach b: > 0 links (Außenecke bei Material links)
+        const ta = a.type === 'line' ? [a.b[0] - a.a[0], a.b[1] - a.a[1]] : (a.ccw ? [-(a.b[1] - a.c[1]), a.b[0] - a.c[0]] : [a.b[1] - a.c[1], -(a.b[0] - a.c[0])]);
+        const tb = b.type === 'line' ? [b.b[0] - b.a[0], b.b[1] - b.a[1]] : (b.ccw ? [-(b.a[1] - b.c[1]), b.a[0] - b.c[0]] : [b.a[1] - b.c[1], -(b.a[0] - b.c[0])]);
+        return ta[0] * tb[1] - ta[1] * tb[0];
+      };
+      const base = { loop: g.li === 0 ? 'outer' : 'cutout', loopIndex: g.li, side: g.side, r: g.r, faceIds: Array.from(g.faceIds) };
+      if (g.idx.size === n) { res.edgeRounds.push(Object.assign(base, { closed: true, segs: lp })); continue; }
+      let k0 = 0;
+      while (g.idx.has(k0) || !g.idx.has((k0 + 1) % n)) k0 = (k0 + 1) % n; // vor dem Anfang eines Laufs
+      let run = null;
+      for (let j = 1; j <= n; j++) {
+        const k = (k0 + j) % n;
+        if (g.idx.has(k)) { if (!run) run = []; run.push(k); continue; }
+        if (run) {
+          const first = run[0];
+          const last = run[run.length - 1];
+          res.edgeRounds.push(Object.assign({}, base, { closed: false, segs: run.map((i) => lp[i]),
+            // An den Enden tangential auslaufen nur an Außenecken (sonst ginge es ins Material)
+            extendStart: turn(lp[(first - 1 + n) % n], lp[first]) > 1e-9, extendEnd: turn(lp[last], lp[(last + 1) % n]) > 1e-9 }));
+          run = null;
+        }
+      }
+    }
+
     // --- Gewölbte Flächen (Kugel, Zylinder/Kegel mit liegender Achse, Freiform): mit dem Kugelfräser von oben
     res.curvedSurfaces = [];
     {
       const cands = [];
       for (const f of faces) {
-        if (holeFaceIds.has(f.id)) continue;
+        if (holeFaceIds.has(f.id) || edgeFaceIds.has(f.id)) continue;
         const t = f.surf.type;
         const vertical = (t === 'cylinder' || t === 'cone') && Math.abs(Math.abs(f.surf.a[2]) - 1) < ATOL;
         if (t === 'plane' || vertical) continue;
@@ -1075,9 +1154,10 @@
           if (t === 'other') warnings.push('Fläche vom Typ ' + f.surf.name + ' wird nicht ausgewertet.');
           continue;
         }
-        if (c.zmax < T - TOL) {
-          if (c.zmin < TOL) res.bottom.push({ kind: 'Fläche', text: 'Gewölbte Fläche (' + kind + ') von unten' });
-          else warnings.push('Gewölbte Fläche (' + kind + ') ist von oben nicht erreichbar – nicht bearbeitet.');
+        // reicht die Fläche bis unten, aber nicht bis oben: von unten; sonst von oben (z. B. runder Nut- oder Taschengrund) –
+        // was die Kugel von oben nicht erreicht, fräst sie auch nicht (die Bahn berührt nur, was von oben frei liegt)
+        if (c.zmax < T - TOL && c.zmin < TOL) {
+          res.bottom.push({ kind: 'Fläche', text: 'Gewölbte Fläche (' + kind + ') von unten' });
           continue;
         }
         cands.push(c);
@@ -1110,9 +1190,24 @@
           changed = true;
         }
       }
+      // Zylinder mit liegender Achse, nach außen gewölbt (allein in der Gruppe): mit dem Schaftfräser 4-achsig abzeilbar
+      const cylOf = (g) => {
+        if (g.ids.length !== 1) return null;
+        const f = faces.find((x) => x.id === g.ids[0]);
+        if (f.surf.type !== 'cylinder' || f.surf.concave || Math.abs(f.surf.a[2]) > ATOL) return null;
+        const h = Math.hypot(f.surf.a[0], f.surf.a[1]);
+        const ax = [f.surf.a[0] / h, f.surf.a[1] / h];
+        const u = [-ax[1], ax[0]];
+        const o = f.surf.o;
+        const phis = f.pts.map((q) => Math.atan2((q[0] - o[0]) * u[0] + (q[1] - o[1]) * u[1], q[2] - o[2]));
+        const ts = f.pts.map((q) => (q[0] - o[0]) * ax[0] + (q[1] - o[1]) * ax[1]);
+        // Achse nur parallel zu X oder Y (Rohteil-Schnitt bleibt ein Rechteck)
+        if (Math.min(Math.abs(ax[0]), Math.abs(ax[1])) > ATOL) return null;
+        return { o: o, a: ax, r: f.surf.r, phi0: minOf(phis), phi1: maxOf(phis), t0: minOf(ts), t1: maxOf(ts) };
+      };
       res.curvedSurfaces = groups.map((g) => ({ ids: g.ids, kinds: g.kinds, rects: g.rects,
         x0: minOf(g.rects.map((r) => r.x0)), y0: minOf(g.rects.map((r) => r.y0)), x1: maxOf(g.rects.map((r) => r.x1)),
-        y1: maxOf(g.rects.map((r) => r.y1)), depth: T - g.zmin }));
+        y1: maxOf(g.rects.map((r) => r.y1)), depth: T - g.zmin, cyl: cylOf(g) }));
     }
 
     // --- Böden (Nut, Falz, Tasche)
@@ -1188,7 +1283,8 @@
     return res.drills.filter((d) => d.face === 'Top' && !d.through).length + res.grooves.length * 3 +
       res.rebates.length * 3 + res.pockets.length * 3 + res.slantDrills.length +
       res.chamfers.filter((c) => c.side === 'top').length * 2 + (res.chamferPaths || []).filter((c) => c.side === 'top').length * 2 +
-      (res.curvedSurfaces || []).length * 3 + (res.curvedSlants || []).filter((c) => c.up).length * 2;
+      (res.curvedSurfaces || []).length * 3 + (res.curvedSlants || []).filter((c) => c.up).length * 2 +
+      (res.edgeRounds || []).filter((e) => e.side === 'top').length * 0.5; // bei Gleichstand: Rundungen lieber oben
   }
 
   /**

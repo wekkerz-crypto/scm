@@ -423,10 +423,15 @@ table.fmt.one .onet { display: inline; }
       ['sawTool', 'Säge für Nuten', 'saw'],
       ['sawOverrun', 'Überlauf', 'number', 'mm'],
       ['maxGrooveWidth', 'Max. Nutbreite', 'number', 'mm']] },
-    { title: 'Fasen & schräge Kanten', c: '--chamfer', fields: [
+    { title: 'Fasen, Rundungen & schräge Kanten', c: '--chamfer', fields: [
       ['chamferTool', 'Fräser Fasen', 'mill'],
       ['slantTool', 'Fräser schräge Kanten', 'mill'],
-      ['slantExtra', 'Schräge Kanten: Dicke +', 'number', 'mm']] },
+      ['slantExtra', 'Schräge Kanten: Dicke +', 'number', 'mm'],
+      ['roundRadius', 'Kantenrundung: Radius des Radiusfräsers', 'number', 'mm'],
+      ['roundTopTool', 'Radiusfräser oben', 'mill'],
+      ['roundTopDepth', 'Radiusfräser oben: Tiefe (Z)', 'number', 'mm ab Oberseite'],
+      ['roundBottomTool', 'Radiusfräser unten', 'mill'],
+      ['roundBottomDz', 'Radiusfräser unten: dz ab Unterkante', 'number', 'mm · Tiefe = Dicke + dz']] },
     { title: 'Gekrümmte Flächen', c: '--pocket', fields: [
       ['ballTool', 'Kugelfräser (gewölbte Flächen)', 'mill'],
       ['ballToolDia', 'Kugelfräser Ø, falls nicht in der Liste', 'number', 'mm'],
@@ -434,7 +439,11 @@ table.fmt.one .onet { display: inline; }
       ['surfLayer', 'Zustellung beim Vorfräsen', 'number', 'mm · 0 = nur Schlichten'],
       ['surfRes', 'Punktabstand längs der Zeile', 'number', 'mm'],
       ['surfTol', 'Toleranz', 'number', 'mm'],
-      ['surfSafe', 'Abheben zwischen den Zeilen', 'number', 'mm über der Oberseite']] },
+      ['surfSafe', 'Abheben zwischen den Zeilen', 'number', 'mm über der Oberseite'],
+      ['cyl4Tool', '4-Achs: Schaftfräser (Zylinderflächen)', 'mill'],
+      ['cyl4Step', '4-Achs: Zeilenabstand Schlichten', 'number', 'mm auf der Fläche'],
+      ['cyl4RoughStep', '4-Achs: Zeilenabstand Vorfräsen', 'number', 'mm (kleiner als Ø)'],
+      ['cyl4Layer', '4-Achs: Schichtdicke Vorfräsen', 'number', 'mm senkrecht zur Fläche']] },
     { title: 'Sauger & Konsolen', c: '--muted', fields: [
       ['suctionOn', 'Sauger-Vorschlag ins Programm schreiben', 'bool'],
       ['cupBigCode', 'Sauger groß: Code in Maestro', 'text'],
@@ -761,19 +770,23 @@ table.fmt.one .onet { display: inline; }
       meshes: part.occtMeshes || null });
     if (part.result.panel && !part.orientation) part.orientation = Object.assign({}, part.result.panel.orientation);
     if (!part.fileName) part.fileName = part.result.fileName;
-    if (curvedState(part).surface && !part.occtMeshes) loadMesh(part);
+    const cs = curvedState(part);
+    if (cs.surface && !(cs.mode === 'flat4' && cs.hasCyl && part.result.panel.curvedSurfaces.every((x) => x.cyl)) && !part.occtMeshes) loadMesh(part);
   }
 
   // Gekrümmte Flächen: Schalter je Teil (sonst Einstellung), nur sinnvoll, wenn welche erkannt wurden
   function curvedState(part) {
     const p = part.result && part.result.panel;
     const ov = (part.overrides && part.overrides.curved) || {};
-    const pick = (k, def) => (typeof ov[k] === 'boolean' ? ov[k] : !!def);
+    const pick = (k, def) => (typeof ov[k] === 'boolean' ? ov[k] : typeof ov[k] === 'string' ? true : !!def);
     return {
       hasSlant: !!(p && p.curvedSlants && p.curvedSlants.length),
       hasSurface: !!(p && p.curvedSurfaces && p.curvedSurfaces.length),
       slant: !!(p && p.curvedSlants && p.curvedSlants.length) && pick('slant', state.settings.curvedSlantOn),
       surface: !!(p && p.curvedSurfaces && p.curvedSurfaces.length) && pick('surface', state.settings.curvedSurfaceOn),
+      hasCyl: !!(p && p.curvedSurfaces && p.curvedSurfaces.some((c) => c.cyl)),
+      // Art: 'ball' (Kugelfräser) oder 'flat4' (4-Achs, Schaftfräser)
+      mode: typeof ov.surface === 'string' ? ov.surface : state.settings.curvedSurfaceMode || 'ball',
     };
   }
 
@@ -796,6 +809,7 @@ table.fmt.one .onet { display: inline; }
   function curvedBox(part) {
     const c = curvedState(part);
     if (!c.hasSlant && !c.hasSurface) return '';
+    const mode = c.surface ? (c.mode === 'flat4' && c.hasCyl ? 'flat4' : 'ball') : 'off';
     const seg = (k, on, a, b, label) => '<span class="seg small" role="group" aria-label="' + esc(label) + '">' +
       '<button type="button" data-curved="' + k + '" data-on="0" aria-pressed="' + !on + '">' + a + '</button>' +
       '<button type="button" data-curved="' + k + '" data-on="1" aria-pressed="' + on + '">' + b + '</button></span>';
@@ -804,9 +818,11 @@ table.fmt.one .onet { display: inline; }
       html += '<div class="row"><span class="cap">Schräge an Rundungen</span>' + seg('slant', c.slant, 'Aus', '5-Achs fräsen', 'Schräge an Rundungen') + '</div>';
     }
     if (c.hasSurface) {
-      html += '<div class="row"><span class="cap">Gewölbte Flächen</span>' + seg('surface', c.surface, 'Aus', 'Zeilenfräsen', 'Gewölbte Flächen') + '</div>';
-      if (c.surface && part.meshState === 'loading') html += '<span class="note">3D-Netz wird geladen, Bahn wird berechnet …</span>';
-      if (c.surface && part.meshState === 'error') html += '<span class="note">3D-Netz nicht verfügbar: ' + esc(part.meshError || '') + '</span>';
+      const b3 = (v, t) => '<button type="button" data-curved="surface" data-on="' + v + '" aria-pressed="' + (mode === v) + '">' + t + '</button>';
+      html += '<div class="row"><span class="cap">Gewölbte Flächen</span><span class="seg small" role="group" aria-label="Gewölbte Flächen">' +
+        b3('off', 'Aus') + b3('ball', 'Kugelfräser') + (c.hasCyl ? b3('flat4', '4-Achs Schaftfräser') : '') + '</span></div>';
+      if (mode === 'ball' && part.meshState === 'loading') html += '<span class="note">3D-Netz wird geladen, Bahn wird berechnet …</span>';
+      if (mode === 'ball' && part.meshState === 'error') html += '<span class="note">3D-Netz nicht verfügbar: ' + esc(part.meshError || '') + '</span>';
     }
     return html + '</div>';
   }
@@ -827,8 +843,8 @@ table.fmt.one .onet { display: inline; }
     if (op.kind === 'drill') return op.plane ? '--sdrill' : op.face === 'Top' ? '--drill' : '--hdrill';
     if (op.kind === 'sdrill') return '--sdrill';
     if (op.kind === 'pocket') return op.face && op.face !== 'Top' ? '--hdrill' : '--pocket';
-    if (op.kind === 'chamfer' || op.kind === 'slant' || op.kind === 'slantpath') return '--chamfer';
-    if (op.kind === 'surface') return '--pocket';
+    if (op.kind === 'chamfer' || op.kind === 'slant' || op.kind === 'slantpath' || op.profile) return '--chamfer';
+    if (op.kind === 'surface' || op.kind === 'cyl4') return '--pocket';
     if (op.kind === 'slot' || op.kind === 'blade' || /^rebate-/.test(op.key || '')) return '--saw';
     return '--mill';
   }
@@ -883,7 +899,7 @@ table.fmt.one .onet { display: inline; }
       html += '<label title="Frästiefe in mm, leer = Plattendicke + Zugabe aus den Einstellungen">Tiefe <input class="step" type="number" min="0" step="0.5" data-depth="' +
         esc(op.key) + '" value="' + (ownD !== undefined ? ownD : '') + '" placeholder="' + fmt(op.depth) + '"> mm</label>';
     }
-    if (op.kind === 'contour' || op.kind === 'pocket') {
+    if ((op.kind === 'contour' && !op.profile) || op.kind === 'pocket') {
       const own = part.overrides.steps[op.key];
       html += '<label title="Tiefe je Durchgang in mm, leer = Einstellung für alle Teile, 0 = ein Durchgang">Zustellung <input class="step" type="number" min="0" step="0.5" data-step="' + esc(op.key) + '" value="' +
         (own !== undefined ? own : '') + '" placeholder="' + ((op.kind === 'pocket' && state.settings.pocketStepDown > 0 ? state.settings.pocketStepDown : state.settings.stepDown) || 'aus') + '"> mm</label>';
@@ -1020,8 +1036,15 @@ table.fmt.one .onet { display: inline; }
     }
     return d;
   }
-  const loopToPoly = (loop) => ({ start: loop[0].a, segs: loop.map((s) => s.type === 'arc'
-    ? { type: 'arc', to: s.b, c: s.c, cw: !s.ccw } : { type: 'line', to: s.b }) });
+  const loopToPoly = (loop) => {
+    // ganzer Kreis: zwei Halbkreise (ein Bogen mit Anfang = Ende wird in SVG nicht gezeichnet)
+    if (loop.length === 1 && loop[0].full) {
+      const q = loop[0];
+      const opp = [2 * q.c[0] - q.a[0], 2 * q.c[1] - q.a[1]];
+      return { start: q.a, segs: [{ type: 'arc', to: opp, c: q.c, cw: !q.ccw }, { type: 'arc', to: q.a, c: q.c, cw: !q.ccw }] };
+    }
+    return { start: loop[0].a, segs: loop.map((s) => s.type === 'arc' ? { type: 'arc', to: s.b, c: s.c, cw: !s.ccw } : { type: 'line', to: s.b }) };
+  };
 
   function drawPanel(r) {
     const p = r.panel;
@@ -1081,6 +1104,14 @@ table.fmt.one .onet { display: inline; }
         '" stroke-dasharray="' + (c.side === 'top' ? '0' : '5 3') + '" stroke-linejoin="round" ' + sw + '><title>Fase ' + fmt(c.width) + '×' + fmt(c.height) +
         (c.side === 'top' ? ' oben' : ' unten') + '</title></path>';
     }
+    // Kantenrundungen: oben durchgezogen, unten gestrichelt; blass, wenn kein passender Radiusfräser
+    for (const e of (p.edgeRounds || [])) {
+      const q = loopToPoly(e.segs);
+      const done = r.ops.some((o) => o.profile && o.label.indexOf('R' + fmt(e.r) + ' ' + (e.side === 'top' ? 'oben' : 'unten')) >= 0);
+      s += '<path d="' + svgPath(q.start, q.segs, Y) + (e.closed ? ' Z' : '') + '" fill="none" stroke="var(--chamfer)" stroke-width="' + (e.side === 'top' ? 3 : 2) +
+        '" stroke-dasharray="' + (e.side === 'top' ? '0' : '5 3') + '" stroke-opacity="' + (done ? 1 : 0.4) + '" stroke-linejoin="round" ' + sw + '><title>Kantenrundung R' + fmt(e.r) +
+        (e.side === 'top' ? ' oben' : ' unten') + (done ? '' : ' (nicht bearbeitet)') + '</title></path>';
+    }
     const sawn = r.ops.some((o) => o.kind === 'blade');
     for (const w of p.slantWalls) {
       const wc = sawn ? 'var(--saw)' : 'var(--chamfer)';
@@ -1091,9 +1122,8 @@ table.fmt.one .onet { display: inline; }
     // Schräge an Rundungen (Oberkante) und gewölbte Flächen (Bereich); blass, solange nicht eingeschaltet
     const cOn = { slant: r.ops.some((o) => o.kind === 'slantpath'), surface: r.ops.some((o) => o.kind === 'surface') };
     for (const c of (p.curvedSlants || [])) {
-      const f = c.segs.length === 1 && c.segs[0].full ? c.segs[0] : null; // Kegel ringsum (schräges Rundloch)
-      const d = f ? 'M' + (f.c[0] + f.r) + ' ' + Y(f.c[1]) + ' A' + f.r + ' ' + f.r + ' 0 1 0 ' + (f.c[0] - f.r) + ' ' + Y(f.c[1]) + ' A' + f.r + ' ' + f.r + ' 0 1 0 ' + (f.c[0] + f.r) + ' ' + Y(f.c[1])
-        : (() => { const q = loopToPoly(c.segs); return svgPath(q.start, q.segs, Y); })();
+      const q = loopToPoly(c.segs); // auch ganzer Kegel (schräges Rundloch) – zwei Halbkreise
+      const d = svgPath(q.start, q.segs, Y);
       s += '<path d="' + d + (c.closed ? ' Z' : '') + '" fill="none" stroke="var(--chamfer)" stroke-width="3" stroke-opacity="' +
         (cOn.slant ? 1 : 0.45) + '" stroke-linejoin="round" ' + sw + '><title>Schräge an Rundung ' + fmt(c.tilt) + '°' + (cOn.slant ? '' : ' (nicht bearbeitet)') + '</title></path>';
     }
@@ -1169,7 +1199,7 @@ table.fmt.one .onet { display: inline; }
           const py = c.py !== undefined ? c.py : c.y;
           const rot = c.rot !== undefined ? c.rot : c.angle;
           if (c.e > 0) {
-            s += '<circle cx="' + b.x + '" cy="' + Y(c.y) + '" r="' + (c.sx / 2) + '" fill="none" stroke="var(--muted)" stroke-opacity="0.6" stroke-width="1" stroke-dasharray="2 3" ' + sw + '/>' +
+            s += '<circle cx="' + b.x + '" cy="' + Y(c.y) + '" r="' + ((c.h || c.sx) / 2) + '" fill="none" stroke="var(--muted)" stroke-opacity="0.6" stroke-width="1" stroke-dasharray="2 3" ' + sw + '/>' +
               '<circle cx="' + b.x + '" cy="' + Y(c.y) + '" r="' + u * 0.6 + '" fill="var(--muted)"/>';
           }
           s += '<rect x="' + (px - c.sx / 2) + '" y="' + (Y(py) - c.sy / 2) + '" width="' + c.sx + '" height="' + c.sy + '" rx="' + Math.min(c.sx, c.sy) * 0.12 +
@@ -1283,7 +1313,9 @@ table.fmt.one .onet { display: inline; }
     if ($('resetorder')) $('resetorder').addEventListener('click', () => { delete part.overrides.order; compute(part); render(); });
     setupStepDrag(part);
     el.querySelectorAll('[data-curved]').forEach((b) => b.addEventListener('click', () => {
-      part.overrides.curved = Object.assign({}, part.overrides.curved, { [b.dataset.curved]: b.dataset.on === '1' });
+      const v = b.dataset.on;
+      const val = v === '1' ? true : v === '0' || v === 'off' ? false : v; // Schräge: an/aus; Flächen: aus/ball/flat4
+      part.overrides.curved = Object.assign({}, part.overrides.curved, { [b.dataset.curved]: val });
       compute(part); render();
     }));
     el.querySelectorAll('[data-twostep]').forEach((b) => b.addEventListener('click', () => {

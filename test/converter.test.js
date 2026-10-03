@@ -787,7 +787,7 @@ test('Gekrümmte Flächen: Zeilenfräsen der Mulde mit dem Kugelfräser (OpenCas
     let nGroove = 0;
     for (const [x, y, zr] of pts) {
       const z = zr + p.T;
-      assert.ok(zr <= 5 + 1e-9 && z >= p.T - 12 - 0.05, 'Punkt ' + [x, y, zr]);
+      assert.ok(zr <= 5 + 1e-9 && z >= p.T - 12 - R - 0.1, 'Punkt ' + [x, y, zr]);
       if (zr === 5) continue;
       const cz = z + R; // Kugelmittelpunkt
       if (Math.hypot(x - 380, y - 200) < 50) {
@@ -795,7 +795,7 @@ test('Gekrümmte Flächen: Zeilenfräsen der Mulde mit dem Kugelfräser (OpenCas
         const ds = Math.hypot(x - 380, y - 200, cz - (p.T + 150 - 12)) - (150 - R); // > 0: im Material
         assert.ok(ds < 0.002 && (!exact || ds > -0.1), 'Kugelmulde ' + ds);
       }
-      if (Math.abs(x - 120) < 20 - R - 1 && y > 20) { // Zeilen längs Y: nach dem Zusammenfassen nur die Enden
+      if (Math.abs(x - 120) < 20 - R - 1 && y > 20 && y <= p.W + 1e-6) { // Zeilen längs Y: nach dem Zusammenfassen nur die Enden
         nGroove++;
         const dg = Math.hypot(x - 120, cz - (p.T + 10)) - (20 - R); // Hohlkehle R20, Achse in Y bei X 120, Z = T + 10
         assert.ok(dg < 0.002 && (!exact || dg > -0.1), 'Hohlkehle ' + dg);
@@ -804,8 +804,110 @@ test('Gekrümmte Flächen: Zeilenfräsen der Mulde mit dem Kugelfräser (OpenCas
     assert.ok(nSphere > 100 && nGroove > 10, nSphere + ' / ' + nGroove);
   };
   check(r.xcs, false);
+  // gerundete Oberkante vorne (R10, X 140…600): die Kugel fräst sie bis unten (Spitze neben der Kante auf T − 10 − R)
+  const fl = convertSolid(mu, { toolInfo, surfLayer: 0 }, { overrides: { curved: { surface: true } }, meshes: meshes }).xcs.split(/\r?\n/)
+    .filter((l) => l.startsWith('AddSegmentToToolpath')).map((l) => l.slice(21, -2).split(',').map(Number)).filter((q) => q[0] > 150 && q[1] < 0);
+  assert.ok(fl.length && Math.min(...fl.map((q) => q[2])) < -10 - R + 1.5, 'Rundung unten nicht erreicht');
   const mv = require('../web/js/toolpath.js').build(r, toolInfo);
   const surf = mv.filter((m) => m.type === 'cut' && r.ops[m.op].kind === 'surface');
   assert.ok(surf.length > 50 && surf.every((m) => m.ball && m.pts3.length === m.pts.length));
   check(convertSolid(mu, { toolInfo, surfLayer: 0 }, { overrides: { curved: { surface: true } }, meshes: meshes }).xcs, true);
+});
+
+test('Kantenrundungen R2 mit dem Radiusfräser: oben E061 Tiefe 0, unten E060 Tiefe Dicke + 1', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const T = require('../web/js/tools.js');
+  const toolInfo = T.infoMap(T.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
+  const [s] = readParts(read('test/fixtures/kanten_r2.step'), 'kanten_r2.step');
+  const r = convertSolid(s, { toolInfo });
+  assert.deepStrictEqual(r.warnings, []); // keine „gewölbte Fläche“ / „von unten“ mehr
+  const edge = r.ops.filter((o) => o.profile);
+  assert.deepStrictEqual(edge.map((o) => [o.tool, o.depth, o.side]), [['E061', 0, 2], ['E060', 20, 2], ['E061', 0, 2], ['E060', 20, 2]]);
+  // nach dem Formatfräsen, ohne Zustellung, umlaufend mit An-/Abfahren wie das Formatfräsen
+  const idx = (o) => r.ops.indexOf(o);
+  assert.ok(edge.every((o) => idx(o) > r.ops.findIndex((x) => x.key === 'format')));
+  assert.ok(edge.every((o) => o.approach && !o.step));
+  assert.match(r.xcs, /SetRetractStrategy\(false, true, 2, 2\);\r\nSetPneumaticHoodPosition\(1\);\r\nCreateRoughFinish\("Milling_\d", 0, "", TypeOfProcess\.GeneralRouting, "E061", "-1", 2,/);
+  assert.match(r.xcs, /CreateRoughFinish\("Milling_\d", 20, "", TypeOfProcess\.GeneralRouting, "E060", "-1", 2,/);
+  // Geometrie = Außenkontur bzw. Durchbruch (wie Formatfräsen / Durchbruch)
+  const fmtOp = r.ops.find((o) => o.key === 'format');
+  assert.deepStrictEqual(edge[0].segs, fmtOp.segs);
+  // stepDown wirkt nicht auf den Radiusfräser
+  assert.ok(convertSolid(s, { toolInfo, stepDown: 5 }).ops.filter((o) => o.profile).every((o) => !o.step));
+
+  // offene Kanten: an Außenecken tangential auslaufen; anderer Radius → Hinweis, mit passender Einstellung gefräst
+  const [o] = readParts(read('test/fixtures/kanten_r2_offen.step'), 'kanten_r2_offen.step');
+  const ro = convertSolid(o, { toolInfo });
+  const open = ro.ops.filter((x) => x.profile);
+  assert.strictEqual(open.length, 2);
+  for (const x of open) {
+    const ll = 20;
+    assert.strictEqual(x.approach, false);
+    const pts = [x.start].concat(x.segs.map((q) => q.to));
+    const len = pts.slice(1).reduce((a, q, i) => a + Math.hypot(q[0] - pts[i][0], q[1] - pts[i][1]), 0);
+    assert.ok(Math.abs(len - (ro.panel.L + 2 * ll)) < 1e-6, 'Länge ' + len);
+  }
+  assert.ok(ro.warnings.some((w) => /Kantenrundung R5 .*kein passender Radiusfräser/.test(w)));
+  assert.strictEqual(convertSolid(o, { toolInfo, roundRadius: 5 }).ops.filter((x) => x.profile).length, 1);
+});
+
+test('Gewölbte Zylinderfläche 4-Achs mit dem Schaftfräser abzeilen', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const T = require('../web/js/tools.js');
+  const toolInfo = T.infoMap(T.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
+  const [s] = readParts(read('test/fixtures/woelbung.step'), 'woelbung.step');
+  const r = convertSolid(s, { toolInfo }, { overrides: { curved: { surface: 'flat4' } } });
+  const p = r.panel;
+  const c = p.curvedSurfaces[0].cyl;
+  assert.ok(c && Math.abs(c.r - 309.72) < 0.01);
+  const op = r.ops.find((x) => x.kind === 'cyl4');
+  assert.ok(op && op.tool === 'E020');
+  assert.ok(!r.warnings.some((w) => /Gewölbte|Schneidenlänge E020/.test(w)), r.warnings.join(' | '));
+  const D = toolInfo.E020.d;
+  const ax = [c.a[0], c.a[1], 0];
+  const distAxis = (q) => { const v = [q[0] - c.o[0], q[1] - c.o[1], q[2] - c.o[2]]; const t = v[0] * ax[0] + v[1] * ax[1]; return Math.hypot(v[0] - ax[0] * t, v[1] - ax[1] * t, v[2]); };
+  // Programm: je Zeile Ebene (Ursprung, Drehung Z, Neigung X), Gerade längs der Achse, Fräsen Tiefe 0 Werkzeugmitte
+  const lines = r.xcs.split(/\r?\n/);
+  const planes = lines.filter((l) => l.startsWith('CreateWorkplane("Abzeilen_1_'));
+  assert.strictEqual(planes.length, op.passes.length);
+  op.passes.forEach((q, k) => {
+    const v = planes[k].slice(planes[k].indexOf(',') + 1, -2).split(',').map(Number);
+    const [x0, y0, z0, zr, xr] = v;
+    assert.ok(Math.abs(distAxis([x0, y0, z0]) - (c.r + q.d)) < 0.01, 'Ursprung auf R + d');
+    const a = zr * Math.PI / 180;
+    const b = xr * Math.PI / 180;
+    const n = [Math.sin(a) * Math.sin(b), -Math.cos(a) * Math.sin(b), Math.cos(b)]; // erst um Z, dann um X
+    // Werkzeugachse = Flächennormale (radial nach außen)
+    const rad = [x0 - c.o[0], y0 - c.o[1], z0 - c.o[2]];
+    const t = rad[0] * ax[0] + rad[1] * ax[1];
+    const rv = [rad[0] - ax[0] * t, rad[1] - ax[1] * t, rad[2]];
+    const rl = Math.hypot(...rv);
+    assert.ok(Math.abs(n[0] - rv[0] / rl) < 1e-3 && Math.abs(n[1] - rv[1] / rl) < 1e-3 && Math.abs(n[2] - rv[2] / rl) < 1e-3, 'Normale ' + k);
+    assert.ok(z0 <= p.T + 1e-3, 'Ursprung im Rohteil');
+    const i = lines.indexOf(planes[k]);
+    assert.strictEqual(lines[i + 1], 'SelectWorkplane("' + planes[k].split('"')[1] + '");');
+    const seg = lines[i + 2].slice(lines[i + 2].indexOf(',') + 1, -2).split(',').map(Number);
+    assert.ok(Math.abs(seg[3]) < 1e-3 && Math.abs(Math.abs(seg[2]) - (p.L + 2 * (D / 2 + 2 + 5))) < 0.01, 'Gerade längs der Achse über die ganze Länge');
+    assert.match(lines[i + 5], /, 0, "", TypeOfProcess\.GeneralRouting, "E020", "-1", 0, "-1", "-1", "-1"\);$/);
+  });
+  // Schlichten: über die ganze Breite der Fläche, Zeilenabstand ≤ 10 mm, Resthöhe < 0,05 mm
+  const fin = op.passes.filter((q) => q.d === 0);
+  assert.ok(Math.abs(fin[0].phi - c.phi0) < 1e-9 && Math.abs(fin[fin.length - 1].phi - c.phi1) < 1e-9);
+  for (let k = 1; k < fin.length; k++) {
+    const st = Math.abs(fin[k].phi - fin[k - 1].phi) * c.r;
+    assert.ok(st <= 10 + 1e-9 && c.r * (1 / Math.cos(st / (2 * c.r)) - 1) < 0.05);
+  }
+  // Vorfräsen in Schichten zu 10 mm von außen nach innen, Zeilenabstand kleiner als der Fräser
+  const ds = Array.from(new Set(op.passes.map((q) => q.d)));
+  assert.deepStrictEqual(ds, [30, 20, 10, 0]);
+  // nach der Ausgabe wieder auf der Oberseite
+  assert.match(r.xcs, /CreateRoughFinish\("Abzeilen_1_\d+_Fraesen"[^\n]*\r\n\r\nSelectWorkplane\("Top"\);/);
+  // Animation: Werkzeugachse = Normale je Zeile
+  const mv = require('../web/js/toolpath.js').build(r, toolInfo).filter((m) => m.type === 'cut' && r.ops[m.op].kind === 'cyl4');
+  assert.strictEqual(mv.length, op.passes.length);
+  assert.ok(mv.every((m, k) => m.ax3 === op.passes[k].n));
+  // Kugelfräser bleibt Standard; nur Zylinder allein bekommen die 4-Achs-Wahl
+  assert.ok(!convertSolid(s, { toolInfo }, { overrides: { curved: { surface: true } } }).ops.some((x) => x.kind === 'cyl4'));
+  const [mu] = readParts(read('test/fixtures/mulde.step'), 'mulde.step');
+  assert.ok(convertSolid(mu, { toolInfo }).panel.curvedSurfaces.every((g) => !g.cyl));
 });

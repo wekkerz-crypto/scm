@@ -224,7 +224,7 @@
           const e = c.e || 0;
           let cup;
           if (e > 0) {
-            cup = new T.Mesh(new T.CylinderGeometry(c.sx / 2, c.sx / 2, CUP_H - 8, 48), body);
+            cup = new T.Mesh(new T.CylinderGeometry((c.h || c.sx) / 2, (c.h || c.sx) / 2, CUP_H - 8, 48), body);
             cup.rotation.x = Math.PI / 2;
           } else cup = new T.Mesh(new T.BoxGeometry(c.sx, c.sy, CUP_H - 8), body);
           cup.position.z = -(CUP_H - 8) / 2 - 8;

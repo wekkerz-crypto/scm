@@ -205,9 +205,15 @@ test('Web-Tool: Schalter für gekrümmte Flächen nur bei Bedarf', { skip: !chro
     // Mulde: Zeilenfräsen lädt das 3D-Netz und schreibt die Bahn
     await pick([fixture('mulde.step')]);
     assert.strictEqual(await p.$$eval('[data-curved="slant"]', (x) => x.length), 0);
-    await p.click('[data-curved="surface"][data-on="1"]');
+    assert.strictEqual(await p.$$eval('[data-curved="surface"][data-on="flat4"]', (x) => x.length), 0); // kein Zylinder allein
+    await p.click('[data-curved="surface"][data-on="ball"]');
     await p.waitForFunction(() => /CreateToolpath\("Surface_Path_2"/.test(document.getElementById('xcs').textContent), null, { timeout: 60000 });
     assert.match(await p.textContent('#opstable'), /Gewölbte Fläche \(Kugel\) zeilenfräsen/);
+    // gewölbter Block: dritte Wahl 4-Achs mit dem Schaftfräser (ohne 3D-Netz)
+    await pick([fixture('woelbung.step')]);
+    await p.click('[data-curved="surface"][data-on="flat4"]');
+    await p.waitForFunction(() => /CreateWorkplane\("Abzeilen_1_01"/.test(document.getElementById('xcs').textContent));
+    assert.match(await p.textContent('#opstable'), /4-Achs abzeilen/);
     assert.deepStrictEqual(errors, []);
   } finally {
     await browser.close();

@@ -10,6 +10,7 @@
  *   --no-order-rule  Reihenfolge wie erkannt statt nach der Reihenfolge-Regel
  *   --schraege-5achs Schrägen an Rundungen 5-achsig fräsen (CreateSlantedRoughFinish entlang der Kontur)
  *   --kugelfraesen   gewölbte Flächen mit dem Kugelfräser zeilenfräsen (lädt OpenCascade für das 3D-Netz)
+ *   --4achs          gewölbte Zylinderflächen 4-achsig mit dem Schaftfräser abzeilen (übrige: Kugelfräser)
  */
 'use strict';
 const fs = require('fs');
@@ -26,6 +27,7 @@ let stepDown = 0;
 let orderRule = true;
 let curvedSlant = false;
 let curvedSurface = false;
+let flat4 = false;
 const files = [];
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '-o' || args[i] === '--out') outDir = args[++i];
@@ -35,6 +37,7 @@ for (let i = 0; i < args.length; i++) {
   else if (args[i] === '--no-order-rule') orderRule = false;
   else if (args[i] === '--schraege-5achs') curvedSlant = true;
   else if (args[i] === '--kugelfraesen') curvedSurface = true;
+  else if (args[i] === '--4achs') { curvedSurface = true; flat4 = true; }
   else files.push(args[i]);
 }
 if (!files.length) {
@@ -46,6 +49,7 @@ const settings = { stepDown: stepDown || 0 };
 if (!orderRule) settings.orderRule = { on: false };
 if (curvedSlant) settings.curvedSlantOn = true;
 if (curvedSurface) settings.curvedSurfaceOn = true;
+if (flat4) settings.curvedSurfaceMode = 'flat4';
 if (fs.existsSync(toolsFile)) settings.toolInfo = infoMap(parseTlgx(fs.readFileSync(toolsFile, 'utf8')));
 
 async function main() {

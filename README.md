@@ -75,8 +75,10 @@ für die `.pgmx`. Beispiel: `Tür Öffnung groß` → `Tuer_Oeffnung_gross.xcs` 
 | schräge Kante, die nicht durchläuft | `CreateSlantedRoughFinish` mit geneigtem Werkzeug (5-Achs) |
 | Tasche oder Bohrung senkrecht auf einer schrägen Fläche (z. B. auf der Schnittfläche der Säge) | eigene Ebene `CreateWorkplane(name, X0, Y0, Z0, Drehung Z, Neigung X)` + `SelectWorkplane`, darauf `CreateContourPocket` bzw. `CreateDrill`; kommt in der Reihenfolge nach den Sägeschnitten |
 | schräge Bohrung | `CreateSlantedDrill` (5-Achs) |
-| Schräge über die ganze Dicke **an Rundungen** (Kegelflächen, z. B. umlaufend geschrägte Platte mit Eckenradien, schräger Ausschnitt, schräges Rundloch) | Schalter je Teil *Schräge an Rundungen: Aus / 5-Achs fräsen* (erscheint nur, wenn so etwas erkannt wird). An: ganze Kontur am Stück mit `CreateSlantedRoughFinish` (Werkzeug quer zur Bahn geneigt, `E016`, Tiefe D+2), Bahn um r / cos(Neigung) zur Abfallseite versetzt, gerade Abschnitte gehören mit dazu (keine Sägeschnitte). Aus: wie bisher, Hinweis |
-| **gewölbte Flächen** von oben (Kugelmulde, Hohlkehle, gerundete Kante, Freiform) | Schalter je Teil *Gewölbte Flächen: Aus / Zeilenfräsen* (nur, wenn erkannt). An: Zeilenfräsen mit dem Kugelfräser (`E055`), Bahn aus dem 3D-Netz berechnet (Kugel berührt Fläche, Kanten und Ecken – schneidet nirgends ins Teil), Vorfräsen in Stufen und Schlichten, ausgegeben als explizite Werkzeugbahn `CreateToolpath` / `AddSegmentToToolpath`. Aus: Hinweis |
+| Schräge über die ganze Dicke **an Rundungen** (Kegelflächen, z. B. umlaufend geschrägte Platte mit Eckenradien, schräger Ausschnitt, schräges Rundloch) | Schalter je Teil *Schräge an Rundungen: Aus / 5-Achs fräsen* (erscheint nur, wenn so etwas erkannt wird). An: ganze Kontur am Stück mit `CreateSlantedRoughFinish` (Werkzeug quer zur Bahn geneigt, `E016`, Tiefe D+2), Bahn um r / cos(Neigung) zur Abfallseite versetzt, gerade Abschnitte gehören mit dazu (keine Sägeschnitte); an einem Ausschnitt nach dem Durchbruch. Aus: gerade Abschnitte wie bisher (Säge/Schrägfräsen), die Kegel gehören zur Kontur (Formatfräsen bzw. senkrechter Durchbruch an der engsten Stelle), Hinweis |
+| **gewölbte Flächen** von oben (Kugelmulde, Hohlkehle, gerundete Kante, runder Nutgrund, Freiform) | Schalter je Teil *Gewölbte Flächen: Aus / Kugelfräser / 4-Achs Schaftfräser* (nur, wenn erkannt). *Kugelfräser:* Zeilenfräsen mit `E055`, Bahn aus dem 3D-Netz berechnet (Kugel berührt Fläche, Kanten und Ecken – schneidet nirgends ins Teil, an gewölbten Rändern fräst die Kugelseite bis unten), Vorfräsen in Stufen und Schlichten, explizite Werkzeugbahn `CreateToolpath` / `AddSegmentToToolpath`. Aus: Hinweis |
+| **Zylinderfläche nach außen gewölbt**, Achse liegend in X oder Y (z. B. gewölbte Oberseite) | Wahl *4-Achs Schaftfräser*: je Zeile eine tangential geneigte Ebene `CreateWorkplane(…, Drehung Z, Neigung X)`, darauf eine Gerade längs der Achse über die ganze Länge (+ Ein-/Auslauf), `CreateRoughFinish` Tiefe 0, Werkzeugmitte – der Fräser (`E020`) steht senkrecht auf der Fläche und fräst mit der Stirn. Vorfräsen in Schichten (10 mm) auf größerem Radius nur dort, wo Rohteil ist; Schlichten mit 10 mm Zeilenabstand (Resthöhe ≈ s² / 8R, bei R 310: 0,04 mm). Kein 3D-Netz nötig |
+| **Kantenrundung** (Radius bis 5,5 mm) oben oder unten an Außenkontur oder Durchbruch | Radiusfräser R2: oben `E061` mit Tiefe 0, unten `E060` mit Tiefe = Dicke + dz (dz = 1), entlang der Kontur mit Korrektur rechts, umlaufend mit An-/Abfahren wie das Formatfräsen, offene Kanten mit tangentialem Auslauf an Außenecken; eigene Art *Kantenrundungen* nach dem Formatfräsen. Andere Radien: Hinweis (Radius in den Einstellungen) |
 | Zustellungen | `CreateUnidirectionalMillingStrategy` (Konturen) / `CreateContourParallelStrategy` (Taschen) |
 | Bearbeitungen von unten | nur **Hinweis** – Platte wenden |
 | Auflagefläche unten | **Sauger-Vorschlag**: `SetBarPosition(Konsole, X)` und `SetSuctionCupPosition(Nr, Y, Winkel, "Code")` – siehe unten |
@@ -208,6 +210,13 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
   prüfen, dass der Formatfräser (Dicke + 3) es nicht berührt.
 - **Taschen in den Kanten:** Geometrie in denselben Kantenkoordinaten wie die Kantenbohrungen (X waagerecht, Y = Höhe ab
   Plattenunterseite); in Maestro noch nicht simuliert.
+- **Kantenrundung mit dem Radiusfräser:** `E061` (oben, Tiefe 0) und `E060` (unten, Tiefe = Dicke + 1) entlang der Kontur,
+  Korrektur rechts wie beim Formatfräsen. In der Simulation prüfen, ob das Profil mit diesen Tiefen genau an der
+  Ober-/Unterkante sitzt (sonst Tiefe/dz in den Einstellungen anpassen).
+- **4-Achs-Abzeilen (Zylinder):** je Zeile `CreateWorkplane(Name, X0, Y0, Z0, Drehung Z, Neigung X)` tangential an die
+  Fläche, `CreateSegment` + `CreateRoughFinish` Tiefe 0 (Werkzeugmitte). Zu prüfen: Werkzeug steht senkrecht zur Ebene,
+  Tiefe 0 = Stirn auf der Ebene, Eintauchen außerhalb des Teils (Start vor der Stirnseite), Neigung bis ±30° im Kopf.
+  Viele Ebenen (Teil 400 × 250: 46) – ggf. später als eine 3D-Bahn (`Create3DRoughFinish`) zusammenfassen.
 - **Gekrümmte Flächen** (neu, standardmäßig aus; erst in der Maestro-Simulation prüfen):
   - Schräge an Rundungen: `CreatePolyline` mit Bögen + `CreateSlantedRoughFinish(…, Winkel B, Anstellung 1/2, …)` wie bei
     geraden Schrägen. Zu prüfen: ob Maestro die Neigung entlang der Bögen quer zur Bahn mitführt (Anstellung 1/2), ob die
@@ -217,7 +226,8 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
     `AddSegmentToToolpath` (Handbuch 3.8.16). Angenommen: Koordinaten in der Ebene „Top“, Z relativ zur Oberseite
     (negativ = ins Material, wie im Handbuch-Beispiel), Punkt = **Spitze** des Kugelfräsers, ohne Radiuskorrektur.
     Zwischen den Zeilen wird auf +5 mm über der Oberseite abgehoben. Bahn im 3D-Netz von OpenCascade berechnet:
-    Abweichung zur echten Fläche bis etwa 0,05 mm (Sehnenfehler), immer auf der sicheren Seite (Aufmaß, nie Einschnitt).
+    Abweichung zur echten Fläche bis etwa 0,05 mm (Sehnenfehler des Netzes: bei Mulden Aufmaß, bei nach außen gewölbten
+    Flächen bis etwa so viel zu tief); Zusammenfassen von Punkten nur nach oben (Aufmaß bis 0,02 mm).
     Viele Punkte (Mulde 600 × 400: rund 6000 Zeilen) – Ladezeit in Maestro beobachten.
   - Zeilenfräsen braucht das 3D-Netz: im Web-Tool lädt OpenCascade beim Einschalten automatisch, in der
     Kommandozeile mit `--kugelfraesen`.

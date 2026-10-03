@@ -328,6 +328,17 @@
         go(pts, info(op.tool).d || 10, op.label, op.tool, i, pts.map((q, k) => [q[0] - axes[k][0] * dd, q[1] - axes[k][1] * dd, p.T - axes[k][2] * dd]));
         return;
       }
+      if (op.kind === 'cyl4') {
+        // 4-Achs abzeilen: Fräser senkrecht auf der Fläche, je Zeile eine gerade Fahrt längs der Achse
+        const d = info(op.tool).d || 16;
+        for (const q of op.passes) {
+          meta.ax3 = q.n;
+          meta.z = Math.max(0, p.T - Math.min(q.a[2], q.b[2]));
+          meta.back = 20;
+          go([[q.a[0], q.a[1]], [q.b[0], q.b[1]]], d, op.label, op.tool, i, [q.a, q.b]);
+        }
+        return;
+      }
       if (op.kind === 'surface') {
         // Kugelfräser: Zeilen mit Spitze auf der Fläche, dazwischen abheben
         const d = info(op.tool).d || 12;

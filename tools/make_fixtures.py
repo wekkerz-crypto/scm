@@ -167,10 +167,42 @@ def schraege_innen():
     return body.cut(cq.Workplane().add(cone))
 
 
+def kanten_r2():
+    """Platte mit Eckenradien R30, Kanten oben und unten umlaufend R2, Durchbruch mit R2 oben."""
+    L, W, T = 600, 400, 19
+    body = cq.Workplane("XY").box(L, W, T, centered=False).edges("|Z").fillet(30)
+    body = body.cut(cq.Workplane("XY").center(300, 200).rect(150, 100).extrude(T).edges("|Z").fillet(10))
+    body = body.faces(">Z").edges().fillet(2)
+    body = body.faces("<Z").edges(cq.selectors.BoxSelector((-1, -1, -1), (L + 1, W + 1, 1))).edges(
+        cq.selectors.BoxSelector((-1, -1, -1), (L + 1, W + 1, 1))).fillet(2)
+    return body
+
+
+def kanten_r2_offen():
+    """Rechteckplatte: Kante vorne oben R2, Kante hinten unten R2 (offene Bahnen), Kante hinten oben R5 (anderer Radius)."""
+    L, W, T = 500, 300, 19
+    body = cq.Workplane("XY").box(L, W, T, centered=False)
+    body = body.edges(cq.selectors.BoxSelector((-1, -1, T - 1), (L + 1, 1, T + 1))).fillet(2)
+    body = body.edges(cq.selectors.BoxSelector((-1, W - 1, -1), (L + 1, W + 1, 1))).fillet(2)
+    body = body.edges(cq.selectors.BoxSelector((-1, W - 1, T - 1), (L + 1, W + 1, T + 1))).fillet(5)
+    return body
+
+
+def woelbung():
+    """Block mit gewölbter Oberseite (Zylinder R310, Achse in X, Scheitel außermittig) und Schlitz in der Stirnseite."""
+    L, W = 400, 250
+    R, cy, cz = 309.72, 146.86, -253.36
+    body = cq.Workplane("XY").box(L, W, 60, centered=False)
+    cyl = cq.Workplane("YZ").center(cy, cz).circle(R).extrude(L)
+    body = body.intersect(cyl)
+    return body.cut(cq.Workplane("XY").box(25, 109.77, 14.65, centered=False).translate((L - 25, 70.115, 18.718)))
+
+
 if __name__ == "__main__":
     for name, fn in [("seitenwand_32", seitenwand_32), ("oberboden_27", oberboden_27), ("testplatte", testplatte),
                      ("fuenfachs", fuenfachs), ("sonderkontur", sonderkontur), ("seite4", seite4),
-                     ("schraege_rund", schraege_rund), ("mulde", mulde), ("schraege_innen", schraege_innen)]:
+                     ("schraege_rund", schraege_rund), ("mulde", mulde), ("schraege_innen", schraege_innen),
+                     ("kanten_r2", kanten_r2), ("kanten_r2_offen", kanten_r2_offen), ("woelbung", woelbung)]:
         path = os.path.join(OUT, name + ".step")
         cq.exporters.export(fn(), path)
         print("geschrieben:", path)

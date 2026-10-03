@@ -109,7 +109,8 @@
     return best;
   }
 
-  // Punkte einer Linie zusammenfassen, solange die Abweichung unter tol bleibt
+  // Punkte einer Linie zusammenfassen, solange die Gerade höchstens tol über den weggelassenen Punkten liegt
+  // (nie darunter – sonst schnitte die Kugel dort ein)
   function simplify(pts, tol) {
     if (pts.length < 3) return pts;
     const out = [pts[0]];
@@ -122,7 +123,7 @@
         const q = pts[k];
         const t = ((q[0] - a[0]) * (b[0] - a[0]) + (q[1] - a[1]) * (b[1] - a[1])) / (((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2) || 1);
         const z = a[2] + (b[2] - a[2]) * t;
-        if (Math.abs(q[2] - z) > tol) ok = false;
+        if (q[2] - z > 1e-6 || z - q[2] > tol) ok = false;
       }
       if (!ok) { out.push(pts[i - 1]); anchor = i - 1; }
     }
@@ -131,8 +132,8 @@
   }
 
   /*
-   * Bahn für einen Bereich. region: { rects: [{x0,y0,x1,y1}], zmin } (Mittelpunkt der Kugel bleibt in den Rechtecken,
-   * tiefer als zmin fährt sie nicht); opt: { R (Radius Kugel), stepover, res (Punktabstand), top (Plattendicke T),
+   * Bahn für einen Bereich. region: { rects: [{x0,y0,x1,y1}], zmin } (Kugelmitte in den Rechtecken + R,
+   * Spitze nie tiefer als zmin − R); opt: { R (Radius Kugel), stepover, res (Punktabstand), top (Plattendicke T),
    * layer (Zustellung, 0 = nur Schlichten), tol }
    * Ergebnis: { passes: [[ [x,y,zSpitze], … ], …], zmin } – je Pass ein zusammenhängender Weg in Plattenkoordinaten,
    * zwischen den Pässen wird abgehoben. Werkzeugspitze = tiefster Punkt der Kugel.
@@ -144,7 +145,8 @@
     const step = Math.max(0.2, opt.stepover);
     const T = opt.top;
     const tol = opt.tol || 0.02;
-    const floor = region.zmin === undefined ? -Infinity : region.zmin - 0.3;
+    // tiefste Spitze: R unter dem tiefsten Punkt der Fläche (an gewölbten Rändern fräst die Kugelseite den unteren Teil)
+    const floor = region.zmin === undefined ? -Infinity : region.zmin - R - 0.05;
     const cutting = (q) => q && q[2] < T - 0.01;
     // nur dort fahren, wo der Fräser unter der Oberseite schneidet (plus ein Punkt Anlauf)
     const segsOf = (pts) => {
@@ -159,7 +161,11 @@
     };
     let zmin = Infinity;
     const blocks = [];
-    for (const rc of region.rects) {
+    for (const rc0 of region.rects) {
+      // Kugelmitte darf um R über die Fläche hinaus (an gewölbten Rändern liegt der Berührpunkt innerhalb der Mitte);
+      // Stellen ohne Schnitt fallen unten weg, zu tief (neben dem Teil) begrenzt zmin
+      const e = R - 0.02; // knapp unter R: an der Kante sonst genau tangential (numerisch unsicher)
+      const rc = { x0: rc0.x0 - e, y0: rc0.y0 - e, x1: rc0.x1 + e, y1: rc0.y1 + e };
       // Zeilen längs der längeren Seite
       const alongX = rc.x1 - rc.x0 >= rc.y1 - rc.y0;
       const u0 = alongX ? rc.x0 : rc.y0;

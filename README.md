@@ -65,6 +65,9 @@ Nullpunkt vorne links unten. Werkzeuge, Zugaben und Bohrerlisten sind im Web-Too
 
 ## In Maestro bestätigt
 
+- **Arbeitsfeld** (`SetMachiningParameters`): Teile bis 1300 mm Länge `IJ`, darüber `IL` (Vorgabe aus der Werkstatt,
+  im Web-Tool unter *Werkzeuge & Regeln* änderbar).
+
 Die Onshape-Teile `kp1 - Oberboden` und `kp1 - Rechte Seite` (Ordner `step/`) wurden mit dem Tool
 umgewandelt, im X-Konverter als Script importiert und als Maestro-Programm angelegt. Damit belegt:
 
@@ -77,8 +80,6 @@ umgewandelt, im X-Konverter als Script importiert und als Maestro-Programm angel
 
 Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
 
-- **Feld `IJ`/`IL`:** laut Handbuch der Parameter `executionFields` (Arbeitsfelder) von
-  `SetMachiningParameters`. Die Regel „lang ab 1500 mm → `IL`“ ist geschätzt (Beispiele: 2305 → IL, ≤ 646 → IJ).
 - **Kantenbohrungen vorne/hinten:** Ebenennamen `"Front"`/`"Back"` sind laut Handbuch Standardebenen;
   lokales System: Ursprung unten links, X waagerecht, Z aus der Ebene heraus (passt zur Umsetzung).
   Links/rechts ist durch `27_Oberboden.xcs` und den Maestro-Import belegt.

@@ -214,7 +214,7 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
   // ------------------------------------------------ Einstellungen
   const FIELDS = [
     ['fieldShort', 'Feld kurze Teile', 'text'], ['fieldLong', 'Feld lange Teile', 'text'],
-    ['fieldThreshold', 'Lang ab Länge (mm)', 'number'], ['rawOversize', 'Rohteil-Aufmaß je Seite', 'number'],
+    ['fieldThreshold', 'Feld kurz bis Länge (mm)', 'number'], ['rawOversize', 'Rohteil-Aufmaß je Seite', 'number'],
     ['contourTool', 'Formatfräser', 'mill'], ['contourExtra', 'Formatfräsen: Dicke +', 'number'],
     ['cutoutTool', 'Fräser Ausschnitte', 'mill'], ['cutoutExtra', 'Ausschnitte: Dicke +', 'number'],
     ['pocketTool', 'Fräser Taschen', 'mill'], ['pocketOverlap', 'Taschen: Überdeckung %', 'number'],
@@ -233,6 +233,7 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
   function loadSettings() {
     let s = {};
     try { s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { s = {}; }
+    if (s.fieldThreshold === 1500) s.fieldThreshold = XcsWriter.DEFAULTS.fieldThreshold; // alte Voreinstellung
     return Object.assign({}, XcsWriter.DEFAULTS, s);
   }
   function saveSettings() {

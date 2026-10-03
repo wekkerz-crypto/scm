@@ -152,3 +152,14 @@ test('Werkzeugwahl je Bearbeitung und Warnung bei zu kurzer Schneide', () => {
   assert.match(part.xcs, /CreateRoughFinish\("Milling_1", 22, "", TypeOfProcess.GeneralRouting, "E040"/);
   assert.ok(part.warnings.some((w) => /Schneidenlänge E040/.test(w)), part.warnings.join('|'));
 });
+
+test('Arbeitsfeld: bis 1300 mm IJ, darüber IL', () => {
+  const X = require('../web/js/xcs.js');
+  const panel = (L) => ({ L: L, W: 500, T: 19, outline: [], outlineIsRect: true, cutouts: [], drills: [], grooves: [], rebates: [],
+    pockets: [], chamfers: [], slantWalls: [], slantDrills: [], bottom: [], warnings: [] });
+  const field = (L) => /SetMachiningParameters\("(\w+)"/.exec(X.write(panel(L)).text)[1];
+  assert.strictEqual(field(612), 'IJ');
+  assert.strictEqual(field(1300), 'IJ');
+  assert.strictEqual(field(1300.5), 'IL');
+  assert.strictEqual(field(2305), 'IL');
+});

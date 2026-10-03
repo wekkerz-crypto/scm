@@ -11,7 +11,7 @@
   const DEFAULTS = {
     fieldShort: 'IJ',          // SetMachiningParameters – Arbeitsfeld für kurze Teile
     fieldLong: 'IL',           // … für lange Teile
-    fieldThreshold: 1500,      // ab dieser Länge (mm) → fieldLong
+    fieldThreshold: 1300,      // bis zu dieser Länge (mm) fieldShort, darüber fieldLong
     rawOversize: 2,            // CreateRawWorkpiece: Aufmaß je Seite
     contourTool: 'E014',       // Formatfräsen außen
     contourExtra: 3,           // Frästiefe = Dicke + …
@@ -371,7 +371,7 @@
     if (override && override.tools) cfg.toolOverrides = override.tools;
     if (override && override.steps) cfg.stepOverrides = override.steps;
     const { ops, warnings } = plan(p, cfg);
-    const field = (override && override.field) || (p.L >= cfg.fieldThreshold ? cfg.fieldLong : cfg.fieldShort);
+    const field = (override && override.field) || (p.L > cfg.fieldThreshold + 1e-6 ? cfg.fieldLong : cfg.fieldShort);
     const L = [];
     const blank = () => L.push('');
     L.push('SetMachiningParameters("' + field + '", 1, 10, 196608, false);'); blank();

@@ -194,8 +194,14 @@
   function norm(a) { const l = Math.hypot(a[0], a[1], a[2]); return l > 0 ? scale(a, 1 / l) : a; }
 
   function lengthUnitFactor(entities) {
-    // Faktor Datei-Einheit → mm
-    for (const e of entities.values()) {
+    // Faktor Datei-Einheit → mm. Maßgeblich ist die Längeneinheit im GLOBAL_UNIT_ASSIGNED_CONTEXT
+    // (sonst könnte z. B. die mm-Basiseinheit einer Zoll-Umrechnung zuerst gefunden werden).
+    const ctx = Array.from(entities.values()).find((e) => e.parts && e.parts.GLOBAL_UNIT_ASSIGNED_CONTEXT);
+    const listed = ctx ? (ctx.parts.GLOBAL_UNIT_ASSIGNED_CONTEXT[0] || []).map((r) => (r instanceof Ref ? entities.get(r.id) : null)) : [];
+    const lengthUnits = listed.filter((e) => e && e.parts && e.parts.LENGTH_UNIT);
+    const all = lengthUnits.length ? lengthUnits : Array.from(entities.values()).filter((e) => e.parts && e.parts.LENGTH_UNIT)
+      .sort((a, b) => (b.parts.CONVERSION_BASED_UNIT ? 1 : 0) - (a.parts.CONVERSION_BASED_UNIT ? 1 : 0));
+    for (const e of all) {
       if (!e.parts || !e.parts.LENGTH_UNIT) continue;
       if (e.parts.SI_UNIT) {
         const prefix = e.parts.SI_UNIT[0];
@@ -211,7 +217,15 @@
         const m = mRef instanceof Ref ? entities.get(mRef.id) : null;
         if (m && m.args) {
           const v = m.args[0] instanceof Typed ? m.args[0].args[0] : m.args[0];
-          if (typeof v === 'number') return v; // Annahme: Basis mm
+          // Basiseinheit der Umrechnung (meist mm, kann m sein)
+          const base = m.args[1] instanceof Ref ? entities.get(m.args[1].id) : null;
+          let bf = 1;
+          if (base && base.parts && base.parts.SI_UNIT) {
+            const pre = base.parts.SI_UNIT[0];
+            const pv = pre instanceof Enum ? pre.v : null;
+            bf = pv ? ({ MILLI: 1, CENTI: 10, DECI: 100, KILO: 1e6, MICRO: 1e-3 }[pv] || 1) : 1000;
+          }
+          if (typeof v === 'number') return v * bf;
         }
       }
     }
@@ -267,15 +281,65 @@
       }
       case 'CIRCLE':
         return { type: 'circle', ax: this.placement(e.args[1]), r: e.args[2] * this.unit };
+      case 'ELLIPSE':
+        return { type: 'ellipse', ax: this.placement(e.args[1]), r1: e.args[2] * this.unit, r2: e.args[3] * this.unit };
+      case 'B_SPLINE_CURVE_WITH_KNOTS':
+        return this.bspline(e.args[1], e.args[2], e.args[6], e.args[7], null);
       case 'SURFACE_CURVE':
       case 'SEAM_CURVE':
       case 'BOUNDED_SURFACE_CURVE':
         return this.curve(e.args[1]);
-      case 'TRIMMED_CURVE':
-        return this.curve(e.args[1]);
+      case 'TRIMMED_CURVE': {
+        // sense_agreement = .F.: Kurve läuft entgegen der Basiskurve
+        const c = this.curve(e.args[1]);
+        if (e.args[4] instanceof Enum && e.args[4].v === 'F') c.reversed = !c.reversed;
+        return c;
+      }
       default:
+        // rationale B-Spline als zusammengesetzte Entität
+        if (e.parts && e.parts.B_SPLINE_CURVE && e.parts.B_SPLINE_CURVE_WITH_KNOTS) {
+          const bs = e.parts.B_SPLINE_CURVE;
+          const kn = e.parts.B_SPLINE_CURVE_WITH_KNOTS;
+          const w = e.parts.RATIONAL_B_SPLINE_CURVE ? e.parts.RATIONAL_B_SPLINE_CURVE[0] : null;
+          return this.bspline(bs[0], bs[1], kn[0], kn[1], w);
+        }
         return { type: 'other', name: t };
     }
+  };
+
+  // B-Spline: dicht abtasten (de Boor); die Kante nimmt später den Abschnitt zwischen ihren Eckpunkten
+  Model.prototype.bspline = function (degree, ctrlRefs, mults, knots, weights) {
+    const P = ctrlRefs.map((r) => this.point(r));
+    const U = [];
+    knots.forEach((k, i) => { for (let j = 0; j < mults[i]; j++) U.push(k); });
+    const p = degree;
+    const W = weights || P.map(() => 1);
+    const at = (u) => {
+      let k = p;
+      while (k < P.length - 1 && u >= U[k + 1]) k++;
+      const d = [];
+      for (let j = 0; j <= p; j++) {
+        const q = P[k - p + j];
+        const w = W[k - p + j];
+        d.push([q[0] * w, q[1] * w, q[2] * w, w]);
+      }
+      for (let r = 1; r <= p; r++) {
+        for (let j = p; j >= r; j--) {
+          const i = k - p + j;
+          const den = U[i + p - r + 1] - U[i];
+          const a = den ? (u - U[i]) / den : 0;
+          for (let c = 0; c < 4; c++) d[j][c] = (1 - a) * d[j - 1][c] + a * d[j][c];
+        }
+      }
+      const h = d[p];
+      return [h[0] / h[3], h[1] / h[3], h[2] / h[3]];
+    };
+    const u0 = U[p];
+    const u1 = U[P.length];
+    const n = Math.max(16, Math.min(400, P.length * 8));
+    const samples = [];
+    for (let i = 0; i <= n; i++) samples.push(at(u0 + ((u1 - u0) * i) / n));
+    return { type: 'bspline', samples: samples };
   };
 
   Model.prototype.surface = function (ref) {
@@ -338,7 +402,9 @@
     const productNames = this.productNamesByBrep();
     for (const e of this.e.values()) {
       if (e.type !== 'MANIFOLD_SOLID_BREP' && e.type !== 'BREP_WITH_VOIDS') continue;
-      const shell = this.get(e.args[1]);
+      let shell = this.get(e.args[1]);
+      // ORIENTED_CLOSED_SHELL verweist auf die eigentliche Hülle
+      if (shell.type === 'ORIENTED_CLOSED_SHELL') shell = this.get(shell.args[2]);
       const faces = shell.args[1].map((r) => this.face(r));
       const name = (e.args[0] && String(e.args[0]).trim()) || productNames.get(e.id) || '';
       out.push({ id: e.id, name: name, faces: faces });

@@ -16,6 +16,8 @@
     let n = String(name || '').replace(/[äöüÄÖÜßẞ]/g, (c) => UMLAUT[c]);
     n = n.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // é → e usw.
     n = n.trim().replace(/\s+/g, '_').replace(/[^A-Za-z0-9_.-]/g, '_').replace(/_+/g, '_').replace(/^[_.]+|[_.]+$/g, '');
+    // unter Windows reservierte Namen (CON, NUL, COM1 …) gehen nicht als Dateiname
+    if (/^(con|prn|aux|nul|com\d|lpt\d)(\..*)?$/i.test(n)) n = n.replace(/^[^.]+/, (m) => m + '_');
     return n || 'Teil';
   }
   const safeFileName = partName;
@@ -64,13 +66,16 @@
   }
 
   // Batch-Datei für den X-Konverter (Handbuch Kap. 8, Modus 0 = XCS-Import → PGMX).
-  // Wandelt alle .xcs im Ordner der .bat um. Nur ASCII-Text, damit cmd.exe sie in jeder Codepage liest.
+  // Wandelt alle .xcs im Ordner der .bat um. Enthalten die Pfade Umlaute o. Ä., stellt die .bat
+  // die Konsole auf UTF-8 um (chcp 65001), sonst bleibt sie reines ASCII.
   function makeBatch(settings) {
     const cfg = Object.assign({}, XcsWriter.DEFAULTS, settings || {});
-    const ascii = (s) => String(s).replace(/[^\x20-\x7e]/g, '?');
+    const ascii = (s) => String(s).replace(/[\r\n"]/g, '');
     const out = cfg.pgmxDir ? ascii(cfg.pgmxDir) : '%~dp0pgmx';
+    const utf8 = /[^\x20-\x7e]/.test([cfg.xconverterPath, cfg.toolsFile, cfg.pgmxDir].join(''));
     const lines = [
       '@echo off',
+      utf8 ? 'chcp 65001 >nul' : null,
       'rem Erzeugt vom STEP-zu-XCS Konverter.',
       'rem Wandelt alle .xcs-Dateien in diesem Ordner mit dem Maestro X-Konverter in .pgmx um.',
       'rem Pfade bei Bedarf hier anpassen:',
@@ -120,7 +125,7 @@
       'exit /b 1',
       '',
     ];
-    return lines.join('\r\n');
+    return lines.filter((l) => l !== null).join('\r\n');
   }
 
   return { convert: convert, readParts: readParts, convertSolid: convertSolid, safeFileName: safeFileName, partName: partName,

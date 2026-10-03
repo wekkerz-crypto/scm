@@ -194,6 +194,7 @@ table.ops td.v { font-family: var(--font-mono); font-size: 0.8rem; color: var(--
 .warns { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
 .warns li { background: var(--warn-bg); color: var(--warn); border-radius: var(--r); padding: 6px 10px; font-size: 0.85rem; }
 .warns li.err { background: var(--err-bg); color: var(--err); }
+.warns li.info { background: var(--sunken); color: var(--muted); }
 
 .code { display: grid; gap: 8px; min-width: 0; }
 .code .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
@@ -256,6 +257,21 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
 .setrows .num input { width: 7em; }
 .setrows .num small { color: var(--muted); font-family: var(--font-body); font-size: 0.75rem; line-height: 1.2; }
 .setrows .row.dim { opacity: 0.45; }
+.fmtbox { padding: 4px 0 8px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+.fmtbox .row { border-top: 0; }
+table.fmt { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.85rem; margin-top: 4px;
+  border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+table.fmt th, table.fmt td { padding: 5px 8px; text-align: left; vertical-align: middle; }
+table.fmt thead th { background: var(--sunken); color: var(--muted); font-weight: 500; font-size: 0.75rem; text-transform: uppercase; letter-spacing: .04em; }
+table.fmt tbody tr + tr th, table.fmt tbody tr + tr td { border-top: 1px solid var(--line); }
+table.fmt tbody th { font-weight: 500; white-space: nowrap; }
+table.fmt select { width: 100%; font-size: 0.82rem; }
+table.fmt .num input { width: 5em; }
+table.fmt td.end { color: var(--muted); font-size: 0.8rem; }
+table.fmt .onet { display: none; }
+table.fmt.one .r1, table.fmt.one thead, table.fmt.one td.end { display: none; }
+table.fmt.one .two { display: none; }
+table.fmt.one .onet { display: inline; }
 .setrows input[type="text"], .setrows input[type="number"] { color: var(--ink); font-family: var(--font-mono); font-size: 0.85rem; }
 .setrows .stack input { width: 100%; }
 @media (max-width: 520px) { .setrows .row { grid-template-columns: minmax(0, 1fr); } }
@@ -343,7 +359,7 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
       ['pocketStepDown', 'Zustelltiefe je Durchgang', 'number', 'mm · 0 = wie Fräsen'],
       ['pocketOverlap', 'Überdeckung', 'number', '%']] },
     { title: 'Formatfräsen & Konturen', c: '--mill', fields: [
-      ['contourTool', 'Formatfräser', 'mill'],
+      ['formatTable', 'Formatfräsen', 'formatTable'],
       ['contourExtra', 'Formatfräsen: Dicke +', 'number', 'mm'],
       ['contourMode', 'Sonderkontur', 'choice', [['whole', 'Außenkontur am Stück'], ['rect', 'Rechteck + Ausschnitte einzeln']]],
       ['cutoutTool', 'Fräser Ausschnitte', 'mill'],
@@ -476,6 +492,39 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     }).join('');
   }
 
+  // Formatfräsen: ein Werkzeug oder zwei (vorfräsen mit Aufmaß, nachfräsen auf Endmaß) als kleine Tabelle
+  function formatTable() {
+    const st = state.settings;
+    const box = document.createElement('div');
+    box.className = 'fmtbox';
+    box.innerHTML = '<label class="row check"><input type="checkbox" id="set-formatTwoStep"' + (st.formatTwoStep ? ' checked' : '') +
+      '> <span class="cap">Mit zwei Werkzeugen formatieren</span></label>' +
+      '<table class="fmt' + (st.formatTwoStep ? '' : ' one') + '"><thead><tr><th></th><th>Werkzeug</th><th>Aufmaß</th></tr></thead><tbody>' +
+      '<tr class="r1"><th>1 Vorfräsen</th><td>' + toolSelect('id="set-formatRoughTool" aria-label="Werkzeug 1 Vorfräsen"', 'mill', st.formatRoughTool) + '</td>' +
+      '<td><span class="num"><input id="set-formatAllowance" type="number" min="0" step="0.1" value="' + esc(st.formatAllowance) + '" aria-label="Aufmaß Vorfräsen"><small>mm</small></span></td></tr>' +
+      '<tr><th><span class="two">2 Nachfräsen</span><span class="onet">Formatfräser</span></th><td>' + toolSelect('id="set-contourTool" aria-label="Formatfräser"', 'mill', st.contourTool) + '</td>' +
+      '<td class="end">Endmaß</td></tr></tbody></table>';
+    const apply = (k, v) => {
+      if (JSON.stringify(st[k]) === JSON.stringify(v)) return;
+      st[k] = v;
+      saveSettings();
+      state.parts.forEach(compute);
+      renderSoon();
+    };
+    box.querySelector('#set-formatTwoStep').addEventListener('change', (e) => {
+      box.querySelector('table').classList.toggle('one', !e.target.checked);
+      apply('formatTwoStep', e.target.checked);
+    });
+    box.querySelector('#set-formatRoughTool').addEventListener('change', (e) => apply('formatRoughTool', e.target.value));
+    box.querySelector('#set-contourTool').addEventListener('change', (e) => apply('contourTool', e.target.value));
+    const al = box.querySelector('#set-formatAllowance');
+    let timer;
+    const setAl = () => { clearTimeout(timer); const v = parseFloat(String(al.value).replace(',', '.')); if (!isNaN(v) && v >= 0) apply('formatAllowance', v); };
+    al.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(setAl, 400); });
+    al.addEventListener('change', setAl);
+    return box;
+  }
+
   function renderSettings() {
     const root = $('setgrid');
     root.innerHTML = '';
@@ -489,6 +538,7 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     sec.appendChild(g);
     root.appendChild(sec);
     for (const [k, label, type, extra] of grp.fields) {
+      if (type === 'formatTable') { g.appendChild(formatTable()); continue; }
       const choices = extra;
       const unit = typeof extra === 'string' ? extra : '';
       const l = document.createElement('label');
@@ -547,7 +597,7 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
         if (k === 'scoreCut') ['scoreDepth', 'scoreOut'].forEach((x) => { const e = $('set-' + x); if (e) e.closest('label').classList.toggle('dim', !val); });
         saveSettings();
         state.parts.forEach(compute);
-        render();
+        renderSoon();
       };
       input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(apply, 400); });
       input.addEventListener('change', apply);
@@ -937,7 +987,7 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     }
     const p = r.panel;
     const fieldOpts = [state.settings.fieldShort, state.settings.fieldLong, state.settings.fieldWideShort, state.settings.fieldWideLong]
-      .filter((f, i, a) => f && a.indexOf(f) === i);
+      .concat([r.field]).filter((f, i, a) => f && a.indexOf(f) === i);
     const legend = [['var(--drill)', 'Bohrung oben'], ['var(--pocket)', 'Tasche'], ['var(--mill)', 'Fräsen / Kontur'],
       ['var(--saw)', 'Sägeschnitt / Nut / Falz'], ['var(--chamfer)', 'Fase / schräge Kante'], ['var(--sdrill)', 'Bohrung schräg'],
       ['var(--hdrill)', 'Kante (Bohrung / Tasche)'], ['var(--err)', 'Nullpunkt']];
@@ -969,13 +1019,14 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
         '<button type="button" class="mvb" data-move="' + esc(x.group) + '" data-dir="1"' + (i === all.length - 1 ? ' disabled' : '') + ' aria-label="' + esc(x.k) + ' nach unten">↓</button>' +
         '</td></tr>' +
         (x.op ? '<tr class="ctlrow" data-group="' + esc(x.group) + '"><td colspan="3"><div class="ctl">' + opControls(part, x.op) + '</div></td></tr>' : '') + '</tbody>').join('') +
-      '</table><div class="dropline" id="dropline" hidden></div>' + (r.warnings.length ? '<ul class="warns">' + r.warnings.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ul>' : '') +
+      '</table><div class="dropline" id="dropline" hidden></div>' + (r.warnings.length || part.notice ? '<ul class="warns">' +
+        (part.notice ? '<li class="info">' + esc(part.notice) + '</li>' : '') + r.warnings.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ul>' : '') +
       '</aside></div>' +
       '<div class="card code"><div class="bar"><span class="fname"><input id="fname" type="text" value="' + esc(part.fileName) + '" aria-label="Dateiname"></span>' +
       '<span class="tools"><button class="btn" id="copy" type="button">Kopieren</button><button class="btn primary" id="dl" type="button">Speichern</button></span></div>' +
       '<pre class="xcs" id="xcs">' + highlight(r.xcs) + '</pre></div>';
 
-    setupAnim(part);
+    try { setupAnim(part); } catch (e) { console.error(e); } // Animation darf die übrige Bedienung nie lahmlegen
     el.querySelectorAll('[data-move]').forEach((b) => b.addEventListener('click', () => {
       const order = (part.result.groups || []).slice();
       const i = order.indexOf(b.dataset.move);
@@ -1008,14 +1059,25 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
         if (next === cur) return;
         if (next === undefined) delete map[key];
         else map[key] = next;
-        compute(part); render();
+        compute(part); renderSoon();
       };
       inp.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(apply, 500); });
       inp.addEventListener('change', apply);
     });
-    $('rot').addEventListener('click', () => { part.orientation.rot = (part.orientation.rot + 1) % 4; compute(part); render(); });
-    $('flip').addEventListener('click', () => { part.orientation.flip = !part.orientation.flip; compute(part); render(); });
-    $('field').addEventListener('change', (e) => { part.field = e.target.value; compute(part); render(); });
+    // Neu aufbauen und dabei im Vollbild bleiben
+    const rerender = () => {
+      const full = document.fullscreenElement && document.fullscreenElement.id === 'stagecard';
+      render();
+      if (full && $('stagecard').requestFullscreen) $('stagecard').requestFullscreen().catch(() => {});
+    };
+    // Drehen/Wenden ändert die Bearbeitungsgruppen (Seiten, Winkel): eigene Reihenfolge passt nicht mehr
+    const turned = () => {
+      if (part.overrides.order) { delete part.overrides.order; part.notice = 'Eigene Reihenfolge wurde beim Drehen/Wenden zurückgesetzt.'; }
+      compute(part); rerender();
+    };
+    $('rot').addEventListener('click', () => { part.orientation.rot = (part.orientation.rot + 1) % 4; turned(); });
+    $('flip').addEventListener('click', () => { part.orientation.flip = !part.orientation.flip; turned(); });
+    $('field').addEventListener('change', (e) => { part.field = e.target.value; compute(part); rerender(); });
     $('fname').addEventListener('change', (e) => {
       const n = StepToXcs.partName(e.target.value.trim().replace(/\.xcs$/i, '') || part.result.fileName.replace(/\.xcs$/i, '')) + '.xcs';
       part.fileName = n;
@@ -1038,6 +1100,15 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
   }
 
   function render() { renderParts(); renderDetail(); }
+  // Nach Eingaben (Feld verlassen) erst nach dem laufenden Klick neu aufbauen – sonst geht der Klick auf
+  // einen Knopf verloren, weil die Seite zwischen Maus-Drücken und -Loslassen ersetzt wird.
+  let ptrDown = false;
+  let pendingRender = false;
+  document.addEventListener('pointerdown', () => { ptrDown = true; }, true);
+  const ptrEnd = () => setTimeout(() => { ptrDown = false; if (pendingRender) { pendingRender = false; render(); } }, 0);
+  document.addEventListener('pointerup', ptrEnd, true);
+  document.addEventListener('pointercancel', ptrEnd, true);
+  function renderSoon() { if (ptrDown) pendingRender = true; else render(); }
 
   // Schritte mit gedrückter Maus (oder Finger) am Griff verschieben
   function setupStepDrag(part) {

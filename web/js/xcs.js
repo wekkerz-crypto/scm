@@ -18,6 +18,9 @@
     rawOversize: 2,            // CreateRawWorkpiece: Aufmaß je Seite
     contourTool: 'E014',       // Formatfräsen außen
     contourExtra: 3,           // Frästiefe = Dicke + …
+    formatTwoStep: false,      // Formatfräsen mit zwei Werkzeugen: vorfräsen mit Aufmaß, nachfräsen auf Endmaß
+    formatRoughTool: 'E014',   // Werkzeug 1 (vorfräsen); Werkzeug 2 = contourTool
+    formatAllowance: 1,        // Aufmaß beim Vorfräsen in mm (overMaterial)
     cutoutTool: 'E016',        // Ausschnitte / Durchbrüche / Konturabweichungen
     cutoutExtra: 2,
     leadLength: 20,            // Ein-/Auslauf entlang der Kante bei Ausschnitten
@@ -182,6 +185,8 @@
     const warnings = p.warnings.slice();
     const T = p.T;
     let nContour = 0;
+    let nRound = 0;   // eigene Zähler: Schlüssel bleiben stabil, wenn sich davor etwas ändert (Überschreibungen je Teil)
+    let nRPocket = 0;
     let nMill = 0;
 
     const toolD = (name, fallback) => {
@@ -226,6 +231,12 @@
         depth: T + cfg.contourExtra, tool: cfg.contourTool, side: 2, label: 'Formatfräsen',
       });
     }
+    if (cfg.formatTwoStep) {
+      // Vorfräsen mit Werkzeug 1 und Aufmaß, danach Werkzeug 2 auf Endmaß (gleiche Geometrie)
+      const f = ops[ops.length - 1];
+      f.rough = { tool: cfg.formatRoughTool || cfg.contourTool, allowance: Math.max(0, cfg.formatAllowance || 0) };
+      f.label += ' vor + nach';
+    }
 
     // 2) Nuten mit Säge
     for (const g of p.grooves) {
@@ -234,7 +245,7 @@
       // Segment auf der Nutflanke, Nut links der Fahrtrichtung (wie im Beispiel 32_Seitenwand_R)
       const a = g.dir === 'X' ? [-cfg.sawOverrun, g.from] : [g.to, -cfg.sawOverrun];
       const b = g.dir === 'X' ? [p.L + cfg.sawOverrun, g.from] : [g.to, p.W + cfg.sawOverrun];
-      ops.push({ kind: 'slot', key: 'slot-' + ops.length, toolKind: 'saw', toolDefault: 'sawTool', a: a, b: b, depth: g.depth, width: width, tool: cfg.sawTool,
+      ops.push({ kind: 'slot', key: 'slot-' + p.grooves.indexOf(g), toolKind: 'saw', toolDefault: 'sawTool', a: a, b: b, depth: g.depth, width: width, tool: cfg.sawTool,
         label: 'Nut ' + fmt(width) + '×' + fmt(g.depth) });
     }
 
@@ -337,6 +348,7 @@
       ops.push({ kind: 'slant', key: 'slant-' + i, toolKind: 'mill', toolDefault: 'slantTool',
         a: [w.top.a[0] - u[0] * ll, w.top.a[1] - u[1] * ll], b: [w.top.b[0] + u[0] * ll, w.top.b[1] + u[1] * ll],
         angle: w.angle, approach: w.leanOut ? 2 : 1, depth: T + cfg.slantExtra, tool: cfg.slantTool,
+        scrap: [u[1], -u[0]], // Abfallseite (rechts der Bahn)
         label: 'Schräge Kante ' + fmt(w.angle) + '°' });
     }
 
@@ -380,19 +392,18 @@
       if (!hasDrill(list, d.d)) {
         if (vertical && d.through) {
           const r = d.d / 2;
-          ops.push({ kind: 'contour', key: 'round-' + ops.length, toolKind: 'mill', toolDefault: 'cutoutTool', contour: ++nContour, milling: ++nMill, approach: false,
+          ops.push({ kind: 'contour', key: 'round-' + (nRound++), toolKind: 'mill', toolDefault: 'cutoutTool', contour: ++nContour, milling: ++nMill, approach: false,
             start: [d.x + r, d.y],
             segs: [
               { type: 'arc', to: [d.x - r, d.y], c: [d.x, d.y], cw: false },
               { type: 'arc', to: [d.x + r, d.y], c: [d.x, d.y], cw: false },
             ],
             depth: T + cfg.cutoutExtra, tool: cfg.cutoutTool, side: 1, label: 'Rundloch Ø' + fmt(d.d) });
-          if (d.d < cfg.rebateToolDia) warnings.push('Rundloch Ø' + fmt(d.d) + ' kleiner als Fräser – bitte prüfen.');
           continue;
         }
         if (vertical && !d.through) {
           // Runde Vertiefung ohne passenden Bohrer → als Kreistasche fräsen
-          const key = 'rpocket-' + ops.length;
+          const key = 'rpocket-' + (nRPocket++);
           const r = d.d / 2;
           ops.push({ kind: 'pocket', key: key, toolKind: 'mill', toolDefault: 'pocketTool', pocket: 0,
             segs: [{ type: 'arc', a: [d.x + r, d.y], b: [d.x + r, d.y], c: [d.x, d.y], r: r, ccw: true, full: true }],
@@ -456,6 +467,18 @@
       const wanted = cfg.order.filter((g) => defaultGroups.includes(g));
       order = wanted.concat(order.filter((g) => !wanted.includes(g)));
     }
+    // Bearbeitungen auf schrägen Ebenen erst nach dem Sägeschnitt, der die Fläche erzeugt (sonst Anfahrt ins Material)
+    const catOfG = new Map(ops.map((op) => [op.group, category(op)]));
+    const lastBlade = order.reduce((m, g, i) => (catOfG.get(g) === 'blade' ? i : m), -1);
+    if (lastBlade >= 0) {
+      const early = order.filter((g, i) => i < lastBlade && catOfG.get(g) === 'slantPlane');
+      if (early.length) {
+        order = order.filter((g) => !early.includes(g));
+        const at = order.reduce((m, g, i) => (catOfG.get(g) === 'blade' ? i : m), -1);
+        order.splice(at + 1, 0, ...early);
+        warnings.push('Bearbeitungen auf der schrägen Ebene wurden hinter den Sägeschnitt gesetzt – die Fläche entsteht erst durch den Schnitt.');
+      }
+    }
     const rank = new Map(order.map((g, i) => [g, i]));
     const sorted = ops.map((op, i) => ({ op: op, i: i })).sort((a, b) => rank.get(a.op.group) - rank.get(b.op.group) || a.i - b.i)
       .map((x) => x.op);
@@ -484,6 +507,20 @@
           warnings.push(op.label + ': Tiefe ' + fmt(dz) + ' mm ist kleiner als die Plattendicke ' + fmt(T) + ' mm – es wird nicht durchgefräst.');
         }
       }
+      if (/^round-/.test(op.key)) {
+        const dt = toolD(op.tool, null);
+        const dh = op.segs[0] ? 2 * Math.hypot(op.start[0] - op.segs[0].c[0], op.start[1] - op.segs[0].c[1]) : 0;
+        if (dt && dh && dt >= dh - 1e-6) warnings.push(op.label + ': Fräser ' + op.tool + ' (Ø' + fmt(dt) + ') ist nicht kleiner als das Loch – kleineren Fräser wählen.');
+      }
+      if (op.kind === 'slot') {
+        const bt = cfg.toolInfo && cfg.toolInfo[op.tool] && cfg.toolInfo[op.tool].blade;
+        op.single = false;
+        if (bt) {
+          if (Math.abs(op.width - bt) < 0.05) op.single = true;
+          else if (op.width < bt) warnings.push(op.label + ': Nut schmaler als das Sägeblatt ' + op.tool + ' (' + fmt(bt) + ' mm) – andere Säge wählen.');
+          else if (op.width > 2 * bt + 1e-6) warnings.push(op.label + ': breiter als zwei Schnitte mit ' + op.tool + ' (2 × ' + fmt(bt) + ' mm) – in der Mitte bleibt ein Steg stehen.');
+        }
+      }
       if (op.round) {
         const info = cfg.toolInfo && cfg.toolInfo[op.tool];
         const dRound = op.segs[0].r * 2;
@@ -499,6 +536,10 @@
         const pass = op.step || op.depth;
         if (info && info.len && pass > info.len + 1e-9) {
           warnings.push(op.label + ': ' + fmt(pass) + ' mm je Durchgang, Schneidenlänge ' + op.tool + ' nur ' + fmt(info.len) + ' mm – Zustellung verringern.');
+        }
+        const rinfo = op.rough && cfg.toolInfo && cfg.toolInfo[op.rough.tool];
+        if (rinfo && rinfo.len && pass > rinfo.len + 1e-9 && op.rough.tool !== op.tool) {
+          warnings.push(op.label + ': ' + fmt(pass) + ' mm je Durchgang, Schneidenlänge Vorfräser ' + op.rough.tool + ' nur ' + fmt(rinfo.len) + ' mm – Zustellung verringern.');
         }
       }
     }
@@ -672,6 +713,20 @@
           L.push('SetRetractStrategy(false, true, 2, 0);');
         }
         L.push('SetPneumaticHoodPosition(1);');
+        if (op.rough) {
+          // Vorfräsen: Werkzeug 1 mit Aufmaß (overMaterial), gleiche Geometrie
+          if (op.step) L.push('CreateUnidirectionalMillingStrategy(true, ' + fmt(op.step) + ', ' + fmt(cfg.finishDepth) + ', 1, false);');
+          L.push('CreateRoughFinish("Milling_' + op.milling + '_Vor", ' + fmt(op.depth) + ', "", TypeOfProcess.GeneralRouting, "' +
+            op.rough.tool + '", "-1", ' + op.side + ', "-1", "-1", "-1", ' + fmt(op.rough.allowance) + ');');
+          blank();
+          L.push('ResetApproachStrategy();');
+          L.push('ResetRetractStrategy();');
+          if (op.approach) {
+            L.push('SetApproachStrategy(false, true, 2);');
+            L.push('SetRetractStrategy(false, true, 2, 0);');
+          }
+          L.push('SetPneumaticHoodPosition(1);');
+        }
         if (op.step) L.push('CreateUnidirectionalMillingStrategy(true, ' + fmt(op.step) + ', ' + fmt(cfg.finishDepth) + ', 1, false);');
         L.push('CreateRoughFinish("Milling_' + op.milling + '", ' + fmt(op.depth) + ', "", TypeOfProcess.GeneralRouting, "' +
           op.tool + '", "-1", ' + op.side + ', "-1", "-1", "-1");');
@@ -711,12 +766,18 @@
           ', "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", -1, -1, -1, 0);');
         blank();
       } else if (op.kind === 'slant') {
+        // CreateSlantedRoughFinish fräst auf Werkzeugmitte: Bahn um r / cos(Neigung) zur Abfallseite versetzen,
+        // damit die Werkzeugflanke auf der schrägen Fläche liegt
         const n = ++counts.slant;
-        L.push('CreateSegment("SlantSegment_' + n + '", ' + pt(op.a) + ', ' + pt(op.b) + ');');
+        const ti = cfg.toolInfo && cfg.toolInfo[op.tool];
+        const off = ti && ti.d ? (ti.d / 2) / Math.cos(op.angle * Math.PI / 180) : 0;
+        if (!off) warnings.push(op.label + ': Durchmesser von ' + op.tool + ' unbekannt – Bahn liegt auf der Kante (Werkzeugmitte).');
+        const sh = (q) => [q[0] + op.scrap[0] * off, q[1] + op.scrap[1] * off];
+        L.push('CreateSegment("SlantSegment_' + n + '", ' + pt(sh(op.a)) + ', ' + pt(sh(op.b)) + ');');
         L.push('ResetApproachStrategy();');
         L.push('ResetRetractStrategy();');
         L.push('CreateSlantedRoughFinish("SlantedMilling_' + n + '", 0, ' + fmt(op.angle) + ', ' + op.approach + ', ' + fmt(op.depth) +
-          ', "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", 2, -1, -1, -1, 0);');
+          ', "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", -1, -1, -1, 0);');
         blank();
       } else if (op.kind === 'blade') {
         // Sägeschnitt über die ganze Dicke, geneigt. Material links der Schnittrichtung, Säge rechts (Korrektur 2).
@@ -742,6 +803,7 @@
         L.push('SetMachiningDirection(true);');
         L.push('CreateSlot("Slot_' + (++nSlot) + '", ' + fmt(op.depth) + ', "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", 1,-1,-1,-1,0);');
         blank();
+        if (op.single) continue; // Nut so breit wie das Blatt: ein Schnitt genügt
         L.push('SetMachiningDirection(false);');
         L.push('CreateSlot("Slot_' + (++nSlot) + '", ' + fmt(op.depth) + ', "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", 2,-1,-1,-1,' + fmt(-op.width) + ');');
         blank();

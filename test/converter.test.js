@@ -412,3 +412,57 @@ test('Zustelltiefe Taschen, Extra-Tiefe Säge, Vorritzen', () => {
   const [k] = convert(read('test/fixtures/holz.step'), {});
   assert.ok(!k.xcs.includes('CreateSectioningMillingStrategy'));
 });
+
+test('Prüfung: Befehlsparameter, stabile Schlüssel, Sägeblatt, Dateinamen', () => {
+  const { convert, partName, makeBatch, readParts, convertSolid } = require('../web/js/convert.js');
+  const T = require('../web/js/tools.js');
+  const toolInfo = T.infoMap(T.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
+  // CreateSlantedRoughFinish: nach dem Kopf nur inputSpeed, rotSpeed, speed, overMaterial (keine Korrektur)
+  const [f] = convert(read('test/fixtures/fuenfachs.step'), { toolInfo: toolInfo });
+  assert.ok(/CreateSlantedRoughFinish\("SlantedMilling_1", 0, 30, 2, 21, "", TypeOfProcess\.GeneralRouting, "E016", "-1", -1, -1, -1, 0\);/.test(f.xcs));
+  // Bahn auf Werkzeugmitte: um r / cos(30°) zur Abfallseite versetzt (Oberkante X = 589.03, E016 Ø11.38)
+  const m = /CreateSegment\("SlantSegment_1", ([\d.]+),/.exec(f.xcs);
+  assert.ok(Math.abs(parseFloat(m[1]) - (589.03 + 11.38 / 2 / Math.cos(Math.PI / 6))) < 0.05, m[1]);
+  // Formatfräsen zweistufig: Vorfräsen mit Aufmaß, Nachfräsen auf Endmaß, gleiche Geometrie
+  const [two] = convert(read('test/fixtures/seitenwand_32.step'), { toolInfo: toolInfo, formatTwoStep: true, formatRoughTool: 'E022', formatAllowance: 1.5 });
+  const iv = two.xcs.indexOf('CreateRoughFinish("Milling_1_Vor", ');
+  const ie = two.xcs.indexOf('CreateRoughFinish("Milling_1", ');
+  assert.ok(iv > 0 && ie > iv);
+  assert.ok(two.xcs.includes('"E022", "-1", 2, "-1", "-1", "-1", 1.5);'));
+  // Bearbeitungen auf schräger Ebene bleiben hinter dem Sägeschnitt, auch bei anderer Reihenfolge
+  const [s] = readParts(read('test/fixtures/holz.step'), 'holz.step');
+  const base = convertSolid(s, {}).groups;
+  const bad = base.filter((g) => /ppocket|Slanted/.test(g)).concat(base.filter((g) => !/ppocket|Slanted/.test(g)));
+  const r = convertSolid(s, {}, { overrides: { order: bad } });
+  assert.ok(r.xcs.lastIndexOf('CreateBladeCut(') < r.xcs.indexOf('CreateWorkplane('));
+  // Dateinamen: unter Windows reservierte Namen
+  assert.strictEqual(partName('CON'), 'CON_');
+  assert.strictEqual(partName('nul.txt'), 'nul_.txt');
+  // .bat: Umlaute im Pfad → UTF-8-Konsole, sonst reines ASCII
+  assert.ok(makeBatch({ toolsFile: 'C:\\Users\\Jürgen\\def.tlgx' }).includes('chcp 65001') );
+  assert.ok(/^[\x00-\x7f]*$/.test(makeBatch({})) && !makeBatch({}).includes('chcp'));
+});
+
+test('Prüfung: Geometrie-Sonderfälle', () => {
+  const { convert } = require('../web/js/convert.js');
+  const one = (n) => convert(read('test/fixtures/pruefung/' + n + '.step'), {}, n + '.step')[0];
+  // schräge Durchgangsbohrung (Zylinder nur von Ellipsen begrenzt)
+  const a = one('A_slant_through');
+  assert.ok(a.xcs.includes('CreateSlantedDrill('), 'schräge Bohrung erkannt');
+  // runde Platte: Kreis statt Rechteck
+  const h = one('H_disc');
+  assert.ok(!h.warnings.some((w) => /Rechteck L×B angenommen/.test(w)));
+  assert.ok(/CreatePolyline\("Contour_1", 600, 300\);\r\nAddArc2PointCenterToPolyline/.test(h.xcs));
+  // Durchbruch mit Fase oben / mit Glasfalz rundum: Durchbruch wird gefräst
+  for (const n of ['K_cutout_chamfer', 'L_cutout_rebate']) {
+    const k = one(n);
+    assert.strictEqual(k.panel.cutouts.length, 1, n);
+    assert.ok(k.ops.some((o) => /^cutout-/.test(o.key)), n);
+  }
+  // Loch ganz in der Fase: durchgehend, nicht als Tasche
+  const nh = one('N_hole_fully_in_chamfer');
+  assert.ok(nh.ops.some((o) => /^round-/.test(o.key)) && !nh.ops.some((o) => o.round));
+  // Zoll-Datei, deren mm-Basiseinheit vor der Zoll-Einheit steht: Einheit aus dem Kontext
+  const c = one('C_inch2');
+  assert.ok(Math.abs(c.panel.L - 600 * 25.4) < 0.01, String(c.panel.L));
+});

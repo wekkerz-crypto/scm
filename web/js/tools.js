@@ -13,16 +13,26 @@
     return m ? parseFloat(m[1]) : null;
   };
 
+  // XML-Entitäten in Namen/Beschreibungen auflösen (&amp; → & usw.)
+  function xmlText(s) {
+    return String(s).replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (m, e) => {
+      const k = e.toLowerCase();
+      if (k[0] === '#') return String.fromCodePoint(k[1] === 'x' ? parseInt(k.slice(2), 16) : parseInt(k.slice(1), 10));
+      return { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" }[k];
+    });
+  }
+
   function parseTlgx(text) {
     const tools = [];
     const blocks = String(text).split(/<CoreTool[\s>]/).slice(1);
     for (const b of blocks) {
       const type = (/i:type="(?:\w+:)?(\w+)"/.exec(b) || [])[1] || '';
       if (type !== 'CuttingTool') continue;
-      const name = (/<Name[^>]*>([^<]*)<\/Name>/.exec(b) || [])[1];
+      const rawName = (/<Name[^>]*>([^<]*)<\/Name>/.exec(b) || [])[1];
+      const name = rawName && xmlText(rawName).trim();
       if (!name) continue;
       const disabled = /<IsDisabled>true</.test(b);
-      const desc = ((/<Description>([^<]*)</.exec(b) || [])[1] || '').trim();
+      const desc = xmlText((/<Description>([^<]*)</.exec(b) || [])[1] || '').trim();
       const unit = (/KindOfTool>(\w+)</.exec(b) || [])[1] || '';
       const body = (/ToolBody i:type="(?:\w+:)?(\w+)"/.exec(b) || [])[1] || '';
       let kind;

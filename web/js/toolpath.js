@@ -39,6 +39,7 @@
 
   // Geschlossene Kontur (Segmente mit a/b aus der Analyse) in Punkte zerlegen
   function sampleLoop(segs) {
+    if (!segs || !segs.length) return [];
     if (segs.length === 1 && segs[0].type === 'arc' && segs[0].full) {
       const q = segs[0];
       const pts = [];
@@ -129,7 +130,7 @@
 
   // Tasche: Zeilen im Zickzack (Abstand = Ø × (1 − Überdeckung)), danach eine Bahn entlang der Kontur
   function pocketMoves(outer, islands, r, overlap) {
-    const step = Math.max(0.5, 2 * r * (1 - (overlap || 50) / 100));
+    const step = Math.max(0.5, 2 * r * (1 - (overlap ?? 50) / 100));
     let y0 = Infinity;
     let y1 = -Infinity;
     let x0 = Infinity;
@@ -238,7 +239,12 @@
       if (op.kind === 'contour') {
         const d = info(op.tool).d || 10;
         const raw = samplePoly(op.start, op.segs);
-        go(offsetPath(raw, d / 2, op.side), d, op.label, op.tool, i);
+        if (op.rough) {
+          // Vorfräsen mit Werkzeug 1, Aufmaß bleibt stehen
+          const d1 = info(op.rough.tool).d || 10;
+          go(offsetPath(raw, d1 / 2 + op.rough.allowance, op.side), d1, op.label + ' – vorfräsen', op.rough.tool, i);
+        }
+        go(offsetPath(raw, d / 2, op.side), d, op.label + (op.rough ? ' – nachfräsen' : ''), op.tool, i);
         // Durchbruch/Rundloch: nach dem letzten Schnitt fällt das Innenstück heraus
         if (/^(cutout|round)-/.test(op.key || '') && moves.length) moves[moves.length - 1].slug = raw;
       } else if (op.kind === 'pocket' && op.face && op.face !== 'Top') {
@@ -268,7 +274,7 @@
         if (op.segs.length === 1 && q0.type === 'arc' && q0.full && !op.islands.length) {
           // Kreistasche: Kreise von innen nach außen, im Uhrzeigersinn (wie im Programm)
           const rMax = q0.r - d / 2;
-          const step = Math.max(0.5, d * (1 - (cfg.pocketOverlap || 50) / 100));
+          const step = Math.max(0.5, d * (1 - (cfg.pocketOverlap ?? 50) / 100));
           const rings = [];
           for (let rr = Math.min(step, rMax); rr < rMax - 1e-6; rr += step) rings.push(rr);
           if (rMax > 0) rings.push(rMax);

@@ -24,6 +24,9 @@
   const len = (a) => Math.hypot(a[0], a[1], a[2]);
   const unit = (a) => { const l = len(a); return l > 0 ? mul(a, 1 / l) : a; };
   const near = (a, b, t) => Math.abs(a - b) <= (t === undefined ? TOL : t);
+  // Minimum/Maximum ohne Spread (große Teile mit vielen Punkten sprengen sonst den Aufrufstapel)
+  const minOf = (a) => { let m = Infinity; for (const v of a) if (v < m) m = v; return m; };
+  const maxOf = (a) => { let m = -Infinity; for (const v of a) if (v > m) m = v; return m; };
   const near2 = (p, q, t) => Math.hypot(p[0] - q[0], p[1] - q[1]) <= (t === undefined ? 0.05 : t);
 
   // ---------------------------------------------------------------- Kanten abtasten (Weltkoordinaten)
@@ -33,14 +36,36 @@
     return Math.atan2(dot(d, ax.y), dot(d, ax.x));
   }
 
+  // Abschnitt einer abgetasteten Kurve (B-Spline) zwischen den Eckpunkten der Kante
+  function sampleSpline(edge) {
+    const s = edge.curve.samples;
+    const nearest = (p) => { let bi = 0; let bd = Infinity; s.forEach((q, i) => { const d = len(sub(q, p)); if (d < bd) { bd = d; bi = i; } }); return bi; };
+    const fwd = edge.forward !== !!edge.curve.reversed;
+    let i0 = nearest(edge.start);
+    let i1 = nearest(edge.end);
+    const closed = len(sub(edge.start, edge.end)) < 1e-6;
+    let pts;
+    if (closed) pts = s.slice();
+    else if (fwd ? i1 >= i0 : i0 >= i1) pts = fwd ? s.slice(i0, i1 + 1) : s.slice(i1, i0 + 1).reverse();
+    else pts = fwd ? s.slice(i0).concat(s.slice(1, i1 + 1)) : s.slice(0, i0 + 1).reverse().concat(s.slice(i1).reverse().slice(1));
+    if (closed && !fwd) pts.reverse();
+    pts = pts.slice(1, -1);
+    return [edge.start].concat(pts, [edge.end]);
+  }
+
   function sampleEdge(edge) {
     const c = edge.curve;
-    if (c.type !== 'circle') return [edge.start, edge.end];
-    const a0 = circleAngle(c.ax, edge.start);
-    const a1 = circleAngle(c.ax, edge.end);
+    if (c.type === 'bspline') return sampleSpline(edge);
+    if (c.type !== 'circle' && c.type !== 'ellipse') return [edge.start, edge.end];
+    const r1 = c.type === 'ellipse' ? c.r1 : c.r;
+    const r2 = c.type === 'ellipse' ? c.r2 : c.r;
+    const ang = (p) => { const d = sub(p, c.ax.o); return Math.atan2(dot(d, c.ax.y) / r2, dot(d, c.ax.x) / r1); };
+    const a0 = ang(edge.start);
+    const a1 = ang(edge.end);
     const closed = len(sub(edge.start, edge.end)) < 1e-6;
     let sweep;
-    if (edge.forward) {
+    const fwdC = edge.forward !== !!c.reversed;
+    if (fwdC) {
       sweep = closed ? TWO_PI : ((a1 - a0) % TWO_PI + TWO_PI) % TWO_PI;
     } else {
       sweep = closed ? -TWO_PI : -(((a0 - a1) % TWO_PI + TWO_PI) % TWO_PI);
@@ -49,7 +74,7 @@
     const pts = [];
     for (let i = 0; i <= n; i++) {
       const a = a0 + (sweep * i) / n;
-      pts.push(add(c.ax.o, add(mul(c.ax.x, c.r * Math.cos(a)), mul(c.ax.y, c.r * Math.sin(a)))));
+      pts.push(add(c.ax.o, add(mul(c.ax.x, r1 * Math.cos(a)), mul(c.ax.y, r2 * Math.sin(a)))));
     }
     return pts;
   }
@@ -323,7 +348,7 @@
   function angularCoverage(face, a, center) {
     // Winkelabdeckung einer Zylinderfläche um die Achse a
     for (const b of face.bounds) for (const e of b.edges) {
-      if (e.curve.type === 'circle' && near2(e.start, e.end, 1e-6) && len(sub(e.start, e.end)) < 1e-6) return TWO_PI;
+      if (/^(circle|ellipse|bspline)$/.test(e.curve.type) && len(sub(e.start, e.end)) < 1e-6) return TWO_PI;
     }
     const u = unit(Math.abs(a[0]) < 0.9 ? cross(a, [1, 0, 0]) : cross(a, [0, 1, 0]));
     const v = cross(a, u);
@@ -356,8 +381,8 @@
       const cov = angularCoverage(f, a, o);
       const span = typeof cov === 'number' ? cov : cov.span;
       const ts = f.pts.map((p) => dot(p, a));
-      const t0 = Math.min(...ts);
-      const t1 = Math.max(...ts);
+      const t0 = minOf(ts);
+      const t1 = maxOf(ts);
       // gleiche Achse, gleicher Radius und überlappender Bereich entlang der Achse
       let g = groups.find((g) => Math.abs(dot(g.a, a)) > 1 - ATOL && len(sub(g.c, c)) < TOL && near(g.r, f.surf.r) &&
         t0 <= g.t1 + TOL && t1 >= g.t0 - TOL);
@@ -385,8 +410,8 @@
 
   function wallSegment(f) {
     const zs = f.pts.map((p) => p[2]);
-    const zmin = Math.min(...zs);
-    const zmax = Math.max(...zs);
+    const zmin = minOf(zs);
+    const zmax = maxOf(zs);
     if (f.surf.type === 'plane') {
       const n = f.surf.n;
       if (Math.abs(n[2]) > ATOL) return null;
@@ -418,7 +443,12 @@
       const s1 = gapEnd + (TWO_PI - maxGap);
       const pa = [c[0] + r * Math.cos(s0), c[1] + r * Math.sin(s0)];
       const pb = [c[0] + r * Math.cos(s1), c[1] + r * Math.sin(s1)];
-      const seg = { type: 'arc', a: pa, b: pb, c: c, r: r, ccw: true, full: maxGap < 1e-6 };
+      // ganzer Kreis: geschlossene Kreiskante (die Abtastung lässt sonst eine kleine Lücke)
+      const closedEdge = f.bounds.some((b) => b.edges.some((e) => e.curve.type === 'circle' && len(sub(e.start, e.end)) < 1e-6));
+      const full = closedEdge || maxGap < 1e-6;
+      const seg = full
+        ? { type: 'arc', a: [c[0] + r, c[1]], b: [c[0] + r, c[1]], c: c, r: r, ccw: true, full: true }
+        : { type: 'arc', a: pa, b: pb, c: c, r: r, ccw: true, full: false };
       return { zmin: zmin, zmax: zmax, seg: f.surf.concave ? reverseSeg(seg) : seg };
     }
     return null;
@@ -496,8 +526,8 @@
   // Obere und untere Kante einer schrägen Fläche, Neigung und Bahnrichtung (Abfall rechts).
   function inclinedEdges(f) {
     const zs = f.pts.map((q) => q[2]);
-    const zmin = Math.min(...zs);
-    const zmax = Math.max(...zs);
+    const zmin = minOf(zs);
+    const zmax = maxOf(zs);
     const top = inclinedSection(f, zmax - 1e-6);
     const bottom = inclinedSection(f, zmin + 1e-6);
     if (!top || !bottom) return null;
@@ -621,11 +651,11 @@
     const p0 = f.surf.p;
     const lx = f.pts.map((q) => dot(sub(q, p0), X));
     const ly = f.pts.map((q) => dot(sub(q, p0), Y));
-    const o = add(p0, add(mul(X, Math.min(...lx)), mul(Y, Math.min(...ly))));
+    const o = add(p0, add(mul(X, minOf(lx)), mul(Y, minOf(ly))));
     let T = 0;
     for (const q of allPts) T = Math.max(T, -dot(sub(q, o), n));
     const tf = compose({ m: [X, Y, n], t: [-dot(X, o), -dot(Y, o), -dot(n, o) + T] }, fr.tf);
-    return { tf: tf, L: Math.max(...lx) - Math.min(...lx), W: Math.max(...ly) - Math.min(...ly), T: T,
+    return { tf: tf, L: maxOf(lx) - minOf(lx), W: maxOf(ly) - minOf(ly), T: T,
       o: o, X: X, Y: Y, n: n, zRot: a * 180 / Math.PI, xRot: b * 180 / Math.PI };
   }
 
@@ -663,8 +693,8 @@
         const hf = lf.filter((g) => h.ids.includes(g.id));
         const zs = [];
         for (const g of hf) for (const q of g.pts) zs.push(q[2]);
-        const zmax = Math.max(...zs);
-        const zmin = Math.min(...zs);
+        const zmax = maxOf(zs);
+        const zmin = minOf(zs);
         const c = h.c;
         if (zmax < sf.T - TOL || sf.T - zmin < TOL || c[0] < -TOL || c[0] > sf.L + TOL || c[1] < -TOL || c[1] > sf.W + TOL) continue;
         drills.push({ x: c[0], y: c[1], d: h.d, depth: sf.T - zmin });
@@ -720,8 +750,15 @@
       if (Math.abs(a[2]) > 1 - ATOL) {
         const x = h.c[0];
         const y = h.c[1];
-        const atTop = h.tmax > T - TOL || onUpFloor(x, y, h.tmax);
         const atBottom = h.tmin < TOL;
+        // oben offen? Öffnung kann auch in einer Fase liegen (dann keine waagerechte Fläche darüber)
+        const openAbove = () => !faces.some((f) => {
+          if (f.surf.type !== 'plane' || Math.abs(Math.abs(f.surf.n[2]) - 1) > ATOL || f.surf.p[2] < h.tmax + TOL) return false;
+          const poly = (b) => { const pts = []; for (const q of b.edges.map(seg2DFromEdge)) for (const t of segPoints(q)) pts.push(t); return pts; };
+          const ob = f.bounds.find((b) => b.outer) || f.bounds[0];
+          return pointInPoly([x, y], poly(ob)) && !f.bounds.filter((b) => b !== ob).some((b) => pointInPoly([x, y], poly(b)));
+        });
+        const atTop = h.tmax > T - TOL || onUpFloor(x, y, h.tmax) || (h.tmax > T / 2 && openAbove());
         if (atTop && atBottom) res.drills.push({ face: 'Top', x: x, y: y, d: d, depth: T, through: true });
         else if (atTop) res.drills.push({ face: 'Top', x: x, y: y, d: d, depth: T - h.tmin, through: false });
         else if (atBottom) res.bottom.push({ kind: 'Bohrung', text: 'Bohrung Ø' + fmt(d) + ' von unten bei X=' + fmt(x) + ' Y=' + fmt(y) + ' Tiefe ' + fmt(h.tmax) });
@@ -789,11 +826,47 @@
 
     const fullInclined = inclined.filter((f) => {
       const zs = f.pts.map((q) => q[2]);
-      return Math.min(...zs) < TOL && Math.max(...zs) > T - TOL;
+      return minOf(zs) < TOL && maxOf(zs) > T - TOL;
     });
-    const through = chainLoops(walls.filter((w) => w.zmin < TOL && w.zmax > T - TOL).map((w) => wallAt(w, T / 2))
-      .concat(fullInclined.map((f) => inclinedSection(f, T / 2)).filter(Boolean)));
-    for (const lp of through.loops) if (loopArea(lp) < 0) res.cutouts.push(lp);
+    // Durchbrüche: Innenkonturen auf mehreren Höhen (auch mit Fase oder Falz am Rand). Ein Durchbruch ist es nur,
+    // wenn über und unter der Öffnung keine waagerechte Fläche liegt (sonst Tasche von oben oder unten).
+    const flats = faces.filter((f) => f.surf.type === 'plane' && Math.abs(Math.abs(f.surf.n[2]) - 1) < ATOL).map((f) => {
+      const poly = (b) => { const pts = []; for (const q of b.edges.map(seg2DFromEdge)) for (const t of segPoints(q)) pts.push(t); return pts; };
+      const ob = f.bounds.find((b) => b.outer) || f.bounds[0];
+      return { outer: poly(ob), inner: f.bounds.filter((b) => b !== ob).map(poly) };
+    });
+    const covered = (pt) => flats.some((fl) => pointInPoly(pt, fl.outer) && !fl.inner.some((ip) => pointInPoly(pt, ip)));
+    const insidePoint = (lp) => {
+      const pts = [];
+      for (const q of lp) for (const t of segPoints(q)) pts.push(t);
+      const bb = loopBBox(lp);
+      const cands = [[(bb.x0 + bb.x1) / 2, (bb.y0 + bb.y1) / 2]];
+      for (let i = 0; i + 1 < pts.length; i++) {
+        const a = pts[i];
+        const b = pts[i + 1];
+        const l = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        if (l < 1e-6) continue;
+        const m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+        const e = Math.min(0.2, l / 4);
+        cands.push([m[0] - (b[1] - a[1]) / l * e, m[1] + (b[0] - a[0]) / l * e], [m[0] + (b[1] - a[1]) / l * e, m[1] - (b[0] - a[0]) / l * e]);
+      }
+      return cands.find((c) => pointInPoly(c, pts));
+    };
+    const cand = [];
+    for (const zs of [delta, T / 2, T - delta]) {
+      const { loops } = chainLoops(walls.filter((w) => w.zmin <= zs + TOL && w.zmax >= zs - TOL).map((w) => wallAt(w, zs)).concat(sectionsAt(zs)));
+      for (const lp of loops) {
+        if (loopArea(lp) >= 0) continue;
+        const ip = insidePoint(lp);
+        if (ip && !covered(ip)) cand.push({ lp: lp, area: Math.abs(loopArea(lp)), bb: loopBBox(lp) });
+      }
+    }
+    // gleiche Öffnung auf mehreren Höhen: die engste Kontur fräsen (durch die ganze Dicke)
+    cand.sort((a, b) => a.area - b.area);
+    const inBB = (a, b) => a.x0 >= b.x0 - 0.05 && a.y0 >= b.y0 - 0.05 && a.x1 <= b.x1 + 0.05 && a.y1 <= b.y1 + 0.05;
+    const kept = [];
+    for (const c of cand) if (!kept.some((k) => inBB(k.bb, c.bb) || inBB(c.bb, k.bb))) kept.push(c);
+    for (const k of kept) res.cutouts.push(k.lp);
 
     // --- Schräge Flächen: schräge Kanten über die ganze Dicke, Fasen an Geraden (Ebene) und Rundungen (Kegel)
     const chamferFaces = [];
@@ -814,8 +887,8 @@
     for (const f of faces) {
       if (f.surf.type !== 'cone' || holeFaceIds.has(f.id)) continue;
       const zs = f.pts.map((q) => q[2]);
-      const zmin = Math.min(...zs);
-      const zmax = Math.max(...zs);
+      const zmin = minOf(zs);
+      const zmax = maxOf(zs);
       if (zmax < T - TOL && zmin > TOL) continue; // Bohrerspitze o. Ä.
       if (Math.abs(Math.abs(f.surf.a[2]) - 1) > ATOL) { warnings.push('Schräge Fase an einer Rundung wird nicht unterstützt.'); continue; }
       const c = [f.surf.o[0], f.surf.o[1]];

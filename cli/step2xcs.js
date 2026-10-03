@@ -41,18 +41,32 @@ if (fs.existsSync(toolsFile)) settings.toolInfo = infoMap(parseTlgx(fs.readFileS
 
 let failed = 0;
 const dirs = new Set();
+const used = new Map(); // Ordner → vergebene Dateinamen (nichts überschreiben, was in diesem Lauf entstand)
 for (const file of files) {
-  const parts = convert(fs.readFileSync(file, 'utf8'), settings, path.basename(file));
+  let parts;
+  try {
+    parts = convert(fs.readFileSync(file, 'utf8'), settings, path.basename(file));
+  } catch (e) {
+    failed++;
+    console.error('✗ ' + file + ': ' + (e.message || e));
+    continue;
+  }
   const dir = outDir || path.dirname(file);
   fs.mkdirSync(dir, { recursive: true });
   dirs.add(dir);
+  if (!used.has(dir)) used.set(dir, new Set());
+  const taken = used.get(dir);
   for (const part of parts) {
     if (part.error) {
       failed++;
       console.error('✗ ' + file + ' / ' + part.name + ': ' + part.error);
       continue;
     }
-    const target = path.join(dir, part.fileName);
+    let name = part.fileName.replace(/\.xcs$/i, '');
+    let k = name;
+    for (let j = 2; taken.has(k.toLowerCase()); j++) k = name + '_' + j;
+    taken.add(k.toLowerCase());
+    const target = path.join(dir, k + '.xcs');
     fs.writeFileSync(target, part.xcs);
     const p = part.panel;
     console.log('✓ ' + target + '  (' + [p.L, p.W, p.T].map((v) => Math.round(v * 100) / 100).join(' × ') + ' mm, ' +

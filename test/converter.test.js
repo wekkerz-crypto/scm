@@ -227,3 +227,24 @@ test('Frästiefe je Bearbeitung (Formatfräsen)', () => {
   assert.ok(shallow.warnings.some((w) => /nicht durchgefräst/.test(w)));
   assert.match(convertSolid(solid, { contourExtra: 1 }).xcs, /CreateRoughFinish\("Milling_1", 20,/);
 });
+
+test('Runde Vertiefung ohne passenden Bohrer wird als Kreistasche gefräst', () => {
+  const { convert } = require('../web/js/convert.js');
+  const T = require('../web/js/tools.js');
+  const toolInfo = T.infoMap(T.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
+  // Topfband Ø35 × 13 auf der Testplatte – ohne 35er Bohrer in der Liste
+  const [part] = convert(read('test/fixtures/testplatte.step'), { toolInfo: toolInfo, drillsVertical: [3, 5, 7, 8], orderRule: { on: false } });
+  assert.ok(!/CreateDrill \([^)]*, 35, /.test(part.xcs), 'nicht mehr als Bohrung');
+  assert.match(part.xcs, /CreateCircleCenterRadius\("Pocket_\d", 700, 22.5, 17.5, false\);\r\n\r\nResetApproachStrategy\(\);\r\nResetRetractStrategy\(\);\r\nSetPneumaticHoodPosition\(1\);\r\nCreateContourPocket\("Pocketing_\d", 13, "", TypeOfProcess.ConcentricalPocket, "E016"/);
+  const op = part.ops.find((o) => o.round);
+  assert.strictEqual(op.label, 'Rundtasche Ø35×13');
+  assert.ok(!part.warnings.some((w) => /Kein Bohrer Ø35/.test(w)));
+  // Mit Bohrer Ø35 in der Liste bleibt es eine Bohrung
+  const [drilled] = convert(read('test/fixtures/testplatte.step'), { toolInfo: toolInfo });
+  assert.match(drilled.xcs, /CreateDrill \("Drill_Vertical_\d+", 700, 22.5, 13, 35,/);
+  // Zu großer Fräser → Hinweis
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const [solid] = readParts(read('test/fixtures/testplatte.step'));
+  const big = convertSolid(solid, { toolInfo: toolInfo, drillsVertical: [7, 8] }, { overrides: { tools: { [op.key]: 'E014' } } });
+  assert.ok(big.warnings.some((w) => /Rundtasche Ø35×13: Fräser E014 .* passt nicht hinein/.test(w)), big.warnings.join('|'));
+});

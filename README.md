@@ -42,12 +42,13 @@ Die drei Pfade stehen oben in der `.bat` und lassen sich im Web-Tool unter *Werk
 | Abweichungen vom Rechteck (Sockelausschnitt, Rundungen, Schrägen) | offene Fräsbahn mit Linien/Bögen (`E016`, Tiefe D+2) |
 | Durchbrüche (innen) | geschlossene Fräsbahn (`E016`) |
 | Bohrung von oben (Sackloch / durch) | `CreateDrill` Spitze `"P"` / `"L"` (durch: Tiefe D+2) |
-| Bohrung, für die kein Bohrer existiert und die durchgeht | Kreisfräsung (`E016`) |
+| Bohrung, für die kein Bohrer existiert und die durchgeht | Kreisfräsung entlang der Kontur (`E016`) |
 | Bohrung in der Kante links/rechts/vorne/hinten | `SelectWorkplane(...)` + horizontale `CreateDrill` |
 | gleichabständige Lochreihen | `CreatePattern(...)` |
 | durchgehende Nut | Säge `066`, zwei Durchgänge wie im Beispiel |
 | Falz an einer Kante | Fräsbahn entlang der Falzflanke (ggf. mehrere Bahnen) |
 | Tasche (auch mit Inseln, Eckenradius-Prüfung) | `CreateContourPocket` (Bohrungen im Taschenboden werden von oben gebohrt) |
+| runde Vertiefung von oben ohne passenden Bohrer | Kreistasche: `CreateCircleCenterRadius` + `CreateContourPocket` (Hinweis, wenn der Fräser nicht hineinpasst) |
 | Fase oben / unten an einer geraden Kante | `CreateChamfer` (Breite × Höhe, Werkzeugposition oben/unten) |
 | schräge Kante über die ganze Dicke (Gehrung) | `CreateSlantedRoughFinish` mit geneigtem Werkzeug (5-Achs) |
 | schräge Bohrung | `CreateSlantedDrill` (5-Achs) |

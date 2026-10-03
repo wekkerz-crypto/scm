@@ -67,7 +67,7 @@
     const k = op.key || '';
     if (k === 'format') return 'format';
     const prefix = k.split('-')[0];
-    return { notch: 'notch', cutout: 'cutout', round: 'cutout', rebate: 'rebate', pocket: 'pocket', chamfer: 'chamfer',
+    return { notch: 'notch', cutout: 'cutout', round: 'cutout', rebate: 'rebate', pocket: 'pocket', rpocket: 'pocket', chamfer: 'chamfer',
       slant: 'slant', slot: 'slot' }[prefix] || 'notch';
   }
 
@@ -264,6 +264,16 @@
           if (d.d < cfg.rebateToolDia) warnings.push('Rundloch Ø' + fmt(d.d) + ' kleiner als Fräser – bitte prüfen.');
           continue;
         }
+        if (vertical && !d.through) {
+          // Runde Vertiefung ohne passenden Bohrer → als Kreistasche fräsen
+          const key = 'rpocket-' + ops.length;
+          const r = d.d / 2;
+          ops.push({ kind: 'pocket', key: key, toolKind: 'mill', toolDefault: 'pocketTool', pocket: 0,
+            segs: [{ type: 'arc', a: [d.x + r, d.y], b: [d.x + r, d.y], c: [d.x, d.y], r: r, ccw: true, full: true }],
+            islands: [], depth: d.depth, tool: cfg.pocketTool, round: true,
+            label: 'Rundtasche Ø' + fmt(d.d) + '×' + fmt(d.depth) });
+          continue;
+        }
         warnings.push('Kein Bohrer Ø' + fmt(d.d) + (vertical ? ' (vertikal)' : ' (horizontal)') + ' in der Werkzeugliste – Bohrung trotzdem ausgegeben.');
       }
       const loc = localDrill(p, d);
@@ -346,6 +356,13 @@
         if (dz < T - 1e-9 && !depthWarned.has(op.key)) {
           depthWarned.add(op.key);
           warnings.push(op.label + ': Tiefe ' + fmt(dz) + ' mm ist kleiner als die Plattendicke ' + fmt(T) + ' mm – es wird nicht durchgefräst.');
+        }
+      }
+      if (op.round) {
+        const info = cfg.toolInfo && cfg.toolInfo[op.tool];
+        const dRound = op.segs[0].r * 2;
+        if (info && info.d && info.d >= dRound - 1e-6) {
+          warnings.push(op.label + ': Fräser ' + op.tool + ' (Ø' + fmt(info.d) + ') passt nicht hinein – kleineren Fräser wählen.');
         }
       }
       if (op.kind === 'contour' || op.kind === 'pocket') {

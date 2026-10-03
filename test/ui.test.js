@@ -54,3 +54,40 @@ test('Web-Tool: STEP laden per Knopf und Ablegen, Liste leeren', { skip: !chromi
     await browser.close();
   }
 });
+
+test('Web-Tool: Bearbeitungsschritte mit der Maus verschieben', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    await p.click('.part:nth-of-type(3)');
+    const names = () => p.$$eval('tbody.grp .jump', (x) => x.map((e) => e.textContent));
+    const before = await names();
+    assert.strictEqual(before[before.length - 1], 'Formatfräsen');
+    const grip = await (await p.$('[data-grip="format"]')).boundingBox();
+    const first = await (await p.$('tbody.grp')).boundingBox();
+    await p.mouse.move(grip.x + 5, grip.y + 5);
+    await p.mouse.down();
+    await p.mouse.move(grip.x + 5, first.y + 3, { steps: 12 });
+    await p.mouse.up();
+    const after = await names();
+    assert.strictEqual(after[0], 'Formatfräsen');
+    assert.deepStrictEqual(after.slice(1), before.slice(0, -1));
+    const xcs = await p.textContent('#xcs');
+    assert.ok(xcs.indexOf('CreateRoughFinish("Milling_1"') < xcs.indexOf('CreateDrill'), 'Programm folgt der Reihenfolge');
+    // Esc bricht ab
+    const g2 = await (await p.$('[data-grip="format"]')).boundingBox();
+    await p.mouse.move(g2.x + 5, g2.y + 5);
+    await p.mouse.down();
+    await p.mouse.move(g2.x + 5, g2.y + 300, { steps: 8 });
+    await p.keyboard.press('Escape');
+    await p.mouse.up();
+    assert.strictEqual((await names())[0], 'Formatfräsen');
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});

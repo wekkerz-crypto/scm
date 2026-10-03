@@ -128,6 +128,17 @@ select, input[type="text"], input[type="number"] { border: 1px solid var(--line)
 .tl button:hover, .tl button:focus-visible { opacity: 1; }
 .tl .head { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1px; background: var(--ink); pointer-events: none; transition: left .05s linear; }
 table.ops tr.now td { background: var(--hl); }
+.grip { display: inline-block; width: 1.1em; margin-right: 2px; color: var(--muted); cursor: grab; user-select: none; touch-action: none;
+  font-size: 1rem; line-height: 1; text-align: center; }
+.grip:hover { color: var(--accent); }
+tbody.grp.lifted { opacity: 0.45; }
+tbody.grp.lifted td { background: var(--hl); }
+body.dragging-step, body.dragging-step * { cursor: grabbing !important; user-select: none; }
+.steps { position: sticky; }
+.dropline { position: absolute; left: 12px; right: 12px; height: 3px; border-radius: 2px; background: var(--accent); pointer-events: none;
+  box-shadow: 0 0 0 3px var(--hl); z-index: 2; }
+.dragghost { position: fixed; z-index: 30; pointer-events: none; background: var(--surface); border: 1px solid var(--accent); border-radius: var(--r);
+  padding: 6px 10px; font-size: 0.88rem; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25); max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 table.ops td.k .jump { border: 0; background: none; padding: 0; text-align: left; cursor: pointer; color: inherit; font: inherit; }
 table.ops td.k .jump:hover { color: var(--accent); }
 .view { position: relative; }
@@ -718,15 +729,16 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
       '<div class="legend">' + legend.map(([c, t]) => '<span><i style="background:' + c + '"></i>' + t + '</span>').join('') + '</div></div></div>' +
       '<aside class="card steps" aria-label="Bearbeitungsschritte"><div class="opshead"><h3>Bearbeitungsschritte</h3>' +
       (part.overrides.order ? '<button class="btn ghost small" id="resetorder" type="button">Reihenfolge zurücksetzen</button>' : '') +
-      '</div><table class="ops"><tbody>' +
-      opsSummary(r).map((x, i, all) => '<tr data-group="' + esc(x.group) + '"' + (x.op ? ' class="has-ctl"' : '') + '><td class="k"><span class="num">' + (i + 1) + '</span>' +
+      '</div><table class="ops" id="opstable">' +
+      opsSummary(r).map((x, i, all) => '<tbody class="grp" data-grp="' + esc(x.group) + '"><tr data-group="' + esc(x.group) + '"' + (x.op ? ' class="has-ctl"' : '') + '><td class="k">' +
+        '<span class="grip" data-grip="' + esc(x.group) + '" title="Gedrückt halten und ziehen, um die Reihenfolge zu ändern" aria-hidden="true">⠿</span><span class="num">' + (i + 1) + '</span>' +
         '<span class="sw" style="background:' + x.c + '"></span><button type="button" class="jump" data-jump="' + esc(x.group) + '" title="In der Animation hierher springen">' +
         esc(x.k) + '</button></td><td class="v">' + esc(x.v) + '</td><td class="mv">' +
         '<button type="button" class="mvb" data-move="' + esc(x.group) + '" data-dir="-1"' + (i === 0 ? ' disabled' : '') + ' aria-label="' + esc(x.k) + ' nach oben">↑</button>' +
         '<button type="button" class="mvb" data-move="' + esc(x.group) + '" data-dir="1"' + (i === all.length - 1 ? ' disabled' : '') + ' aria-label="' + esc(x.k) + ' nach unten">↓</button>' +
         '</td></tr>' +
-        (x.op ? '<tr class="ctlrow" data-group="' + esc(x.group) + '"><td colspan="3"><div class="ctl">' + opControls(part, x.op) + '</div></td></tr>' : '')).join('') +
-      '</tbody></table>' + (r.warnings.length ? '<ul class="warns">' + r.warnings.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ul>' : '') +
+        (x.op ? '<tr class="ctlrow" data-group="' + esc(x.group) + '"><td colspan="3"><div class="ctl">' + opControls(part, x.op) + '</div></td></tr>' : '') + '</tbody>').join('') +
+      '</table><div class="dropline" id="dropline" hidden></div>' + (r.warnings.length ? '<ul class="warns">' + r.warnings.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ul>' : '') +
       '</aside></div>' +
       '<div class="card code"><div class="bar"><span class="fname"><input id="fname" type="text" value="' + esc(part.fileName) + '" aria-label="Dateiname"></span>' +
       '<span class="tools"><button class="btn" id="copy" type="button">Kopieren</button><button class="btn primary" id="dl" type="button">Speichern</button></span></div>' +
@@ -745,6 +757,7 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
       if (again && !again.disabled) again.focus();
     }));
     if ($('resetorder')) $('resetorder').addEventListener('click', () => { delete part.overrides.order; compute(part); render(); });
+    setupStepDrag(part);
     el.querySelectorAll('select[data-tool]').forEach((sel) => sel.addEventListener('change', () => {
       part.overrides.tools[sel.dataset.tool] = sel.value;
       compute(part); render();
@@ -795,6 +808,80 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
   }
 
   function render() { renderParts(); renderDetail(); }
+
+  // Schritte mit gedrückter Maus (oder Finger) am Griff verschieben
+  function setupStepDrag(part) {
+    const table = $('opstable');
+    const aside = table && table.closest('.steps');
+    if (!table || !aside) return;
+    table.addEventListener('pointerdown', (e) => {
+      const grip = e.target.closest('[data-grip]');
+      if (!grip || e.button > 0) return;
+      e.preventDefault();
+      const group = grip.dataset.grip;
+      const groups = Array.from(table.querySelectorAll('tbody.grp'));
+      const from = groups.findIndex((g) => g.dataset.grp === group);
+      const lifted = groups[from];
+      const line = $('dropline');
+      const ghost = document.createElement('div');
+      ghost.className = 'dragghost';
+      ghost.textContent = lifted.querySelector('.jump').textContent;
+      document.body.appendChild(ghost);
+      lifted.classList.add('lifted');
+      document.body.classList.add('dragging-step');
+      let target = from;
+      let scrollTimer = null;
+
+      const place = (y) => {
+        // Einfügeposition: vor dem ersten Schritt, dessen Mitte unter dem Zeiger liegt
+        target = groups.length;
+        for (let i = 0; i < groups.length; i++) {
+          const r = groups[i].getBoundingClientRect();
+          if (y < r.top + r.height / 2) { target = i; break; }
+        }
+        const ar = aside.getBoundingClientRect();
+        const ref = target < groups.length ? groups[target].getBoundingClientRect().top : groups[groups.length - 1].getBoundingClientRect().bottom;
+        line.style.top = (ref - ar.top + aside.scrollTop - 2) + 'px';
+        line.hidden = target === from || target === from + 1;
+      };
+      const move = (ev) => {
+        ghost.style.left = (ev.clientX + 14) + 'px';
+        ghost.style.top = (ev.clientY + 10) + 'px';
+        place(ev.clientY);
+        // am Rand des Fensters automatisch scrollen
+        const ar = aside.getBoundingClientRect();
+        clearInterval(scrollTimer);
+        const dir = ev.clientY < ar.top + 40 ? -1 : ev.clientY > ar.bottom - 40 ? 1 : 0;
+        if (dir) scrollTimer = setInterval(() => { aside.scrollTop += dir * 12; place(ev.clientY); }, 30);
+      };
+      const end = (ev, cancel) => {
+        clearInterval(scrollTimer);
+        document.removeEventListener('pointermove', move);
+        document.removeEventListener('pointerup', up);
+        document.removeEventListener('pointercancel', cancelDrag);
+        document.removeEventListener('keydown', key);
+        ghost.remove();
+        line.hidden = true;
+        lifted.classList.remove('lifted');
+        document.body.classList.remove('dragging-step');
+        if (cancel || target === from || target === from + 1) return;
+        const order = (part.result.groups || []).slice();
+        const [g] = order.splice(from, 1);
+        order.splice(target > from ? target - 1 : target, 0, g);
+        part.overrides.order = order;
+        compute(part); render();
+        toast('Reihenfolge geändert.');
+      };
+      const up = (ev) => end(ev, false);
+      const cancelDrag = (ev) => end(ev, true);
+      const key = (ev) => { if (ev.key === 'Escape') end(ev, true); };
+      document.addEventListener('pointermove', move);
+      document.addEventListener('pointerup', up);
+      document.addEventListener('pointercancel', cancelDrag);
+      document.addEventListener('keydown', key);
+      move(e);
+    });
+  }
 
   // ------------------------------------------------ Animation der Werkzeugbahn
   const FEED = 150;    // mm/s bei 1× (Darstellung, nicht Maschinenvorschub)

@@ -70,8 +70,9 @@ in der Bearbeitungsliste im Feld *Tiefe* absolut in mm setzen; ist sie kleiner a
   die gewünschte Folge bringen, mit *Regel verwenden* zu- und abschalten. Standard: erst bohren, dann fräsen,
   Formatfräsen zuletzt. Ist die Regel aus, bleibt die erkannte Reihenfolge (wie in den Maestro-Beispielen).
   CLI: `--no-order-rule`.
-- Je Teil lässt sich jede Bearbeitung zusätzlich mit ↑/↓ verschieben (gleiche Bohrungen als Block, ein Falz mit allen
-  Bahnen); das hat Vorrang vor der Regel.
+- Je Teil lässt sich jede Bearbeitung zusätzlich verschieben: am Griff ⠿ mit gedrückter Maus (oder Finger) an die
+  gewünschte Stelle ziehen (Esc bricht ab), oder mit ↑/↓. Gleiche Bohrungen wandern als Block, ein Falz mit allen
+  Bahnen; das hat Vorrang vor der Regel.
 - Programm, Nummerierung und Animation folgen der Reihenfolge; nach Kantenbohrungen wird vor Fräsungen automatisch
   wieder `SelectWorkplane("Top")` gesetzt.
 

@@ -1047,7 +1047,9 @@
       const b = extract(prep, frame(prep, rot, true));
       flip = b.bottom.length < a.bottom.length || (b.bottom.length === a.bottom.length && topScore(b) > topScore(a));
     }
-    const res = extract(prep, frame(prep, rot, flip));
+    const fr = frame(prep, rot, flip);
+    const res = extract(prep, fr);
+    res.tf = fr.tf; // Modell (mm) → Plattenkoordinaten, für die 3D-Ansicht
     res.name = solid.name;
     res.orientation = { rot: rot, flip: flip };
     return res;

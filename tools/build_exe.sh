@@ -4,9 +4,9 @@
 set -e
 cd "$(dirname "$0")/.."
 rm -rf exe/web
-mkdir -p exe/web/js dist
+mkdir -p exe/web dist
 cp web/index.html exe/web/
-cp web/js/*.js exe/web/js/
+cp -r web/js exe/web/js
 cd exe
 CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-s -w -H windowsgui" -o ../dist/STEP2XCS.exe .
 cd ..

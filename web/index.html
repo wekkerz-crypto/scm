@@ -175,6 +175,16 @@ table.ops td.k .jump { border: 0; background: none; padding: 0; text-align: left
   display: inline-block; max-width: calc(100% - 62px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
 table.ops td.k .jump:hover { color: var(--accent); }
 .view { position: relative; }
+.view3d { position: relative; height: max(480px, calc(100vh - 260px)); border-radius: var(--r); overflow: hidden; background: var(--sunken); }
+.stagecard:fullscreen .view3d { height: calc(100vh - 230px); }
+.v3slot, .v3host { position: absolute; inset: 0; }
+.v3host canvas { display: block; outline: none; }
+.v3bar { position: absolute; top: 10px; right: 10px; display: flex; gap: 4px; padding: 3px; border-radius: 99px; z-index: 2;
+  background: color-mix(in srgb, var(--surface) 82%, transparent); border: 1px solid var(--line); backdrop-filter: blur(6px); }
+.v3bar button { border: 0; background: none; color: var(--muted); font: inherit; font-size: 0.8rem; padding: 3px 10px; border-radius: 99px; cursor: pointer; }
+.v3bar button:hover { color: var(--ink); }
+.v3bar button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.18); }
+.v3msg { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 0.95rem; z-index: 1; pointer-events: none; padding: 20px; text-align: center; }
 .view canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .anim { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; }
 .anim input[type="range"] { flex: 1 1 200px; min-width: 0; accent-color: var(--accent); }
@@ -344,6 +354,7 @@ table.fmt.one .onet { display: inline; }
 <script src="js/toolpath.js"></script>
 <script src="js/tools-default.js"></script>
 <script src="js/sample.js"></script>
+<script src="js/view3d.js"></script>
 <script>
 (function () {
   'use strict';
@@ -444,13 +455,14 @@ table.fmt.one .onet { display: inline; }
   document.querySelectorAll('[data-theme-set]').forEach((b) => b.addEventListener('click', () => {
     storeJson(THEME_KEY, b.dataset.themeSet);
     applyTheme(b.dataset.themeSet);
+    if (v3.viewer) v3.viewer.setTheme(isDarkTheme());
     if (typeof drawAnim === 'function') drawAnim(); // Leinwand mit den neuen Farben neu zeichnen
   }));
 
   const state = { parts: [], sel: 0, settings: loadSettings(),
     tools: customTools ? customTools.tools : (window.DEFAULT_TOOLS || []),
     toolSource: customTools ? customTools.source : 'def.tlgx (Standard)',
-    favorites: loadJson(FAV_KEY, []) };
+    favorites: loadJson(FAV_KEY, []), mode3d: !!loadJson('step2xcs.view3d.v1', false) };
 
   const usableTools = (kind) => state.tools.filter((t) => t.kind === kind && !t.disabled);
 
@@ -630,7 +642,7 @@ table.fmt.one .onet { display: inline; }
       s.name = k;
     }
     for (const s of solids) {
-      const part = { label: label, solid: s, orientation: null, field: null, fileName: null, result: null,
+      const part = { label: label, solid: s, stepText: text, orientation: null, field: null, fileName: null, result: null,
         overrides: { tools: {}, steps: {}, depths: {} } };
       compute(part);
       state.parts.push(part);
@@ -1012,11 +1024,17 @@ table.fmt.one .onet { display: inline; }
     el.innerHTML =
       '<div class="work"><div class="card stagecard" id="stagecard"><div class="dhead"><div class="title"><h2>' + esc(p.name) + '</h2><span class="dims">' + fmt(p.L) + ' × ' + fmt(p.W) + ' × ' +
       fmt(p.T) + ' mm · ' + esc(part.label) + '</span></div>' +
-      '<div class="tools"><button class="btn" id="rot" type="button">Drehen 90°</button><button class="btn" id="flip" type="button">Wenden</button>' +
+      '<div class="tools"><span class="seg" role="group" aria-label="Ansicht"><button type="button" data-vmode="2d" aria-pressed="' + !state.mode3d + '">2D</button>' +
+      '<button type="button" data-vmode="3d" aria-pressed="' + !!state.mode3d + '">3D</button></span>' +
+      '<button class="btn" id="rot" type="button">Drehen 90°</button><button class="btn" id="flip" type="button">Wenden</button>' +
       '<label for="field">Feld <select id="field">' + fieldOpts.map((f) => '<option' + (f === r.field ? ' selected' : '') + '>' + esc(f) + '</option>').join('') +
       '</select></label></div></div>' +
       '<div class="stage" style="margin-top:12px">' +
-      '<div class="view" id="view">' + drawPanel(r) + '<canvas id="animcv" aria-hidden="true"></canvas></div>' +
+      '<div class="view" id="view"' + (state.mode3d ? ' hidden' : '') + '>' + drawPanel(r) + '<canvas id="animcv" aria-hidden="true"></canvas></div>' +
+      '<div class="view3d" id="view3d"' + (state.mode3d ? '' : ' hidden') + '><div class="v3slot" id="v3slot"></div>' +
+      '<div class="v3bar"><button type="button" data-v3="iso">Iso</button><button type="button" data-v3="top">Oben</button>' +
+      '<button type="button" data-v3="front">Vorne</button><button type="button" data-v3="raw" aria-pressed="' + v3.showRaw + '">Rohteil</button></div>' +
+      '<div class="v3msg" id="v3msg" hidden></div></div>' +
       '<div class="tl" id="tl" aria-label="Zeitleiste der Bearbeitungen"></div>' +
       '<div class="hud" id="hud" aria-live="polite"></div>' +
       '<div class="anim"><button class="btn primary" id="aplay" type="button">▶ Werkzeugbahn abspielen</button>' +
@@ -1045,6 +1063,19 @@ table.fmt.one .onet { display: inline; }
       '<pre class="xcs" id="xcs">' + highlight(r.xcs) + '</pre></div>';
 
     try { setupAnim(part); } catch (e) { console.error(e); } // Animation darf die übrige Bedienung nie lahmlegen
+    el.querySelectorAll('[data-vmode]').forEach((b) => b.addEventListener('click', () => {
+      state.mode3d = b.dataset.vmode === '3d';
+      storeJson(VIEW_KEY, state.mode3d);
+      render();
+    }));
+    el.querySelectorAll('[data-v3]').forEach((b) => b.addEventListener('click', () => {
+      if (b.dataset.v3 === 'raw') {
+        v3.showRaw = !v3.showRaw;
+        b.setAttribute('aria-pressed', String(v3.showRaw));
+        if (v3.viewer) v3.viewer.setRaw(v3.showRaw);
+      } else if (v3.viewer) v3.viewer.view(b.dataset.v3);
+    }));
+    if (state.mode3d) mount3d(part);
     el.querySelectorAll('[data-move]').forEach((b) => b.addEventListener('click', () => {
       const order = (part.result.groups || []).slice();
       const i = order.indexOf(b.dataset.move);
@@ -1281,7 +1312,7 @@ table.fmt.one .onet { display: inline; }
   }
 
   function tick(now) {
-    if (!anim.playing || !$('animcv')) return;
+    if (!anim.playing || !$('hud')) return;
     anim.t = Math.min(anim.total, anim.t + ((now - anim.last) / 1000) * anim.speed);
     anim.last = now;
     if (anim.t >= anim.total) anim.playing = false;
@@ -1497,7 +1528,77 @@ table.fmt.one .onet { display: inline; }
     ctx.closePath(); ctx.fill();
   }
 
+  // ------------------------------------------------ 3D-Ansicht (STEP-Netz + Werkzeugbahn in 3D)
+  const VIEW_KEY = 'step2xcs.view3d.v1';
+  function isDarkTheme() {
+    const t = document.documentElement.getAttribute('data-theme');
+    return t ? t === 'dark' : !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  }
+  const v3 = { viewer: null, host: null, result: null, showRaw: true, loading: false, error: null };
+
+  function v3message(text) {
+    const m = $('v3msg');
+    if (!m) return;
+    m.hidden = !text;
+    m.textContent = text || '';
+  }
+
+  function mount3d(part) {
+    const slot = $('v3slot');
+    if (!slot) return;
+    if (!part.stepText) { v3message('Für dieses Teil gibt es keine 3D-Daten.'); return; }
+    if (v3.error) { v3message(v3.error); return; }
+    if (v3.host) slot.appendChild(v3.host);
+    v3message(v3.viewer ? '' : '3D wird geladen …');
+    View3D.load().then((occt) => {
+      if (!state.mode3d || !$('v3slot')) return;
+      if (!v3.viewer) {
+        v3.host = document.createElement('div');
+        v3.host.className = 'v3host';
+        $('v3slot').appendChild(v3.host);
+        try { v3.viewer = new View3D.Viewer(v3.host); } catch (e) { throw new Error('WebGL ist in diesem Browser nicht verfügbar.'); }
+        v3.viewer.setRaw(v3.showRaw);
+      } else if (v3.host.parentNode !== $('v3slot')) $('v3slot').appendChild(v3.host);
+      const cur = state.parts[state.sel];
+      if (!cur || !cur.result || !cur.result.panel) return;
+      const css = getComputedStyle(document.documentElement);
+      const col = (n) => css.getPropertyValue(n).trim() || '#888888';
+      v3.viewer.setTheme(isDarkTheme());
+      if (v3.result !== cur.result) {
+        v3.result = cur.result;
+        const ops = cur.result.ops;
+        v3.viewer.setPart({
+          meshes: View3D.stepMeshes(occt, cur.stepText), panel: cur.result.panel, tf: cur.result.panel.tf,
+          raw: state.settings.rawOversize || 0, board: '#d4ae7b',
+          colorOf: (m) => col(opToken(ops[m.op])),
+        });
+      }
+      v3message('');
+      drawAnim();
+    }).catch((e) => { v3.error = (e && e.message) || String(e); v3message('3D nicht möglich: ' + v3.error); });
+  }
+
+  function draw3d(now) {
+    if (!anim.result) return;
+    const active = anim.playing || anim.t > 0;
+    let i = -1;
+    let f = 0;
+    for (let k = 0; k < anim.times.length; k++) {
+      if (anim.t < anim.times[k][1] || k === anim.times.length - 1) { i = k; const [t0, t1] = anim.times[k]; f = t1 > t0 ? Math.max(0, Math.min(1, (anim.t - t0) / (t1 - t0))) : 1; break; }
+    }
+    if (anim.t >= anim.total) i = -1;
+    const m = i >= 0 ? anim.moves[i] : null;
+    const cur = m ? { m: m, f: f, i: i, at: along(m.pts, f).at } : null;
+    if (v3.viewer && v3.result === anim.result) {
+      const spin = reduceMotion ? 0 : ((now || performance.now()) / 1000) * 14;
+      v3.viewer.setTime(anim.moves, i, f, active, spin, ToolLibrary.infoMap(state.tools));
+    }
+    updateHud(cur);
+    updateControls(cur);
+  }
+
   function drawAnim(now) {
+    if (state.mode3d) { draw3d(now); return; }
     const cv = $('animcv');
     const svg = document.querySelector('#view svg');
     if (!cv || !svg || !anim.result) return;

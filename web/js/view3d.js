@@ -1,0 +1,537 @@
+/*
+ * 3D-Ansicht: STEP-Bauteil (Netz aus OpenCascade, occt-import-js) mit three.js,
+ * dazu Rohteil, Nullpunkt und die Werkzeugbahn als Animation in 3D.
+ *
+ * Alles lokal (web/js/vendor), lädt erst beim ersten Umschalten auf 3D – auch offline und aus der .exe.
+ * Koordinaten: Plattenkoordinaten wie im Programm (X Länge, Y Breite, Z Dicke, Ursprung vorne links unten).
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.View3D = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  const VENDOR = ['three.min.js', 'OrbitControls.js', 'RoomEnvironment.js', 'LineSegmentsGeometry.js', 'LineGeometry.js',
+    'LineMaterial.js', 'LineSegments2.js', 'Line2.js', 'occt-import-js.js', 'occt-wasm.js'];
+
+  let loading = null;
+  const meshCache = new Map(); // STEP-Text → Ergebnis von OpenCascade
+
+  function vendorBase() {
+    const s = document.querySelector('script[src*="view3d.js"]');
+    return s ? s.src.replace(/view3d\.js.*$/, 'vendor/') : 'js/vendor/';
+  }
+
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const el = document.createElement('script');
+      el.src = src;
+      el.onload = resolve;
+      el.onerror = () => reject(new Error('Datei fehlt: ' + src));
+      document.head.appendChild(el);
+    });
+  }
+
+  // Bibliotheken und OpenCascade laden (einmal)
+  function load() {
+    if (!loading) {
+      loading = (async () => {
+        const base = vendorBase();
+        for (const f of VENDOR) await loadScript(base + f); // nacheinander (hängen voneinander ab)
+        if (typeof DecompressionStream === 'undefined') throw new Error('Browser zu alt für die 3D-Ansicht (DecompressionStream fehlt).');
+        const gz = Uint8Array.from(atob(window.OCCT_WASM_GZ), (c) => c.charCodeAt(0));
+        const wasm = new Uint8Array(await new Response(new Blob([gz]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());
+        return window.occtimportjs({ wasmBinary: wasm });
+      })();
+      loading.catch(() => { loading = null; });
+    }
+    return loading;
+  }
+
+  function stepMeshes(occt, text) {
+    let r = meshCache.get(text);
+    if (!r) {
+      r = occt.ReadStepFile(new TextEncoder().encode(text), {
+        linearUnit: 'millimeter', linearDeflectionType: 'absolute_value', linearDeflection: 0.05, angularDeflection: 0.12,
+      });
+      if (!r || !r.success) throw new Error('OpenCascade konnte die STEP-Datei nicht lesen.');
+      meshCache.set(text, r);
+    }
+    return r.meshes;
+  }
+
+  // Netz in Plattenkoordinaten bringen und das zum Teil passende Netz wählen (Mehrteiler)
+  function placeMesh(meshes, tf, panel) {
+    const P = (x, y, z) => [
+      tf.m[0][0] * x + tf.m[0][1] * y + tf.m[0][2] * z + tf.t[0],
+      tf.m[1][0] * x + tf.m[1][1] * y + tf.m[1][2] * z + tf.t[1],
+      tf.m[2][0] * x + tf.m[2][1] * y + tf.m[2][2] * z + tf.t[2],
+    ];
+    let best = null;
+    for (const m of meshes) {
+      const a = m.attributes.position.array;
+      const pos = new Float32Array(a.length);
+      const lo = [Infinity, Infinity, Infinity];
+      const hi = [-Infinity, -Infinity, -Infinity];
+      for (let i = 0; i < a.length; i += 3) {
+        const q = P(a[i], a[i + 1], a[i + 2]);
+        for (let k = 0; k < 3; k++) { pos[i + k] = q[k]; if (q[k] < lo[k]) lo[k] = q[k]; if (q[k] > hi[k]) hi[k] = q[k]; }
+      }
+      const err = Math.abs(lo[0]) + Math.abs(lo[1]) + Math.abs(lo[2]) + Math.abs(hi[0] - panel.L) + Math.abs(hi[1] - panel.W) + Math.abs(hi[2] - panel.T);
+      if (!best || err < best.err) best = { m: m, pos: pos, lo: lo, err: err };
+    }
+    if (!best) return null;
+    // Baugruppe mit eigener Lage: auf den Nullpunkt schieben (Drehung bleibt wie erkannt)
+    if (best.err > 1) {
+      for (let i = 0; i < best.pos.length; i += 3) for (let k = 0; k < 3; k++) best.pos[i + k] -= best.lo[k];
+    }
+    const nrm = best.m.attributes.normal ? best.m.attributes.normal.array : null;
+    let normals = null;
+    if (nrm) {
+      normals = new Float32Array(nrm.length);
+      for (let i = 0; i < nrm.length; i += 3) {
+        for (let k = 0; k < 3; k++) normals[i + k] = tf.m[k][0] * nrm[i] + tf.m[k][1] * nrm[i + 1] + tf.m[k][2] * nrm[i + 2];
+      }
+    }
+    return { pos: best.pos, normals: normals, index: best.m.index.array };
+  }
+
+  // Holzmaserung als Textur (Fasern in X)
+  function woodCanvas(base) {
+    const cv = document.createElement('canvas');
+    cv.width = 1024;
+    cv.height = 512;
+    const c = cv.getContext('2d');
+    c.fillStyle = base;
+    c.fillRect(0, 0, cv.width, cv.height);
+    let seed = 11;
+    const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    for (let i = 0; i < 150; i++) {
+      const y0 = rnd() * cv.height;
+      const amp = 1 + rnd() * 5;
+      const freq = 0.003 + rnd() * 0.008;
+      const dark = rnd() < 0.62;
+      c.strokeStyle = dark ? 'rgba(110,62,18,' + (0.1 + rnd() * 0.2) + ')' : 'rgba(255,246,228,' + (0.06 + rnd() * 0.1) + ')';
+      c.lineWidth = 0.6 + rnd() * 2.2;
+      c.beginPath();
+      for (let x = 0; x <= cv.width; x += 4) {
+        const y = y0 + Math.sin(x * freq + i) * amp + Math.sin(x * freq * 3.3) * amp * 0.35;
+        if (x) c.lineTo(x, y); else c.moveTo(x, y);
+      }
+      c.stroke();
+    }
+    return cv;
+  }
+
+  // Spannuten-Streifen für drehende Werkzeuge
+  function fluteCanvas() {
+    const cv = document.createElement('canvas');
+    cv.width = 128;
+    cv.height = 128;
+    const c = cv.getContext('2d');
+    const g = c.createLinearGradient(0, 0, 128, 0);
+    g.addColorStop(0, '#8d969f'); g.addColorStop(0.5, '#eef1f4'); g.addColorStop(1, '#8d969f');
+    c.fillStyle = g;
+    c.fillRect(0, 0, 128, 128);
+    c.strokeStyle = 'rgba(30,35,40,0.55)';
+    c.lineWidth = 10;
+    for (let k = -2; k < 4; k++) { c.beginPath(); c.moveTo(k * 64, 128); c.lineTo(k * 64 + 128, 0); c.stroke(); }
+    return cv;
+  }
+
+  function Viewer(container) {
+    const THREE = window.THREE;
+    this.THREE = THREE;
+    this.el = container;
+    const r = new THREE.WebGLRenderer({ antialias: true });
+    r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    r.outputEncoding = THREE.sRGBEncoding;
+    r.toneMapping = THREE.ACESFilmicToneMapping;
+    r.toneMappingExposure = 0.92;
+    r.shadowMap.enabled = true;
+    r.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(r.domElement);
+    this.renderer = r;
+    this.scene = new THREE.Scene();
+    this.camera = new THREE.PerspectiveCamera(32, 1, 1, 100000);
+    this.camera.up.set(0, 0, 1);
+    this.controls = new THREE.OrbitControls(this.camera, r.domElement);
+    this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.12;
+    const pm = new THREE.PMREMGenerator(r);
+    this.scene.environment = pm.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
+    this.hemi = new THREE.HemisphereLight(0xffffff, 0x887766, 0.35);
+    this.scene.add(this.hemi);
+    this.sun = new THREE.DirectionalLight(0xffffff, 1.6);
+    this.sun.castShadow = true;
+    this.sun.shadow.mapSize.set(2048, 2048);
+    this.sun.shadow.bias = -0.0004;
+    this.scene.add(this.sun);
+    this.scene.add(this.sun.target);
+    this.groups = {};
+    for (const g of ['part', 'raw', 'trails', 'tool', 'ground']) { this.groups[g] = new THREE.Group(); this.scene.add(this.groups[g]); }
+    this.fluteTex = new THREE.CanvasTexture(fluteCanvas());
+    this.fluteTex.wrapS = this.fluteTex.wrapT = THREE.RepeatWrapping;
+    this.fluteTex.encoding = THREE.sRGBEncoding;
+    this.toolCache = new Map();
+    this.trailObjs = [];
+    this.lineMats = [];
+    this.showRaw = true;
+    this.dark = false;
+    this.lastKey = null;
+    this._raf = 0;
+    this._alive = true;
+    const loop = () => {
+      if (!this._alive) return;
+      this._raf = requestAnimationFrame(loop);
+      this.resize();
+      this.controls.update();
+      if (this.onFrame) this.onFrame();
+      this.renderer.render(this.scene, this.camera);
+    };
+    loop();
+  }
+
+  Viewer.prototype.resize = function () {
+    const w = Math.max(1, this.el.clientWidth);
+    const h = Math.max(1, this.el.clientHeight);
+    if (this._w === w && this._h === h) return;
+    this._w = w;
+    this._h = h;
+    this.renderer.setSize(w, h, false);
+    this.renderer.domElement.style.width = w + 'px';
+    this.renderer.domElement.style.height = h + 'px';
+    this.camera.aspect = w / h;
+    this.camera.updateProjectionMatrix();
+    for (const m of this.lineMats) m.resolution.set(w, h);
+  };
+
+  Viewer.prototype.lineMat = function (opts) {
+    const m = new this.THREE.LineMaterial(opts);
+    m.resolution.set(this._w || 800, this._h || 600);
+    this.lineMats.push(m);
+    return m;
+  };
+
+  Viewer.prototype.clear = function (name) {
+    const g = this.groups[name];
+    while (g.children.length) {
+      const o = g.children.pop();
+      o.traverse((x) => {
+        if (x.geometry) x.geometry.dispose();
+        if (x.material && !x.material.keep) {
+          const i = this.lineMats.indexOf(x.material);
+          if (i >= 0) this.lineMats.splice(i, 1);
+          x.material.dispose();
+        }
+      });
+    }
+  };
+
+  Viewer.prototype.setTheme = function (dark, colors) {
+    const changed = this.dark !== dark;
+    this.dark = dark;
+    if (changed && this.opts) { this.setPart(this.opts); } // Tisch/Raster in den neuen Farben
+    const T = this.THREE;
+    this.scene.background = new T.Color(dark ? 0x141a19 : 0xe6e9e3);
+    this.colors = colors || this.colors;
+    if (this.edgeMat) this.edgeMat.color.set(dark ? 0x1a120a : 0x4a3520);
+  };
+
+  // Teil anzeigen. opts: { meshes, panel, tf, moves, colors (Token → Farbe), opColor(op), raw (Aufmaß), board }
+  Viewer.prototype.setPart = function (opts) {
+    const T = this.THREE;
+    const p = opts.panel;
+    this.panel = p;
+    this.opts = opts;
+    this.clear('part');
+    this.clear('raw');
+    this.clear('ground');
+    this.clearTrails();
+    const placed = placeMesh(opts.meshes, opts.tf, p);
+    if (placed) {
+      const g = new T.BufferGeometry();
+      g.setAttribute('position', new T.BufferAttribute(placed.pos, 3));
+      if (placed.normals) g.setAttribute('normal', new T.BufferAttribute(placed.normals, 3));
+      g.setIndex(new T.BufferAttribute(new Uint32Array(placed.index), 1));
+      if (!placed.normals) g.computeVertexNormals();
+      // Holz-UV: Projektion je Dreieck auf die Hauptebene seiner Normalen (Faser längs X)
+      const pos = placed.pos;
+      const nrm = g.getAttribute('normal').array;
+      const uv = new Float32Array((pos.length / 3) * 2);
+      const S = 1 / 700;
+      for (let i = 0, j = 0; i < pos.length; i += 3, j += 2) {
+        const ax = Math.abs(nrm[i]);
+        const ay = Math.abs(nrm[i + 1]);
+        const az = Math.abs(nrm[i + 2]);
+        if (az >= ax && az >= ay) { uv[j] = pos[i] * S; uv[j + 1] = pos[i + 1] * S * 2; } else if (ay >= ax) { uv[j] = pos[i] * S; uv[j + 1] = pos[i + 2] * S * 2; } else { uv[j] = pos[i + 1] * S; uv[j + 1] = pos[i + 2] * S * 2; }
+      }
+      g.setAttribute('uv', new T.BufferAttribute(uv, 2));
+      const tex = new T.CanvasTexture(woodCanvas(opts.board || '#d4ae7b'));
+      tex.wrapS = tex.wrapT = T.RepeatWrapping;
+      tex.encoding = T.sRGBEncoding;
+      tex.anisotropy = 8;
+      const mat = new T.MeshStandardMaterial({ map: tex, roughness: 0.58, metalness: 0, envMapIntensity: 0.4,
+        polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+      const mesh = new T.Mesh(g, mat);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      this.groups.part.add(mesh);
+      // Körperkanten (CAD-Optik)
+      const eg = new T.LineSegmentsGeometry().fromEdgesGeometry(new T.EdgesGeometry(g, 24));
+      this.edgeMat = this.lineMat({ color: this.dark ? 0x1a120a : 0x4a3520, linewidth: 1.3, transparent: true, opacity: 0.75 });
+      this.groups.part.add(new T.LineSegments2(eg, this.edgeMat));
+    }
+    // Rohteil als Umriss, Nullpunkt mit Achsen
+    const o = opts.raw || 0;
+    const box = new T.BoxGeometry(p.L + 2 * o, p.W + 2 * o, p.T);
+    box.translate(p.L / 2, p.W / 2, p.T / 2);
+    const rawLines = new T.LineSegments(new T.EdgesGeometry(box), new T.LineDashedMaterial({ color: 0x8a9590, dashSize: 6, gapSize: 4, transparent: true, opacity: 0.8 }));
+    rawLines.computeLineDistances();
+    this.groups.raw.add(rawLines);
+    this.groups.raw.visible = this.showRaw;
+    const axLen = Math.max(40, Math.min(p.L, p.W) * 0.18);
+    const axes = [[1, 0, 0, 0xd94a3a], [0, 1, 0, 0x2e9a52], [0, 0, 1, 0x2a78d6]];
+    for (const [x, y, z, c] of axes) {
+      const arrow = new T.ArrowHelper(new T.Vector3(x, y, z), new T.Vector3(0, 0, 0), axLen, c, axLen * 0.22, axLen * 0.12);
+      this.groups.raw.add(arrow);
+    }
+    const zero = new T.Mesh(new T.SphereGeometry(Math.max(3, axLen * 0.07), 24, 16), new T.MeshStandardMaterial({ color: 0xd94a3a, roughness: 0.4 }));
+    this.groups.raw.add(zero);
+    // Maschinentisch: Schattenfänger und dezentes Raster
+    const size = Math.max(p.L, p.W) * 3 + 600;
+    const shadow = new T.Mesh(new T.PlaneGeometry(size, size), new T.ShadowMaterial({ opacity: this.dark ? 0.45 : 0.22 }));
+    shadow.position.set(p.L / 2, p.W / 2, -0.2);
+    shadow.receiveShadow = true;
+    this.groups.ground.add(shadow);
+    const grid = new T.GridHelper(size, Math.round(size / 100), this.dark ? 0x2c3633 : 0xc4cbc4, this.dark ? 0x222a28 : 0xd5dbd4);
+    grid.rotation.x = Math.PI / 2;
+    grid.position.set(p.L / 2, p.W / 2, -0.4);
+    grid.material.transparent = true;
+    grid.material.opacity = this.dark ? 0.35 : 0.7;
+    this.groups.ground.add(grid);
+    // Licht passend zur Teilgröße
+    const R = Math.hypot(p.L, p.W, p.T);
+    this.sun.position.set(p.L / 2 - R * 0.6, p.W / 2 - R * 0.9, R * 1.4);
+    this.sun.target.position.set(p.L / 2, p.W / 2, 0);
+    const sc = this.sun.shadow.camera;
+    sc.left = -R; sc.right = R; sc.top = R; sc.bottom = -R; sc.near = 1; sc.far = R * 5;
+    sc.updateProjectionMatrix();
+    const key = p.L + 'x' + p.W + 'x' + p.T;
+    if (this.lastKey !== key) { this.lastKey = key; this.view('iso'); }
+  };
+
+  Viewer.prototype.view = function (which) {
+    const p = this.panel;
+    if (!p) return;
+    const c = new this.THREE.Vector3(p.L / 2, p.W / 2, p.T / 2);
+    const R = Math.hypot(p.L, p.W, p.T) / 2;
+    const dist = R / Math.sin((this.camera.fov * Math.PI) / 360);
+    let dir;
+    if (which === 'top') dir = new this.THREE.Vector3(0, -0.001, 1);
+    else if (which === 'front') dir = new this.THREE.Vector3(0, -1, 0.18);
+    else dir = new this.THREE.Vector3(-0.55, -1, 0.75);
+    dir.normalize();
+    // Abstand so wählen, dass alle Ecken des Rohteils ins Bild passen (90 % der Fläche)
+    const o = (this.opts && this.opts.raw) || 0;
+    const corners = [];
+    for (const x of [-o, p.L + o]) for (const y of [-o, p.W + o]) for (const z of [0, p.T]) corners.push(new this.THREE.Vector3(x, y, z));
+    let d = dist;
+    for (let k = 0; k < 6; k++) {
+      this.camera.position.copy(c).addScaledVector(dir, d);
+      this.camera.lookAt(c);
+      this.camera.updateMatrixWorld();
+      let mx = 0;
+      for (const q of corners) { const v = q.clone().project(this.camera); mx = Math.max(mx, Math.abs(v.x), Math.abs(v.y)); }
+      d *= mx / 0.86;
+    }
+    this.camera.position.copy(c).addScaledVector(dir, d);
+    this.controls.target.copy(c);
+    this.camera.near = Math.max(0.5, d / 200);
+    this.camera.far = d * 20;
+    this.camera.updateProjectionMatrix();
+    this.controls.update();
+  };
+
+  Viewer.prototype.setRaw = function (on) { this.showRaw = on; this.groups.raw.visible = on; };
+
+  Viewer.prototype.clearTrails = function () {
+    this.clear('trails');
+    this.trailObjs = [];
+    this.live = null;
+    this.trailUpTo = 0;
+  };
+
+  function along(pts, f) {
+    if (pts.length === 1) return { at: pts[0], part: [pts[0]], dir: null };
+    let total = 0;
+    const seg = [];
+    for (let i = 1; i < pts.length; i++) { const l = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1], pts[i][2] - pts[i - 1][2]); seg.push(l); total += l; }
+    let rest = total * Math.max(0, Math.min(1, f));
+    const part = [pts[0]];
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1];
+      const b = pts[i];
+      const dir = seg[i - 1] > 1e-9 ? [(b[0] - a[0]) / seg[i - 1], (b[1] - a[1]) / seg[i - 1], (b[2] - a[2]) / seg[i - 1]] : null;
+      if (rest <= seg[i - 1] || i === pts.length - 1) {
+        const k = seg[i - 1] > 1e-9 ? Math.min(1, rest / seg[i - 1]) : 1;
+        const at = [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+        part.push(at);
+        return { at: at, part: part, dir: dir };
+      }
+      rest -= seg[i - 1];
+      part.push(b);
+    }
+    return { at: pts[pts.length - 1], part: part, dir: null };
+  }
+
+  // Bahnspur einer Bewegung (Breite = Werkzeug, Farbe = Bearbeitungsart)
+  Viewer.prototype.trail = function (m, pts) {
+    const T = this.THREE;
+    if (pts.length < 2) return null;
+    const flat = [];
+    for (const q of pts) flat.push(q[0], q[1], Math.max(q[2], 0) + 0.3); // unter dem Teil (Durchfräsen) auf Tischhöhe zeigen
+    const g = new T.LineGeometry();
+    g.setPositions(flat);
+    const width = m.disc ? Math.max(1.5, m.disc.thick) : Math.max(1, (m.d || 4) * 0.92);
+    const mat = this.lineMat({ color: new T.Color(this.opts.colorOf(m)), linewidth: width, worldUnits: true, transparent: true, opacity: 0.6, depthWrite: false });
+    const line = new T.Line2(g, mat);
+    line.computeLineDistances();
+    line.renderOrder = 2;
+    this.groups.trails.add(line);
+    return line;
+  };
+
+  // Werkzeugmodell (Fräser, Bohrer) entlang +Z ab der Spitze
+  Viewer.prototype.toolModel = function (d, len, drill) {
+    const T = this.THREE;
+    const key = d.toFixed(2) + '|' + len.toFixed(1) + '|' + drill;
+    if (this.toolCache.has(key)) return this.toolCache.get(key);
+    const r = Math.max(0.6, d / 2);
+    const grp = new T.Group();
+    const spin = new T.Group();
+    grp.add(spin);
+    const steel = new T.MeshStandardMaterial({ map: this.fluteTex, metalness: 0.85, roughness: 0.28 });
+    steel.keep = true;
+    const cutter = new T.Mesh(new T.CylinderGeometry(r, r, len, 40, 1), steel);
+    cutter.rotation.x = Math.PI / 2;
+    cutter.position.z = len / 2 + (drill ? r * 0.6 : 0);
+    spin.add(cutter);
+    if (drill) {
+      const tip = new T.Mesh(new T.ConeGeometry(r, r * 0.6 * 2, 40), steel);
+      tip.rotation.x = -Math.PI / 2;
+      tip.position.z = r * 0.6;
+      spin.add(tip);
+    }
+    const base = len + (drill ? r * 0.6 : 0);
+    const shankR = Math.max(r * 0.8, 3);
+    const dark = new T.MeshStandardMaterial({ color: 0x3a4148, metalness: 0.7, roughness: 0.35 });
+    dark.keep = true;
+    const shank = new T.Mesh(new T.CylinderGeometry(shankR, shankR, 25, 32), new T.MeshStandardMaterial({ color: 0xc9cfd5, metalness: 0.9, roughness: 0.25 }));
+    shank.rotation.x = Math.PI / 2;
+    shank.position.z = base + 12.5;
+    grp.add(shank);
+    const nut = new T.Mesh(new T.CylinderGeometry(shankR * 2.2, shankR * 1.6, 22, 40), dark);
+    nut.rotation.x = Math.PI / 2;
+    nut.position.z = base + 25 + 11;
+    grp.add(nut);
+    const spindle = new T.Mesh(new T.CylinderGeometry(shankR * 3.2, shankR * 3.2, 70, 48), new T.MeshStandardMaterial({ color: 0x2b3137, metalness: 0.5, roughness: 0.45 }));
+    spindle.rotation.x = Math.PI / 2;
+    spindle.position.z = base + 47 + 35;
+    grp.add(spindle);
+    const ring = new T.Mesh(new T.TorusGeometry(r + 1.2, Math.max(0.5, r * 0.08), 10, 48), new T.MeshBasicMaterial({ color: 0xffffff }));
+    grp.add(ring);
+    grp.traverse((x) => { if (x.isMesh) x.castShadow = true; });
+    const tool = { grp: grp, spin: spin, ring: ring };
+    this.toolCache.set(key, tool);
+    return tool;
+  };
+
+  // Sägeblatt: Scheibe in der Ebene (Fahrtrichtung, up)
+  Viewer.prototype.discModel = function (D, thick) {
+    const T = this.THREE;
+    const key = 'disc|' + D + '|' + thick;
+    if (this.toolCache.has(key)) return this.toolCache.get(key);
+    const R = D / 2;
+    const grp = new T.Group();
+    const spin = new T.Group();
+    grp.add(spin);
+    const blade = new T.Mesh(new T.CylinderGeometry(R, R, thick, 96), new T.MeshStandardMaterial({ map: this.fluteTex, metalness: 0.9, roughness: 0.22, transparent: true, opacity: 0.92 }));
+    blade.rotation.x = Math.PI / 2;
+    spin.add(blade);
+    const hub = new T.Mesh(new T.CylinderGeometry(R * 0.22, R * 0.22, thick * 3, 48), new T.MeshStandardMaterial({ color: 0x2b3137, metalness: 0.6, roughness: 0.4 }));
+    hub.rotation.x = Math.PI / 2;
+    grp.add(hub);
+    const ring = new T.Mesh(new T.TorusGeometry(R + 1.5, Math.max(0.8, thick * 0.4), 10, 96), new T.MeshBasicMaterial({ color: 0xffffff }));
+    grp.add(ring);
+    grp.traverse((x) => { if (x.isMesh) x.castShadow = true; });
+    const tool = { grp: grp, spin: spin, ring: ring, disc: true };
+    this.toolCache.set(key, tool);
+    return tool;
+  };
+
+  // Zustand der Animation zeigen: Spuren bis Bewegung i, Werkzeug an Bruchteil f der Bewegung i
+  Viewer.prototype.setTime = function (moves, i, f, active, spinAngle, toolInfo) {
+    const T = this.THREE;
+    if (!active) {
+      if (this.trailObjs.length) this.clearTrails();
+      this.groups.tool.visible = false;
+      return;
+    }
+    const done = i < 0 ? moves.length : i;
+    if (done < this.trailUpTo) this.clearTrails();
+    for (let k = this.trailUpTo; k < done; k++) {
+      const m = moves[k];
+      if (m.type !== 'rapid' && m.pts3) this.trailObjs.push(this.trail(m, m.pts3));
+    }
+    this.trailUpTo = Math.max(this.trailUpTo, done);
+    if (this.live) { this.groups.trails.remove(this.live); this.live.geometry.dispose(); this.live.material.dispose(); this.live = null; }
+    this.groups.tool.visible = false;
+    if (i < 0 || i >= moves.length) return;
+    const m = moves[i];
+    if (!m.pts3) return;
+    const pos = along(m.pts3, f);
+    if (m.type !== 'rapid' && pos.part.length > 1) this.live = this.trail(m, pos.part);
+    // Werkzeug
+    while (this.groups.tool.children.length) this.groups.tool.remove(this.groups.tool.children[0]);
+    const ax = new T.Vector3(...(m.ax3 || [0, 0, 1])).normalize();
+    const color = m.type === 'rapid' ? 0x9aa5a0 : this.opts.colorOf(m);
+    if (m.disc) {
+      const tool = this.discModel(m.disc.d, m.disc.thick);
+      const up = new T.Vector3(...m.disc.up).normalize();
+      let dir = pos.dir ? new T.Vector3(...pos.dir) : new T.Vector3(1, 0, 0);
+      dir.addScaledVector(up, -dir.dot(up));
+      if (dir.lengthSq() < 1e-9) dir = new T.Vector3(1, 0, 0);
+      dir.normalize();
+      const n = new T.Vector3().crossVectors(dir, up).normalize();
+      tool.grp.quaternion.setFromUnitVectors(new T.Vector3(0, 0, 1), n);
+      const at = new T.Vector3(...pos.at);
+      tool.grp.position.copy(at).addScaledVector(up, m.disc.d / 2 - (m.type === 'rapid' ? -10 : m.disc.reach));
+      tool.spin.rotation.z = -spinAngle;
+      tool.ring.material.color.set(color);
+      this.groups.tool.add(tool.grp);
+    } else {
+      const info = (toolInfo && toolInfo[m.tool]) || {};
+      const d = info.d || m.d || 8;
+      const len = m.len3 || Math.max(12, Math.min(info.len || 30, (m.z || 10) + 12));
+      const drill = m.kind === 'drill' || /^Bohr/.test(m.tool || '') || (this.opts.isDrill && this.opts.isDrill(m));
+      const tool = this.toolModel(d, len, drill);
+      tool.grp.quaternion.setFromUnitVectors(new T.Vector3(0, 0, 1), ax);
+      tool.grp.position.set(...pos.at);
+      tool.spin.rotation.z = spinAngle;
+      tool.ring.material.color.set(color);
+      this.groups.tool.add(tool.grp);
+    }
+    this.groups.tool.visible = true;
+  };
+
+  Viewer.prototype.dispose = function () {
+    this._alive = false;
+    cancelAnimationFrame(this._raf);
+    this.controls.dispose();
+    this.renderer.dispose();
+    if (this.renderer.domElement.parentNode) this.renderer.domElement.parentNode.removeChild(this.renderer.domElement);
+  };
+
+  return { load: load, stepMeshes: stepMeshes, Viewer: Viewer, placeMesh: placeMesh };
+});

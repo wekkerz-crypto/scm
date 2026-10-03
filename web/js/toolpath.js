@@ -176,20 +176,44 @@
     // meta: z = Frästiefe, kind = Darstellungsart (mill, saw, drill, edge, chamfer)
     let meta = {};
     let mapPt = null; // Bearbeitung auf schräger Ebene: lokale Koordinaten → Draufsicht
-    const go = (pts, d, label, tool, opIndex) => {
+    // 3D (für die 3D-Ansicht): Werkzeugspitze je Punkt, Werkzeugachse (Spitze → Spindel), Rückzug
+    const UP = [0, 0, 1];
+    let pos3 = [-60, -60, p.T + 60];
+    let lastAx = UP;
+    let lastBack = 10;
+    const plus = (a, v, k) => [a[0] + v[0] * k, a[1] + v[1] * k, a[2] + v[2] * k];
+    const go = (pts, d, label, tool, opIndex, pts3In) => {
       if (!pts.length) return;
+      const to3 = meta.to3 || ((q) => [q[0], q[1], p.T - (meta.z || 0)]);
+      const pts3 = pts3In || pts.map(to3);
+      const ax3 = meta.ax3 || UP;
+      const back = meta.back !== undefined ? meta.back : (meta.z || 0) + 10;
       if (mapPt) pts = pts.map(mapPt);
       const extra = { z: meta.z || 0, through: (meta.z || 0) >= p.T - 1e-6, kind: meta.kind || 'mill',
         group: ops[opIndex] ? ops[opIndex].group : '' };
       if (meta.axis) extra.axis = meta.axis;
       if (meta.axisScale) extra.axisScale = meta.axisScale;
       if (meta.blade) extra.blade = meta.blade;
-      if (Math.hypot(pos[0] - pts[0][0], pos[1] - pts[0][1]) > 1e-6) {
-        moves.push(Object.assign({ type: 'rapid', pts: [pos, pts[0]], d: d, label: label, tool: tool, op: opIndex }, extra));
+      extra.ax3 = ax3;
+      if (meta.disc) extra.disc = meta.disc;
+      if (meta.len3) extra.len3 = meta.len3;
+      const start3 = pts3[0];
+      if (Math.hypot(pos[0] - pts[0][0], pos[1] - pts[0][1]) > 1e-6 || Math.hypot(pos3[0] - start3[0], pos3[1] - start3[1], pos3[2] - start3[2]) > 1e-6) {
+        // Eilgang: zurückziehen, über dem Teil hinfahren, anstellen
+        const up0 = plus(pos3, lastAx, lastBack);
+        const up1 = plus(start3, ax3, back);
+        moves.push(Object.assign({ type: 'rapid', pts: [pos, pts[0]], d: d, label: label, tool: tool, op: opIndex }, extra,
+          { pts3: [pos3, up0, up1, start3] }));
       }
-      if (pts.length === 1) moves.push(Object.assign({ type: 'plunge', pts: [pts[0]], d: d, label: label, tool: tool, op: opIndex }, extra));
-      else moves.push(Object.assign({ type: 'cut', pts: pts, d: d, label: label, tool: tool, op: opIndex }, extra));
+      if (pts.length === 1) {
+        // Bohren: von der Oberfläche auf Tiefe (in 3D sichtbar)
+        moves.push(Object.assign({ type: 'plunge', pts: [pts[0]], d: d, label: label, tool: tool, op: opIndex }, extra,
+          { pts3: [plus(start3, ax3, meta.z || 0), start3] }));
+      } else moves.push(Object.assign({ type: 'cut', pts: pts, d: d, label: label, tool: tool, op: opIndex }, extra, { pts3: pts3 }));
       pos = pts[pts.length - 1];
+      pos3 = pts3[pts3.length - 1];
+      lastAx = ax3;
+      lastBack = back;
     };
 
     ops.forEach((op, i) => {
@@ -205,13 +229,47 @@
         const h = Math.hypot(q.n[0], q.n[1]) || 1;
         meta.axis = [-q.n[0] / h, -q.n[1] / h];
         meta.axisScale = h; // sin(Neigung)
+        meta.ax3 = q.n;
+        meta.to3 = (l) => {
+          const z = meta.z || 0;
+          return [q.o[0] + q.X[0] * l[0] + q.Y[0] * l[1] - q.n[0] * z, q.o[1] + q.X[1] * l[0] + q.Y[1] * l[1] - q.n[1] * z,
+            q.o[2] + q.X[2] * l[0] + q.Y[2] * l[1] - q.n[2] * z];
+        };
       }
       if (op.kind === 'blade') {
         // Sägeschnitt: Abtrag = Keil zwischen Ober- und Unterkante der Schräge
         meta = { z: p.T * 0.3, kind: 'saw', blade: { tilt: op.tilt } };
       }
       // Bearbeitung von der Kante: Werkzeug liegt waagerecht, axis = Richtung in die Platte (Draufsicht)
-      if (op.face && op.face !== 'Top' && EDGE_AXIS[op.face]) meta.axis = EDGE_AXIS[op.face];
+      if (op.face && op.face !== 'Top' && EDGE_AXIS[op.face]) {
+        meta.axis = EDGE_AXIS[op.face];
+        // Höhe der Werkzeugachse: Bohrung lokal y, Kantentasche Mitte der Tasche
+        let hgt = p.T / 2;
+        if (op.kind === 'drill') hgt = op.d.y;
+        else if (op.segs && op.segs.length) { const ys = op.segs.flatMap((q) => [q.a[1], q.b[1]]); hgt = (Math.min(...ys) + Math.max(...ys)) / 2; }
+        meta.to3 = (q) => [q[0], q[1], hgt];
+        meta.ax3 = [-meta.axis[0], -meta.axis[1], 0];
+        meta.back = 10;
+        meta.len3 = (op.depth || (op.d && op.d.depth) || 10) + 8;
+      }
+      if (op.kind === 'slot') {
+        // Nutsäge: senkrechtes Blatt in Fahrtrichtung
+        const ti = info(op.tool);
+        meta.to3 = (q) => [q[0], q[1], p.T];
+        meta.disc = { d: ti.d || 120, thick: ti.blade || 4, reach: op.depth, up: UP };
+        meta.back = 10;
+      }
+      if (op.kind === 'slant') {
+        // geneigter Fräser (5-Achs): Achse parallel zur schrägen Fläche
+        const a = op.angle * Math.PI / 180;
+        const sdir = op.scrap || [1, 0];
+        const lean = op.approach === 2;
+        const ax = lean ? [-sdir[0] * Math.sin(a), -sdir[1] * Math.sin(a), Math.cos(a)] : [sdir[0] * Math.sin(a), sdir[1] * Math.sin(a), Math.cos(a)];
+        const dd = (op.depth || p.T) / Math.cos(a);
+        meta.ax3 = ax;
+        meta.to3 = (q) => [q[0] - ax[0] * dd, q[1] - ax[1] * dd, p.T - ax[2] * dd];
+        meta.back = dd + 10;
+      }
       if (op.kind === 'blade') {
         const info0 = info(op.tool);
         const dir = [op.b[0] - op.a[0], op.b[1] - op.a[1]];
@@ -224,14 +282,25 @@
         meta.blade.thick = info0.blade || 3;
         const a0 = op.a0 || op.a;
         const b0 = op.b0 || op.b;
+        // 3D: Blatt in der Ebene der Schräge, Linie an der Oberseite
+        const ta = op.tilt * Math.PI / 180;
+        const up = op.leanOut ? [-right[0] * Math.sin(ta), -right[1] * Math.sin(ta), Math.cos(ta)] : [right[0] * Math.sin(ta), right[1] * Math.sin(ta), Math.cos(ta)];
+        const line3 = (q) => [q[0], q[1], p.T];
+        meta.disc = { d: info0.d || 300, thick: info0.blade || 3, reach: p.T / Math.cos(ta) + (op.extra || 0), up: up };
+        meta.ax3 = up;
+        meta.back = 10;
+        const goB = (pts2, z, w2, lab) => {
+          meta.z = z;
+          meta.disc = Object.assign({}, meta.disc, { reach: z === p.T * 0.3 ? p.T / Math.cos(ta) + (op.extra || 0) : z });
+          go(pts2, w2, lab, op.tool, i, pts2 === null ? null : [line3(pts2.src[0]), line3(pts2.src[1])]);
+        };
+        const pair = (x, y, src) => { const r = [x, y]; r.src = src; return r; };
         if (op.score) {
           // Vorritzen: dünner Schnitt in Ritztiefe, zurück auf volle Tiefe
-          meta.z = op.score.depth;
-          go([a0, b0], info0.blade || 3, op.label + ' – vorritzen', op.tool, i);
-          meta.z = p.T * 0.3;
-          go([sh(b0), sh(a0)], Math.max(w, info0.blade || 3), op.label, op.tool, i);
+          goB(pair(a0, b0, [a0, b0]), op.score.depth, info0.blade || 3, op.label + ' – vorritzen');
+          goB(pair(sh(b0), sh(a0), [b0, a0]), p.T * 0.3, Math.max(w, info0.blade || 3), op.label);
         } else {
-          go([sh(a0), sh(b0)], Math.max(w, info0.blade || 3), op.label, op.tool, i);
+          goB(pair(sh(a0), sh(b0), [a0, b0]), p.T * 0.3, Math.max(w, info0.blade || 3), op.label);
         }
         return;
       }
@@ -334,11 +403,17 @@
         const b = op.angleB * Math.PI / 180;
         const h = Math.sin(b) * op.depth; // waagerechter Anteil der Bohrung
         const end = [e[0] - Math.cos(a) * h, e[1] - Math.sin(a) * h];
-        go([[e[0], e[1]], end, [e[0], e[1]]], op.d, 'Schräge Bohrung Ø' + Math.round(op.d * 100) / 100, 'Bohrer', i);
+        const dir3 = [-Math.cos(a) * Math.sin(b), -Math.sin(a) * Math.sin(b), -Math.cos(b)];
+        const e3 = [e[0], e[1], e[2]];
+        const end3 = plus(e3, dir3, op.depth);
+        meta.ax3 = [-dir3[0], -dir3[1], -dir3[2]];
+        meta.back = 10;
+        go([[e[0], e[1]], end, [e[0], e[1]]], op.d, 'Schräge Bohrung Ø' + Math.round(op.d * 100) / 100, 'Bohrer', i, [e3, end3, e3]);
       }
     });
     mapPt = null;
-    moves.push({ type: 'rapid', pts: [pos, [-60, -60]], d: 0, label: 'Parkposition', tool: '', op: -1, z: 0, kind: 'mill', group: '' });
+    moves.push({ type: 'rapid', pts: [pos, [-60, -60]], d: 0, label: 'Parkposition', tool: '', op: -1, z: 0, kind: 'mill', group: '',
+      ax3: UP, pts3: [pos3, plus(pos3, lastAx, lastBack), [-60, -60, p.T + 60]] });
     return moves;
   }
 

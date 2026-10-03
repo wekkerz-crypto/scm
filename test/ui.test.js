@@ -147,3 +147,31 @@ test('Web-Tool: Teile links mit Vorschau, einzeln löschen', { skip: !chromium &
     await browser.close();
   }
 });
+
+test('Web-Tool: 3D-Ansicht mit Animation', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
+  try {
+    const p = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    await p.locator('.part').nth(2).locator('.sel').click(); // 5-Achs-Testplatte
+    await p.click('[data-vmode="3d"]');
+    await p.waitForFunction(() => { const m = document.getElementById('v3msg'); return m && m.hidden && document.querySelector('#v3slot canvas'); }, null, { timeout: 60000 });
+    assert.strictEqual(await p.$eval('#view', (v) => v.hidden), true);
+    // Animation: Werkzeug und Spuren erscheinen, Anzeige läuft mit
+    await p.evaluate(() => { const r = document.getElementById('apos'); r.value = 500; r.dispatchEvent(new Event('input', { bubbles: true })); });
+    await p.waitForTimeout(300);
+    assert.ok((await p.$eval('#hud', (h) => h.textContent)).includes('/'));
+    // zurück auf 2D, die Wahl bleibt gespeichert
+    await p.click('[data-vmode="2d"]');
+    assert.strictEqual(await p.$eval('#view', (v) => v.hidden), false);
+    await p.reload();
+    await p.waitForSelector('.part');
+    assert.strictEqual(await p.$eval('#view', (v) => v.hidden), false);
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});

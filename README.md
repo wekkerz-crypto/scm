@@ -85,8 +85,9 @@ für die `.pgmx`. Beispiel: `Tür Öffnung groß` → `Tuer_Oeffnung_gross.xcs` 
 
 **Einstellungen** (*Werkzeuge & Regeln*) wirken sofort; dauerhaft gespeichert werden sie mit dem Knopf *Einstellungen
 speichern* in der Kopfzeile (zeigt ungespeicherte Änderungen an, beim Schließen kommt eine Nachfrage). Sie sind nach Bearbeitungsart gruppiert: Bohren, Taschen, Formatfräsen & Konturen,
-Säge, Fasen & schräge Kanten, Gekrümmte Flächen (Kugelfräser, Zeilenabstand, Zustellung beim Vorfräsen, Punktabstand,
-Toleranz, Abheben), Arbeitsfeld & Rohteil, X-Konverter. Taschen haben eine eigene **Zustelltiefe** (0 = wie Fräsen),
+Säge, Fasen, Rundungen & schräge Kanten (u. a. Radiusfräser oben/unten mit Tiefe), Gekrümmte Flächen (Kugelfräser,
+Zeilenabstand, Zustellung, Punktabstand, Toleranz, Abheben; 4-Achs: Schaftfräser, Zeilenabstand, Schichtdicke),
+Sauger & Konsolen, Programmkopf, Arbeitsfeld & Rohteil, X-Konverter. Taschen haben eine eigene **Zustelltiefe** (0 = wie Fräsen),
 die Säge eine eigene **Extra-Tiefe** und optional **Vorritzen** (`CreateSectioningMillingStrategy(Tiefe, Abstand außen, 0)`
 vor dem `CreateBladeCut`: erster Schnitt in Ritztiefe, Rückweg auf volle Tiefe).
 
@@ -101,9 +102,11 @@ in der Bearbeitungsliste im Feld *Tiefe* absolut in mm setzen; ist sie kleiner a
 
 **Reihenfolge:**
 - *Reihenfolge-Regel* unter *Werkzeuge & Regeln*: die Bearbeitungsarten (Bohrungen oben, Kantenbohrungen, schräge
-  Bohrungen, Nuten, Taschen, Falze, Fasen, schräge Kanten, Durchbrüche, Konturausschnitte, Formatfräsen) mit ↑/↓ in
-  die gewünschte Folge bringen, mit *Regel verwenden* zu- und abschalten. Standard: erst bohren, dann fräsen,
-  Formatfräsen zuletzt. Ist die Regel aus, bleibt die erkannte Reihenfolge (wie in den Maestro-Beispielen).
+  Bohrungen, Nuten, Taschen, Falze, Fasen, schräge Kanten, Sägeschnitte, Bearbeitungen auf schrägen Ebenen, gewölbte
+  Flächen, Durchbrüche, Konturausschnitte, Formatfräsen, Kantenrundungen) mit ↑/↓ in die gewünschte Folge bringen, mit
+  *Regel verwenden* zu- und abschalten. Standard: erst bohren, dann fräsen, Formatfräsen und danach die Kantenrundungen
+  zuletzt. Fest bleibt: Bearbeitungen auf einer Schnittfläche nach dem Sägeschnitt, die Schräge an einem Ausschnitt nach
+  dem Durchbruch. Ist die Regel aus, bleibt die erkannte Reihenfolge (wie in den Maestro-Beispielen).
   CLI: `--no-order-rule`.
 - Je Teil lässt sich jede Bearbeitung zusätzlich verschieben: am Griff ⠿ mit gedrückter Maus (oder Finger) an die
   gewünschte Stelle ziehen (Esc bricht ab), oder mit ↑/↓. Gleiche Bohrungen wandern als Block, ein Falz mit allen

@@ -587,6 +587,9 @@ test('Handbuch-Funktionen: Kopf, Werkstück-Kontur, Haltestege, Spirale, Stufenb
   assert.strictEqual(al[i20 - 1], 'CreateMultiStepDrillingStrategy(true, 2, 10, true);');
   const i13 = al.findIndex((l) => /, 13, 35,/.test(l));
   assert.strictEqual(al[i13 - 1], 'CreateSingleStepDrillingStrategy();');
+  // tiefer als die Grenze, aber nicht tiefer als eine Stufe: normal bohren (keine Stufen-Strategie mit 1 Stufe)
+  const one = convert(read('test/fixtures/testplatte.step'), { drillStepFrom: 10, drillStep: 25 }, 'tp.step')[0].xcs;
+  assert.ok(!/CreateMultiStepDrillingStrategy\(true, 1,/.test(one) && !one.includes('MultiStep'));
   // Animation: Innenstück mit Stegen fällt nicht heraus
   const TP = require('../web/js/toolpath.js');
   assert.ok(!TP.build(a, toolInfo, cfg).some((m) => m.slug));

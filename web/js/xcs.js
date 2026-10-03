@@ -1515,8 +1515,9 @@
         const usePat = pat.nX > 1 || pat.nY > 1;
         if (usePat) L.push('CreatePattern(' + pat.nY + ', ' + pat.nX + ', ' + fmt(pat.dY) + ', ' + fmt(pat.dX) + ', 0, 90);');
         // tiefe Bohrung in Stufen mit Rückzug zum Spanen (isStepDepth, Anzahl, Tiefe je Stufe, Rückzug auf Sicherheitshöhe)
-        if (cfg.drillStepFrom > 0 && d.depth > cfg.drillStepFrom + 1e-9 && cfg.drillStep > 0) {
-          const n = Math.ceil(d.depth / cfg.drillStep - 1e-9);
+        const nStep = cfg.drillStep > 0 ? Math.ceil(d.depth / cfg.drillStep - 1e-9) : 1;
+        if (cfg.drillStepFrom > 0 && d.depth > cfg.drillStepFrom + 1e-9 && nStep >= 2) { // eine Stufe = normal bohren
+          const n = nStep;
           L.push('CreateMultiStepDrillingStrategy(true, ' + n + ', ' + fmt(d.depth / n) + ', true);');
           multiStep = true;
         } else if (multiStep) {

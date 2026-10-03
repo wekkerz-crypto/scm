@@ -8,7 +8,7 @@ const { convert } = require('../web/js/convert.js');
 const root = path.join(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 // Reihenfolge und Konturfräsen wie in den Maestro-Beispielen
-const ORIGINAL_ORDER = { orderRule: { on: false }, contourMode: 'rect', suctionOn: false };
+const ORIGINAL_ORDER = { orderRule: { on: false }, contourMode: 'rect', suctionOn: false, commentOn: false };
 const one = (p, settings) => {
   const parts = convert(read(p), settings);
   assert.strictEqual(parts.length, 1);
@@ -527,3 +527,67 @@ test('Sauger-Vorschlag: Konsolen und Drehsauger', () => {
   const [off] = convert(read('test/fixtures/holz.step'), { suctionOn: false }, 'x.step');
   assert.ok(!off.xcs.includes('SetBarPosition'));
 });
+
+test('Handbuch-Funktionen: Kopf, Werkstück-Kontur, Haltestege, Spirale, Stufenbohren', () => {
+  const { convert } = require('../web/js/convert.js');
+  const T = require('../web/js/tools.js');
+  const toolInfo = T.infoMap(T.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
+  const L = (x) => x.split('\r\n').filter((l) => l);
+  // Standard: nur Kommentar/Beschreibung neu, sonst wie bisher (Quader, keine Stege, keine Spirale, keine Stufen)
+  const [d] = convert(read('test/fixtures/testplatte.step'), { toolInfo: toolInfo, suctionOn: false }, 'testplatte.step');
+  const dl = L(d.xcs);
+  assert.strictEqual(dl[0].slice(0, 22), 'SetMachiningParameters');
+  assert.strictEqual(dl[1], 'SetComment("STEP2XCS: testplatte");');
+  assert.ok(/^SetDescription\("900 x 400 x 18 mm, \d+ Bearbeitungen"\);$/.test(dl[2]));
+  assert.ok(dl[3].startsWith('CreateFinishedWorkpieceBox('));
+  for (const w of ['SetOptimization', 'SetAutoSetup', 'Extrusion', '"TAB"', 'Helic', 'MultiStep']) assert.ok(!d.xcs.includes(w), w);
+  // alles an
+  const cfg = { toolInfo: toolInfo, suctionOn: false, optimizeOn: true, autoSetupOn: true, workpieceShape: 'contour',
+    tabsMode: 'all', tabsCount: 2, tabLength: 6, tabHeight: 1.5, helixOn: true, helixStep: 4, drillStepFrom: 15, drillStep: 10 };
+  const [a] = convert(read('test/fixtures/testplatte.step'), cfg, 'testplatte.step');
+  const al = L(a.xcs);
+  assert.deepStrictEqual(al.slice(3, 5), ['SetOptimization(true);', 'SetAutoSetup(true);']);
+  // Rechteck bleibt Quader, auch bei „echte Kontur“
+  assert.ok(al[5].startsWith('CreateFinishedWorkpieceBox('));
+  // Durchbruch: zwei Stege nach Polylinien-Elementen, Spirale direkt vor dem Fräsen
+  const cut = a.ops.find((o) => /^cutout-/.test(o.key));
+  const block = a.xcs.slice(a.xcs.indexOf('CreatePolyline("Contour_' + cut.contour + '"'));
+  const blk = L(block.slice(0, block.indexOf('CreateRoughFinish(') + 200));
+  assert.strictEqual(blk.filter((l) => l === 'SetParametricAttribute2("TAB", 6, 1.5, 0.5);').length, 2);
+  assert.ok(/^Add(Segment|Arc)/.test(blk[blk.indexOf('SetParametricAttribute2("TAB", 6, 1.5, 0.5);') - 1]));
+  const ih = blk.findIndex((l) => l.startsWith('CreateHelicMillingStrategy('));
+  assert.strictEqual(blk[ih], 'CreateHelicMillingStrategy(4, 0, false);');
+  assert.ok(blk[ih + 1].startsWith('CreateRoughFinish("Milling_' + cut.milling + '"'));
+  // Falz/Formatfräsen ohne Stege und ohne Spirale
+  assert.strictEqual((a.xcs.match(/"TAB"/g) || []).length, 2);
+  assert.strictEqual((a.xcs.match(/CreateHelicMillingStrategy/g) || []).length, 1);
+  // Stufenbohren: nur tiefe Bohrungen, danach zurück auf einen Durchgang
+  const i20 = al.findIndex((l) => /CreateDrill \("Drill_Vertical_\d+", 100, 300, 20,/.test(l));
+  assert.strictEqual(al[i20 - 1], 'CreateMultiStepDrillingStrategy(true, 2, 10, true);');
+  const i13 = al.findIndex((l) => /, 13, 35,/.test(l));
+  assert.strictEqual(al[i13 - 1], 'CreateSingleStepDrillingStrategy();');
+  // Animation: Innenstück mit Stegen fällt nicht heraus
+  const TP = require('../web/js/toolpath.js');
+  assert.ok(!TP.build(a, toolInfo, cfg).some((m) => m.slug));
+  assert.ok(TP.build(d, toolInfo, {}).some((m) => m.slug));
+  // echte Kontur bei Sonderteil: geschlossene Polylinie gegen den Uhrzeigersinn, dann Extrusion mit Dicke
+  const [b] = convert(read('test/fixtures/seitenwand_32.step'), cfg, 'sw.step');
+  const bl = L(b.xcs);
+  const ie = bl.findIndex((l) => l === 'CreateFinishedWorkpieceFromExtrusion("Workpiece", 19);');
+  const ip = bl.findIndex((l) => l.startsWith('CreatePolyline("Workpiece_Contour"'));
+  assert.ok(ip > 0 && ie > ip && !b.xcs.includes('CreateFinishedWorkpieceBox'));
+  const start = /CreatePolyline\("Workpiece_Contour", ([-\d.]+), ([-\d.]+)\)/.exec(bl[ip]).slice(1).map(Number);
+  const last = /\(([-\d.]+), ([-\d.]+)/.exec(bl[ie - 1]).slice(1).map(Number);
+  assert.deepStrictEqual(last, start);
+  assert.ok(PanelLoopArea(b.panel.outline) > 0);
+  assert.ok(bl[ie + 1].startsWith('CreateRawWorkpiece("Workpiece", 2, 2, 2, 2, 0, 0)'));
+  // Haltestege „klein“: nur Innenstücke bis zur Grenze
+  const [s1] = convert(read('test/fixtures/testplatte.step'), Object.assign({}, cfg, { tabsMode: 'small', tabsMaxSize: 50 }), 't.step');
+  assert.ok(!s1.xcs.includes('"TAB"'));
+  const [s2] = convert(read('test/fixtures/testplatte.step'), Object.assign({}, cfg, { tabsMode: 'small', tabsMaxSize: 500 }), 't.step');
+  assert.ok(s2.xcs.includes('"TAB"'));
+  // Kommentar nur ASCII, ohne Anführungszeichen
+  const [u] = convert(read('test/fixtures/holz.step'), { suctionOn: false }, 'Tür "Ä" é.step');
+  assert.ok(/^SetComment\("STEP2XCS: Tuer_Ae_e"\);$/.test(L(u.xcs)[1]), L(u.xcs)[1]);
+});
+const PanelLoopArea = (lp) => require('../web/js/panel.js').loopArea(lp);

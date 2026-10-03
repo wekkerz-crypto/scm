@@ -315,7 +315,7 @@
         }
         go(offsetPath(raw, d / 2, op.side), d, op.label + (op.rough ? ' – nachfräsen' : ''), op.tool, i);
         // Durchbruch/Rundloch: nach dem letzten Schnitt fällt das Innenstück heraus
-        if (/^(cutout|round)-/.test(op.key || '') && moves.length) moves[moves.length - 1].slug = raw;
+        if (/^(cutout|round)-/.test(op.key || '') && !op.tabs && moves.length) moves[moves.length - 1].slug = raw; // mit Haltestegen bleibt es hängen
       } else if (op.kind === 'pocket' && op.face && op.face !== 'Top') {
         // Tasche in der Kante: in der Draufsicht als Ein- und Ausfahren über die Taschenbreite
         meta.kind = 'edge';

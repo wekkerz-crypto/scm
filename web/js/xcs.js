@@ -56,6 +56,22 @@
     xconverterPath: 'C:\\Program Files\\SCM Group\\Maestro\\XConverter.exe',
     toolsFile: 'C:\\Users\\Public\\Documents\\SCM Group\\Maestro\\Tlgx\\def.tlgx',
     pgmxDir: '',               // leer = Unterordner „pgmx“ neben der .bat
+    // Programmkopf
+    commentOn: true,           // SetComment / SetDescription: Teil, Herkunft, Maße
+    optimizeOn: false,         // SetOptimization(true): Maestro optimiert beim Laden
+    autoSetupOn: false,        // SetAutoSetup(true): Tisch beim Laden automatisch einrichten
+    workpieceShape: 'box',     // 'box' = Quader, 'contour' = echte Außenkontur (CreateFinishedWorkpieceFromExtrusion)
+    // Durchbrüche
+    tabsMode: 'off',           // Haltestege (TAB): 'off', 'small' (Innenstück bis tabsMaxSize), 'all'
+    tabsMaxSize: 200,          // größte Seite des Innenstücks für 'small' in mm
+    tabsCount: 2,              // Stege je Durchbruch
+    tabLength: 5,              // Steglänge in mm
+    tabHeight: 2,              // Steghöhe (stehen gelassenes Material) in mm
+    helixOn: false,            // Durchbrüche/Rundlöcher spiralförmig eintauchen (CreateHelicMillingStrategy)
+    helixStep: 5,              // Zustellung je Umlauf der Spirale in mm
+    // Bohren
+    drillStepFrom: 0,          // ab dieser Bohrtiefe in Stufen bohren (0 = aus)
+    drillStep: 15,             // Tiefe je Stufe in mm
     // Sauger (Drehsauger auf Konsolen): automatischer Vorschlag, SetBarPosition / SetSuctionCupPosition
     suctionOn: true,           // Vorschlag ins Programm schreiben
     cupBigCode: 'H75-M-145x145', cupBigX: 145, cupBigY: 145,
@@ -712,6 +728,23 @@
           warnings.push(op.label + ': Fräser ' + op.tool + ' (Ø' + fmt(info.d) + ') passt nicht hinein – kleineren Fräser wählen.');
         }
       }
+      if (op.kind === 'contour' && /^(cutout|round)-/.test(op.key)) {
+        // Haltestege: Innenstück bleibt hängen (klein oder alle Durchbrüche)
+        let lo = [Infinity, Infinity];
+        let hi = [-Infinity, -Infinity];
+        let prev = op.start;
+        for (const q of op.segs) {
+          for (const c of q.type === 'arc' ? [q.to, [q.c[0] + Math.hypot(prev[0] - q.c[0], prev[1] - q.c[1]), q.c[1]], [q.c[0] - Math.hypot(prev[0] - q.c[0], prev[1] - q.c[1]), q.c[1]]] : [q.to]) {
+            lo = [Math.min(lo[0], c[0]), Math.min(lo[1], c[1])];
+            hi = [Math.max(hi[0], c[0]), Math.max(hi[1], c[1])];
+          }
+          prev = q.to;
+        }
+        const size = Math.max(hi[0] - lo[0], hi[1] - lo[1]);
+        op.tabs = cfg.tabsMode === 'all' || (cfg.tabsMode === 'small' && size <= cfg.tabsMaxSize);
+        if (op.tabs && !/Haltestege/.test(op.label)) op.label += ' mit Haltestegen';
+        op.helix = !!cfg.helixOn;
+      }
       if (op.kind === 'contour' || op.kind === 'pocket') {
         const glob = op.kind === 'pocket' && cfg.pocketStepDown > 0 ? cfg.pocketStepDown : cfg.stepDown;
         const st = cfg.stepOverrides && cfg.stepOverrides[op.key] !== undefined ? cfg.stepOverrides[op.key] : glob;
@@ -855,7 +888,23 @@
     const L = [];
     const blank = () => L.push('');
     L.push('SetMachiningParameters("' + field + '", 1, 10, 196608, false);'); blank();
-    L.push('CreateFinishedWorkpieceBox("Workpiece", ' + fmt(p.L) + ', ' + fmt(p.W) + ', ' + fmt(p.T) + ');'); blank();
+    // Programmkopf: Kommentar/Beschreibung (nur ASCII, ohne Anführungszeichen), Optimierung, Tisch einrichten
+    const ascii = (t) => String(t).replace(/[äöüÄÖÜß]/g, (c) => ({ 'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'Ä': 'Ae', 'Ö': 'Oe', 'Ü': 'Ue', 'ß': 'ss' }[c]))
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '').replace(/["\\]/g, '');
+    if (cfg.commentOn) {
+      L.push('SetComment("' + ascii('STEP2XCS: ' + (p.name || 'Teil')) + '");');
+      L.push('SetDescription("' + ascii(fmt(p.L) + ' x ' + fmt(p.W) + ' x ' + fmt(p.T) + ' mm, ' + ops.length + ' Bearbeitungen') + '");');
+    }
+    if (cfg.optimizeOn) L.push('SetOptimization(true);');
+    if (cfg.autoSetupOn) L.push('SetAutoSetup(true);');
+    if (cfg.commentOn || cfg.optimizeOn || cfg.autoSetupOn) blank();
+    // Werkstück: Quader oder echte Außenkontur (nur wenn die Kontur vom Rechteck abweicht)
+    if (cfg.workpieceShape === 'contour' && !p.outlineIsRect && p.outline && p.outline.length) {
+      writePoly(L, 'Workpiece_Contour', p.outline);
+      L.push('CreateFinishedWorkpieceFromExtrusion("Workpiece", ' + fmt(p.T) + ');'); blank();
+    } else {
+      L.push('CreateFinishedWorkpieceBox("Workpiece", ' + fmt(p.L) + ', ' + fmt(p.W) + ', ' + fmt(p.T) + ');'); blank();
+    }
     const o = fmt(cfg.rawOversize);
     L.push('CreateRawWorkpiece("Workpiece", ' + [o, o, o, o].join(', ') + ', 0, 0);'); blank();
     L.push('SetWorkpieceSetupPosition(' + o + ', ' + o + ', 0, 0);'); blank();
@@ -876,6 +925,7 @@
     const counts = { chamfer: 0, slant: 0, sdrill: 0, blade: 0, pdrill: 0 };
     let plane = 'Top';
     const madePlanes = new Set();
+    let multiStep = false;
     for (const op of ops) {
       // Fräsungen und schräge Bohrungen beziehen sich auf die Oberseite, Kantentaschen auf ihre Kante,
       // Bearbeitungen auf schrägen Ebenen auf eine eigene Ebene (einmal angelegt)
@@ -895,11 +945,29 @@
         }
       }
       if (op.kind === 'contour') {
+        // Haltestege in der Mitte der längsten Elemente (Attribut gilt für das zuletzt angefügte Element)
+        const tabAt = new Set();
+        if (op.tabs) {
+          let prev = op.start;
+          const lens = op.segs.map((q, i) => {
+            let l;
+            if (q.type === 'arc') {
+              const r = Math.hypot(prev[0] - q.c[0], prev[1] - q.c[1]);
+              let sw = Math.atan2(q.to[1] - q.c[1], q.to[0] - q.c[0]) - Math.atan2(prev[1] - q.c[1], prev[0] - q.c[0]);
+              if (q.cw) { while (sw >= 0) sw -= Math.PI * 2; } else { while (sw <= 0) sw += Math.PI * 2; }
+              l = Math.abs(sw) * r;
+            } else l = Math.hypot(q.to[0] - prev[0], q.to[1] - prev[1]);
+            prev = q.to;
+            return { i: i, l: l };
+          });
+          lens.sort((a, b) => b.l - a.l).slice(0, Math.max(1, cfg.tabsCount)).forEach((x) => tabAt.add(x.i));
+        }
         L.push('CreatePolyline("Contour_' + op.contour + '", ' + pt(op.start) + ');');
-        for (const s of op.segs) {
+        op.segs.forEach((s, i) => {
           if (s.type === 'line') L.push('AddSegmentToPolyline(' + pt(s.to) + ');');
           else L.push('AddArc2PointCenterToPolyline(' + pt(s.to) + ', ' + pt(s.c) + ', ' + (s.cw ? 'true' : 'false') + ');');
-        }
+          if (tabAt.has(i)) L.push('SetParametricAttribute2("TAB", ' + fmt(cfg.tabLength) + ', ' + fmt(cfg.tabHeight) + ', 0.5);');
+        });
         blank();
         L.push('ResetApproachStrategy();');
         L.push('ResetRetractStrategy();');
@@ -922,7 +990,11 @@
           }
           L.push('SetPneumaticHoodPosition(1);');
         }
-        if (op.step) L.push('CreateUnidirectionalMillingStrategy(true, ' + fmt(op.step) + ', ' + fmt(cfg.finishDepth) + ', 1, false);');
+        if (op.helix) {
+          // spiralförmig eintauchen: Zustellung je Umlauf, letzte Zustellung (Form wie im Handbuch-Beispiel)
+          const hs = op.step || cfg.helixStep;
+          L.push('CreateHelicMillingStrategy(' + fmt(hs) + ', ' + fmt(cfg.finishDepth) + ', ' + (cfg.finishDepth > 0 ? 'true' : 'false') + ');');
+        } else if (op.step) L.push('CreateUnidirectionalMillingStrategy(true, ' + fmt(op.step) + ', ' + fmt(cfg.finishDepth) + ', 1, false);');
         L.push('CreateRoughFinish("Milling_' + op.milling + '", ' + fmt(op.depth) + ', "", TypeOfProcess.GeneralRouting, "' +
           op.tool + '", "-1", ' + op.side + ', "-1", "-1", "-1");');
         blank();
@@ -1012,6 +1084,16 @@
         const d = op.d;
         const usePat = pat.nX > 1 || pat.nY > 1;
         if (usePat) L.push('CreatePattern(' + pat.nY + ', ' + pat.nX + ', ' + fmt(pat.dY) + ', ' + fmt(pat.dX) + ', 0, 90);');
+        // tiefe Bohrung in Stufen mit Rückzug zum Spanen (isStepDepth, Anzahl, Tiefe je Stufe, Rückzug auf Sicherheitshöhe)
+        if (cfg.drillStepFrom > 0 && d.depth > cfg.drillStepFrom + 1e-9 && cfg.drillStep > 0) {
+          const n = Math.ceil(d.depth / cfg.drillStep - 1e-9);
+          L.push('CreateMultiStepDrillingStrategy(true, ' + n + ', ' + fmt(d.depth / n) + ', true);');
+          multiStep = true;
+        } else if (multiStep) {
+          // falls die Stufen-Strategie weiter gilt: für flache Bohrungen zurück auf einen Durchgang
+          L.push('CreateSingleStepDrillingStrategy();');
+          multiStep = false;
+        }
         if (op.plane) {
           L.push('CreateDrill ("Drill_Slanted_Plane_' + (++counts.pdrill) + '", ' + fmt(d.x) + ', ' + fmt(d.y) + ', ' + fmt(d.depth) + ', ' +
             fmt(d.d) + ', "", TypeOfProcess.Drilling, "-1", "-1", 1, -1, -1, "' + d.tip + '");');

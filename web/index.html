@@ -370,7 +370,9 @@ table.fmt.one .onet { display: inline; }
       ['drillsVertical', 'Bohrer vertikal Ø', 'list', 'Liste der vorhandenen Bohrer in mm'],
       ['drillsHorizontal', 'Bohrer horizontal Ø', 'list', 'für Kantenbohrungen'],
       ['throughExtra', 'Durchgangsbohrung: Dicke +', 'number', 'mm'],
-      ['usePatterns', 'Lochreihen als Muster (CreatePattern)', 'bool']] },
+      ['usePatterns', 'Lochreihen als Muster (CreatePattern)', 'bool'],
+      ['drillStepFrom', 'In Stufen bohren ab Tiefe', 'number', 'mm · 0 = aus'],
+      ['drillStep', 'Tiefe je Stufe', 'number', 'mm']] },
     { title: 'Taschen', c: '--pocket', fields: [
       ['pocketTool', 'Fräser', 'mill'],
       ['pocketStepDown', 'Zustelltiefe je Durchgang', 'number', 'mm · 0 = wie Fräsen'],
@@ -383,6 +385,13 @@ table.fmt.one .onet { display: inline; }
       ['cutoutExtra', 'Ausschnitte: Dicke +', 'number', 'mm'],
       ['rebateTool', 'Fräser Falz', 'mill'],
       ['leadLength', 'An-/Auslauf', 'number', 'mm'],
+      ['tabsMode', 'Haltestege bei Durchbrüchen', 'choice', [['off', 'aus'], ['small', 'bei kleinen Innenstücken'], ['all', 'bei allen Durchbrüchen']]],
+      ['tabsMaxSize', 'Haltestege: Innenstück bis', 'number', 'mm (größte Seite)'],
+      ['tabsCount', 'Haltestege je Durchbruch', 'number', 'Stück'],
+      ['tabLength', 'Haltesteg: Länge', 'number', 'mm'],
+      ['tabHeight', 'Haltesteg: Höhe', 'number', 'mm Material'],
+      ['helixOn', 'Durchbrüche/Rundlöcher spiralförmig eintauchen', 'bool'],
+      ['helixStep', 'Spirale: Zustellung je Umlauf', 'number', 'mm'],
       ['stepDown', 'Zustelltiefe je Durchgang', 'number', 'mm · 0 = ein Durchgang'],
       ['finishDepth', 'Letzte Zustellung', 'number', 'mm · 0 = aus (auch Taschen)']] },
     { title: 'Säge', c: '--saw', fields: [
@@ -413,6 +422,11 @@ table.fmt.one .onet { display: inline; }
       ['cupsPerBar', 'Sauger je Konsole höchstens', 'number', 'Stück'],
       ['cupEdgeMargin', 'Abstand zur Plattenkante', 'number', 'mm'],
       ['cupHoleMargin', 'Abstand zu Durchbrüchen/Bohrungen', 'number', 'mm']] },
+    { title: 'Programmkopf', c: '--muted', fields: [
+      ['commentOn', 'Kommentar und Beschreibung (Teil, Maße)', 'bool'],
+      ['optimizeOn', 'Maestro optimiert beim Laden (SetOptimization)', 'bool'],
+      ['autoSetupOn', 'Tisch beim Laden einrichten (SetAutoSetup)', 'bool'],
+      ['workpieceShape', 'Werkstück in Maestro', 'choice', [['box', 'Quader (L × B × D)'], ['contour', 'echte Außenkontur bei Sonderteilen']]]] },
     { title: 'Arbeitsfeld & Rohteil', c: '--muted', fields: [
       ['fieldShort', 'Feld kurze Teile', 'text'],
       ['fieldLong', 'Feld lange Teile', 'text'],
@@ -560,6 +574,20 @@ table.fmt.one .onet { display: inline; }
     return box;
   }
 
+  // Felder, die nur gelten, wenn ein Schalter an ist: ausgegraut zeigen
+  const DEPENDENT = { scoreCut: ['scoreDepth', 'scoreOut'], tabsMode: ['tabsMaxSize', 'tabsCount', 'tabLength', 'tabHeight'],
+    helixOn: ['helixStep'], drillStepFrom: ['drillStep'], suctionOn: ['cupBigCode', 'cupSmallCode'] };
+  function dimmed(k) {
+    const st = state.settings;
+    if (k === 'scoreDepth' || k === 'scoreOut') return !st.scoreCut;
+    if (k === 'tabsMaxSize') return st.tabsMode !== 'small';
+    if (/^tab(sCount|Length|Height)$/.test(k)) return st.tabsMode === 'off';
+    if (k === 'helixStep') return !st.helixOn;
+    if (k === 'drillStep') return !(st.drillStepFrom > 0);
+    if (k === 'cupBigCode' || k === 'cupSmallCode') return !st.suctionOn;
+    return false;
+  }
+
   function renderSettings() {
     const root = $('setgrid');
     root.innerHTML = '';
@@ -578,7 +606,7 @@ table.fmt.one .onet { display: inline; }
       const unit = typeof extra === 'string' ? extra : '';
       const l = document.createElement('label');
       l.className = 'row' + (type === 'list' || type === 'path' ? ' stack' : '') + (type === 'bool' ? ' check' : '') +
-        (/^score(Depth|Out)$/.test(k) && !state.settings.scoreCut ? ' dim' : '');
+        (dimmed(k) ? ' dim' : '');
       const id = 'set-' + k;
       l.htmlFor = id;
       const v = state.settings[k];
@@ -589,6 +617,7 @@ table.fmt.one .onet { display: inline; }
         g.appendChild(l);
         l.querySelector('select').addEventListener('change', (ev) => {
           state.settings[k] = ev.target.value;
+          for (const x of DEPENDENT[k] || []) { const e = $('set-' + x); if (e) e.closest('label').classList.toggle('dim', dimmed(x)); }
           saveSettings();
           state.parts.forEach(compute);
           render();
@@ -629,7 +658,7 @@ table.fmt.one .onet { display: inline; }
         if (type === 'number' && isNaN(val)) return;
         if (JSON.stringify(val) === JSON.stringify(state.settings[k])) return;
         state.settings[k] = val;
-        if (k === 'scoreCut') ['scoreDepth', 'scoreOut'].forEach((x) => { const e = $('set-' + x); if (e) e.closest('label').classList.toggle('dim', !val); });
+        for (const x of DEPENDENT[k] || []) { const e = $('set-' + x); if (e) e.closest('label').classList.toggle('dim', dimmed(x)); }
         saveSettings();
         state.parts.forEach(compute);
         renderSoon();

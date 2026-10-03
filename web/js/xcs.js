@@ -30,6 +30,7 @@
     slantExtra: 2,             // Schrägfräsen: Dicke + …
     stepDown: 0,               // Zustellung je Durchgang in mm (0 = in einem Durchgang)
     finishDepth: 0,            // letzte Zustellung in mm (0 = keine eigene)
+    formatLast: false,         // Formatfräsen als letzte Bearbeitung
     throughExtra: 2,           // Durchgangsbohrung: Tiefe = Dicke + …
     drillsVertical: [3, 5, 7, 8, 10, 12, 15, 20, 35],
     drillsHorizontal: [5, 8],
@@ -266,6 +267,33 @@
         depth: sd.through ? sd.depth + cfg.throughExtra : sd.depth, tip: sd.through ? 'L' : 'P' });
     }
 
+    // Reihenfolge: Gruppen (eine Fräsung, ein Falz mit allen Bahnen, gleiche Bohrungen) verschieben
+    for (const op of ops) {
+      if (op.key) op.group = op.key;
+      else if (op.kind === 'drill') op.group = 'drill:' + op.face + '|' + fmt(op.d.d) + '|' + fmt(op.d.depth) + '|' + op.d.tip;
+      else if (op.kind === 'sdrill') op.group = 'sdrill:' + fmt(op.d) + '|' + fmt(op.depth) + '|' + fmt(op.angleA) + '|' + fmt(op.angleB);
+    }
+    const defaultGroups = [];
+    for (const op of ops) if (!defaultGroups.includes(op.group)) defaultGroups.push(op.group);
+    let order = defaultGroups.slice();
+    if (cfg.formatLast) order = order.filter((g) => g !== 'format').concat(['format']);
+    if (cfg.order && cfg.order.length) {
+      const wanted = cfg.order.filter((g) => defaultGroups.includes(g));
+      order = wanted.concat(order.filter((g) => !wanted.includes(g)));
+    }
+    const rank = new Map(order.map((g, i) => [g, i]));
+    const sorted = ops.map((op, i) => ({ op: op, i: i })).sort((a, b) => rank.get(a.op.group) - rank.get(b.op.group) || a.i - b.i)
+      .map((x) => x.op);
+    ops.length = 0;
+    ops.push(...sorted);
+    // Namen in Programmreihenfolge durchnummerieren
+    let nc = 0;
+    let np = 0;
+    for (const op of ops) {
+      if (op.kind === 'contour') { op.contour = ++nc; op.milling = nc; }
+      if (op.kind === 'pocket') op.pocket = ++np;
+    }
+
     // Werkzeug je Bearbeitung (Auswahl im Web-Tool) und Zustellungen
     for (const op of ops) {
       if (!op.key) continue;
@@ -282,7 +310,7 @@
     }
 
     for (const b of p.bottom) warnings.push(b.text + ' – nicht von oben bearbeitbar (Platte wenden / 2. Programm).');
-    return { ops: ops, warnings: warnings };
+    return { ops: ops, warnings: warnings, groups: order, defaultGroups: defaultGroups };
   }
 
   function toPolySeg(s) {
@@ -370,7 +398,8 @@
     const cfg = Object.assign({}, DEFAULTS, cfgIn || {});
     if (override && override.tools) cfg.toolOverrides = override.tools;
     if (override && override.steps) cfg.stepOverrides = override.steps;
-    const { ops, warnings } = plan(p, cfg);
+    if (override && override.order) cfg.order = override.order;
+    const { ops, warnings, groups, defaultGroups } = plan(p, cfg);
     const field = (override && override.field) || (p.L > cfg.fieldThreshold + 1e-6 ? cfg.fieldLong : cfg.fieldShort);
     const L = [];
     const blank = () => L.push('');
@@ -386,6 +415,12 @@
     const counts = { chamfer: 0, slant: 0, sdrill: 0 };
     let plane = 'Top';
     for (const op of ops) {
+      // Fräsungen und schräge Bohrungen beziehen sich auf die Oberseite
+      if (op.kind !== 'drill' && plane !== 'Top') {
+        L.push('SelectWorkplane("Top");');
+        blank();
+        plane = 'Top';
+      }
       if (op.kind === 'contour') {
         L.push('CreatePolyline("Contour_' + op.contour + '", ' + pt(op.start) + ');');
         for (const s of op.segs) {
@@ -469,7 +504,7 @@
     }
     L.push('CreateNullOperation("XN", ' + fmt(p.L + cfg.parkOffset) + ', null, 1, 50, false, " ");');
     L.push('');
-    return { text: L.join('\r\n'), ops: ops, warnings: warnings, field: field };
+    return { text: L.join('\r\n'), ops: ops, warnings: warnings, field: field, groups: groups, defaultGroups: defaultGroups };
   }
 
   return { write: write, plan: plan, DEFAULTS: DEFAULTS };

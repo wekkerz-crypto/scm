@@ -59,6 +59,11 @@ Für jede Fräsbearbeitung gibt es eine Auswahlliste mit allen Fräsern, Favorit
 stehen oben. Zustellung global oder je Bearbeitung; Warnung, wenn die Zustellung länger als die Schneide ist.
 `node tools/build_defaults.js` erzeugt die eingebaute Standardliste neu.
 
+**Reihenfolge:** In der Bearbeitungsliste lässt sich jede Bearbeitung mit ↑/↓ verschieben (gleiche Bohrungen als
+Block, ein Falz mit allen Bahnen). Programm, Nummerierung und Animation folgen der Reihenfolge; nach Kantenbohrungen
+wird vor Fräsungen automatisch wieder `SelectWorkplane("Top")` gesetzt. Einstellung *Formatfräsen als letzte
+Bearbeitung* für alle Teile.
+
 **Animation der Werkzeugbahn:** Unter der Draufsicht lässt sich die Bearbeitung in Programmreihenfolge abspielen
 (Tempo, Schieberegler zum Spulen, Anzeige von Bearbeitung und Werkzeug). Das Werkzeug wird mit seinem Durchmesser aus
 der Werkzeugliste gezeigt, Konturen mit Radiuskorrektur, Taschen vereinfacht zeilenweise plus Nachkontur

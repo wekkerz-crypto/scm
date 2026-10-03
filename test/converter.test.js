@@ -183,3 +183,24 @@ test('Werkzeugbahn für die Animation', () => {
   assert.ok(moves.some((m) => m.type === 'plunge'));
   assert.strictEqual(moves[moves.length - 1].label, 'Parkposition');
 });
+
+test('Reihenfolge ändern, Formatfräsen zuletzt, zurück auf die Oberseite nach Kantenbohrungen', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const [solid] = readParts(read('test/fixtures/oberboden_27.step'));
+  const base = convertSolid(solid, {});
+  assert.deepStrictEqual(base.groups[0], 'format');
+  // Formatfräsen per Einstellung ans Ende: nach den Kantenbohrungen muss wieder "Top" gewählt werden
+  const last = convertSolid(solid, { formatLast: true });
+  const lines = last.xcs.split('\r\n').filter((l) => l);
+  const iTop = lines.indexOf('SelectWorkplane("Top");');
+  const iMill = lines.findIndex((l) => l.startsWith('CreateRoughFinish("Milling_1"'));
+  assert.ok(iTop > lines.indexOf('SelectWorkplane("Right");') && iTop < iMill, 'Top vor der Fräsung');
+  assert.strictEqual(last.groups[last.groups.length - 1], 'format');
+  // Reihenfolge je Teil: rechte Bohrungen vor die linken
+  const order = base.groups.slice();
+  const [a, b] = [order.findIndex((g) => /^drill:Left/.test(g)), order.findIndex((g) => /^drill:Right/.test(g))];
+  [order[a], order[b]] = [order[b], order[a]];
+  const swapped = convertSolid(solid, {}, { overrides: { order: order } });
+  assert.ok(swapped.xcs.indexOf('SelectWorkplane("Right")') < swapped.xcs.indexOf('SelectWorkplane("Left")'));
+  assert.deepStrictEqual(swapped.groups, order);
+});

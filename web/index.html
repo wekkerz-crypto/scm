@@ -145,9 +145,16 @@ pre.xcs .s { color: var(--mill); }
 .star { border: 0; background: none; font-size: 1.05rem; line-height: 1; padding: 2px 4px; color: var(--muted); }
 .star.on { color: var(--saw); }
 table.ops { table-layout: fixed; }
+table.ops td.mv { width: 4.4em; white-space: nowrap; text-align: right; }
+.mvb { border: 1px solid var(--line); background: var(--surface); border-radius: 4px; width: 1.8em; height: 1.7em; padding: 0; line-height: 1; }
+.mvb:hover:not([disabled]) { border-color: var(--accent); color: var(--accent); }
+.mvb[disabled] { opacity: .3; cursor: default; }
+.num { display: inline-block; min-width: 1.6em; font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); }
+.opshead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 4px; }
+.btn.small { padding: 3px 8px; font-size: 0.8rem; }
 table.ops td.v { width: 6.5em; }
 table.ops tr.has-ctl td { padding-bottom: 2px; }
-table.ops tr.ctlrow td { border-top: 0; padding-top: 0; padding-left: 20px; }
+table.ops tr.ctlrow td { border-top: 0; padding-top: 0; padding-left: 38px; }
 table.ops td.ctl { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
 table.ops td.ctl select { flex: 1 1 14rem; min-width: 0; width: 100%; font-size: 0.8rem; padding: 3px 4px; }
 table.ops input.step { width: 4.5em; font-size: 0.8rem; padding: 3px 4px; }
@@ -233,7 +240,7 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     ['sawOverrun', 'Säge-Überlauf (mm)', 'number'], ['maxGrooveWidth', 'Max. Nutbreite (mm)', 'number'],
     ['throughExtra', 'Durchgangsbohrung: Dicke +', 'number'], ['parkOffset', 'Parkposition: Länge +', 'number'],
     ['drillsVertical', 'Bohrer vertikal Ø (Liste)', 'list'], ['drillsHorizontal', 'Bohrer horizontal Ø (Liste)', 'list'],
-    ['usePatterns', 'Lochreihen als Muster (CreatePattern)', 'bool'],
+    ['usePatterns', 'Lochreihen als Muster (CreatePattern)', 'bool'], ['formatLast', 'Formatfräsen als letzte Bearbeitung', 'bool'],
     ['xconverterPath', 'X-Konverter (XConverter.exe)', 'path'], ['toolsFile', 'Werkzeugdatei (.tlgx)', 'path'],
     ['pgmxDir', 'Zielordner .pgmx (leer = Unterordner „pgmx“)', 'path'],
   ];
@@ -379,31 +386,34 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
   // ------------------------------------------------ Darstellung
   const KIND_COLOR = { contour: 'var(--mill)', pocket: 'var(--mill)', chamfer: 'var(--accent)', slant: 'var(--accent)', slot: 'var(--saw)' };
 
-  // Eine Zeile je Bearbeitung mit Werkzeug-Auswahl; Bohrungen zusammengefasst.
+  // Eine Zeile je Gruppe in Programmreihenfolge (Fräsung, Falz mit allen Bahnen, gleiche Bohrungen).
   function opsSummary(r) {
     const rows = [];
-    const seen = new Set();
-    const drills = new Map();
+    const byGroup = new Map();
     for (const op of r.ops) {
-      if (op.kind === 'drill' || op.kind === 'sdrill') {
-        const d = op.kind === 'drill' ? op.d : op;
-        const face = op.kind === 'drill' ? op.face : 'Slanted';
-        const key = face + '|' + d.d + '|' + d.depth + '|' + d.tip;
-        const n = op.kind === 'drill' ? op.pattern.nX * op.pattern.nY : 1;
-        if (!drills.has(key)) drills.set(key, { face: face, d: d.d, depth: d.depth, tip: d.tip, n: 0, angle: op.angleB });
-        drills.get(key).n += n;
-        continue;
+      let row = byGroup.get(op.group);
+      if (!row) {
+        row = { group: op.group, ops: [] };
+        byGroup.set(op.group, row);
+        rows.push(row);
       }
-      if (!op.key || seen.has(op.key)) continue;
-      seen.add(op.key);
-      const passes = op.kind === 'contour' && op.key.indexOf('rebate') === 0 ? r.ops.filter((o) => o.key === op.key).length : 1;
-      rows.push({ c: KIND_COLOR[op.kind] || 'var(--mill)', k: op.label + (passes > 1 ? ' (' + passes + ' Bahnen)' : ''),
-        v: 'T ' + fmt(op.depth || op.height || 0), op: op });
+      row.ops.push(op);
     }
-    for (const g of drills.values()) {
-      const where = g.face === 'Slanted' ? 'schräg ' + fmt(g.angle) + '°' : FACE[g.face];
-      rows.push({ c: g.face === 'Top' ? 'var(--drill)' : 'var(--hdrill)',
-        k: g.n + ' × Bohrung Ø' + fmt(g.d) + ' ' + where + (g.tip === 'L' ? ' (durch)' : ''), v: 'T ' + fmt(g.depth) });
+    for (const row of rows) {
+      const op = row.ops[0];
+      if (op.kind === 'drill' || op.kind === 'sdrill') {
+        const n = row.ops.reduce((a, o) => a + (o.kind === 'drill' ? o.pattern.nX * o.pattern.nY : 1), 0);
+        const d = op.kind === 'drill' ? op.d : op;
+        const where = op.kind === 'sdrill' ? 'schräg ' + fmt(op.angleB) + '°' : FACE[op.face];
+        row.c = op.kind === 'drill' && op.face === 'Top' ? 'var(--drill)' : 'var(--hdrill)';
+        row.k = n + ' × Bohrung Ø' + fmt(d.d) + ' ' + where + (d.tip === 'L' ? ' (durch)' : '');
+        row.v = 'T ' + fmt(d.depth);
+      } else {
+        row.c = KIND_COLOR[op.kind] || 'var(--mill)';
+        row.k = op.label + (row.ops.length > 1 ? ' (' + row.ops.length + ' Bahnen)' : '');
+        row.v = 'T ' + fmt(op.depth || op.height || 0);
+        row.op = op;
+      }
     }
     return rows;
   }
@@ -536,7 +546,7 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
     }
     // Fräsbahnen (außer Formatfräsen)
     for (const op of r.ops) {
-      if (op.kind !== 'contour' || op.contour === 1) continue;
+      if (op.kind !== 'contour' || op.key === 'format') continue;
       s += '<path d="' + svgPath(op.start, op.segs, Y) + '" fill="none" stroke="var(--mill)" stroke-width="2" stroke-dasharray="6 3" ' + sw + '/>';
     }
     // Bohrungen
@@ -609,16 +619,34 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
       '<div class="legend"><span><i style="background:var(--drill)"></i>Bohrung oben</span><span><i style="background:var(--hdrill)"></i>Bohrung Kante</span>' +
       '<span><i style="background:var(--mill)"></i>Fräsbahn / Tasche</span><span><i style="background:var(--saw)"></i>Nut / Falz</span>' +
       '<span><i style="background:var(--accent)"></i>Fase / schräge Kante</span><span><i style="background:var(--err)"></i>Nullpunkt</span></div></div>' +
-      '<div class="cols"><div class="card"><h3>Bearbeitungen</h3><table class="ops"><tbody>' +
-      opsSummary(r).map((x) => '<tr' + (x.op ? ' class="has-ctl"' : '') + '><td class="k"><span class="sw" style="background:' + x.c + '"></span>' + esc(x.k) +
-        '</td><td class="v">' + esc(x.v) + '</td></tr>' +
-        (x.op ? '<tr class="ctlrow"><td colspan="2" class="ctl">' + opControls(part, x.op) + '</td></tr>' : '')).join('') +
+      '<div class="cols"><div class="card"><div class="opshead"><h3>Bearbeitungen in Programmreihenfolge</h3>' +
+      (part.overrides.order ? '<button class="btn ghost small" id="resetorder" type="button">Reihenfolge zurücksetzen</button>' : '') +
+      '</div><table class="ops"><tbody>' +
+      opsSummary(r).map((x, i, all) => '<tr' + (x.op ? ' class="has-ctl"' : '') + '><td class="k"><span class="num">' + (i + 1) + '</span>' +
+        '<span class="sw" style="background:' + x.c + '"></span>' + esc(x.k) +
+        '</td><td class="v">' + esc(x.v) + '</td><td class="mv">' +
+        '<button type="button" class="mvb" data-move="' + esc(x.group) + '" data-dir="-1"' + (i === 0 ? ' disabled' : '') + ' aria-label="' + esc(x.k) + ' nach oben">↑</button>' +
+        '<button type="button" class="mvb" data-move="' + esc(x.group) + '" data-dir="1"' + (i === all.length - 1 ? ' disabled' : '') + ' aria-label="' + esc(x.k) + ' nach unten">↓</button>' +
+        '</td></tr>' +
+        (x.op ? '<tr class="ctlrow"><td colspan="3" class="ctl">' + opControls(part, x.op) + '</td></tr>' : '')).join('') +
       '</tbody></table>' + (r.warnings.length ? '<ul class="warns">' + r.warnings.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ul>' : '') +
       '</div><div class="card code"><div class="bar"><span class="fname"><input id="fname" type="text" value="' + esc(part.fileName) + '" aria-label="Dateiname"></span>' +
       '<span class="tools"><button class="btn" id="copy" type="button">Kopieren</button><button class="btn primary" id="dl" type="button">Speichern</button></span></div>' +
       '<pre class="xcs" id="xcs">' + highlight(r.xcs) + '</pre></div></div>';
 
     setupAnim(part);
+    el.querySelectorAll('[data-move]').forEach((b) => b.addEventListener('click', () => {
+      const order = (part.result.groups || []).slice();
+      const i = order.indexOf(b.dataset.move);
+      const j = i + Number(b.dataset.dir);
+      if (i < 0 || j < 0 || j >= order.length) return;
+      [order[i], order[j]] = [order[j], order[i]];
+      part.overrides.order = order;
+      compute(part); render();
+      const again = document.querySelector('[data-move="' + CSS.escape(b.dataset.move) + '"][data-dir="' + b.dataset.dir + '"]');
+      if (again && !again.disabled) again.focus();
+    }));
+    if ($('resetorder')) $('resetorder').addEventListener('click', () => { delete part.overrides.order; compute(part); render(); });
     el.querySelectorAll('select[data-tool]').forEach((sel) => sel.addEventListener('change', () => {
       part.overrides.tools[sel.dataset.tool] = sel.value;
       compute(part); render();

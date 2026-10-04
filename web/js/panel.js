@@ -1037,7 +1037,27 @@
       }
       if (!boss.length) continue;
       const h = Math.max(...boss.flatMap((g) => g.pts.map(dist)));
-      bossOf.set(f.id, { height: h, faceIds: boss.map((g) => g.id) });
+      // Bearbeitungsebene der Schräge (wie slantFrame): X entlang der Kante, Y die Schräge hinauf, Ursprung an der Ecke
+      const az = Math.atan2(n[0], -n[1]);
+      const X = [Math.cos(az), Math.sin(az), 0];
+      const Y = cross(n, X);
+      const ob = f.bounds.find((b) => b.outer) || f.bounds[0];
+      const outerPts = [];
+      for (const e of ob.edges) for (const q of e.samples) outerPts.push(q);
+      const lx = outerPts.map((q) => dot(sub(q, p0), X));
+      const ly = outerPts.map((q) => dot(sub(q, p0), Y));
+      const o = add(p0, add(mul(X, minOf(lx)), mul(Y, minOf(ly))));
+      const loc = (q) => [dot(sub(q, o), X), dot(sub(q, o), Y)];
+      // Grundriss des Zapfens auf der Fläche (Innenkontur), als Geraden über die Stützpunkte
+      const islands = f.bounds.filter((b) => !b.outer).map((b) => {
+        const pts = [];
+        for (const e of b.edges) for (const q of e.samples.slice(0, -1)) pts.push(loc(q));
+        return pts.map((q, i) => ({ type: 'line', a: q, b: pts[(i + 1) % pts.length] }));
+      });
+      bossOf.set(f.id, { height: h, faceIds: boss.map((g) => g.id), islands: islands,
+        plane: { o: o, X: X, Y: Y, n: n, zRot: az * 180 / Math.PI, xRot: Math.acos(Math.max(-1, Math.min(1, n[2]))) * 180 / Math.PI,
+          L: maxOf(lx) - minOf(lx), W: maxOf(ly) - minOf(ly) },
+        bottomZ: minOf(outerPts.map((q) => q[2])) });
       boss.forEach((g) => bossFaces.add(g.id));
     }
     for (const f of inclined) {
@@ -1052,6 +1072,8 @@
         const sawable = faces.every((g) => g.pts.every((q) => (q[0] - p0[0]) * n[0] + (q[1] - p0[1]) * n[1] + (q[2] - p0[2]) * n[2] <= 0.05));
         res.slantWalls.push({ top: e.top, bottom: e.bottom, angle: e.angle, leanOut: e.offset > 0, path: e.path, sawable: sawable, faceId: f.id,
           boss: bossOf.get(f.id) || null });
+        // Zapfen auf einer nach unten zeigenden Schräge: von oben nicht erreichbar (zählt als Bearbeitung von unten → wenden)
+        if (bossOf.has(f.id) && f.surf.n[2] < -ATOL) res.bottom.push({ kind: 'Zapfen', text: 'Zapfen auf einer Schräge nach unten – Platte wenden' });
       } else if (e.zmax > T - TOL) {
         chamferFaces.push({ kind: 'line', side: 'top', line: e.bottomLine, width: Math.abs(e.offset), height: T - e.zmin, path: e.path });
       } else if (e.zmin < TOL) {

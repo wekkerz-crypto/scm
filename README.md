@@ -52,6 +52,18 @@ Weitere Schalter: `--step mm` (Zustellung), `--no-order-rule`, `--schraege-5achs
 dem Schaftfräser abzeilen, übrige Flächen Kugelfräser), `--oszillieren`, `--schleifen` (siehe unten), `--dicke mm` (Plattendicke für `.dxf`, Standard 19;
 Erkennungen wie vorgeschlagen).
 
+### Zapfen auf einer Schräge (z. B. Gehrung mit Feder)
+
+Ragt aus einer schrägen Kante über die ganze Dicke ein Zapfen heraus (Beispiel `test/fixtures/zapfen.step`: Gehrung 45°,
+Zapfen 134,5 × 13,8, 8 mm hoch), wird die Kante nicht mehr durchgesägt (das würde den Zapfen abtrennen), sondern:
+1. **Vorschnitt** parallel zur Schräge, um die Zapfenhöhe (+ *Zugabe*) nach außen versetzt – Säge (Vorgabe) oder
+   schräg gefräst (*Werkzeuge & Regeln → Fasen, Rundungen & schräge Kanten*).
+2. **Tasche auf der geneigten Ebene** in Höhe der Zapfenoberseite (`CreateWorkplane("Zapfen_n", …)`): die ganze Fläche der
+   Schräge, rundum um Fräserradius + 1 größer, mit dem **Zapfen als Insel**, so tief wie der Zapfen (Fräser `E020`
+   senkrecht zur Schräge). Mit Zugabe > 0 wird vorher die Zapfenoberseite plan gefräst.
+Die Platte wird so gelegt, dass die Schräge nach oben zeigt (sonst Hinweis, nichts ausgegeben). An der Unterkante der
+Schräge taucht der Fräser um ≈ Radius × sin(Neigung) unter die Platte – dort keine Sauger/Gehäuse über der Kante.
+
 ### Clamex (Lamello P-System)
 
 **So in der STEP modellieren:** die Nut so, wie die Scheibe sie fräst – Kreis **Ø 100** (Radius 50) auf der Mittelebene der
@@ -305,6 +317,9 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
   Überlappung; die bestätigten Beispiele haben 0. In der Simulation prüfen, dass die Kontur um 2 mm überfahren wird.
 - **Formatfräsen zweistufig:** `CreateRoughFinish("Milling_n_Vor", …, Aufmaß)` mit dem Aufmaß als 11. Wert (Handbuch),
   danach dasselbe auf Endmaß – in Maestro noch nicht bestätigt.
+- **Zapfen auf Schräge:** Vorschnitt mit versetzter Säge-Linie und Tasche mit Insel auf `CreateWorkplane` (wie Taschen auf
+  Schrägen) – in der Simulation prüfen: Lage der Ebene (Ursprung an der Unterkante + Zapfenhöhe), Zapfen bleibt stehen,
+  Fräser unter der Platte an der Unterkante.
 - **Clamex über `SawCut_Lamello`:** Parameterliste nach Position aus den Werkstatt-Programmen; geprüft werden muss
   der Fall Start = Ende (ein Verbinder an der Nutposition) mit *Winkel um Z* an Position 47, die Höhe der Nut (das
   Makro nimmt sie aus seinen Vorgaben, Wert 10 an Position 41?) und die Lage bei schrägen Schnittflächen (längere Kante).

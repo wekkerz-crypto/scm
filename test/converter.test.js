@@ -1297,14 +1297,38 @@ test('Clamex über das SCM-Makro SawCut_Lamello: Parameterliste wie in der Werks
   assert.match(r3.xcs, /CreateMacro\("SawCut_Lamello_1", "SawCut_Lamello", 250, 0, 250, 0, 90, 360\);/);
 });
 
-test('Gehrung mit Zapfen: kein durchgehender Schnitt (würde den Zapfen abtrennen), Hinweis', () => {
+test('Gehrung mit Zapfen: Vorschnitt parallel um Zapfenhöhe, dann Tasche auf der geneigten Ebene (Zapfen = Insel)', () => {
   const { readParts, convertSolid } = require('../web/js/convert.js');
+  const Tl = require('../web/js/tools.js');
+  const toolInfo = Tl.infoMap(Tl.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
   const [s] = readParts(read('test/fixtures/zapfen.step'), 'zapfen.step'); // Meter-STEP: 400 × 200 × 30, Gehrung 45°, Zapfen 8 mm
-  const r = convertSolid(s, {});
+  const r = convertSolid(s, { toolInfo }); // E020 Ø17,31 → Tasche rundum r + 1 = 9,655 größer
   assert.deepStrictEqual([r.panel.L, r.panel.W, Math.round(r.panel.T)], [400, 200, 30]);
+  assert.strictEqual(r.panel.orientation.flip, true); // Gehrung zeigt nach oben
+  assert.strictEqual(r.panel.bottom.length, 0);
   const w = r.panel.slantWalls[0];
   assert.ok(w.boss && Math.abs(w.boss.height - 8) < 1e-6);
-  assert.doesNotMatch(r.xcs, /CreateBladeCut|CreateSlantedRoughFinish/);
-  assert.ok(r.warnings.some((x) => /mit Zapfen \(8 mm hoch\).*nicht ausgegeben/.test(x)));
-  assert.ok(!r.warnings.some((x) => /ohne Verbindung/.test(x)));
+  assert.ok(!r.warnings.some((x) => /ohne Verbindung|nicht ausgegeben/.test(x)), r.warnings.join(' | '));
+  assert.ok(r.warnings.some((x) => /taucht an der Unterkante der Schräge bis ≈6\.1 mm unter die Platte/.test(x)));
+  // 1) Vorschnitt: Oberkante 370 + 8/sin45 = 381,32
+  assert.match(r.xcs, /CreateSegment\("Saegeschnitt_Linie_1", 381\.32, -50, 381\.32, 250\);/);
+  // 2) Ebene auf Höhe der Zapfenoberseite, 45° geneigt, Normale nach oben außen
+  assert.match(r.xcs, /CreateWorkplane\("Zapfen_1", 405\.658, 0, 5\.656, 90, 45\.008\);/);
+  // Zapfen als Insel (im Uhrzeigersinn), Tasche größer als die Fläche, 8 tief mit E020
+  assert.match(r.xcs, /CreatePolyline\("Island_1_1", 167\.242, 28\.297\);\r?\nAddSegmentToPolyline\(167\.242, 14\.461\);\r?\nAddSegmentToPolyline\(32\.758, 14\.461\);/);
+  assert.match(r.xcs, /CreatePolyline\("Pocket_1", -9\.655, -9\.655\);\r?\nAddSegmentToPolyline\(209\.655, -9\.655\);/);
+  assert.match(r.xcs, /CreateContourPocket\("Pocketing_1", 8, "", TypeOfProcess\.ConcentricalPocket, "E020", "-1", -1, -1, -1, 50, false, "Island_1_1"\);/);
+  // Reihenfolge: erst Vorschnitt, dann Tasche
+  assert.ok(r.xcs.indexOf('CreateBladeCut') < r.xcs.indexOf('CreateContourPocket'));
+  // Zugabe: Vorschnitt weiter außen, zuerst die Zapfenoberseite plan
+  const z = convertSolid(s, { tenonAllowance: 0.5 });
+  assert.match(z.xcs, /CreateContourPocket\("Pocketing_1", 0\.5, [^;]*false\);[\s\S]*CreateContourPocket\("Pocketing_2", 8\.5, [^;]*"Island_2_1"\);/);
+  // Vorschnitt gefräst statt gesägt
+  const m = convertSolid(s, { tenonPrecut: 'mill' });
+  assert.match(m.xcs, /CreateSlantedRoughFinish/);
+  assert.doesNotMatch(m.xcs, /CreateBladeCut/);
+  // Platte falsch herum (Zapfen nach unten): nichts schneiden, Hinweis
+  const d = convertSolid(s, {}, { orientation: { rot: 0, flip: false } });
+  assert.doesNotMatch(d.xcs, /CreateBladeCut|Zapfen_1/);
+  assert.ok(d.warnings.some((x) => /zeigt nach unten/.test(x)));
 });

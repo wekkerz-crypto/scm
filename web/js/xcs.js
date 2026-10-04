@@ -37,6 +37,11 @@
     clamexTool: 'E030',        // nur direkt: Clamex-Scheibenfräser Ø 100 (auf Blattmitte vermessen)
     clamexClear: 5,            // Anfahrt: Scheibe so weit vor der Oberfläche (mm) beginnen
     clamexMaxReach: 60,        // Nut weiter als … mm von der Bezugsebene (Kante/Oberseite) → Hinweis Kollision/Reichweite
+    // Zapfen auf einer schrägen Kante (z. B. Gehrung mit Feder): Vorschnitt parallel um die Zapfenhöhe versetzt,
+    // dann auf der geneigten Ebene rings um den Zapfen ausräumen (Zapfen = Insel)
+    tenonPrecut: 'saw',        // Vorschnitt 'saw' (Säge) oder 'mill' (schräg fräsen)
+    tenonTool: 'E020',         // Fräser senkrecht zur Schräge für die Fläche um den Zapfen
+    tenonAllowance: 0,         // Vorschnitt um … mm weiter außen, dann zuerst die Zapfenoberseite plan fräsen
     sandOn: false,             // Schleifen mit der Schleifwalze nach dem Formatfräsen (Außenkontur)
     sandTool: 'E091',          // Schleifwalze
     sandMin: 10,               // Walze ragt mindestens … mm unter die Platte
@@ -490,6 +495,13 @@
     return { face: face, start: map(p0), end: map(g.c), depth: depth, reach: face === 'Top' ? 0 : depth };
   }
 
+  // Fläche einer Kontur aus Geraden (> 0 = gegen den Uhrzeigersinn)
+  function segsArea(segs) {
+    let a = 0;
+    for (const q of segs) a += q.a[0] * q.b[1] - q.b[0] * q.a[1];
+    return a / 2;
+  }
+
   function localDrill(p, d) {
     switch (d.face) {
       case 'Top': return { x: d.x, y: d.y };
@@ -888,31 +900,60 @@
     // 8) Schräge Kanten über die ganze Dicke (5-Achs)
     for (const [i, w] of p.slantWalls.entries()) {
       if (curvedFaces.has(w.faceId)) continue; // in der Bahn an der Rundung enthalten
-      if (w.boss) {
-        // Zapfen auf der Schräge: Sägen oder Fräsen der ganzen Fläche würde ihn abtrennen
-        warnings.push('Schräge Kante ' + fmt(w.angle) + '° mit Zapfen (' + fmt(w.boss.height) + ' mm hoch): durchgehender Schnitt würde den Zapfen ' +
-          'abtrennen – nicht ausgegeben. Schräge mit Zapfen in Maestro von Hand programmieren.');
+      let ww = w; // Kante, an der gesägt/gefräst wird
+      if (w.boss && w.boss.plane.n[2] < 0) {
+        warnings.push('Schräge Kante ' + fmt(w.angle) + '° mit Zapfen zeigt nach unten – von oben nicht erreichbar, Platte wenden. Nicht ausgegeben.');
         continue;
       }
+      if (w.boss) {
+        // Zapfen auf der Schräge: Vorschnitt parallel, um Zapfenhöhe (+ Zugabe) nach außen versetzt – an der Oberkante
+        // verschoben: Punkt + n·h, dann in der Ebene zurück auf z = T
+        const pl = w.boss.plane;
+        const hc = w.boss.height + Math.max(0, +cfg.tenonAllowance || 0);
+        const n = pl.n;
+        const up = [-n[0] * n[2], -n[1] * n[2], 1 - n[2] * n[2]];
+        const k = Math.abs(up[2]) > 1e-9 ? (n[2] * hc) / up[2] : 0;
+        const sh = [n[0] * hc - up[0] * k, n[1] * hc - up[1] * k];
+        ww = Object.assign({}, w, { top: { a: [w.top.a[0] + sh[0], w.top.a[1] + sh[1]], b: [w.top.b[0] + sh[0], w.top.b[1] + sh[1]] } });
+        // Tasche auf der Ebene der Zapfenoberseite (+ Zugabe): Fläche der Schräge, rundum um Fräserradius + 1 größer
+        const tool = cfg.tenonTool;
+        const r = (toolD(tool, 18) || 18) / 2;
+        const e = r + 1;
+        const plane = { name: 'Zapfen_' + (i + 1), o: [pl.o[0] + n[0] * hc, pl.o[1] + n[1] * hc, pl.o[2] + n[2] * hc],
+          zRot: pl.zRot, xRot: pl.xRot, X: pl.X, Y: pl.Y, n: n };
+        const rect = [[-e, -e], [pl.L + e, -e], [pl.L + e, pl.W + e], [-e, pl.W + e]].map((q, j, all) => ({ type: 'line', a: q, b: all[(j + 1) % all.length] }));
+        const isl = w.boss.islands.map((lp) => (segsArea(lp) > 0 ? lp.slice().reverse().map((q) => ({ type: 'line', a: q.b, b: q.a })) : lp));
+        const where = 'Zapfen ' + fmt(Math.round(w.boss.height * 10) / 10) + ' mm auf Schräge ' + fmt(Math.round(w.angle * 10) / 10) + '°';
+        if (hc > w.boss.height + 1e-6) {
+          ops.push({ kind: 'pocket', plane: plane, key: 'tenontop-' + i, toolKind: 'mill', toolDefault: 'tenonTool', pocket: 0, segs: rect, islands: [],
+            depth: hc - w.boss.height, tool: tool, label: where + ': Oberseite plan' });
+        }
+        ops.push({ kind: 'pocket', plane: plane, key: 'tenon-' + i, toolKind: 'mill', toolDefault: 'tenonTool', pocket: 0, segs: rect, islands: isl,
+          depth: hc, tool: tool, label: where + ': ringsum ausräumen' });
+        if (w.boss.bottomZ < 0.05) {
+          warnings.push(where + ': der Fräser taucht an der Unterkante der Schräge bis ≈' + fmt(Math.round(r * Math.hypot(n[0], n[1]) * 10) / 10) +
+            ' mm unter die Platte – dort dürfen Sauger/Gehäuse nicht über die Kante stehen.');
+        }
+      }
       const ll = cfg.leadLength;
-      const d = [w.top.b[0] - w.top.a[0], w.top.b[1] - w.top.a[1]];
+      const d = [ww.top.b[0] - ww.top.a[0], ww.top.b[1] - ww.top.a[1]];
       const l = Math.hypot(d[0], d[1]) || 1;
       const u = [d[0] / l, d[1] / l];
       // Gerader Schnitt von Kante zu Kante: mit der Säge (Schnittfläche wird zur neuen schrägen Ebene)
-      if (cfg.slantCut === 'saw' && (w.sawable || (atEdge(w.top.a) && atEdge(w.top.b)))) {
+      if (w.boss ? cfg.tenonPrecut !== 'mill' : cfg.slantCut === 'saw' && (w.sawable || (atEdge(ww.top.a) && atEdge(ww.top.b)))) {
         const so = cfg.sawOverrun;
         ops.push({ kind: 'blade', key: 'blade-' + i, toolKind: 'saw', toolDefault: 'bladeTool',
-          a: [w.top.a[0] - u[0] * so, w.top.a[1] - u[1] * so], b: [w.top.b[0] + u[0] * so, w.top.b[1] + u[1] * so],
-          a0: w.top.a, b0: w.top.b, tilt: w.angle, leanOut: w.leanOut, depth: T, extra: cfg.bladeExtra, tool: cfg.bladeTool,
+          a: [ww.top.a[0] - u[0] * so, ww.top.a[1] - u[1] * so], b: [ww.top.b[0] + u[0] * so, ww.top.b[1] + u[1] * so],
+          a0: ww.top.a, b0: ww.top.b, tilt: w.angle, leanOut: w.leanOut, depth: T, extra: cfg.bladeExtra, tool: cfg.bladeTool,
           score: cfg.scoreCut ? { depth: cfg.scoreDepth, out: cfg.scoreOut } : null,
-          label: 'Sägeschnitt ' + fmt(w.angle) + '°' + (cfg.scoreCut ? ' vorgeritzt' : '') });
+          label: (w.boss ? 'Vorschnitt (Zapfen) ' : 'Sägeschnitt ') + fmt(w.angle) + '°' + (cfg.scoreCut ? ' vorgeritzt' : '') });
         continue;
       }
       ops.push({ kind: 'slant', key: 'slant-' + i, toolKind: 'mill', toolDefault: 'slantTool',
-        a: [w.top.a[0] - u[0] * ll, w.top.a[1] - u[1] * ll], b: [w.top.b[0] + u[0] * ll, w.top.b[1] + u[1] * ll],
+        a: [ww.top.a[0] - u[0] * ll, ww.top.a[1] - u[1] * ll], b: [ww.top.b[0] + u[0] * ll, ww.top.b[1] + u[1] * ll],
         angle: w.angle, approach: w.leanOut ? 2 : 1, depth: T + cfg.slantExtra, tool: cfg.slantTool,
         scrap: [u[1], -u[0]], // Abfallseite (rechts der Bahn)
-        label: 'Schräge Kante ' + fmt(w.angle) + '°' });
+        label: (w.boss ? 'Vorschnitt (Zapfen) gefräst ' : 'Schräge Kante ') + fmt(w.angle) + '°' });
     }
 
     // 8b) Taschen und Bohrungen auf schrägen Ebenen (eigene Bearbeitungsebene, z. B. Schnittfläche der Säge)
@@ -1944,6 +1985,7 @@
     ['rebateTool', 'Fräser Falz', 'mill'],
     ['chamferTool', 'Fräser Fasen', 'mill'],
     ['slantTool', 'Fräser schräge Kanten', 'mill'],
+    ['tenonTool', 'Fräser Zapfen auf Schräge', 'mill'],
     ['roundTopTool', 'Radiusfräser oben', 'mill'],
     ['roundBottomTool', 'Radiusfräser unten', 'mill'],
     ['sawTool', 'Säge für Nuten', 'saw'],

@@ -568,6 +568,9 @@ table.fmt.one .onet { display: inline; }
       ['chamferTool', 'Fräser Fasen', 'mill'],
       ['slantTool', 'Fräser schräge Kanten', 'mill'],
       ['slantExtra', 'Schräge Kanten: Dicke +', 'number', 'mm'],
+      ['tenonPrecut', 'Zapfen auf Schräge: Vorschnitt', 'choice', [['saw', 'mit der Säge'], ['mill', 'fräsen (5-Achs)']]],
+      ['tenonTool', 'Zapfen auf Schräge: Fräser für die Fläche', 'mill'],
+      ['tenonAllowance', 'Zapfen: Vorschnitt weiter außen', 'number', 'mm · > 0: Zapfenoberseite wird plan gefräst'],
       ['roundRadius', 'Kantenrundung: Radius des Radiusfräsers', 'number', 'mm'],
       ['roundTopTool', 'Radiusfräser oben', 'mill'],
       ['roundTopDepth', 'Radiusfräser oben: Tiefe (Z)', 'number', 'mm ab Oberseite'],
@@ -1452,6 +1455,16 @@ table.fmt.one .onet { display: inline; }
       s += '<g><title>Schräge Bohrung Ø' + fmt(sd.d) + ' T' + fmt(sd.depth) + '</title><line x1="' + e[0] + '" y1="' + Y(e[1]) + '" x2="' + end[0] + '" y2="' + Y(end[1]) +
         '" stroke="var(--sdrill)" stroke-width="2" ' + sw + '/><circle cx="' + e[0] + '" cy="' + Y(e[1]) + '" r="' + rr +
         '" fill="var(--sdrill)" fill-opacity="0.5" stroke="var(--sdrill)" stroke-width="1.5" ' + sw + '/></g>';
+    }
+    // Zapfen auf einer Schräge: Grundriss des Zapfens (auf die Draufsicht projiziert)
+    for (const w of (p.slantWalls || [])) {
+      if (!w.boss) continue;
+      const q = w.boss.plane;
+      for (const lp of w.boss.islands) {
+        const pts = lp.map((sg) => [q.o[0] + q.X[0] * sg.a[0] + q.Y[0] * sg.a[1], q.o[1] + q.X[1] * sg.a[0] + q.Y[1] * sg.a[1]]);
+        s += '<path d="M' + pts.map((t) => t[0] + ' ' + Y(t[1])).join(' L') + ' Z" fill="var(--pocket)" fill-opacity="0.35" stroke="var(--pocket)" stroke-width="1.2" ' + sw +
+          '><title>Zapfen ' + fmt(w.boss.height) + ' mm auf Schräge ' + fmt(w.angle) + '° (bleibt stehen)</title></path>';
+      }
     }
     // Clamex-Nuten: Kante – Kreissegment (Sehne × Tiefe), Fläche – Sehne × Nutbreite
     for (const g of (p.clamex || [])) {

@@ -29,6 +29,9 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
 - Oszillieren/Schleifen: `op.osc = {min, max}` (Tiefen ab Oberseite) → `oscillate()` in `xcs.js` teilt die Kontur an den
   Wendepunkten, je Punkt `SetAttribute("DEPTH")`; `fmtOp.osc` (Einstellung `oscMill`), Schleifen = Op `sand` (Kategorie
   `sand`, Werkzeugart `sand` = SandMill, An-/Abfahrt im Bogen, `passes`, Schleifzugabe → `finishAllowance` am Formatfräsen).
+- Zapfen auf Schräge: `bossOf` in `panel.js` (herausragende Flächen an einer Innenkontur der schrägen Fläche) →
+  `slantWall.boss = {height, plane, islands, bottomZ}`; `xcs.js`: Vorschnitt auf versetzter Linie (`tenonPrecut`) und
+  Tasche mit Insel auf Ebene `Zapfen_n` (`tenonTool`, `tenonAllowance`). Nach unten zeigend → `bottom` (wenden).
 - Clamex: `findClamex` in `panel.js` (Zylinder R 40–60 hohl + zwei Wände ⟂ Achse, Abstand 3–12) → `panel.clamex`
   `{c, a, n, r, w, depth, chord}`; Standard `clamexMode: 'macro'` → `CreateMacro(…, "SawCut_Lamello", …)` nach Position mit
   der Vorlage `clamexTemplate` aus den Werkstatt-Programmen (`maestro/beispiele/33_/38_SW-Schrag`, `40_Mittelseite_st2`),

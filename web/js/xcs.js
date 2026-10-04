@@ -103,7 +103,7 @@
     contourMode: 'whole',      // Sonderkontur: 'whole' = Außenkontur am Stück, 'rect' = Rechteck + Ausschnitte
     // Reihenfolge-Regel: Bearbeitungsarten in dieser Folge (abschaltbar, vom Benutzer änderbar)
     orderRule: { on: true, seq: ['drillTop', 'drillSide', 'drillSlanted', 'slot', 'pocket', 'rebate', 'chamfer', 'slant',
-      'blade', 'slantPlane', 'surface', 'cutout', 'notch', 'format', 'clamex', 'edge', 'sand'] },
+      'blade', 'slantPlane', 'surface', 'cutout', 'notch', 'format', 'clamex', 'sand', 'edge'] },
     throughExtra: 2,           // Durchgangsbohrung: Tiefe = Dicke + …
     drillsVertical: [3, 5, 7, 8, 10, 12, 15, 20, 35],
     drillsHorizontal: [5, 8],
@@ -706,7 +706,7 @@
     }
 
     // 6a) Clamex-Nuten: Scheibenfräser fährt auf der Mittelebene der Nut von außen bis zur Nutmitte und zurück
-    for (const [i, g] of (side2 ? [] : p.clamex || []).entries()) {
+    for (const [i, g] of (p.clamex || []).entries()) {
       if (cfg.clamexMode !== 'direct') {
         // SCM-Makro: ein Verbinder je Nut (Start = Ende) an der Kante der Schnittfläche, Richtung gegen den Uhrzeigersinn
         const edge = Math.abs(g.n[2]) < 0.99;
@@ -730,7 +730,8 @@
         if (Math.abs(angZ) < 0.5) angZ = 360; // 0° liest das Makro als „nicht angegeben“
         const tilt = Math.asin(Math.min(1, Math.abs(g.n[2]))) * 180 / Math.PI;
         const where = 'Kante ' + ({ '0,-1': 'vorne', '0,1': 'hinten', '-1,0': 'links', '1,0': 'rechts' }[Math.round(g.n[0]) + ',' + Math.round(g.n[1])] || 'schräg');
-        ops.push({ kind: 'clamex', key: 'clamex-' + i, macro: { x: pt0[0], y: pt0[1], angle: 90 - tilt, angleZ: angZ, height: g.c[2] },
+        // Winkel wie beim Sägeschnitt derselben Fläche: Fläche nach oben (unten breiter) 90 − Neigung, nach unten 90 + Neigung
+        ops.push({ kind: 'clamex', key: 'clamex-' + i, macro: { x: pt0[0], y: pt0[1], angle: g.n[2] >= 0 ? 90 - tilt : 90 + tilt, angleZ: angZ, height: s0[2] },
           groove: g, depth: g.depth, label: 'Clamex ' + where + ' (Makro)' });
         continue;
       }
@@ -901,13 +902,14 @@
     for (const [i, w] of p.slantWalls.entries()) {
       if (curvedFaces.has(w.faceId)) continue; // in der Bahn an der Rundung enthalten
       let ww = w; // Kante, an der gesägt/gefräst wird
-      if (w.boss && w.boss.plane.n[2] < 0) {
-        warnings.push('Schräge Kante ' + fmt(w.angle) + '° mit Zapfen zeigt nach unten – von oben nicht erreichbar, Platte wenden. Nicht ausgegeben.');
+      if (w.boss && (w.boss.unsupported || !w.boss.bosses.length)) {
+        warnings.push('Schräge Kante ' + fmt(w.angle) + '° mit Feder/Zapfen bis an den Rand – nicht automatisch bearbeitbar, nichts ausgegeben (in Maestro von Hand).');
         continue;
       }
+      if (w.boss && w.boss.plane.n[2] < 0) continue; // Zapfen zeigt nach unten: Hinweis kommt über „Bearbeitung von unten“ (Seite 2 / wenden)
       if (w.boss) {
-        // Zapfen auf der Schräge: Vorschnitt parallel, um Zapfenhöhe (+ Zugabe) nach außen versetzt – an der Oberkante
-        // verschoben: Punkt + n·h, dann in der Ebene zurück auf z = T
+        // Zapfen auf der Schräge: Vorschnitt parallel, um die größte Zapfenhöhe (+ Zugabe) nach außen versetzt – an der
+        // Oberkante verschoben: Punkt + n·h, dann in der Ebene zurück auf z = T
         const pl = w.boss.plane;
         const hc = w.boss.height + Math.max(0, +cfg.tenonAllowance || 0);
         const n = pl.n;
@@ -915,23 +917,35 @@
         const k = Math.abs(up[2]) > 1e-9 ? (n[2] * hc) / up[2] : 0;
         const sh = [n[0] * hc - up[0] * k, n[1] * hc - up[1] * k];
         ww = Object.assign({}, w, { top: { a: [w.top.a[0] + sh[0], w.top.a[1] + sh[1]], b: [w.top.b[0] + sh[0], w.top.b[1] + sh[1]] } });
-        // Tasche auf der Ebene der Zapfenoberseite (+ Zugabe): Fläche der Schräge, rundum um Fräserradius + 1 größer
+        // Taschen auf der Ebene der höchsten Zapfenoberseite (+ Zugabe): Fläche der Schräge plus Rand; der Rand reicht so weit,
+        // dass der Fräser zwischen Zapfen und Tasche durchpasst (mindestens Fräserradius + 1)
         const tool = cfg.tenonTool;
         const r = (toolD(tool, 18) || 18) / 2;
-        const e = r + 1;
+        const isl = w.boss.bosses.map((b) => ({ height: b.height,
+          loops: b.islands.map((lp) => (segsArea(lp) > 0 ? lp.slice().reverse().map((q) => ({ type: 'line', a: q.b, b: q.a })) : lp)) }));
+        const pts = isl.flatMap((b) => b.loops.flatMap((lp) => lp.map((q) => q.a)));
+        const gap = { x0: Math.min(...pts.map((q) => q[0])), y0: Math.min(...pts.map((q) => q[1])),
+          x1: pl.L - Math.max(...pts.map((q) => q[0])), y1: pl.W - Math.max(...pts.map((q) => q[1])) };
+        const m = (g) => Math.max(r + 1, 2 * r + 1 - g); // Rand je Seite
+        const ex = [m(gap.x0), m(gap.y0), m(gap.x1), m(gap.y1)];
         const plane = { name: 'Zapfen_' + (i + 1), o: [pl.o[0] + n[0] * hc, pl.o[1] + n[1] * hc, pl.o[2] + n[2] * hc],
           zRot: pl.zRot, xRot: pl.xRot, X: pl.X, Y: pl.Y, n: n };
-        const rect = [[-e, -e], [pl.L + e, -e], [pl.L + e, pl.W + e], [-e, pl.W + e]].map((q, j, all) => ({ type: 'line', a: q, b: all[(j + 1) % all.length] }));
-        const isl = w.boss.islands.map((lp) => (segsArea(lp) > 0 ? lp.slice().reverse().map((q) => ({ type: 'line', a: q.b, b: q.a })) : lp));
+        const rect = [[-ex[0], -ex[1]], [pl.L + ex[2], -ex[1]], [pl.L + ex[2], pl.W + ex[3]], [-ex[0], pl.W + ex[3]]]
+          .map((q, j, all) => ({ type: 'line', a: q, b: all[(j + 1) % all.length] }));
         const where = 'Zapfen ' + fmt(Math.round(w.boss.height * 10) / 10) + ' mm auf Schräge ' + fmt(Math.round(w.angle * 10) / 10) + '°';
-        if (hc > w.boss.height + 1e-6) {
-          ops.push({ kind: 'pocket', plane: plane, key: 'tenontop-' + i, toolKind: 'mill', toolDefault: 'tenonTool', pocket: 0, segs: rect, islands: [],
-            depth: hc - w.boss.height, tool: tool, label: where + ': Oberseite plan' });
-        }
-        ops.push({ kind: 'pocket', plane: plane, key: 'tenon-' + i, toolKind: 'mill', toolDefault: 'tenonTool', pocket: 0, segs: rect, islands: isl,
-          depth: hc, tool: tool, label: where + ': ringsum ausräumen' });
+        // Stufen von oben nach unten: bis zur nächstniedrigeren Zapfenhöhe; Inseln = Zapfen, die höher sind als die Stufe
+        const levels = [...new Set(isl.map((b) => Math.round(b.height * 1000) / 1000))].sort((a, b) => b - a);
+        const steps = [];
+        if (hc > levels[0] + 1e-6) steps.push({ to: levels[0], label: where + ': Oberseite plan' });
+        levels.forEach((h, j) => steps.push({ to: j + 1 < levels.length ? levels[j + 1] : 0,
+          label: where + (j + 1 < levels.length ? ': bis ' + fmt(levels[j + 1]) + ' mm' : ': ringsum ausräumen') }));
+        steps.forEach((st, j) => {
+          const keep = isl.filter((b) => b.height > st.to + 1e-6); // Zapfen, die über diese Stufe hinausragen
+          ops.push({ kind: 'pocket', plane: plane, key: 'tenon-' + i + '-' + j, toolKind: 'mill', toolDefault: 'tenonTool', pocket: 0, segs: rect,
+            islands: keep.flatMap((b) => b.loops), depth: hc - st.to, tool: tool, label: st.label });
+        });
         if (w.boss.bottomZ < 0.05) {
-          warnings.push(where + ': der Fräser taucht an der Unterkante der Schräge bis ≈' + fmt(Math.round(r * Math.hypot(n[0], n[1]) * 10) / 10) +
+          warnings.push(where + ': der Fräser taucht an der Unterkante der Schräge bis ≈' + fmt(Math.round(ex[1] * Math.hypot(n[0], n[1]) * 10) / 10) +
             ' mm unter die Platte – dort dürfen Sauger/Gehäuse nicht über die Kante stehen.');
         }
       }
@@ -940,7 +954,7 @@
       const l = Math.hypot(d[0], d[1]) || 1;
       const u = [d[0] / l, d[1] / l];
       // Gerader Schnitt von Kante zu Kante: mit der Säge (Schnittfläche wird zur neuen schrägen Ebene)
-      if (w.boss ? cfg.tenonPrecut !== 'mill' : cfg.slantCut === 'saw' && (w.sawable || (atEdge(ww.top.a) && atEdge(ww.top.b)))) {
+      if (w.boss ? cfg.tenonPrecut !== 'mill' && atEdge(w.top.a) && atEdge(w.top.b) : cfg.slantCut === 'saw' && (w.sawable || (atEdge(ww.top.a) && atEdge(ww.top.b)))) {
         const so = cfg.sawOverrun;
         ops.push({ kind: 'blade', key: 'blade-' + i, toolKind: 'saw', toolDefault: 'bladeTool',
           a: [ww.top.a[0] - u[0] * so, ww.top.a[1] - u[1] * so], b: [ww.top.b[0] + u[0] * so, ww.top.b[1] + u[1] * so],
@@ -1126,11 +1140,29 @@
     }
 
     const missingWarned = new Set();
+    const techWarned = new Set();
     const clamexWarned = new Set();
     const stepDownWarn = (op) => op.key === 'format' && ((cfg.stepOverrides && cfg.stepOverrides[op.key] > 0) || cfg.stepDown > 0);
     // Werkzeug, Tiefe (durchgehende Fräsungen) und Zustellungen je Bearbeitung
     const throughKey = (k) => k === 'format' || /^(notch|cutout|round)-/.test(k);
     const depthWarned = new Set();
+    for (const op of ops) {
+      // eigene Schnittwerte außerhalb des Bereichs aus der Werkzeugdatei → Hinweis (Bohrungen: Bohrer mit passendem Ø)
+      const own = cfg.techOverrides && cfg.techOverrides[op.group];
+      const drillD = op.kind === 'drill' ? op.d.d : op.kind === 'sdrill' ? op.d : null;
+      const drillEntry = own && drillD && cfg.toolInfo ? Object.entries(cfg.toolInfo).find(([, t]) => t.kind === 'drill' && t.d && Math.abs(t.d - drillD) < 0.05) : null;
+      const toolName = drillEntry ? drillEntry[0] : (cfg.toolOverrides && op.key && cfg.toolOverrides[op.key]) || op.tool;
+      const db = drillEntry ? drillEntry[1].tech : own && cfg.toolInfo && cfg.toolInfo[toolName] && cfg.toolInfo[toolName].tech;
+      if (db && !techWarned.has(op.group)) {
+        techWarned.add(op.group);
+        for (const [k, name, unit] of [['feed', 'Vorschub', 'm/min'], ['rot', 'Drehzahl', 'U/min'], ['descent', 'Eintauchen', 'm/min']]) {
+          const r = db[k];
+          if (own[k] > 0 && r && r[1] !== null && r[2] !== null && (own[k] < r[1] - 1e-9 || own[k] > r[2] + 1e-9)) {
+            warnings.push((op.label || ('Bohrung Ø' + fmt(drillD || 0))) + ': ' + name + ' ' + fmt(own[k]) + ' ' + unit + ' außerhalb ' + fmt(r[1]) + '–' + fmt(r[2]) + ' (Werkzeugdatei ' + toolName + ').');
+          }
+        }
+      }
+    }
     for (const op of ops) {
       if (!op.key) continue;
       if (cfg.toolOverrides && cfg.toolOverrides[op.key]) op.tool = cfg.toolOverrides[op.key];
@@ -1141,17 +1173,6 @@
         if (lib && t && t !== '-1' && !lib[t] && !missingWarned.has(t)) {
           missingWarned.add(t);
           warnings.push('Werkzeug ' + t + ' steht nicht in der Werkzeugdatei – in Maestro wird es nicht gefunden. Anderes Werkzeug wählen oder die Einstellung anpassen.');
-        }
-      }
-      // eigene Schnittwerte außerhalb des Bereichs aus der Werkzeugdatei → Hinweis
-      const own = cfg.techOverrides && cfg.techOverrides[op.group];
-      const db = own && cfg.toolInfo && cfg.toolInfo[op.tool] && cfg.toolInfo[op.tool].tech;
-      if (db) {
-        for (const [k, name, unit] of [['feed', 'Vorschub', 'm/min'], ['rot', 'Drehzahl', 'U/min'], ['descent', 'Eintauchen', 'm/min']]) {
-          const r = db[k];
-          if (own[k] > 0 && r && r[1] !== null && r[2] !== null && (own[k] < r[1] - 1e-9 || own[k] > r[2] + 1e-9)) {
-            warnings.push(op.label + ': ' + name + ' ' + fmt(own[k]) + ' ' + unit + ' außerhalb ' + fmt(r[1]) + '–' + fmt(r[2]) + ' (Werkzeugdatei ' + op.tool + ').');
-          }
         }
       }
       const dz = cfg.depthOverrides && cfg.depthOverrides[op.key];
@@ -1256,6 +1277,11 @@
 
     if (!side2) {
       for (const b of p.bottom) warnings.push(b.text + (cfg.twoSided ? ' – wird auf Seite 2 bearbeitet.' : ' – nicht von oben bearbeitbar (Zweiseitig einschalten oder Platte wenden).'));
+    }
+    // Schleifzugabe: Radiusfräser erst nach dem Schleifen (sonst sitzt die Rundung um die Zugabe versetzt)
+    const iSand = ops.findIndex((op) => op.sand);
+    if (iSand >= 0 && cfg.sandAllowance > 0 && ops.some((op, j) => j < iSand && /^edge-/.test(op.key || ''))) {
+      warnings.push('Kantenrundung vor dem Schleifen mit Schleifzugabe ' + fmt(cfg.sandAllowance) + ' mm – Rundung sitzt versetzt; Schleifen vor die Kantenrundungen legen.');
     }
     return { ops: ops, warnings: warnings, groups: order.filter((g) => ops.some((op) => op.group === g)),
       defaultGroups: ruleGroups.filter((g) => !sup.has(g)), suppressed: suppressed };
@@ -1642,7 +1668,10 @@
       cfg.side = 2;
       p = Object.assign({}, p, {
         cutouts: [], drills: p.drills.filter((d) => d.face === 'Top' && !d.through), sidePockets: [], chamfers: [], chamferPaths: [],
-        slantWalls: [], slantDrills: p.slantDrills.filter((sd) => !sd.through), curvedSlants: [], edgeRounds: [],
+        // Schrägen mit Zapfen, die auf Seite 1 nach unten zeigten, zeigen jetzt nach oben; Clamex nur in der Fläche
+        slantWalls: (p.slantWalls || []).filter((w) => w.boss && w.boss.plane.n[2] > 0),
+        clamex: (p.clamex || []).filter((g) => g.n[2] > 0.5),
+        slantDrills: p.slantDrills.filter((sd) => !sd.through), curvedSlants: [], edgeRounds: [],
         warnings: [], bottom: [],
       });
     }

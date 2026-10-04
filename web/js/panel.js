@@ -1016,27 +1016,11 @@
     // Innenkontur der schrägen Fläche hängen – ein durchgehender Schnitt würde sie abtrennen
     const bossOf = new Map();
     const bossFaces = new Set();
+    const keyOf = (q) => q.map((v) => Math.round(v * 100)).join(',');
     for (const f of inclined) {
-      if (!f.bounds.some((b) => !b.outer)) continue;
       const n = f.surf.n;
       const p0 = f.surf.p;
       const dist = (q) => (q[0] - p0[0]) * n[0] + (q[1] - p0[1]) * n[1] + (q[2] - p0[2]) * n[2];
-      const inner = new Set();
-      for (const b of f.bounds) if (!b.outer) for (const e of b.edges) for (const q of e.samples) inner.add(q.map((v) => Math.round(v * 100)).join(','));
-      const touches = (g) => g.pts.some((q) => inner.has(q.map((v) => Math.round(v * 100)).join(',')));
-      const out = faces.filter((g) => g.id !== f.id && g.pts.every((q) => dist(q) > -0.05) && g.pts.some((q) => dist(q) > 0.05));
-      // zusammenhängend ab der Innenkontur
-      const boss = out.filter(touches);
-      for (let grow = true; grow;) {
-        grow = false;
-        for (const g of out) {
-          if (boss.includes(g)) continue;
-          const key = new Set(g.pts.map((q) => q.map((v) => Math.round(v * 100)).join(',')));
-          if (boss.some((b) => b.pts.some((q) => key.has(q.map((v) => Math.round(v * 100)).join(','))))) { boss.push(g); grow = true; }
-        }
-      }
-      if (!boss.length) continue;
-      const h = Math.max(...boss.flatMap((g) => g.pts.map(dist)));
       // Bearbeitungsebene der Schräge (wie slantFrame): X entlang der Kante, Y die Schräge hinauf, Ursprung an der Ecke
       const az = Math.atan2(n[0], -n[1]);
       const X = [Math.cos(az), Math.sin(az), 0];
@@ -1048,17 +1032,48 @@
       const ly = outerPts.map((q) => dot(sub(q, p0), Y));
       const o = add(p0, add(mul(X, minOf(lx)), mul(Y, minOf(ly))));
       const loc = (q) => [dot(sub(q, o), X), dot(sub(q, o), Y)];
-      // Grundriss des Zapfens auf der Fläche (Innenkontur), als Geraden über die Stützpunkte
-      const islands = f.bounds.filter((b) => !b.outer).map((b) => {
-        const pts = [];
-        for (const e of b.edges) for (const q of e.samples.slice(0, -1)) pts.push(loc(q));
-        return pts.map((q, i) => ({ type: 'line', a: q, b: pts[(i + 1) % pts.length] }));
-      });
-      bossOf.set(f.id, { height: h, faceIds: boss.map((g) => g.id), islands: islands,
-        plane: { o: o, X: X, Y: Y, n: n, zRot: az * 180 / Math.PI, xRot: Math.acos(Math.max(-1, Math.min(1, n[2]))) * 180 / Math.PI,
-          L: maxOf(lx) - minOf(lx), W: maxOf(ly) - minOf(ly) },
+      const Lf = maxOf(lx) - minOf(lx);
+      const Wf = maxOf(ly) - minOf(ly);
+      const within = (q) => { const l = loc(q); return l[0] > -0.1 && l[0] < Lf + 0.1 && l[1] > -0.1 && l[1] < Wf + 0.1; };
+      // herausragende Flächen über der Fläche (nicht z. B. die Nachbarwand an einer Innenecke)
+      const out = faces.filter((g) => g.id !== f.id && g.pts.every((q) => dist(q) > -0.05) && g.pts.some((q) => dist(q) > 0.05) && g.pts.every(within));
+      if (!out.length) continue;
+      const fKeys = new Set(f.pts.map(keyOf));
+      const left = out.slice();
+      const comps = [];
+      for (let seed = left.findIndex((g) => g.pts.some((q) => fKeys.has(keyOf(q)))); seed >= 0; seed = left.findIndex((g) => g.pts.some((q) => fKeys.has(keyOf(q))))) {
+        const comp = left.splice(seed, 1);
+        for (let grow = true; grow;) {
+          grow = false;
+          for (let k = left.length - 1; k >= 0; k--) {
+            const ks = new Set(left[k].pts.map(keyOf));
+            if (comp.some((b) => b.pts.some((q) => ks.has(keyOf(q))))) { comp.push(left.splice(k, 1)[0]); grow = true; }
+          }
+        }
+        comps.push(comp);
+      }
+      if (!comps.length) continue;
+      const bosses = [];
+      let unsupported = false;
+      for (const comp of comps) {
+        const ck = new Set();
+        for (const g of comp) for (const q of g.pts) ck.add(keyOf(q));
+        comp.forEach((g) => bossFaces.add(g.id));
+        // Grundriss = Innenkontur der Fläche, an der der Zapfen hängt; reicht er an den Rand (Außenkontur), geht das nicht
+        const touchesOuter = ob.edges.some((e) => e.samples.some((q) => ck.has(keyOf(q))));
+        const inner = f.bounds.filter((b) => !b.outer && b.edges.some((e) => e.samples.some((q) => ck.has(keyOf(q)))));
+        if (touchesOuter || !inner.length) { unsupported = true; continue; }
+        const islands = inner.map((b) => {
+          const pts = [];
+          for (const e of b.edges) for (const q of e.samples.slice(0, -1)) pts.push(loc(q));
+          return pts.map((q, i) => ({ type: 'line', a: q, b: pts[(i + 1) % pts.length] }));
+        });
+        bosses.push({ height: Math.max(...comp.flatMap((g) => g.pts.map(dist))), islands: islands, faceIds: comp.map((g) => g.id) });
+      }
+      bossOf.set(f.id, { height: bosses.length ? Math.max(...bosses.map((b) => b.height)) : 0, bosses: bosses, unsupported: unsupported,
+        islands: bosses.flatMap((b) => b.islands),
+        plane: { o: o, X: X, Y: Y, n: n, zRot: az * 180 / Math.PI, xRot: Math.acos(Math.max(-1, Math.min(1, n[2]))) * 180 / Math.PI, L: Lf, W: Wf },
         bottomZ: minOf(outerPts.map((q) => q[2])) });
-      boss.forEach((g) => bossFaces.add(g.id));
     }
     for (const f of inclined) {
       if (bossFaces.has(f.id)) continue;
@@ -1073,12 +1088,28 @@
         res.slantWalls.push({ top: e.top, bottom: e.bottom, angle: e.angle, leanOut: e.offset > 0, path: e.path, sawable: sawable, faceId: f.id,
           boss: bossOf.get(f.id) || null });
         // Zapfen auf einer nach unten zeigenden Schräge: von oben nicht erreichbar (zählt als Bearbeitung von unten → wenden)
-        if (bossOf.has(f.id) && f.surf.n[2] < -ATOL) res.bottom.push({ kind: 'Zapfen', text: 'Zapfen auf einer Schräge nach unten – Platte wenden' });
+        const bo = bossOf.get(f.id);
+        if (bo && !bo.unsupported && bo.bosses.length && f.surf.n[2] < -ATOL) res.bottom.push({ kind: 'Zapfen', text: 'Zapfen auf einer Schräge nach unten' });
+      } else if (bossOf.has(f.id)) {
+        // Feder/Zapfen an einer Fase oder geteilten Schräge (z. B. Feder über die ganze Länge): nicht automatisch
+        if (!warnings.some((w) => /Feder\/Zapfen an einer schrägen Fläche/.test(w))) {
+          warnings.push('Feder/Zapfen an einer schrägen Fläche bis an den Rand – nicht automatisch bearbeitbar, nichts ausgegeben (in Maestro von Hand).');
+        }
       } else if (e.zmax > T - TOL) {
         chamferFaces.push({ kind: 'line', side: 'top', line: e.bottomLine, width: Math.abs(e.offset), height: T - e.zmin, path: e.path });
       } else if (e.zmin < TOL) {
         chamferFaces.push({ kind: 'line', side: 'bottom', line: e.topLine, width: Math.abs(e.offset), height: e.zmax, path: e.path });
       } else {
+        // parallel vor einer anderen Schräge (z. B. Feder über die ganze Länge zwischen zwei Teilflächen der Gehrung)
+        const n = f.surf.n;
+        const feder = inclined.some((g) => g !== f && dot(g.surf.n, n) > 1 - 1e-6 &&
+          f.pts.every((q) => dot(sub(q, g.surf.p), n) > 0.05));
+        if (feder) {
+          if (!warnings.some((w) => /Feder\/Zapfen an einer schrägen Fläche/.test(w))) {
+            warnings.push('Feder/Zapfen an einer schrägen Fläche bis an den Rand – nicht automatisch bearbeitbar, nichts ausgegeben (in Maestro von Hand).');
+          }
+          continue;
+        }
         warnings.push('Schräge Fläche ohne Verbindung zu Ober- oder Unterseite (Z ' + fmt(e.zmin) + '–' + fmt(e.zmax) + ') – ignoriert.');
       }
     }

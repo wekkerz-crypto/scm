@@ -1188,7 +1188,7 @@ table.fmt.one .onet { display: inline; }
     for (const op of r.ops) {
       if (op.kind === 'drill') drills += op.pattern.nX * op.pattern.nY;
       else if (op.kind === 'sdrill') drills++;
-      else if (op.kind === 'blade') saw++;
+      else if (op.kind === 'blade' || op.kind === 'slot') saw++;
       else mill++;
     }
     return { drills: drills, mill: mill, saw: saw };
@@ -1658,10 +1658,10 @@ table.fmt.one .onet { display: inline; }
       // Werkzeug/Zustellung/Tiefe je Bearbeitung hängen an der Nummer (cutout-1 …) – nach einer Änderung passen sie nicht mehr
       const ov = part.overrides;
       const indexed = (m) => Object.keys(m || {}).some((k) => /-\d+$/.test(k));
-      if (ov.order || ov.suppress || indexed(ov.tools) || indexed(ov.steps) || indexed(ov.depths)) {
+      if (ov.order || ov.suppress || indexed(ov.tools) || indexed(ov.steps) || indexed(ov.depths) || indexed(ov.tech)) {
         part.notice = 'Eigene Reihenfolge, gelöschte Bearbeitungen und Werkzeug/Zustellung/Tiefe je Kontur wurden nach der DXF-Änderung zurückgesetzt.';
       }
-      for (const m of [ov.tools, ov.steps, ov.depths]) for (const k of Object.keys(m || {})) if (/-\d+$/.test(k)) delete m[k];
+      for (const m of [ov.tools, ov.steps, ov.depths, ov.tech]) for (const k of Object.keys(m || {})) if (/-\d+$/.test(k)) delete m[k];
       delete ov.order;
       delete ov.suppress;
       compute(part); render();

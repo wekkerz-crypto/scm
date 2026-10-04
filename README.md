@@ -61,7 +61,11 @@ Zapfen 134,5 × 13,8, 8 mm hoch), wird die Kante nicht mehr durchgesägt (das w�
 2. **Tasche auf der geneigten Ebene** in Höhe der Zapfenoberseite (`CreateWorkplane("Zapfen_n", …)`): die ganze Fläche der
    Schräge, rundum um Fräserradius + 1 größer, mit dem **Zapfen als Insel**, so tief wie der Zapfen (Fräser `E020`
    senkrecht zur Schräge). Mit Zugabe > 0 wird vorher die Zapfenoberseite plan gefräst.
-Die Platte wird so gelegt, dass die Schräge nach oben zeigt (sonst Hinweis, nichts ausgegeben). An der Unterkante der
+Mehrere Zapfen mit verschiedener Höhe: in Stufen von oben nach unten (Inseln = die Zapfen, die über die Stufe ragen).
+Der Rand der Tasche wird so groß, dass der Fräser zwischen Zapfen und Rand durchpasst. Nur die Innenkontur des Zapfens wird
+Insel – Taschen/Bohrungen in derselben Schräge werden wie sonst auf der Schräge bearbeitet. Reicht ein Zapfen bis an den
+Rand der Schräge (oder eine Feder über die ganze Länge): nichts ausgegeben, Hinweis. Die Platte wird so gelegt, dass die
+Schräge nach oben zeigt; zeigt sie nach unten, gilt sie als Bearbeitung von unten (zweiseitig: auf Seite 2). An der Unterkante der
 Schräge taucht der Fräser um ≈ Radius × sin(Neigung) unter die Platte – dort keine Sauger/Gehäuse über der Kante.
 
 ### Clamex (Lamello P-System)

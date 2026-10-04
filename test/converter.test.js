@@ -1309,7 +1309,7 @@ test('Gehrung mit Zapfen: Vorschnitt parallel um Zapfenhöhe, dann Tasche auf de
   const w = r.panel.slantWalls[0];
   assert.ok(w.boss && Math.abs(w.boss.height - 8) < 1e-6);
   assert.ok(!r.warnings.some((x) => /ohne Verbindung|nicht ausgegeben/.test(x)), r.warnings.join(' | '));
-  assert.ok(r.warnings.some((x) => /taucht an der Unterkante der Schräge bis ≈6\.1 mm unter die Platte/.test(x)));
+  assert.ok(r.warnings.some((x) => /taucht an der Unterkante der Schräge bis ≈6\.8 mm unter die Platte/.test(x)));
   // 1) Vorschnitt: Oberkante 370 + 8/sin45 = 381,32
   assert.match(r.xcs, /CreateSegment\("Saegeschnitt_Linie_1", 381\.32, -50, 381\.32, 250\);/);
   // 2) Ebene auf Höhe der Zapfenoberseite, 45° geneigt, Normale nach oben außen
@@ -1330,5 +1330,39 @@ test('Gehrung mit Zapfen: Vorschnitt parallel um Zapfenhöhe, dann Tasche auf de
   // Platte falsch herum (Zapfen nach unten): nichts schneiden, Hinweis
   const d = convertSolid(s, {}, { orientation: { rot: 0, flip: false } });
   assert.doesNotMatch(d.xcs, /CreateBladeCut|Zapfen_1/);
-  assert.ok(d.warnings.some((x) => /zeigt nach unten/.test(x)));
+  assert.ok(d.warnings.some((x) => /Zapfen auf einer Schräge nach unten – nicht von oben bearbeitbar/.test(x)), d.warnings.join(' | '));
+  // zweiseitig: Seite 2 (Zapfen zeigt dort nach oben) macht Vorschnitt und Tasche
+  const two = convertSolid(s, {}, { orientation: { rot: 0, flip: false }, overrides: { twoSided: true } });
+  assert.ok(two.side2 && /CreateBladeCut/.test(two.side2.xcs) && /CreateWorkplane\("Zapfen_1"/.test(two.side2.xcs));
+  assert.strictEqual(two.warnings.filter((x) => /Zapfen/.test(x)).length, 1);
+});
+
+test('Zapfen auf Schräge: Sonderfälle (30°, bis an den Rand, Feder ganze Länge, Tasche daneben, zwei Höhen, nah an der Kante)', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const Tl = require('../web/js/tools.js');
+  const toolInfo = Tl.infoMap(Tl.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
+  const run = (f) => convertSolid(readParts(read('test/fixtures/zapfen/' + f + '.step'), f + '.step')[0], { toolInfo });
+  // 30°: Ebene 60° geneigt, Tasche so tief wie der Zapfen (6)
+  const t30 = run('t30');
+  assert.match(t30.xcs, /CreateWorkplane\("Zapfen_1", [^)]*, 90, 60\);/);
+  assert.match(t30.xcs, /CreateContourPocket\("Pocketing_1", 6, [^;]*"Island_1_1"\);/);
+  // bis an den Rand / Feder über die ganze Länge: nichts schneiden, klarer Hinweis
+  for (const f of ['t45end', 't45full']) {
+    const r = run(f);
+    assert.doesNotMatch(r.xcs, /CreateBladeCut|CreateSlantedRoughFinish|CreateChamfer|Zapfen_1/, f);
+    assert.ok(r.warnings.some((x) => /Feder\/Zapfen .*bis an den Rand – nicht automatisch/.test(x)), f + ': ' + r.warnings.join(' | '));
+    assert.ok(!r.warnings.some((x) => /ohne Verbindung/.test(x)), f);
+  }
+  // Tasche neben dem Zapfen in derselben Schräge: nur der Zapfen ist Insel, die Tasche wird auf der Schräge gefräst
+  const grv = run('t45grv');
+  assert.match(grv.xcs, /CreateContourPocket\("Pocketing_1", 8, [^;]*"Island_1_1"\);/);
+  assert.doesNotMatch(grv.xcs, /Island_1_2/);
+  assert.match(grv.xcs, /CreateWorkplane\("Slanted_1"/);
+  // zwei Zapfen 8 und 5 mm: erst bis 5 (nur der hohe als Insel), dann ringsum mit beiden
+  const two = run('t45twoh');
+  assert.match(two.xcs, /CreateContourPocket\("Pocketing_1", 3, [^;]*"Island_1_1"\);\r?\n[\s\S]*CreateContourPocket\("Pocketing_2", 8, [^;]*"Island_2_1", "Island_2_2"\);/);
+  // Zapfen 2 mm über der Unterkante: Rand unten so groß, dass der Fräser (Ø17,31) dazwischen passt
+  const low = run('t45low');
+  const yMin = +/CreatePolyline\("Pocket_1", [-\d.]+, (-[\d.]+)\);/.exec(low.xcs)[1];
+  assert.ok(yMin <= -(17.31 + 1 - 2) + 1e-6, String(yMin));
 });

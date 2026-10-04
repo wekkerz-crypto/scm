@@ -336,7 +336,7 @@
         meta.kind = 'edge';
         if (Math.abs(g.n[2]) < 0.5) {
           const deep = [g.c[0] - g.n[0] * g.r, g.c[1] - g.n[1] * g.r];
-          meta.z = p.T - (g.c[2] - g.w / 2);
+          meta.z = p.T - g.c[2];
           go([s0, deep], g.chord, op.label, op.tool, i);
         } else {
           const u = [g.a[1] * g.n[2] - g.a[2] * g.n[1], g.a[2] * g.n[0] - g.a[0] * g.n[2]];

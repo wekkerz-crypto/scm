@@ -548,7 +548,12 @@ table.fmt.one .onet { display: inline; }
       ['sandLead', 'An-/Abfahrt im Bogen: Faktor', 'number', '× Radius'],
       ['sandOverlap', 'Schleifen: Überlappung am Ende', 'number', 'mm']] },
     { title: 'Clamex (Lamello P-System)', c: '--saw', fields: [
-      ['clamexTool', 'Scheibenfräser', 'mill'],
+      ['clamexMode', 'Clamex-Nuten', 'choice', [['macro', 'über SCM-Makro (nur Position)'], ['direct', 'direkt mit dem Scheibenfräser']]],
+      ['clamexMacro', 'Makro-Name', 'text'],
+      ['clamexType', 'Verbindertyp Kante/Schnittfläche', 'text', 'z. B. Cl-Fräsen, Cl-Komplett'],
+      ['clamexFaceType', 'Verbindertyp Fläche', 'text', 'z. B. Cl-Nest90'],
+      ['clamexParams', 'Makro-Parameternamen (Rolle=Name; …)', 'text', 'Namen wie in Maestro'],
+      ['clamexTool', 'Scheibenfräser (nur direkt)', 'mill'],
       ['clamexClear', 'Anfahrt: Abstand vor der Oberfläche', 'number', 'mm'],
       ['clamexMaxReach', 'Hinweis ab Abstand zur Kante', 'number', 'mm']] },
     { title: 'Säge', c: '--saw', fields: [
@@ -1142,6 +1147,11 @@ table.fmt.one .onet { display: inline; }
   function opControls(part, op) {
     if (!op) return '';
     if (op.kind === 'drill' || op.kind === 'sdrill') return techBox(part, op);
+    if (op.macro) {
+      // Makro: Werkzeug, Tiefe und Schnittwerte kommen aus dem Makro bzw. SawCut_Lamello.xspc
+      return '<span class="note">Makro ' + esc(state.settings.clamexMacro || 'SawCut_Lamello') + ' · ' + esc(op.macro.type) + ' · X ' + fmt(op.macro.x) + ' Y ' + fmt(op.macro.y) +
+        ' · Höhe ' + fmt(op.macro.height) + ' · Winkel Z ' + fmt(op.macro.angleZ) + '° – Werkzeug und Tiefe aus dem Makro</span>';
+    }
     let html = '';
     if (op.key === 'format') {
       // je Teil umschaltbar: normal (ein Werkzeug) oder zweistufig (vorfräsen mit Aufmaß, nachfräsen)

@@ -27,7 +27,15 @@
     oscMillMin: 2,             // Fräser ragt mindestens … mm unter die Platte
     oscMillMax: 8,             // … höchstens (Schneidenlänge beachten: Dicke + max ≤ Schneidenlänge)
     oscWave: 300,              // Weg je Schwingung (einmal runter und wieder hoch) in mm
-    clamexTool: 'E030',        // Clamex P (Lamello P-System): Scheibenfräser Ø 100
+    // Clamex P: über das SCM-Makro (nur Position übergeben) oder direkt mit dem Scheibenfräser
+    clamexMode: 'macro',       // 'macro' = CreateMacro mit SetMacroParam, 'direct' = eigene Bahn mit clamexTool
+    clamexMacro: 'SawCut_Lamello',
+    clamexType: 'Cl-Fräsen',   // Verbindertyp für Nuten in einer Kante/Schnittfläche (Cl-Komplett = mit Schlüsselbohrungen)
+    clamexFaceType: 'Cl-Nest90', // Verbindertyp für Nuten in der Fläche (Gegenstück 90°)
+    // Rolle=Parametername des Makros (Namen aus Maestro; Reihenfolge egal, SetMacroParam setzt nach Namen)
+    clamexParams: 'startX=Start X; startY=Start Y; endX=Ende X; endY=Ende Y; angle=Winkel; cut=Schnitt ein; type=Verbindertype; ' +
+      'count=Anzahl Verbinder; outer=Abstand aussen; angleZ=Winkel um Z-Achse; height=EinfHöhe',
+    clamexTool: 'E030',        // nur direkt: Clamex-Scheibenfräser Ø 100 (auf Blattmitte vermessen)
     clamexClear: 5,            // Anfahrt: Scheibe so weit vor der Oberfläche (mm) beginnen
     clamexMaxReach: 60,        // Nut weiter als … mm von der Bezugsebene (Kante/Oberseite) → Hinweis Kollision/Reichweite
     sandOn: false,             // Schleifen mit der Schleifwalze nach dem Formatfräsen (Außenkontur)
@@ -449,32 +457,41 @@
   // Wandelt eine Bohrung in lokale Koordinaten der Bearbeitungsebene um.
   /*
    * Clamex-Nut → Bearbeitungsebene und Bahn. Werkzeugachse = Nutachse; Spindel auf der Seite mit dem kürzeren Weg
-   * (Achse senkrecht: von oben, Ebene Top; Achse in X: Left/Right; in Y: Front/Back). Werkzeugspitze = Nutwand
-   * auf der Gegenseite der Spindel, Tiefe ab der Bezugsebene. Bahn in Ebenenkoordinaten: Start mit der Scheibe ganz
+   * (Achse senkrecht: von oben, Ebene Top; Achse in X: Left/Right; in Y: Front/Back). Der Scheibenfräser ist auf die
+   * Mitte des Blatts vermessen (SCM-Makrohilfe SawCut_Lamello): Tiefe ab der Bezugsebene bis zur Mittelebene der Nut. Bahn in Ebenenkoordinaten: Start mit der Scheibe ganz
    * außerhalb (Mitte r + Abstand vor der Oberfläche), bis zur Scheibenmitte und auf demselben Weg zurück.
    */
+  // „startX=Start X; …“ → { startX: 'Start X', … } (leere Namen = Parameter nicht setzen)
+  function clamexParamNames(text) {
+    const out = {};
+    for (const part of String(text || '').split(/[;\n]/)) {
+      const m = /^\s*(\w+)\s*=\s*(.*?)\s*$/.exec(part);
+      if (m && m[2]) out[m[1]] = m[2].replace(/"/g, '');
+    }
+    return out;
+  }
+
   function clamexPlan(p, g, cfg) {
     const a = g.a;
     const off = g.depth + (cfg.clamexClear > 0 ? cfg.clamexClear : 0); // Mitte r + Abstand vor der Oberfläche
     const p0 = [g.c[0] + g.n[0] * off, g.c[1] + g.n[1] * off, g.c[2] + g.n[2] * off];
-    const half = g.w / 2;
     let face;
     let map;
     let depth;
     if (Math.abs(a[2]) > 0.999) {
       face = 'Top';
       map = (q) => [q[0], q[1]];
-      depth = p.T - (g.c[2] - half);
+      depth = p.T - g.c[2];
       if (Math.abs(g.n[2]) > 0.01) return { error: 'Öffnung nicht senkrecht zur Achse – nicht unterstützt.' };
     } else if (Math.abs(a[0]) > 0.999) {
-      const left = g.c[0] + half;
-      const right = p.L - (g.c[0] - half);
+      const left = g.c[0];
+      const right = p.L - g.c[0];
       face = left <= right ? 'Left' : 'Right';
       map = face === 'Left' ? (q) => [p.W - q[1], q[2]] : (q) => [q[1], q[2]];
       depth = Math.min(left, right);
     } else if (Math.abs(a[1]) > 0.999) {
-      const front = g.c[1] + half;
-      const back = p.W - (g.c[1] - half);
+      const front = g.c[1];
+      const back = p.W - g.c[1];
       face = front <= back ? 'Front' : 'Back';
       map = face === 'Front' ? (q) => [q[0], q[2]] : (q) => [p.L - q[0], q[2]];
       depth = Math.min(front, back);
@@ -689,6 +706,21 @@
 
     // 6a) Clamex-Nuten: Scheibenfräser fährt auf der Mittelebene der Nut von außen bis zur Nutmitte und zurück
     for (const [i, g] of (side2 ? [] : p.clamex || []).entries()) {
+      if (cfg.clamexMode !== 'direct') {
+        // SCM-Makro: ein Verbinder an der Mitte der Nutöffnung (Start = Ende), Richtung und Einfügehöhe
+        const face = Math.abs(g.n[2]) < 0.99;
+        const dist = g.r - g.depth;
+        const s0 = [g.c[0] - g.n[0] * dist, g.c[1] - g.n[1] * dist, g.c[2] - g.n[2] * dist];
+        // Kante: Richtung gegen den Uhrzeigersinn um das Teil (Tangente = n um +90° gedreht); Fläche: Richtung der Nut
+        const t = face ? [-g.n[1], g.n[0]] : [g.a[1] * g.n[2] - g.a[2] * g.n[1], g.a[2] * g.n[0] - g.a[0] * g.n[2]];
+        let angZ = Math.atan2(t[1], t[0]) * 180 / Math.PI;
+        if (angZ < -1e-9) angZ += 360;
+        const tilt = Math.asin(Math.max(-1, Math.min(1, g.n[2]))) * 180 / Math.PI; // Neigung der Schnittfläche
+        const where = face ? 'Kante ' + ({ '0,-1': 'vorne', '0,1': 'hinten', '-1,0': 'links', '1,0': 'rechts' }[Math.round(g.n[0]) + ',' + Math.round(g.n[1])] || 'schräg') : 'Fläche';
+        ops.push({ kind: 'clamex', key: 'clamex-' + i, macro: { x: s0[0], y: s0[1], angle: face ? 90 - tilt : 90, angleZ: angZ, height: face ? s0[2] : T,
+          type: face ? cfg.clamexType : cfg.clamexFaceType }, groove: g, depth: g.depth, label: 'Clamex ' + where + ' (Makro)' });
+        continue;
+      }
       const pl = clamexPlan(p, g, cfg);
       const where = pl.face === 'Top' ? 'Kante ' + ({ '0,-1': 'vorne', '0,1': 'hinten', '-1,0': 'links', '1,0': 'rechts' }[Math.round(g.n[0]) + ',' + Math.round(g.n[1])] || 'schräg')
         : g.n[2] > 0.99 ? 'Fläche' : 'Schräge';
@@ -1120,14 +1152,16 @@
         if (op.tabs && !/Haltestege/.test(op.label)) op.label += ' mit Haltestegen';
         op.helix = !!cfg.helixOn;
       }
-      if (op.kind === 'clamex') {
-        // Scheibe passt zur Nut? (Radius, Breite = Schneidenhöhe in der Werkzeugdatei); Reichweite von der Kante
+      if (op.kind === 'clamex' && op.macro) {
+        op.step = 0;
+      } else if (op.kind === 'clamex') {
+        // Scheibe passt zur Nut? Radius wie die Nut (Makrohilfe: mindestens 49 mm); Reichweite von der Kante
         const info = cfg.toolInfo && cfg.toolInfo[op.tool];
         const g = op.groove;
         if (info && info.d && Math.abs(info.d / 2 - g.r) > 0.5 && !clamexWarned.has(op.tool + '|r' + g.r)) clamexWarned.add(op.tool + '|r' + g.r) && warnings.push('Clamex-Nuten: R' + fmt(g.r) + ', Werkzeug ' + op.tool + ' Ø' + fmt(info.d) + ' – Nutlänge weicht ab.');
-        if (info && info.len && Math.abs(info.len - g.w) > 0.5 && !clamexWarned.has(op.tool + '|' + g.w)) {
-          clamexWarned.add(op.tool + '|' + g.w);
-          warnings.push('Clamex-Nuten: ' + fmt(g.w) + ' mm breit, ' + op.tool + ' laut Werkzeugdatei ' + fmt(info.len) + ' mm hoch – Schneidenhöhe in der Werkzeugdatei bzw. Nutbreite prüfen.');
+        if (info && info.d && info.d / 2 < 49 - 1e-6 && !clamexWarned.has(op.tool + '|min')) {
+          clamexWarned.add(op.tool + '|min');
+          warnings.push('Clamex-Nuten: ' + op.tool + ' hat nur R' + fmt(info.d / 2) + ' – Clamex-Scheibe braucht mindestens R49 (Lamello).');
         }
         if (op.reach > (cfg.clamexMaxReach > 0 ? cfg.clamexMaxReach : 60)) {
           warnings.push(op.label + ': ' + fmt(op.reach) + ' mm von der Kante – Werkzeug liegt waagerecht über der Platte, Reichweite und Kollision in der Simulation prüfen.');
@@ -1692,6 +1726,16 @@
             op.tool + '", "-1", ' + op.side + ', ' + S3(op, true) + (op.finishAllowance > 0 ? ', ' + fmt(op.finishAllowance) : '') + ');');
           blank();
         }
+      } else if (op.kind === 'clamex' && op.macro) {
+        // SCM-Makro: nur die Position übergeben, Säge aus, ein Verbinder, Abstand außen 0 (Makrohilfe: „Softwarehäuser“)
+        const n = ++counts.clamex;
+        const names = clamexParamNames(cfg.clamexParams);
+        const m = op.macro;
+        const vals = { startX: fmt(m.x), startY: fmt(m.y), endX: fmt(m.x), endY: fmt(m.y), angle: fmt(m.angle), cut: 'false',
+          type: '"' + String(m.type).replace(/"/g, '') + '"', count: '1', outer: '0', angleZ: fmt(m.angleZ), height: fmt(m.height) };
+        for (const k of Object.keys(vals)) if (names[k]) L.push('SetMacroParam("' + names[k] + '", ' + vals[k] + ');');
+        L.push('CreateMacro("Clamex_' + n + '", "' + String(cfg.clamexMacro || 'SawCut_Lamello').replace(/"/g, '') + '");');
+        blank();
       } else if (op.kind === 'clamex') {
         // hinein bis zur Scheibenmitte und auf demselben Weg zurück (nicht abheben: sonst schneidet die Scheibe nach oben heraus)
         const n = ++counts.clamex;

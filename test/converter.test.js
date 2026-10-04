@@ -1249,27 +1249,44 @@ test('Werkzeug fehlt in der Werkzeugdatei → Hinweis; geschliffen wird nur die 
   assert.ok(ok.ops.some((o) => /^cutout-/.test(o.key)) && !ok.ops.some((o) => o.sand && o.key !== 'sand'));
 });
 
-test('Clamex-Nuten (Kreissegment R50): Kante von oben, Fläche von der Seite, nicht als Tasche/Wölbung', () => {
+test('Clamex-Nuten direkt (Kreissegment R50): Kante von oben, Fläche von der Seite, nicht als Tasche/Wölbung', () => {
   const { readParts, convertSolid } = require('../web/js/convert.js');
   const Tl = require('../web/js/tools.js');
   const toolInfo = Tl.infoMap(Tl.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
   const [a, b] = readParts(read('test/fixtures/schrank1.step'), 'schrank1.step');
-  // Teil 1: drei Nuten in der Vorderkante, Scheibe waagerecht → Ebene oben, Spitze an der unteren Nutwand (Z 6,5)
-  const r1 = convertSolid(a, { toolInfo });
+  // Teil 1: drei Nuten in der Vorderkante, Scheibe waagerecht → Ebene oben, Tiefe bis zur Blattmitte (Z 9,5)
+  const r1 = convertSolid(a, { toolInfo, clamexMode: 'direct' });
   assert.strictEqual(r1.error, null);
   assert.deepStrictEqual([r1.panel.pockets.length, r1.panel.bottom.length, r1.panel.curvedSurfaces.length], [0, 0, 0]);
   assert.strictEqual(r1.panel.clamex.length, 3);
   const g = r1.panel.clamex[0];
   assert.deepStrictEqual([+g.w.toFixed(3), +g.depth.toFixed(3), +g.r.toFixed(3)], [6, 14, 50]);
   assert.match(r1.xcs, /CreatePolyline\("ClamexPath_1", 250, -55\);\r?\nAddSegmentToPolyline\(250, -36\);\r?\nAddSegmentToPolyline\(250, -55\);/);
-  assert.match(r1.xcs, /CreateRoughFinish\("Clamex_1", 12\.5, "", TypeOfProcess\.GeneralRouting, "E030", "-1", 0, "-1", "-1", "-1"\);/);
+  assert.match(r1.xcs, /CreateRoughFinish\("Clamex_1", 9\.5, "", TypeOfProcess\.GeneralRouting, "E030", "-1", 0, "-1", "-1", "-1"\);/);
   assert.ok(r1.groups.indexOf('clamex-0') > r1.groups.indexOf('format'));
-  assert.strictEqual(r1.warnings.filter((w) => /Clamex-Nuten: 6 mm breit, E030 laut Werkzeugdatei 16 mm hoch/.test(w)).length, 1);
+  assert.ok(!r1.warnings.some((w) => /Clamex/.test(w)), r1.warnings.join(' | '));
   // Teil 2: drei Nuten in der Fläche nahe der linken Kante, Scheibe senkrecht → Ebene Left, Werkzeug waagerecht
-  const r2 = convertSolid(b, { toolInfo });
+  const r2 = convertSolid(b, { toolInfo, clamexMode: 'direct' });
   assert.strictEqual(r2.panel.clamex.length, 3);
   assert.deepStrictEqual([r2.panel.pockets.length, r2.panel.curvedSurfaces.length], [0, 0]);
   assert.match(r2.xcs, /SelectWorkplane\("Left"\);\r?\n\r?\nCreatePolyline\("ClamexPath_1", 50, 74\);\r?\nAddSegmentToPolyline\(50, 55\);/);
-  assert.match(r2.xcs, /CreateRoughFinish\("Clamex_3", 12\.5, [^;]*"E030", "-1", 0,/);
+  assert.match(r2.xcs, /CreateRoughFinish\("Clamex_3", 9\.5, [^;]*"E030", "-1", 0,/);
   assert.ok(!r2.warnings.some((w) => /Reichweite/.test(w)));
+});
+
+test('Clamex über das SCM-Makro: nur Position, Richtung, Einfügehöhe; Parameternamen einstellbar', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const [a, b] = readParts(read('test/fixtures/schrank1.step'), 'schrank1.step');
+  const r1 = convertSolid(a, {});
+  // Kante vorne: Start = Ende an der Nutmitte auf der Kante, gerade (90°), Richtung gegen den Uhrzeigersinn (0°), Höhe 9,5
+  assert.match(r1.xcs, /SetMacroParam\("Start X", 250\);\r?\nSetMacroParam\("Start Y", 0\);\r?\nSetMacroParam\("Ende X", 250\);\r?\nSetMacroParam\("Ende Y", 0\);\r?\n/);
+  assert.match(r1.xcs, /SetMacroParam\("Winkel", 90\);\r?\nSetMacroParam\("Schnitt ein", false\);\r?\nSetMacroParam\("Verbindertype", "Cl-Fräsen"\);\r?\nSetMacroParam\("Anzahl Verbinder", 1\);\r?\nSetMacroParam\("Abstand aussen", 0\);\r?\nSetMacroParam\("Winkel um Z-Achse", 0\);\r?\nSetMacroParam\("EinfHöhe", 9\.5\);\r?\nCreateMacro\("Clamex_1", "SawCut_Lamello"\);/);
+  assert.strictEqual((r1.xcs.match(/CreateMacro\(/g) || []).length, 3);
+  assert.doesNotMatch(r1.xcs, /ClamexPath_/);
+  // Fläche: eigener Verbindertyp, Höhe = Dicke
+  const r2 = convertSolid(b, {});
+  assert.match(r2.xcs, /SetMacroParam\("Verbindertype", "Cl-Nest90"\);[\s\S]*SetMacroParam\("EinfHöhe", 19\);/);
+  // eigene Parameternamen, leere Rolle wird weggelassen
+  const r3 = convertSolid(a, { clamexMacro: 'Clamex_SCM', clamexParams: 'startX=XS; startY=YS; endX=XE; endY=YE; height=H; cut=' });
+  assert.match(r3.xcs, /SetMacroParam\("XS", 250\);\r?\nSetMacroParam\("YS", 0\);\r?\nSetMacroParam\("XE", 250\);\r?\nSetMacroParam\("YE", 0\);\r?\nSetMacroParam\("H", 9\.5\);\r?\nCreateMacro\("Clamex_1", "Clamex_SCM"\);/);
 });

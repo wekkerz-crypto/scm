@@ -59,14 +59,25 @@ Nut, Mittelpunkt **36 mm** vor der Oberfläche (= 14 mm tief), symmetrisch in Nu
 Das Tool erkennt jedes Kreissegment R 40–60 zwischen zwei parallelen Wänden 3–12 mm Abstand als Clamex-Nut (nicht als Tasche
 oder gewölbte Fläche) – in der Kante oder in der Fläche (Beispiel `test/fixtures/schrank1.step`).
 
-**Programm:** Scheibenfräser `E030` (*Werkzeuge & Regeln → Clamex*), Werkzeugachse = Nutachse:
-- Nut in der **Kante** (Scheibe waagerecht): Ebene `Top`, Spindel von oben, Spitze an der unteren Nutwand.
+**Programm – Standard: SCM-Makro `SawCut_Lamello`** (Makrohilfe: `maestro/doku/SawCut_Lamello_Makrohilfe.pdf`). Je Nut
+ein Makro-Aufruf, nur die Lage wird übergeben (Fall „Start- und Endpunkt gleich – Verwendung für Softwarehäuser“):
+`SetMacroParam(Name, Wert)` je Parameter, dann `CreateMacro("Clamex_n", "SawCut_Lamello")` auf der Ebene `Top`.
+- Start X/Y = Ende X/Y = Mitte der Nutöffnung, *Schnitt ein* = false, *Anzahl Verbinder* = 1, *Abstand aussen* = 0.
+- *Winkel* = Neigung der Schnittfläche (90 = gerade), *Winkel um Z-Achse* = Richtung der Kante gegen den Uhrzeigersinn
+  (vorne 0°, rechts 90°, hinten 180°, links 270°), *EinfHöhe* = Höhe der Nutmitte über der Unterkante.
+- *Verbindertype*: Kante/Schnittfläche `Cl-Fräsen` (oder `Cl-Komplett` mit Schlüsselbohrungen), Fläche `Cl-Nest90`.
+- Werkzeug (Scheibe oder zylindrischer Clamex-Fräser mit 5-Achs-Bogen), Tiefe 14,3, Oszillation 1,4 usw. kommen aus dem
+  Makro bzw. `SawCut_Lamello.xspc` an der Maschine.
+- Makro-Name, Verbindertypen und die **Parameternamen** sind unter *Werkzeuge & Regeln → Clamex* einstellbar
+  (`Rolle=Name; …`), falls sie in Maestro anders heißen als in der Makrohilfe.
+
+**Alternativ direkt** (*Clamex-Nuten: direkt mit dem Scheibenfräser*): Scheibenfräser `E030` (auf Blattmitte vermessen),
+Werkzeugachse = Nutachse:
+- Nut in der **Kante** (Scheibe waagerecht): Ebene `Top`, Spindel von oben, Tiefe bis zur Nutmitte.
 - Nut in der **Fläche** (Scheibe senkrecht): Kanten-Ebene `Left`/`Right`/`Front`/`Back` auf der näheren Seite, Werkzeug
-  waagerecht über der Platte; Tiefe = Abstand der Kante bis zur hinteren Nutwand. Ab 60 mm von der Kante Hinweis
-  (Reichweite/Kollision).
-- Bahn: `CreatePolyline` von außen (Scheibe ganz vor der Oberfläche) bis zur Scheibenmitte und auf demselben Weg zurück,
-  `CreateRoughFinish(…, Korrektur 0)` – nicht abheben, sonst schneidet die Scheibe heraus.
-- Nuten von unten nur als Hinweis (Platte wenden/zweiseitig); Nutachse geneigt: noch nicht unterstützt.
+  waagerecht über der Platte; ab 60 mm von der Kante Hinweis (Reichweite/Kollision).
+- Bahn: `CreatePolyline` von außen bis zur Scheibenmitte und auf demselben Weg zurück, `CreateRoughFinish(…, Korrektur 0)`.
+- Nuten von unten nur als Hinweis (Platte wenden/zweiseitig); Nutachse geneigt: direkt nicht unterstützt (Makro: ja).
 
 ### Vorschub und Drehzahl
 
@@ -296,9 +307,13 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
   Überlappung; die bestätigten Beispiele haben 0. In der Simulation prüfen, dass die Kontur um 2 mm überfahren wird.
 - **Formatfräsen zweistufig:** `CreateRoughFinish("Milling_n_Vor", …, Aufmaß)` mit dem Aufmaß als 11. Wert (Handbuch),
   danach dasselbe auf Endmaß – in Maestro noch nicht bestätigt.
-- **Clamex:** Scheibenfräser `E030` steht in `def.tlgx` mit 16 mm Schneidenhöhe – stimmt das mit der echten Scheibe
-  (Nutbreite) überein? Bezugspunkt der Tiefe (Werkzeugspitze = Scheibenseite weg von der Spindel), Bahn hin und auf
-  derselben Linie zurück, Nut in der Fläche mit waagerechtem Werkzeug auf der Kanten-Ebene – alles in der Simulation prüfen.
+- **Clamex über `SawCut_Lamello`:** Die Parameternamen sind aus der Makrohilfe übernommen (Anzeigenamen) – in Maestro
+  prüfen, ob `SetMacroParam` sie so annimmt (sonst unter *Clamex → Makro-Parameternamen* die echten Namen eintragen;
+  am einfachsten aus einem gespeicherten Programm mit dem Makro ablesen). Ebenso: Schreibweise der Verbindertypen
+  (`Cl-Fräsen` mit Umlaut), Bezug von Start X/Y (Oberkante/Unterkante, *Bezugspos.*), Richtung *Winkel um Z-Achse*,
+  *EinfHöhe* und der Typ für Nuten in der Fläche (`Cl-Nest90`).
+- **Clamex direkt:** Tiefe bis zur Blattmitte (Scheibe auf Blattmitte vermessen), Bahn hin und auf derselben Linie
+  zurück, Nut in der Fläche mit waagerechtem Werkzeug auf der Kanten-Ebene – in der Simulation prüfen.
 - **Eigene Schnittwerte:** Einheiten laut Handbuch wie in Xilog (V/F in m/min, S in U/min) – an einer Bearbeitung mit
   eigenem Vorschub in Maestro prüfen, dass der Wert so ankommt (nicht als mm/min).
 - **Oszillieren / Schleifwalze:** `SetAttribute("DEPTH", Tiefe)` nach jedem Konturelement – laut Handbuch Tiefe am
@@ -351,5 +366,5 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
 | `maestro/beispiele/` | Beispiel-Programme (.xcs) aus Maestro – Referenz für das Format |
 | `maestro/werkzeuge/` | Werkzeugdaten (`def.tlgx`) |
 | `maestro/makros/` | SCM-Makros |
-| `maestro/doku/` | Handbuch der Script-Sprache (MSL-Referenz, Rev. 17) |
+| `maestro/doku/` | Handbuch der Script-Sprache (MSL-Referenz, Rev. 17), Makrohilfe `SawCut_Lamello` (Clamex) |
 | `featurescript/` | ursprünglich geplanter Weg über Onshape-FeatureScript (derzeit nicht verfolgt) |

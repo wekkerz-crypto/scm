@@ -354,6 +354,16 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.18); }
 .seg.small button { font-size: 0.78rem; padding: 2px 10px; }
 .ctl .rough { font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
+.ctl details.tech { flex: 1 1 100%; font-size: 0.75rem; }
+.ctl details.tech summary { cursor: pointer; color: var(--muted); list-style-position: inside; }
+.ctl details.tech summary .tsum { color: var(--ink); font-variant-numeric: tabular-nums; }
+.ctl details.tech summary .tsrc { font-size: 0.7rem; }
+.ctl details.tech summary .tsrc.own { color: var(--accent); font-weight: 600; }
+.ctl details.tech .trow { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding: 6px 0 2px; }
+.ctl details.tech .trow small { color: var(--muted); }
+.ctl details.tech input[data-tech="rot"] { width: 6em; }
+.ctl details.tech label.out input { border-color: var(--warn); }
+.ctl details.tech label.out small { color: var(--warn); font-weight: 600; }
 .curved { display: grid; gap: 6px; margin: 4px 0 10px; padding: 8px 10px; border-radius: var(--r); background: var(--sunken); border-left: 3px solid var(--pocket); }
 .curved .row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px; font-size: 0.82rem; }
 .curved .cap { color: var(--ink); }
@@ -673,6 +683,11 @@ table.fmt.one .onet { display: inline; }
     try { if (v === null) localStorage.removeItem(key); else localStorage.setItem(key, JSON.stringify(v)); } catch (e) { /* ohne Speicher */ }
   }
   const customTools = loadJson(TOOLS_KEY, null);
+  // früher gespeicherte Werkzeuglisten ohne Schnittwerte: Vorschub/Drehzahl gleichnamiger Werkzeuge aus der Standardliste
+  function withTech(tools) {
+    const def = new Map((window.DEFAULT_TOOLS || []).map((t) => [t.name, t]));
+    return (tools || []).map((t) => (t.tech !== undefined || !def.has(t.name) ? t : Object.assign({}, t, { tech: def.get(t.name).tech || null })));
+  }
 
   // ------------------------------------------------ Hell / Dunkel
   const THEME_KEY = 'step2xcs.theme.v1';
@@ -694,10 +709,10 @@ table.fmt.one .onet { display: inline; }
   }));
 
   const state = { parts: [], sel: 0, settings: loadSettings(),
-    tools: customTools ? customTools.tools : (window.DEFAULT_TOOLS || []),
+    tools: customTools ? withTech(customTools.tools) : (window.DEFAULT_TOOLS || []),
     toolSource: customTools ? customTools.source : 'def.tlgx (Standard)',
     favorites: loadJson(FAV_KEY, []), mode3d: !!loadJson('step2xcs.view3d.v1', false),
-    showCode: !!loadJson('step2xcs.showcode.v1', false),
+    showCode: !!loadJson('step2xcs.showcode.v1', false), techOpen: new Set(),
     newProfile: (loadJson('step2xcs.profile.v1', null) || { i: null }).i ?? null }; // Profil für neue Teile
 
   const usableTools = (kind) => state.tools.filter((t) => t.kind === kind && !t.disabled);
@@ -1076,6 +1091,7 @@ table.fmt.one .onet { display: inline; }
         row.c = 'var(' + opToken(op) + ')';
         row.k = n + ' × Bohrung Ø' + fmt(d.d) + ' ' + where + (d.tip === 'L' ? ' (durch)' : '');
         row.v = 'T ' + fmt(d.depth);
+        row.op = op; // nur Vorschub/Drehzahl (Bohrer wählt Maestro nach Ø)
       } else {
         row.c = 'var(' + opToken(op) + ')';
         row.k = op.label + (row.ops.length > 1 ? ' (' + row.ops.length + ' Bahnen)' : '');
@@ -1086,8 +1102,42 @@ table.fmt.one .onet { display: inline; }
     return rows;
   }
 
+  // Schnittwerte: Werkzeug der Bearbeitung (Bohrungen: erster Bohrer mit passendem Ø), Werte aus der Werkzeugdatei
+  function techTool(op) {
+    if (op.kind === 'drill' || op.kind === 'sdrill') {
+      const d = op.kind === 'drill' ? op.d.d : op.d;
+      return state.tools.find((t) => t.kind === 'drill' && !t.disabled && t.d && Math.abs(t.d - d) < 0.05) || null;
+    }
+    return state.tools.find((t) => t.name === op.tool) || null;
+  }
+  const TECH = [['feed', 'Vorschub', 'm/min'], ['rot', 'Drehzahl', 'U/min'], ['descent', 'Eintauchen', 'm/min']];
+  function techBox(part, op) {
+    const t = techTool(op);
+    const db = (t && t.tech) || {};
+    const own = (ovOf(part).tech || {})[op.group] || {};
+    const drill = op.kind === 'drill' || op.kind === 'sdrill';
+    const fields = drill ? [['rot', 'Drehzahl', 'U/min'], ['feed', 'Bohrvorschub', 'm/min']] : TECH;
+    const val = (k) => (own[k] > 0 ? own[k] : db[k] ? db[k][0] : null);
+    const nOwn = fields.filter(([k]) => own[k] > 0).length;
+    const sum = fields.map(([k, , u]) => (val(k) !== null ? fmt(val(k)) + ' ' + u : '–')).join(' · ');
+    const src = nOwn ? 'eigene Werte' : t && t.tech ? 'Werkzeugdatei' + (drill ? ' (' + t.name + ')' : '') : 'nicht in der Werkzeugdatei';
+    let html = '<details class="tech" data-techgrp="' + esc(op.group) + '"' + (state.techOpen.has(op.group) ? ' open' : '') + '><summary><span class="tsum">' + esc(sum) +
+      '</span> <span class="tsrc' + (nOwn ? ' own' : '') + '">' + esc(src) + '</span></summary><div class="trow">';
+    for (const [k, label, unit] of fields) {
+      const r = db[k];
+      const out = own[k] > 0 && r && r[1] !== null && r[2] !== null && (own[k] < r[1] - 1e-9 || own[k] > r[2] + 1e-9);
+      html += '<label' + (out ? ' class="out" title="außerhalb ' + fmt(r[1]) + '–' + fmt(r[2]) + ' laut Werkzeugdatei"' : '') + '>' + label +
+        ' <input class="step" type="number" min="0" step="' + (k === 'rot' ? 500 : 0.5) + '" data-tech="' + k + '" data-techfor="' + esc(op.group) + '" value="' +
+        (own[k] > 0 ? own[k] : '') + '" placeholder="' + (r ? fmt(r[0]) : '–') + '"> ' + unit +
+        (r && r[1] !== null && r[2] !== null ? ' <small>' + fmt(r[1]) + '–' + fmt(r[2]) + '</small>' : '') + '</label>';
+    }
+    if (nOwn) html += '<button type="button" class="btn ghost small" data-techreset="' + esc(op.group) + '">Werte aus der Werkzeugdatei</button>';
+    return html + '</div></details>';
+  }
+
   function opControls(part, op) {
     if (!op) return '';
+    if (op.kind === 'drill' || op.kind === 'sdrill') return techBox(part, op);
     let html = '';
     if (op.key === 'format') {
       // je Teil umschaltbar: normal (ein Werkzeug) oder zweistufig (vorfräsen mit Aufmaß, nachfräsen)
@@ -1113,7 +1163,7 @@ table.fmt.one .onet { display: inline; }
       html += '<label title="Tiefe je Durchgang in mm, leer = Einstellung für alle Teile, 0 = ein Durchgang">Zustellung <input class="step" type="number" min="0" step="0.5" data-step="' + esc(op.key) + '" value="' +
         (own !== undefined ? own : '') + '" placeholder="' + ((op.kind === 'pocket' && eff.pocketStepDown > 0 ? eff.pocketStepDown : eff.stepDown) || 'aus') + '"> mm</label>';
     }
-    return html;
+    return html + techBox(part, op);
   }
 
   function counts(r) {
@@ -1627,8 +1677,29 @@ table.fmt.one .onet { display: inline; }
       part.overrides.twoStep = b.dataset.twostep === '1';
       compute(part); render();
     }));
+    // Vorschub/Drehzahl je Bearbeitung (leer = Werkzeugdatei); Untermenü bleibt beim Neuzeichnen offen
+    el.querySelectorAll('details.tech').forEach((d) => d.addEventListener('toggle', () => {
+      if (d.open) state.techOpen.add(d.dataset.techgrp); else state.techOpen.delete(d.dataset.techgrp);
+    }));
+    el.querySelectorAll('input[data-tech]').forEach((inp) => inp.addEventListener('change', () => {
+      const ov = ovOf(part);
+      const g = inp.dataset.techfor;
+      const v = parseFloat(String(inp.value).replace(',', '.'));
+      const t = Object.assign({}, (ov.tech || {})[g]);
+      if (v > 0) t[inp.dataset.tech] = v; else delete t[inp.dataset.tech];
+      ov.tech = Object.assign({}, ov.tech, { [g]: t });
+      if (!Object.keys(t).length) delete ov.tech[g];
+      compute(part); render();
+    }));
+    el.querySelectorAll('[data-techreset]').forEach((b) => b.addEventListener('click', () => {
+      const ov = ovOf(part);
+      if (ov.tech) delete ov.tech[b.dataset.techreset];
+      compute(part); render();
+    }));
     el.querySelectorAll('select[data-tool]').forEach((sel) => sel.addEventListener('change', () => {
       ovOf(part).tools[sel.dataset.tool] = sel.value;
+      // anderes Werkzeug: eigene Schnittwerte gelten nicht mehr
+      if (ovOf(part).tech) delete ovOf(part).tech[sel.dataset.tool];
       compute(part); render();
     }));
     el.querySelectorAll('input[data-step], input[data-depth]').forEach((inp) => {

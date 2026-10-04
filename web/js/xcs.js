@@ -1001,6 +1001,17 @@
       if (!op.key) continue;
       if (cfg.toolOverrides && cfg.toolOverrides[op.key]) op.tool = cfg.toolOverrides[op.key];
       op.depthAdjustable = op.kind === 'contour' && throughKey(op.key) && !op.osc;
+      // eigene Schnittwerte außerhalb des Bereichs aus der Werkzeugdatei → Hinweis
+      const own = cfg.techOverrides && cfg.techOverrides[op.group];
+      const db = own && cfg.toolInfo && cfg.toolInfo[op.tool] && cfg.toolInfo[op.tool].tech;
+      if (db) {
+        for (const [k, name, unit] of [['feed', 'Vorschub', 'm/min'], ['rot', 'Drehzahl', 'U/min'], ['descent', 'Eintauchen', 'm/min']]) {
+          const r = db[k];
+          if (own[k] > 0 && r && r[1] !== null && r[2] !== null && (own[k] < r[1] - 1e-9 || own[k] > r[2] + 1e-9)) {
+            warnings.push(op.label + ': ' + name + ' ' + fmt(own[k]) + ' ' + unit + ' außerhalb ' + fmt(r[1]) + '–' + fmt(r[2]) + ' (Werkzeugdatei ' + op.tool + ').');
+          }
+        }
+      }
       const dz = cfg.depthOverrides && cfg.depthOverrides[op.key];
       if (op.depthAdjustable && dz > 0) {
         op.depth = dz;
@@ -1458,6 +1469,7 @@
     if (override && override.steps) cfg.stepOverrides = override.steps;
     if (override && override.order) cfg.order = override.order;
     if (override && override.depths) cfg.depthOverrides = override.depths;
+    if (override && override.tech) cfg.techOverrides = override.tech; // je Bearbeitung: Vorschub, Drehzahl, Eintauchen
     if (override && typeof override.twoStep === 'boolean') cfg.formatTwoStep = override.twoStep; // je Teil: normal / zweistufig
     const cv = override && override.curved; // je Teil: gekrümmte Flächen bearbeiten
     if (cv && typeof cv.slant === 'boolean') cfg.curvedSlantOn = cv.slant;
@@ -1520,6 +1532,12 @@
     let plane = 'Top';
     const madePlanes = new Set();
     let multiStep = false;
+    // Schnittwerte je Bearbeitung (Gruppe): gesetzt → Zahl, sonst -1 = Wert aus der Werkzeugdatei.
+    // Reihenfolge in Maestro: inputSpeed (Eintauchen, m/min), rotSpeed (U/min), speed (Vorschub, m/min)
+    const techOf = (op) => (cfg.techOverrides && cfg.techOverrides[op.group]) || {};
+    const tv = (x, q) => (x > 0 ? fmt(x) : q ? '"-1"' : '-1');
+    const S3 = (op, q) => { const t = techOf(op); return tv(t.descent, q) + ', ' + tv(t.rot, q) + ', ' + tv(t.feed, q); };
+    const SD = (op) => { const t = techOf(op); return tv(t.rot) + ', ' + tv(t.feed); }; // Bohren: rotSpeed, boringSpeed
     for (const op of ops) {
       // Fräsungen und schräge Bohrungen beziehen sich auf die Oberseite, Kantentaschen auf ihre Kante,
       // Bearbeitungen auf schrägen Ebenen auf eine eigene Ebene (einmal angelegt)
@@ -1596,7 +1614,7 @@
             L.push('CreateHelicMillingStrategy(' + fmt(hs) + ', ' + fmt(cfg.finishDepth) + ', ' + (cfg.finishDepth > 0 ? 'true' : 'false') + ');');
           } else if (op.step) L.push('CreateUnidirectionalMillingStrategy(true, ' + fmt(op.step) + ', ' + fmt(cfg.finishDepth) + ', 1, false);');
           L.push('CreateRoughFinish("Milling_' + op.milling + suffix + '", ' + fmt(depth) + ', "", TypeOfProcess.GeneralRouting, "' +
-            op.tool + '", "-1", ' + op.side + ', "-1", "-1", "-1"' + (op.finishAllowance > 0 ? ', ' + fmt(op.finishAllowance) : '') + ');');
+            op.tool + '", "-1", ' + op.side + ', ' + S3(op, true) + (op.finishAllowance > 0 ? ', ' + fmt(op.finishAllowance) : '') + ');');
           blank();
         }
       } else if (op.kind === 'pocket') {
@@ -1615,7 +1633,7 @@
           L.push('CreateContourParallelStrategy(true, 1, true, ' + fmt(op.step) + ', ' + fmt(cfg.finishDepth) + ');');
         }
         L.push('CreateContourPocket("Pocketing_' + op.pocket + '", ' + fmt(op.depth) + ', "", TypeOfProcess.ConcentricalPocket, "' +
-          op.tool + '", "-1", -1, -1, -1, ' + fmt(cfg.pocketOverlap) + ', false' + names.map((n) => ', "' + n + '"').join('') + ');');
+          op.tool + '", "-1", ' + S3(op) + ', ' + fmt(cfg.pocketOverlap) + ', false' + names.map((n) => ', "' + n + '"').join('') + ');');
         blank();
       } else if (op.kind === 'chamfer') {
         const n = ++counts.chamfer;
@@ -1631,7 +1649,7 @@
         L.push('ResetApproachStrategy();');
         L.push('ResetRetractStrategy();');
         L.push('CreateChamfer("Chamfer_' + n + '", ' + fmt(op.width) + ', ' + fmt(op.height) + ', 0, ' + op.toolPos +
-          ', "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", -1, -1, -1, 0);');
+          ', "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", ' + S3(op) + ', 0);');
         blank();
       } else if (op.kind === 'slant') {
         // CreateSlantedRoughFinish fräst auf Werkzeugmitte: Bahn um r / cos(Neigung) zur Abfallseite versetzen,
@@ -1645,7 +1663,7 @@
         L.push('ResetApproachStrategy();');
         L.push('ResetRetractStrategy();');
         L.push('CreateSlantedRoughFinish("SlantedMilling_' + n + '", 0, ' + fmt(op.angle) + ', ' + op.approach + ', ' + fmt(op.depth) +
-          ', "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", -1, -1, -1, 0);');
+          ', "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", ' + S3(op) + ', 0);');
         blank();
       } else if (op.kind === 'slantpath') {
         // Schräge an Rundungen: Kontur (schon um r / cos(Neigung) versetzt), Werkzeug quer zur Bahn geneigt (5-Achs)
@@ -1658,7 +1676,7 @@
         L.push('ResetApproachStrategy();');
         L.push('ResetRetractStrategy();');
         L.push('CreateSlantedRoughFinish("SlantedMilling_' + n + '", 0, ' + fmt(op.angle) + ', ' + op.approach + ', ' + fmt(op.depth) +
-          ', "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", -1, -1, -1, 0);');
+          ', "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", ' + S3(op) + ', 0);');
         blank();
       } else if (op.kind === 'cyl4') {
         // je Zeile: Ebene tangential an die Fläche (Ursprung = Startpunkt der Zeile), darauf eine Gerade, Fräser senkrecht
@@ -1682,7 +1700,7 @@
           L.push('CreateSegment("' + nm + '_Linie", 0, 0, ' + fmt(lx) + ', ' + fmt(ly) + ');');
           L.push('ResetApproachStrategy();');
           L.push('ResetRetractStrategy();');
-          L.push('CreateRoughFinish("' + nm + '_Fraesen", 0, "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", 0, "-1", "-1", "-1");');
+          L.push('CreateRoughFinish("' + nm + '_Fraesen", 0, "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", 0, ' + S3(op, true) + ');');
           blank();
         });
       } else if (op.kind === 'surface') {
@@ -1697,7 +1715,7 @@
         L.push('AddSegmentToPolyline(' + fmt(op.x0) + ', ' + fmt(op.y0) + ');');
         L.push('ResetApproachStrategy();');
         L.push('ResetRetractStrategy();');
-        L.push('CreateRoughFinish("Surface_' + n + '", ' + fmt(op.depth) + ', "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", 0, "-1", "-1", "-1");');
+        L.push('CreateRoughFinish("Surface_' + n + '", ' + fmt(op.depth) + ', "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", 0, ' + S3(op, true) + ');');
         const z = (v) => fmt(v - p.T);
         const up = fmt(op.safe);
         const first = op.passes[0][0];
@@ -1719,22 +1737,22 @@
         // Vorritzen: erster Schnitt in Ritztiefe, Rückweg auf volle Tiefe
         if (op.score) L.push('CreateSectioningMillingStrategy(' + fmt(op.score.depth) + ', ' + fmt(op.score.out) + ', 0);');
         L.push('CreateBladeCut("Saegeschnitt_' + n + '", "Saegeschnitt ' + fmt(op.tilt) + ' Grad", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", ' + fmt(ang) +
-          ', 2, -1, -1, -1, 0, true, true, 0, ' + fmt(op.extra) + ');');
+          ', 2, ' + S3(op) + ', 0, true, true, 0, ' + fmt(op.extra) + ');');
         blank();
       } else if (op.kind === 'sdrill') {
         const e = op.entry;
         L.push('CreateSlantedDrill("Drill_Slanted_' + (++counts.sdrill) + '", ' + fmt(e[0]) + ', ' + fmt(e[1]) + ', ' + fmt(e[2]) + ', ' +
           fmt(op.angleA) + ', ' + fmt(op.angleB) + ', ' + fmt(op.depth) + ', ' + fmt(op.d) +
-          ', "", TypeOfProcess.Drilling, "-1", "-1", 1, -1, -1, "' + op.tip + '");');
+          ', "", TypeOfProcess.Drilling, "-1", "-1", 1, ' + SD(op) + ', "' + op.tip + '");');
         blank();
       } else if (op.kind === 'slot') {
         L.push('CreateSegment("SlotSegment_' + (++nSeg) + '", ' + pt(op.a) + ', ' + pt(op.b) + ');');
         L.push('SetMachiningDirection(true);');
-        L.push('CreateSlot("Slot_' + (++nSlot) + '", ' + fmt(op.depth) + ', "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", 1,-1,-1,-1,0);');
+        L.push('CreateSlot("Slot_' + (++nSlot) + '", ' + fmt(op.depth) + ', "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", 1,' + S3(op).replace(/, /g, ',') + ',0);'); // Schreibweise wie im bestätigten Beispiel
         blank();
         if (op.single) continue; // Nut so breit wie das Blatt: ein Schnitt genügt
         L.push('SetMachiningDirection(false);');
-        L.push('CreateSlot("Slot_' + (++nSlot) + '", ' + fmt(op.depth) + ', "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", 2,-1,-1,-1,' + fmt(-op.width) + ');');
+        L.push('CreateSlot("Slot_' + (++nSlot) + '", ' + fmt(op.depth) + ', "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", 2,' + S3(op).replace(/, /g, ',') + ',' + fmt(-op.width) + ');');
         blank();
       } else if (op.kind === 'drill') {
         if (op.face !== plane) {
@@ -1759,13 +1777,13 @@
         }
         if (op.plane) {
           L.push('CreateDrill ("Drill_Slanted_Plane_' + (++counts.pdrill) + '", ' + fmt(d.x) + ', ' + fmt(d.y) + ', ' + fmt(d.depth) + ', ' +
-            fmt(d.d) + ', "", TypeOfProcess.Drilling, "-1", "-1", 1, -1, -1, "' + d.tip + '");');
+            fmt(d.d) + ', "", TypeOfProcess.Drilling, "-1", "-1", 1, ' + SD(op) + ', "' + d.tip + '");');
         } else if (op.face === 'Top') {
           L.push('CreateDrill ("Drill_Vertical_' + (++nDrill.V) + '", ' + fmt(d.x) + ', ' + fmt(d.y) + ', ' + fmt(d.depth) + ', ' +
-            fmt(d.d) + ', "", TypeOfProcess.Drilling, "-1", "-1", 1, -1, -1, "' + d.tip + '");');
+            fmt(d.d) + ', "", TypeOfProcess.Drilling, "-1", "-1", 1, ' + SD(op) + ', "' + d.tip + '");');
         } else {
           L.push('CreateDrill ("Drill_Horizontal_' + (++nDrill.H) + '", ' + fmt(d.x) + ', ' + fmt(d.y) + ', ' + fmt(d.depth) + ', ' +
-            fmt(d.d) + ', "", TypeOfProcess.Drilling);');
+            fmt(d.d) + ', "", TypeOfProcess.Drilling' + (techOf(op).rot > 0 || techOf(op).feed > 0 ? ', "-1", "-1", 1, ' + SD(op) + ', "' + d.tip + '"' : '') + ');');
         }
         if (usePat) L.push('CreatePattern(1, 1, 0, 0, 0, 90);');
         blank();

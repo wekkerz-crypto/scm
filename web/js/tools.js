@@ -22,6 +22,21 @@
     });
   }
 
+  // Schnittwerte der ersten Schneide: Vorschub und Eintauchen in m/min, Drehzahl in U/min – je [Standard, min, max]
+  function techOf(b) {
+    const tt = (/<(?:\w+:)?ToolTechnology>([\s\S]*?)<\/(?:\w+:)?ToolTechnology>/.exec(b) || [])[1];
+    if (!tt) return null;
+    const val = (tag) => {
+      const m = new RegExp('<' + tag + '>([\\s\\S]*?)</' + tag + '>').exec(tt);
+      if (!m) return null;
+      const g = (k) => num(m[1], k);
+      const std = g('Standard');
+      return std === null ? null : [std, g('Minimum'), g('Maximum')];
+    };
+    const t = { feed: val('FeedRate'), rot: val('SpindleSpeed'), descent: val('DescentSpeed') };
+    return t.feed || t.rot || t.descent ? t : null;
+  }
+
   function parseTlgx(text) {
     const tools = [];
     const blocks = String(text).split(/<CoreTool[\s>]/).slice(1);
@@ -51,6 +66,7 @@
         blade: num(b, 'BladeThickness'),
         tipAngle: tip !== null ? Math.round((tip * 180) / Math.PI * 100) / 100 : null,
         disabled: disabled,
+        tech: techOf(b),
       });
     }
     return tools;
@@ -70,7 +86,7 @@
 
   function infoMap(tools) {
     const m = {};
-    for (const t of tools || []) m[t.name] = { d: t.d, len: t.len, blade: t.blade, kind: t.kind, body: t.body };
+    for (const t of tools || []) m[t.name] = { d: t.d, len: t.len, blade: t.blade, kind: t.kind, body: t.body, tech: t.tech || null };
     return m;
   }
 

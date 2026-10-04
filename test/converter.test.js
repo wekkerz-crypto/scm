@@ -1205,3 +1205,29 @@ test('Oszillieren (Formatfräsen) und Schleifen mit der Schleifwalze', () => {
   // ohne Optionen: Programm unverändert (kein DEPTH)
   assert.doesNotMatch(convertSolid(s, { toolInfo }).xcs, /DEPTH/);
 });
+
+test('Vorschub/Drehzahl: aus der Werkzeugdatei gelesen, je Bearbeitung einstellbar', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const Tl = require('../web/js/tools.js');
+  const tools = Tl.parseTlgx(read('maestro/werkzeuge/def.tlgx'));
+  // Standard, min, max: Vorschub/Eintauchen m/min, Drehzahl U/min
+  assert.deepStrictEqual(tools.find((t) => t.name === 'E014').tech, { feed: [12, 8, 15], rot: [15000, 12000, 15000], descent: [3, 2, 3] });
+  assert.deepStrictEqual(tools.find((t) => t.name === 'E091').tech.rot, [1500, 1500, 1500]);
+  const toolInfo = Tl.infoMap(tools);
+  const [s] = readParts(read('test/fixtures/testplatte.step'), 'tp.step');
+  const base = convertSolid(s, { toolInfo });
+  assert.match(base.xcs, /"E014", "-1", 2, "-1", "-1", "-1"\);/); // ohne eigene Werte: -1 = Werkzeugdatei
+  const drill = base.groups[0];
+  const r = convertSolid(s, { toolInfo }, { overrides: { tech: { format: { feed: 14, rot: 14000, descent: 2.5 }, 'pocket-0': { feed: 6 },
+    [drill]: { rot: 4500, feed: 3 }, 'slot-0': { rot: 6500 } } } });
+  assert.match(r.xcs, /CreateRoughFinish\("Milling_\d+", 21, "", TypeOfProcess\.GeneralRouting, "E014", "-1", 2, 2\.5, 14000, 14\);/);
+  assert.match(r.xcs, /CreateContourPocket\("Pocketing_1", 5, "", TypeOfProcess\.ConcentricalPocket, "E016", "-1", -1, -1, 6, 50, false\);/);
+  assert.match(r.xcs, /CreateDrill \("Drill_Vertical_1", [^;]*, "-1", "-1", 1, 4500, 3, "L"\);/);
+  assert.match(r.xcs, /CreateSlot\("Slot_1", 6, "", TypeOfProcess\.GeneralRouting, "066", "-1", 1,-1,6500,-1,0\);/);
+  assert.ok(!r.warnings.some((w) => /außerhalb/.test(w)));
+  // außerhalb des Bereichs → Hinweis
+  const w = convertSolid(s, { toolInfo }, { overrides: { tech: { format: { feed: 20 } } } }).warnings;
+  assert.ok(w.some((x) => /Formatfräsen: Vorschub 20 m\/min außerhalb 8–15 \(Werkzeugdatei E014\)/.test(x)));
+  // andere Bearbeitungen unverändert
+  assert.match(r.xcs, /CreateDrill \("Drill_Vertical_2", [^;]*, 1, -1, -1, "P"\);/);
+});

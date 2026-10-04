@@ -52,6 +52,17 @@ Weitere Schalter: `--step mm` (Zustellung), `--no-order-rule`, `--schraege-5achs
 dem Schaftfräser abzeilen, übrige Flächen Kugelfräser), `--oszillieren`, `--schleifen` (siehe unten), `--dicke mm` (Plattendicke für `.dxf`, Standard 19;
 Erkennungen wie vorgeschlagen).
 
+### Vorschub und Drehzahl
+
+Die Schnittwerte kommen aus der Werkzeugdatei (`.tlgx`, je Werkzeug Standard und Bereich: Vorschub und Eintauchen in
+m/min, Drehzahl in U/min). In der Schrittliste zeigt jede Bearbeitung sie in einem Untermenü (bei Bohrungen: Drehzahl und
+Bohrvorschub des Bohrers mit passendem Ø). Bleibt ein Feld leer, steht im Programm `-1` – Maestro nimmt dann den Wert
+aus seiner Werkzeugdatei. Ein eigener Wert gilt nur für diese Bearbeitung dieses Teils und wird direkt in den Befehl
+geschrieben (`inputSpeed`, `rotSpeed`, `speed` bei `CreateRoughFinish`, `CreateContourPocket`, `CreateChamfer`,
+`CreateSlantedRoughFinish`, `CreateSlot`, `CreateBladeCut`; `rotSpeed`, `boringSpeed` bei `CreateDrill`). Werte außerhalb
+des Bereichs aus der Werkzeugdatei werden markiert und als Hinweis gemeldet. Ein anderes Werkzeug setzt die eigenen Werte
+zurück. Beim zweistufigen Formatfräsen gelten sie für den Nachfräser (der Vorfräser behält die Werte aus der Datei).
+
 ### Oszillieren und Schleifen (*Werkzeuge & Regeln → Oszillieren & Schleifen*, auch je Werkstück-Profil)
 
 - **Formatfräsen oszillierend:** Die Frästiefe pendelt entlang der Kontur zwischen *mindestens* und *höchstens* unter der
@@ -266,6 +277,8 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
   Überlappung; die bestätigten Beispiele haben 0. In der Simulation prüfen, dass die Kontur um 2 mm überfahren wird.
 - **Formatfräsen zweistufig:** `CreateRoughFinish("Milling_n_Vor", …, Aufmaß)` mit dem Aufmaß als 11. Wert (Handbuch),
   danach dasselbe auf Endmaß – in Maestro noch nicht bestätigt.
+- **Eigene Schnittwerte:** Einheiten laut Handbuch wie in Xilog (V/F in m/min, S in U/min) – an einer Bearbeitung mit
+  eigenem Vorschub in Maestro prüfen, dass der Wert so ankommt (nicht als mm/min).
 - **Oszillieren / Schleifwalze:** `SetAttribute("DEPTH", Tiefe)` nach jedem Konturelement – laut Handbuch Tiefe am
   Endpunkt des Elements. Zu prüfen: Tiefe ab Oberseite wie bei `CreateRoughFinish`, Übergang zwischen den Punkten
   linear (Rampe, keine Stufe), zusammen mit Bogen-An-/Abfahrt und Überlappung. Schleifwalze `E091` als Werkzeug in

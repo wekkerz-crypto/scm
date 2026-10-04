@@ -409,3 +409,33 @@ test('Web-Tool: Etiketten 40 × 60 (Vorschau, Druckbereich, Seitengröße)', { s
     await browser.close();
   }
 });
+
+test('Web-Tool: Vorschub/Drehzahl je Bearbeitung (Untermenü)', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    const box = 'details.tech[data-techgrp="format"]';
+    await p.waitForSelector(box);
+    // Werte aus der Werkzeugdatei als Vorgabe
+    assert.match(await p.textContent(box + ' summary'), /12 m\/min · 15000 U\/min · 3 m\/min\s+Werkzeugdatei/);
+    await p.click(box + ' summary');
+    assert.strictEqual(await p.getAttribute(box + ' input[data-tech="feed"]', 'placeholder'), '12');
+    await p.fill(box + ' input[data-tech="feed"]', '14');
+    await p.dispatchEvent(box + ' input[data-tech="feed"]', 'change');
+    await p.waitForFunction(() => /"E014", "-1", 2, "-1", "-1", 14\);/.test(document.getElementById('xcs').textContent));
+    assert.ok(await p.$(box + '[open]')); // bleibt offen
+    assert.match(await p.textContent(box + ' summary'), /eigene Werte/);
+    // zurück auf Werkzeugdatei
+    await p.click(box + ' [data-techreset]');
+    await p.waitForFunction(() => /"E014", "-1", 2, "-1", "-1", "-1"\);/.test(document.getElementById('xcs').textContent));
+    // Bohrungen: Drehzahl und Bohrvorschub
+    assert.ok(await p.$('details.tech[data-techgrp^="drill:"] input[data-tech="rot"]'));
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});

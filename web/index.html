@@ -235,7 +235,14 @@ pre.xcs .s { color: var(--ok); }
 .star { border: 0; background: none; font-size: 1.05rem; line-height: 1; padding: 2px 4px; color: var(--muted); }
 .star.on { color: var(--star); }
 table.ops { table-layout: fixed; }
-table.ops td.mv { width: 4.4em; white-space: nowrap; text-align: right; }
+table.ops td.mv { width: 6.4em; white-space: nowrap; text-align: right; }
+.mvb.del { margin-left: 4px; color: var(--muted); }
+.mvb.del:hover { border-color: var(--err); color: var(--err); }
+.suppressed { margin: 8px 0 0; font-size: 0.82rem; }
+.suppressed summary { cursor: pointer; color: var(--muted); }
+.suppressed ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
+.suppressed li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 3px 8px; border-radius: var(--r); background: var(--sunken); }
+.suppressed .nm { text-decoration: line-through; color: var(--muted); }
 .mvb { border: 1px solid var(--line); background: var(--surface); border-radius: 4px; width: 1.8em; height: 1.7em; padding: 0; line-height: 1; }
 .mvb:hover:not([disabled]) { border-color: var(--accent); color: var(--accent); }
 .mvb[disabled] { opacity: .3; cursor: default; }
@@ -758,8 +765,8 @@ table.fmt.one .onet { display: inline; }
       s.name = k;
     }
     for (const s of solids) {
-      const part = { label: label, solid: s, stepText: text, orientation: null, field: null, fileName: null, result: null,
-        overrides: { tools: {}, steps: {}, depths: {} } };
+      const part = { label: label, solid: s, stepText: text, orientation: null, field: null, fileName: null, result: null, side: 1,
+        overrides: { tools: {}, steps: {}, depths: {} }, overrides2: { tools: {}, steps: {}, depths: {} } };
       compute(part);
       state.parts.push(part);
     }
@@ -767,12 +774,32 @@ table.fmt.one .onet { display: inline; }
   function compute(part) {
     if (!part.solid) return;
     const cfg = Object.assign({}, state.settings, { toolInfo: ToolLibrary.infoMap(state.tools) });
-    part.result = StepToXcs.convertSolid(part.solid, cfg, { orientation: part.orientation, field: part.field, overrides: part.overrides,
-      meshes: part.occtMeshes || null });
-    if (part.result.panel && !part.orientation) part.orientation = Object.assign({}, part.result.panel.orientation);
-    if (!part.fileName) part.fileName = part.result.fileName;
+    part.res = StepToXcs.convertSolid(part.solid, cfg, { orientation: part.orientation, field: part.field, overrides: part.overrides,
+      overrides2: part.overrides2, meshes: part.occtMeshes || null });
+    if (part.res.panel && !part.orientation) part.orientation = Object.assign({}, part.res.panel.orientation);
+    if (!part.fileName) part.fileName = part.res.fileName;
+    if (!part.res.side2) part.side = 1;
+    part.result = part.side === 2 ? part.res.side2 : part.res; // angezeigte Seite
+    if (!part.result.panel) return;
     const cs = curvedState(part);
     if (cs.surface && !(cs.mode === 'flat4' && cs.hasCyl && part.result.panel.curvedSurfaces.every((x) => x.cyl)) && !part.occtMeshes) loadMesh(part);
+  }
+
+  // Überschreibungen der angezeigten Seite (Werkzeuge, Zustellung, Tiefe, Reihenfolge, Unterdrücken)
+  function ovOf(part) {
+    if (part.side === 2) return part.overrides2 || (part.overrides2 = { tools: {}, steps: {}, depths: {} });
+    return part.overrides;
+  }
+  // Dateiname je Seite: zweiseitig Name_S1.xcs / Name_S2.xcs (gleich für .pgmx)
+  function sideFile(part, side) {
+    const base = part.fileName.replace(/\.xcs$/i, '');
+    return part.res && part.res.side2 ? base + '_S' + side + '.xcs' : base + '.xcs';
+  }
+  function partFiles(part) {
+    if (!part.res || !part.res.panel) return [];
+    const out = [{ name: sideFile(part, 1), text: part.res.xcs }];
+    if (part.res.side2) out.push({ name: sideFile(part, 2), text: part.res.side2.xcs });
+    return out;
   }
 
   // Gekrümmte Flächen: Schalter je Teil (sonst Einstellung), nur sinnvoll, wenn welche erkannt wurden
@@ -896,12 +923,12 @@ table.fmt.one .onet { display: inline; }
     }
     html += toolSelect('data-tool="' + esc(op.key) + '" aria-label="Werkzeug für ' + esc(op.label) + '"', op.toolKind, op.tool);
     if (op.depthAdjustable) {
-      const ownD = part.overrides.depths[op.key];
+      const ownD = ovOf(part).depths[op.key];
       html += '<label title="Frästiefe in mm, leer = Plattendicke + Zugabe aus den Einstellungen">Tiefe <input class="step" type="number" min="0" step="0.5" data-depth="' +
         esc(op.key) + '" value="' + (ownD !== undefined ? ownD : '') + '" placeholder="' + fmt(op.depth) + '"> mm</label>';
     }
     if ((op.kind === 'contour' && !op.profile) || op.kind === 'pocket') {
-      const own = part.overrides.steps[op.key];
+      const own = ovOf(part).steps[op.key];
       html += '<label title="Tiefe je Durchgang in mm, leer = Einstellung für alle Teile, 0 = ein Durchgang">Zustellung <input class="step" type="number" min="0" step="0.5" data-step="' + esc(op.key) + '" value="' +
         (own !== undefined ? own : '') + '" placeholder="' + ((op.kind === 'pocket' && state.settings.pocketStepDown > 0 ? state.settings.pocketStepDown : state.settings.stepDown) || 'aus') + '"> mm</label>';
     }
@@ -936,7 +963,7 @@ table.fmt.one .onet { display: inline; }
       const b = document.createElement('div');
       b.className = 'part';
       b.setAttribute('aria-current', i === state.sel ? 'true' : 'false');
-      const r = p.result;
+      const r = p.res || p.result; // Übersicht: Seite 1 (bei zweiseitig mit Hinweis auf Seite 2)
       const name = p.solid ? p.solid.name : p.label;
       let html = (r && r.panel ? thumbSvg(r) : '') + '<span class="n">' + esc(name) + '</span>';
       if (r && r.panel) {
@@ -946,6 +973,7 @@ table.fmt.one .onet { display: inline; }
         html += '<span class="chips"><span class="chip ok">' + n(c.drills, 'Bohrung', 'Bohrungen') + '</span>' +
           (c.saw ? '<span class="chip ok">' + n(c.saw, 'Sägeschnitt', 'Sägeschnitte') + '</span>' : '') +
           '<span class="chip ok">' + n(c.mill, 'Fräsung', 'Fräsungen') + '</span>' +
+          (r.side2 ? '<span class="chip ok">+ Seite 2: ' + r.side2.ops.length + '</span>' : '') +
           (r.warnings.length ? '<span class="chip warn">' + r.warnings.length + ' Hinweis' + (r.warnings.length > 1 ? 'e' : '') + '</span>' : '') + '</span>';
       } else {
         html += '<span class="chips"><span class="chip err">Fehler</span></span>';
@@ -1245,9 +1273,14 @@ table.fmt.one .onet { display: inline; }
       ['var(--hdrill)', 'Kante (Bohrung / Tasche)'], ['var(--err)', 'Nullpunkt']].concat(r.suction && r.suction.bars.length ? [['transparent;border:1.5px dashed var(--muted)', 'Sauger (Vorschlag)']] : []);
     el.innerHTML =
       '<div class="work"><div class="card stagecard" id="stagecard"><div class="dhead"><div class="title"><h2>' + esc(p.name) + '</h2><span class="dims">' + fmt(p.L) + ' × ' + fmt(p.W) + ' × ' +
-      fmt(p.T) + ' mm · ' + esc(part.label) + '</span></div>' +
+      fmt(p.T) + ' mm · ' + esc(part.label) + (part.res.side2 ? ' · <b>Seite ' + part.side + (part.side === 2 ? ' (um Y gewendet, ohne Rohteil-Versatz)' : ' (mit Formatfräsen)') + '</b>' : '') + '</span></div>' +
       '<div class="tools"><span class="seg" role="group" aria-label="Ansicht"><button type="button" data-vmode="2d" aria-pressed="' + !state.mode3d + '">2D</button>' +
       '<button type="button" data-vmode="3d" aria-pressed="' + !!state.mode3d + '">3D</button></span>' +
+      (part.res.canTwoSided ? '<span class="seg" role="group" aria-label="Seiten"><button type="button" data-two="0" aria-pressed="' + !part.res.side2 +
+        '" title="Bearbeitungen von unten nur als Hinweis">Einseitig</button><button type="button" data-two="1" aria-pressed="' + !!part.res.side2 +
+        '" title="Seite 1 mit Formatfräsen, Seite 2 um Y gewendet ohne Rohteil-Versatz">Zweiseitig</button></span>' : '') +
+      (part.res.side2 ? '<span class="seg sides" role="group" aria-label="Angezeigte Seite"><button type="button" data-side="1" aria-pressed="' + (part.side === 1) +
+        '">Seite 1</button><button type="button" data-side="2" aria-pressed="' + (part.side === 2) + '">Seite 2</button></span>' : '') +
       '<button class="btn" id="rot" type="button">Drehen 90°</button><button class="btn" id="flip" type="button">Wenden</button>' +
       '<label for="field">Feld <select id="field">' + fieldOpts.map((f) => '<option' + (f === r.field ? ' selected' : '') + '>' + esc(f) + '</option>').join('') +
       '</select></label></div></div>' +
@@ -1267,7 +1300,7 @@ table.fmt.one .onet { display: inline; }
       '<input type="range" id="apos" min="0" max="1000" value="0" aria-label="Position in der Werkzeugbahn"></div>' +
       '<div class="legend">' + legend.map(([c, t]) => '<span><i style="background:' + c + '"></i>' + t + '</span>').join('') + '</div></div></div>' +
       '<aside class="card steps" aria-label="Bearbeitungsschritte"><div class="opshead"><h3>Bearbeitungsschritte</h3>' +
-      (part.overrides.order ? '<button class="btn ghost small" id="resetorder" type="button">Reihenfolge zurücksetzen</button>' : '') +
+      (ovOf(part).order ? '<button class="btn ghost small" id="resetorder" type="button">Reihenfolge zurücksetzen</button>' : '') +
       '</div>' + curvedBox(part) + '<table class="ops" id="opstable">' +
       opsSummary(r).map((x, i, all) => '<tbody class="grp" data-grp="' + esc(x.group) + '" style="--c:' + x.c + '"><tr data-group="' + esc(x.group) + '"' + (x.op ? ' class="has-ctl"' : '') + '><td class="k">' +
         '<span class="grip" data-grip="' + esc(x.group) + '" title="Gedrückt halten und ziehen, um die Reihenfolge zu ändern" aria-hidden="true">⠿</span><span class="num">' + (i + 1) + '</span>' +
@@ -1275,13 +1308,20 @@ table.fmt.one .onet { display: inline; }
         esc(x.k) + '</button></td><td class="v">' + esc(x.v) + '</td><td class="mv">' +
         '<button type="button" class="mvb" data-move="' + esc(x.group) + '" data-dir="-1"' + (i === 0 ? ' disabled' : '') + ' aria-label="' + esc(x.k) + ' nach oben">↑</button>' +
         '<button type="button" class="mvb" data-move="' + esc(x.group) + '" data-dir="1"' + (i === all.length - 1 ? ' disabled' : '') + ' aria-label="' + esc(x.k) + ' nach unten">↓</button>' +
+        '<button type="button" class="mvb del" data-suppress="' + esc(x.group) + '" title="Bearbeitung löschen (unterdrücken – unten wiederherstellbar)" aria-label="' + esc(x.k) + ' löschen">✕</button>' +
         '</td></tr>' +
         (x.op ? '<tr class="ctlrow" data-group="' + esc(x.group) + '"><td colspan="3"><div class="ctl">' + opControls(part, x.op) + '</div></td></tr>' : '') + '</tbody>').join('') +
-      '</table><div class="dropline" id="dropline" hidden></div>' + (r.warnings.length || part.notice ? '<ul class="warns">' +
+      '</table><div class="dropline" id="dropline" hidden></div>' +
+      ((r.suppressed || []).length ? '<details class="suppressed" open><summary>Gelöscht / unterdrückt (' + r.suppressed.length + ')</summary><ul>' +
+        r.suppressed.map((g) => '<li><span class="nm">' + esc(g.label) + '</span><button type="button" class="btn ghost small" data-restore="' + esc(g.group) +
+          '">Wiederherstellen</button></li>').join('') +
+        (r.suppressed.length > 1 ? '<li><button type="button" class="btn ghost small" id="restoreall">Alle wiederherstellen</button></li>' : '') + '</ul></details>' : '') +
+      (r.warnings.length || part.notice ? '<ul class="warns">' +
         (part.notice ? '<li class="info">' + esc(part.notice) + '</li>' : '') + r.warnings.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ul>' : '') +
       '</aside></div>' +
-      '<div class="card code"><div class="bar"><span class="fname"><input id="fname" type="text" value="' + esc(part.fileName) + '" aria-label="Dateiname"></span>' +
-      '<span class="tools"><button class="btn" id="copy" type="button">Kopieren</button><button class="btn primary" id="dl" type="button">Speichern</button></span></div>' +
+      '<div class="card code"><div class="bar"><span class="fname"><input id="fname" type="text" value="' + esc(sideFile(part, part.side)) + '" aria-label="Dateiname"></span>' +
+      '<span class="tools"><button class="btn" id="copy" type="button">Kopieren</button><button class="btn primary" id="dl" type="button">' +
+        (part.res.side2 ? 'Beide Seiten speichern' : 'Speichern') + '</button></span></div>' +
       '<details class="xcsbox" id="xcsbox"' + (state.showCode ? ' open' : '') + '><summary>Programmcode (.xcs) anzeigen</summary>' +
       '<pre class="xcs" id="xcs">' + highlight(r.xcs) + '</pre></details></div>';
 
@@ -1306,12 +1346,36 @@ table.fmt.one .onet { display: inline; }
       const j = i + Number(b.dataset.dir);
       if (i < 0 || j < 0 || j >= order.length) return;
       [order[i], order[j]] = [order[j], order[i]];
-      part.overrides.order = order;
+      ovOf(part).order = order;
       compute(part); render();
       const again = document.querySelector('[data-move="' + CSS.escape(b.dataset.move) + '"][data-dir="' + b.dataset.dir + '"]');
       if (again && !again.disabled) again.focus();
     }));
-    if ($('resetorder')) $('resetorder').addEventListener('click', () => { delete part.overrides.order; compute(part); render(); });
+    if ($('resetorder')) $('resetorder').addEventListener('click', () => { delete ovOf(part).order; compute(part); render(); });
+    // Bearbeitung löschen (unterdrücken) und wiederherstellen – je Seite
+    el.querySelectorAll('[data-suppress]').forEach((b) => b.addEventListener('click', () => {
+      const ov = ovOf(part);
+      ov.suppress = (ov.suppress || []).concat([b.dataset.suppress]);
+      if (ov.order) ov.order = ov.order.filter((g) => g !== b.dataset.suppress);
+      compute(part); render();
+    }));
+    el.querySelectorAll('[data-restore]').forEach((b) => b.addEventListener('click', () => {
+      const ov = ovOf(part);
+      ov.suppress = (ov.suppress || []).filter((g) => g !== b.dataset.restore);
+      if (!ov.suppress.length) delete ov.suppress;
+      compute(part); render();
+    }));
+    if ($('restoreall')) $('restoreall').addEventListener('click', () => { delete ovOf(part).suppress; compute(part); render(); });
+    // Zweiseitig und angezeigte Seite
+    el.querySelectorAll('[data-two]').forEach((b) => b.addEventListener('click', () => {
+      part.overrides.twoSided = b.dataset.two === '1';
+      if (!part.overrides.twoSided) part.side = 1;
+      compute(part); render();
+    }));
+    el.querySelectorAll('[data-side]').forEach((b) => b.addEventListener('click', () => {
+      part.side = Number(b.dataset.side);
+      compute(part); render();
+    }));
     setupStepDrag(part);
     el.querySelectorAll('[data-curved]').forEach((b) => b.addEventListener('click', () => {
       const v = b.dataset.on;
@@ -1324,13 +1388,13 @@ table.fmt.one .onet { display: inline; }
       compute(part); render();
     }));
     el.querySelectorAll('select[data-tool]').forEach((sel) => sel.addEventListener('change', () => {
-      part.overrides.tools[sel.dataset.tool] = sel.value;
+      ovOf(part).tools[sel.dataset.tool] = sel.value;
       compute(part); render();
     }));
     el.querySelectorAll('input[data-step], input[data-depth]').forEach((inp) => {
       let timer;
       const isDepth = inp.dataset.depth !== undefined;
-      const map = isDepth ? part.overrides.depths : part.overrides.steps;
+      const map = isDepth ? ovOf(part).depths : ovOf(part).steps;
       const key = isDepth ? inp.dataset.depth : inp.dataset.step;
       const apply = () => {
         clearTimeout(timer);
@@ -1355,16 +1419,24 @@ table.fmt.one .onet { display: inline; }
     };
     // Drehen/Wenden ändert die Bearbeitungsgruppen (Seiten, Winkel): eigene Reihenfolge passt nicht mehr
     const turned = () => {
-      if (part.overrides.order) { delete part.overrides.order; part.notice = 'Eigene Reihenfolge wurde beim Drehen/Wenden zurückgesetzt.'; }
+      // Seite 2 hängt an der Lage von Seite 1: deren Einstellungen passen nicht mehr
+      if (part.overrides.order || part.overrides.suppress || (part.overrides2 && (part.overrides2.order || part.overrides2.suppress))) {
+        part.notice = 'Eigene Reihenfolge und gelöschte Bearbeitungen wurden beim Drehen/Wenden zurückgesetzt.';
+      }
+      delete part.overrides.order;
+      delete part.overrides.suppress;
+      part.overrides2 = { tools: {}, steps: {}, depths: {} };
+      part.side = 1;
       compute(part); rerender();
     };
     $('rot').addEventListener('click', () => { part.orientation.rot = (part.orientation.rot + 1) % 4; turned(); });
     $('flip').addEventListener('click', () => { part.orientation.flip = !part.orientation.flip; turned(); });
     $('field').addEventListener('change', (e) => { part.field = e.target.value; compute(part); rerender(); });
     $('fname').addEventListener('change', (e) => {
-      const n = StepToXcs.partName(e.target.value.trim().replace(/\.xcs$/i, '') || part.result.fileName.replace(/\.xcs$/i, '')) + '.xcs';
-      part.fileName = n;
-      e.target.value = n;
+      // eingegebener Name ohne .xcs und ohne _S1/_S2 ist der Grundname beider Seiten
+      const typed = e.target.value.trim().replace(/\.xcs$/i, '').replace(/_S[12]$/i, '');
+      part.fileName = StepToXcs.partName(typed || part.fileName.replace(/\.xcs$/i, '')) + '.xcs';
+      e.target.value = sideFile(part, part.side);
     });
     $('copy').addEventListener('click', () => {
       const text = part.result.xcs;
@@ -1379,7 +1451,7 @@ table.fmt.one .onet { display: inline; }
         navigator.clipboard.writeText(text).then(() => toast('Programm kopiert.'), fallback);
       } catch (e) { fallback(); }
     });
-    $('dl').addEventListener('click', () => saveFiles([{ name: part.fileName, text: part.result.xcs }], part.fileName.replace(/\.xcs$/i, '') + '.zip'));
+    $('dl').addEventListener('click', () => saveFiles(partFiles(part), part.fileName.replace(/\.xcs$/i, '') + '.zip'));
   }
 
   function render() { renderParts(); renderDetail(); }
@@ -1452,7 +1524,7 @@ table.fmt.one .onet { display: inline; }
         const order = (part.result.groups || []).slice();
         const [g] = order.splice(from, 1);
         order.splice(target > from ? target - 1 : target, 0, g);
-        part.overrides.order = order;
+        ovOf(part).order = order;
         compute(part); render();
         toast('Reihenfolge geändert.');
       };
@@ -2055,7 +2127,7 @@ table.fmt.one .onet { display: inline; }
   }
 
   function downloadAll() {
-    const files = state.parts.filter((p) => p.result && p.result.panel).map((p) => ({ name: p.fileName, text: p.result.xcs }));
+    const files = state.parts.flatMap(partFiles);
     if (!files.length) { toast('Keine Programme vorhanden.'); return; }
     saveFiles(files, 'xcs-programme.zip', true);
   }

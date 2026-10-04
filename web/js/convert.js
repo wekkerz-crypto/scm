@@ -46,22 +46,70 @@
     return solids;
   }
 
+  // Stellen, die auf der Oberseite eines Teils offen sind (Taschen, Nuten, Falze, Sacklöcher, gewölbte Flächen) –
+  // nach dem Wenden um Y liegen sie unten: dort hält kein Sauger. Gespiegelt in die Koordinaten der anderen Seite (X → L − x).
+  function openZones(p) {
+    const L = p.L;
+    const mx = (q) => [L - q[0], q[1]];
+    const rect = (x0, y0, x1, y1) => ({ poly: [[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map(mx) });
+    const zones = [];
+    for (const k of p.pockets || []) {
+      const pts = [];
+      for (const q of k.segs) for (const t of PanelAnalyzer.segPoints(q)) pts.push(t);
+      zones.push({ poly: pts.map(mx) });
+    }
+    for (const d of p.drills || []) if (d.face === 'Top' && !d.through) zones.push({ c: mx([d.x, d.y]), r: d.d / 2 });
+    for (const g of p.grooves || []) zones.push(g.dir === 'X' ? rect(0, g.from, L, g.to) : rect(g.from, 0, g.to, p.W));
+    for (const r of p.rebates || []) {
+      if (r.edge === 'Front') zones.push(rect(0, 0, L, r.width));
+      else if (r.edge === 'Back') zones.push(rect(0, p.W - r.width, L, p.W));
+      else if (r.edge === 'Left') zones.push(rect(0, 0, r.width, p.W));
+      else if (r.edge === 'Right') zones.push(rect(L - r.width, 0, L, p.W));
+    }
+    for (const c of p.curvedSurfaces || []) for (const r of c.rects) zones.push(rect(r.x0, r.y0, r.x1, r.y1));
+    return zones;
+  }
+
+  function placeMesh(options, panel) {
+    if (!options.meshes || !panel.curvedSurfaces || !panel.curvedSurfaces.length) return null;
+    const OM = typeof OcctMesh !== 'undefined' ? OcctMesh : require('./occtmesh.js');
+    return OM.place(options.meshes, panel.tf, panel);
+  }
+
+  function result(solid, fileName, panel, out) {
+    return { name: solid.name, fileName: fileName, panel: panel,
+      xcs: out.text, ops: out.ops, warnings: out.warnings, field: out.field, groups: out.groups,
+      defaultGroups: out.defaultGroups, suction: out.suction, suppressed: out.suppressed || [], error: null };
+  }
+
+  /*
+   * Ein Teil umwandeln. options: orientation, field, overrides (Seite 1: tools, steps, order, depths, twoStep, curved,
+   * suppress, twoSided), overrides2 (Seite 2: tools, steps, order, depths, suppress), meshes (OpenCascade).
+   * Gibt es Bearbeitungen von unten, wird die Gegenseite (um Y gewendet) mit berechnet: ihre offenen Stellen sperren die
+   * Sauger auf Seite 1; mit twoSided entsteht zusätzlich das Programm für Seite 2 (Ergebnis.side2, Dateien _S1/_S2).
+   */
   function convertSolid(solid, settings, options) {
     options = options || {};
     try {
       const panel = PanelAnalyzer.analyze(solid, options.orientation);
       const ov = options.overrides || {};
-      // gewölbte Flächen: Dreiecksnetz aus OpenCascade (options.meshes) in die Lage des Teils bringen
-      let mesh = null;
-      if (options.meshes && panel.curvedSurfaces && panel.curvedSurfaces.length) {
-        const OM = typeof OcctMesh !== 'undefined' ? OcctMesh : require('./occtmesh.js');
-        mesh = OM.place(options.meshes, panel.tf, panel);
-      }
+      let other = null;
+      if (panel.bottom.length) other = PanelAnalyzer.analyze(solid, PanelAnalyzer.turnOverY(solid, panel.orientation));
+      const two = !!(ov.twoSided && other);
       const out = XcsWriter.write(panel, settings, { field: options.field, tools: ov.tools, steps: ov.steps, order: ov.order, depths: ov.depths,
-        twoStep: ov.twoStep, curved: ov.curved, mesh: mesh });
-      return { name: solid.name, fileName: safeFileName(solid.name) + '.xcs', panel: panel,
-        xcs: out.text, ops: out.ops, warnings: out.warnings, field: out.field, groups: out.groups,
-        defaultGroups: out.defaultGroups, suction: out.suction, error: null };
+        twoStep: ov.twoStep, curved: ov.curved, mesh: placeMesh(options, panel), suppress: ov.suppress,
+        avoid: other ? openZones(other) : null, twoSided: two });
+      const base = safeFileName(solid.name);
+      const res = result(solid, base + (two ? '_S1' : '') + '.xcs', panel, out);
+      res.canTwoSided = !!other;
+      if (two) {
+        const ov2 = options.overrides2 || {};
+        const out2 = XcsWriter.write(other, settings, { side: 2, field: options.field, tools: ov2.tools, steps: ov2.steps, order: ov2.order,
+          depths: ov2.depths, curved: ov.curved, mesh: placeMesh(options, other), suppress: ov2.suppress, avoid: openZones(panel) });
+        res.side2 = result(solid, base + '_S2.xcs', other, out2);
+        res.side2.side = 2;
+      }
+      return res;
     } catch (err) {
       return { name: solid.name, fileName: safeFileName(solid.name) + '.xcs', panel: null, xcs: '',
         ops: [], warnings: [], error: err.message || String(err) };

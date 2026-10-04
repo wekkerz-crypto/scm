@@ -1355,5 +1355,25 @@
     return res;
   }
 
-  return { analyze: analyze, segPoints: segPoints, arcSweep: arcSweep, loopArea: loopArea, fmt: fmt };
+  // Lage für Seite 2: Platte um die Y-Achse gewendet (X → L − x, Y bleibt, Z → T − z), Nullpunkt wieder vorne links unten.
+  // Sucht unter den acht Lagen (Drehen/Wenden) die, deren Abbildung genau dieser Wendung entspricht.
+  function turnOverY(solid, orientation) {
+    const prep = prepare(solid);
+    const f1 = frame(prep, orientation.rot || 0, !!orientation.flip);
+    const want = compose({ m: [[-1, 0, 0], [0, 1, 0], [0, 0, -1]], t: [f1.L, 0, f1.T] }, f1.tf);
+    for (let r = 0; r < 4; r++) {
+      for (const fl of [false, true]) {
+        const f2 = frame(prep, r, fl);
+        let d = Math.abs(f2.L - f1.L) + Math.abs(f2.W - f1.W);
+        for (let i = 0; i < 3; i++) {
+          d += Math.abs(f2.tf.t[i] - want.t[i]);
+          for (let j = 0; j < 3; j++) d += Math.abs(f2.tf.m[i][j] - want.m[i][j]);
+        }
+        if (d < 1e-6) return { rot: r, flip: fl };
+      }
+    }
+    throw new Error('Lage für Seite 2 nicht gefunden.');
+  }
+
+  return { analyze: analyze, turnOverY: turnOverY, segPoints: segPoints, arcSweep: arcSweep, loopArea: loopArea, fmt: fmt };
 });

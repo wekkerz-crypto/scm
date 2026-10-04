@@ -247,3 +247,47 @@ test('Web-Tool: Einstellungen erst mit „Einstellungen speichern“ dauerhaft',
     await browser.close();
   }
 });
+
+test('Web-Tool: zweiseitig (Seite 1/2) und Bearbeitung löschen/wiederherstellen', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    const before = await p.$$eval('.part', (x) => x.length);
+    const [chooser] = await Promise.all([p.waitForEvent('filechooser', { timeout: 3000 }), p.click('#pick')]);
+    await chooser.setFiles([fixture('zweiseitig.step')]);
+    await p.waitForFunction((n) => document.querySelectorAll('.part').length > n, before);
+    // Teil ohne Bearbeitung von unten: kein Schalter – hier ja
+    assert.ok(await p.$('[data-two="1"]'));
+    assert.strictEqual(await p.$('[data-side]'), null);
+    await p.click('[data-two="1"]');
+    assert.strictEqual(await p.inputValue('#fname'), 'zweiseitig_S1.xcs');
+    assert.match(await p.textContent('#xcs'), /CreateRawWorkpiece\("Workpiece", 2, 2, 2, 2, 0, 0\)/);
+    await p.click('[data-side="2"]');
+    assert.strictEqual(await p.inputValue('#fname'), 'zweiseitig_S2.xcs');
+    assert.match(await p.textContent('#xcs'), /CreateRawWorkpiece\("Workpiece", 0, 0, 0, 0, 0, 0\)/);
+    assert.doesNotMatch(await p.textContent('#opstable'), /Formatfräsen/);
+    assert.match(await p.textContent('.part[aria-current="true"]'), /Seite 2/);
+    // Löschen auf Seite 2: Schritt verschwindet, steht unter „Gelöscht“, wiederherstellbar
+    const rows = () => p.$$eval('#opstable tbody.grp', (x) => x.length);
+    const n0 = await rows();
+    await p.click('#opstable [data-suppress]');
+    assert.strictEqual(await rows(), n0 - 1);
+    assert.strictEqual(await p.$$eval('.suppressed li [data-restore]', (x) => x.length), 1);
+    await p.click('[data-side="1"]'); // Seite 1 bleibt unberührt
+    assert.strictEqual(await p.$('.suppressed'), null);
+    await p.click('[data-side="2"]');
+    await p.click('.suppressed [data-restore]');
+    assert.strictEqual(await rows(), n0);
+    assert.strictEqual(await p.$('.suppressed'), null);
+    // zurück auf einseitig
+    await p.click('[data-two="0"]');
+    assert.strictEqual(await p.inputValue('#fname'), 'zweiseitig.xcs');
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});

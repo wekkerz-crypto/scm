@@ -951,3 +951,90 @@ test('Prüfung gekrümmte Flächen: Hohlkehle, große Rundung, Teil-Wölbung, In
   const rm = convertSolid(m.s, { toolInfo }, { overrides: { curved: { surface: 'ball' } }, meshes: m.meshes });
   assert.ok(path(rm.xcs).every((q) => q[2] + rm.panel.T >= -1e-9));
 });
+
+test('Zweiseitig: Seite 1 mit Formatfräsen, Seite 2 um Y gewendet ohne Rohteil-Versatz', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const PA = require('../web/js/panel.js');
+  const T = require('../web/js/tools.js');
+  const toolInfo = T.infoMap(T.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
+  const [s] = readParts(read('test/fixtures/zweiseitig.step'), 'zweiseitig.step');
+  // einseitig: Bearbeitungen von unten nur als Hinweis, Name ohne _S1
+  const one = convertSolid(s, { toolInfo });
+  assert.ok(one.canTwoSided && !one.side2 && one.fileName === 'zweiseitig.xcs');
+  assert.ok(one.warnings.some((w) => /von unten.*Zweiseitig einschalten/.test(w)));
+  const r = convertSolid(s, { toolInfo }, { overrides: { twoSided: true } });
+  const s2 = r.side2;
+  assert.strictEqual(r.fileName, 'zweiseitig_S1.xcs');
+  assert.strictEqual(s2.fileName, 'zweiseitig_S2.xcs');
+  assert.ok(r.warnings.filter((w) => /von unten/.test(w)).every((w) => /wird auf Seite 2 bearbeitet/.test(w)));
+  // Seite 1: mit Rohteil-Aufmaß und Formatfräsen
+  assert.match(r.xcs, /CreateRawWorkpiece\("Workpiece", 2, 2, 2, 2, 0, 0\);/);
+  assert.ok(r.ops.some((o) => o.key === 'format'));
+  // Seite 2: Lage = Seite 1 um Y gewendet (X → L − x, Y bleibt, Z → T − z)
+  const p1 = r.panel;
+  const p2 = s2.panel;
+  const o2 = PA.turnOverY(s, p1.orientation);
+  assert.deepStrictEqual(p2.orientation, o2);
+  const q = [123, 45, 6];
+  const ap = [0, 1, 2].map((i) => p1.tf.m[i][0] * q[0] + p1.tf.m[i][1] * q[1] + p1.tf.m[i][2] * q[2] + p1.tf.t[i]);
+  const bp = [0, 1, 2].map((i) => p2.tf.m[i][0] * q[0] + p2.tf.m[i][1] * q[1] + p2.tf.m[i][2] * q[2] + p2.tf.t[i]);
+  assert.ok(Math.abs(bp[0] - (p1.L - ap[0])) < 1e-6 && Math.abs(bp[1] - ap[1]) < 1e-6 && Math.abs(bp[2] - (p1.T - ap[2])) < 1e-6);
+  // Seite 2: ohne Rohteil-Versatz, ohne Formatfräsen und ohne alles Durchgehende – nur die Bearbeitungen von unten
+  assert.match(s2.xcs, /CreateRawWorkpiece\("Workpiece", 0, 0, 0, 0, 0, 0\);\r\n\r\nSetWorkpieceSetupPosition\(0, 0, 0, 0\);/);
+  assert.ok(!s2.ops.some((o) => o.key === 'format' || /^(cutout|notch|round|edge)-/.test(o.key || '')));
+  assert.ok(!s2.ops.some((o) => o.kind === 'drill' && (o.face !== 'Top' || o.d.tip === 'L')));
+  assert.deepStrictEqual(s2.warnings, []);
+  // jede Bearbeitung von unten auf Seite 1 kommt auf Seite 2 an der gespiegelten Stelle vor
+  const below = r.warnings.map((w) => /Bohrung Ø[\d.]+ von unten bei X=([\d.]+) Y=([\d.]+)/.exec(w)).filter(Boolean).map((m) => [+m[1], +m[2]]);
+  const holes2 = p2.drills.filter((d) => d.face === 'Top' && !d.through);
+  assert.ok(below.length === 2 && holes2.length === 2);
+  for (const d of holes2) assert.ok(below.some((h) => Math.abs(h[0] - (p1.L - d.x)) < 1e-3 && Math.abs(h[1] - d.y) < 1e-3), 'Bohrung ' + d.x + '/' + d.y);
+  const drillsOut = s2.xcs.split(/\r\n/).filter((l) => l.startsWith('CreateDrill'));
+  assert.strictEqual(drillsOut.length, 1); // Lochreihe aus zwei Sacklöchern
+  assert.ok(s2.ops.some((o) => o.kind === 'pocket'));
+  // Sauger: nie über offenen Stellen der Gegenseite (Taschen, Sacklöcher, Nuten) – mit Abstand
+  const zones = (p) => {
+    const z = [];
+    for (const k of p.pockets) z.push({ x0: k.x0, y0: k.y0, x1: k.x1, y1: k.y1 });
+    for (const d of p.drills) if (d.face === 'Top' && !d.through) z.push({ x0: d.x - d.d / 2, y0: d.y - d.d / 2, x1: d.x + d.d / 2, y1: d.y + d.d / 2 });
+    return z.map((b) => ({ x0: p.L - b.x1, x1: p.L - b.x0, y0: b.y0, y1: b.y1 })); // gespiegelt auf die andere Seite
+  };
+  const free = (res, zs) => res.suction.bars.every((b) => b.cups.every((c) => {
+    const a = (c.rot * Math.PI) / 180;
+    const hx = (Math.abs(Math.cos(a)) * c.sx + Math.abs(Math.sin(a)) * c.sy) / 2;
+    const hy = (Math.abs(Math.sin(a)) * c.sx + Math.abs(Math.cos(a)) * c.sy) / 2;
+    return zs.every((z) => c.px + hx <= z.x0 || c.px - hx >= z.x1 || c.py + hy <= z.y0 || c.py - hy >= z.y1);
+  }));
+  assert.ok(r.suction.bars.length && free(r, zones(p2)), 'Seite 1: Sauger über einer offenen Stelle von Seite 2');
+  assert.ok(s2.suction.bars.length && free(s2, zones(p1)), 'Seite 2: Sauger über einer offenen Stelle von Seite 1');
+  // eigene Einstellungen je Seite: Werkzeug auf Seite 2 ändern lässt Seite 1 unberührt
+  const pk = s2.ops.find((o) => o.kind === 'pocket').key;
+  const r2 = convertSolid(s, { toolInfo }, { overrides: { twoSided: true }, overrides2: { tools: { [pk]: 'E010' } } });
+  assert.ok(r2.side2.ops.find((o) => o.key === pk).tool === 'E010' && r2.xcs === r.xcs);
+});
+
+test('Erkannte Bearbeitung löschen (unterdrücken) und wiederherstellen', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const T = require('../web/js/tools.js');
+  const toolInfo = T.infoMap(T.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
+  const [s] = readParts(read('test/fixtures/testplatte.step'), 'tp.step');
+  const all = convertSolid(s, { toolInfo });
+  const pocket = all.ops.find((o) => o.kind === 'pocket');
+  const drill = all.ops.find((o) => o.kind === 'drill');
+  const r = convertSolid(s, { toolInfo }, { overrides: { suppress: [pocket.group, drill.group] } });
+  assert.ok(!r.ops.some((o) => o.group === pocket.group || o.group === drill.group));
+  assert.ok(!r.groups.includes(pocket.group) && !r.groups.includes(drill.group));
+  assert.deepStrictEqual(r.suppressed.map((g) => g.group).sort(), [pocket.group, drill.group].sort());
+  assert.ok(r.suppressed.find((g) => g.group === pocket.group).label === pocket.label);
+  // nicht im Programm, Nummerierung lückenlos, übrige Bearbeitungen unverändert
+  assert.ok(!/CreateContourPocket/.test(r.xcs) || all.ops.filter((o) => o.kind === 'pocket').length > 1);
+  const mill = r.xcs.split(/\r\n/).filter((l) => /^CreateRoughFinish\("Milling_\d+"/.test(l)).map((l) => +/Milling_(\d+)/.exec(l)[1]);
+  assert.deepStrictEqual(mill, mill.map((_, i) => i + 1));
+  assert.match(r.xcs, /SetDescription\("[^"]*, \d+ Bearbeitungen"\)/);
+  assert.strictEqual(r.ops.length, all.ops.length - all.ops.filter((o) => o.group === pocket.group || o.group === drill.group).length);
+  // Animation ohne die gelöschten
+  const mv = require('../web/js/toolpath.js').build(r, toolInfo);
+  assert.ok(mv.every((m) => m.op < 0 || ![pocket.group, drill.group].includes(r.ops[m.op].group)));
+  // wiederherstellen = Liste leer
+  assert.strictEqual(convertSolid(s, { toolInfo }, { overrides: { suppress: [] } }).xcs, all.xcs);
+});

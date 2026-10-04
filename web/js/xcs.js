@@ -218,6 +218,11 @@
     if (base.length < 3) return { bars: [], warnings: ['Sauger: Auflagefläche nicht erkannt – Sauger von Hand setzen.'] };
     const holes = (p.cutouts || []).map(loopPts);
     const circles = (p.drills || []).filter((d) => d.face === 'Top' && d.through).map((d) => ({ c: [d.x, d.y], r: d.d / 2 }));
+    // offene Stellen der Auflagefläche (Taschen, Nuten, Falze, Bohrungen von der anderen Seite): dort hält kein Sauger
+    for (const a of cfg.avoid || []) {
+      if (a.poly) holes.push(a.poly);
+      else if (a.c) circles.push({ c: a.c, r: a.r });
+    }
     const em = cfg.cupEdgeMargin;
     const hm = cfg.cupHoleMargin;
     // Drehsauger: gerade (0°/90°) und parallel zu den Kanten der Auflagefläche
@@ -467,6 +472,13 @@
     return b.length < a.length ? b : a;
   }
 
+  // kurze Bezeichnung einer Bearbeitung (für die Liste der unterdrückten)
+  function opText(op) {
+    if (op.kind === 'drill') return 'Bohrung Ø' + fmt(op.d.d) + ' ' + ({ Top: 'oben', Left: 'links', Right: 'rechts', Front: 'vorne', Back: 'hinten' }[op.face] || 'auf Schräge');
+    if (op.kind === 'sdrill') return 'Schräge Bohrung Ø' + fmt(op.d);
+    return op.label || op.kind;
+  }
+
   function plan(p, cfg) {
     const ops = [];
     const warnings = p.warnings.slice();
@@ -503,8 +515,12 @@
     };
 
     // 1) Formatfräsen: Rechteck L×B wie in den Beispielen, bei Sonderkontur die ganze Außenkontur am Stück
+    // (Seite 2: Teil ist schon formatiert – kein Formatfräsen, keine Konturausschnitte)
+    const side2 = cfg.side === 2;
     const whole = !p.outlineIsRect && cfg.contourMode !== 'rect';
-    if (whole) {
+    if (side2) {
+      // nichts – Kontur entstand auf Seite 1
+    } else if (whole) {
       const path = wholeContour(p.outline);
       ops.push({
         kind: 'contour', key: 'format', toolKind: 'mill', toolDefault: 'contourTool', contour: ++nContour, milling: ++nMill, approach: true,
@@ -518,7 +534,7 @@
         depth: T + cfg.contourExtra, tool: cfg.contourTool, side: 2, label: 'Formatfräsen',
       });
     }
-    if (cfg.formatTwoStep) {
+    if (cfg.formatTwoStep && !side2) {
       // Vorfräsen mit Werkzeug 1 und Aufmaß, danach Werkzeug 2 auf Endmaß (gleiche Geometrie)
       const f = ops[ops.length - 1];
       f.rough = { tool: cfg.formatRoughTool || cfg.contourTool, allowance: Math.max(0, cfg.formatAllowance || 0) };
@@ -537,7 +553,7 @@
     }
 
     // 3) Abweichungen der Außenkontur vom Rechteck (Ausschnitte, Rundungen, Schrägen)
-    for (const [i, path] of (whole ? [] : notchPaths(p, cfg)).entries()) {
+    for (const [i, path] of (whole || side2 ? [] : notchPaths(p, cfg)).entries()) {
       ops.push({ kind: 'contour', key: 'notch-' + i, toolKind: 'mill', toolDefault: 'cutoutTool', contour: ++nContour, milling: ++nMill, approach: false,
         start: path.start, segs: path.segs, depth: T + cfg.cutoutExtra, tool: cfg.cutoutTool, side: 1, label: 'Kontur-Ausschnitt' });
     }
@@ -908,7 +924,17 @@
     const sorted = ops.map((op, i) => ({ op: op, i: i })).sort((a, b) => rank.get(a.op.group) - rank.get(b.op.group) || a.i - b.i)
       .map((x) => x.op);
     ops.length = 0;
-    ops.push(...sorted);
+    // je Teil unterdrückte Bearbeitungen (ganze Gruppe) kommen nicht ins Programm
+    const sup = new Set(cfg.suppress || []);
+    const suppressed = [];
+    for (const op of sorted) {
+      if (!sup.has(op.group)) { ops.push(op); continue; }
+      let g = suppressed.find((x) => x.group === op.group);
+      if (!g) { g = { group: op.group, label: opText(op), n: 0 }; suppressed.push(g); }
+      g.n += op.kind === 'drill' ? op.pattern.nX * op.pattern.nY : 1;
+    }
+    for (const g of suppressed) if (g.n > 1 && /Bohrung/.test(g.label)) g.label = g.n + ' × ' + g.label;
+    order = order.filter((g) => !sup.has(g));
     // Namen in Programmreihenfolge durchnummerieren
     let nc = 0;
     let np = 0;
@@ -986,8 +1012,11 @@
       }
     }
 
-    for (const b of p.bottom) warnings.push(b.text + ' – nicht von oben bearbeitbar (Platte wenden / 2. Programm).');
-    return { ops: ops, warnings: warnings, groups: order, defaultGroups: ruleGroups };
+    if (!side2) {
+      for (const b of p.bottom) warnings.push(b.text + (cfg.twoSided ? ' – wird auf Seite 2 bearbeitet.' : ' – nicht von oben bearbeitbar (Zweiseitig einschalten oder Platte wenden).'));
+    }
+    return { ops: ops, warnings: warnings, groups: order.filter((g) => ops.some((op) => op.group === g)),
+      defaultGroups: ruleGroups.filter((g) => !sup.has(g)), suppressed: suppressed };
   }
 
   // Bahn einer Schräge an Rundungen (Material links, Abfall rechts) um off zur Abfallseite versetzen.
@@ -1298,7 +1327,20 @@
     if (cv && typeof cv.surface === 'boolean') cfg.curvedSurfaceOn = cv.surface;
     if (cv && typeof cv.surface === 'string') { cfg.curvedSurfaceOn = true; cfg.curvedSurfaceMode = cv.surface; } // 'ball' / 'flat4'
     if (override && override.mesh) cfg.mesh = override.mesh;
-    const { ops, warnings, groups, defaultGroups } = plan(p, cfg);
+    if (override && override.suppress) cfg.suppress = override.suppress;
+    if (override && override.avoid) cfg.avoid = override.avoid; // Saugerverbot: offene Stellen der Auflagefläche
+    if (override && override.twoSided) cfg.twoSided = true;
+    const pFull = p; // ganze Platte (Durchbrüche, Durchgangsbohrungen) für Sauger und Werkstück
+    if (override && override.side === 2) {
+      // Seite 2 (um Y gewendet): nur was von Seite 1 nicht ging – alles Durchgehende, Kanten und Konturen sind schon fertig
+      cfg.side = 2;
+      p = Object.assign({}, p, {
+        cutouts: [], drills: p.drills.filter((d) => d.face === 'Top' && !d.through), sidePockets: [], chamfers: [], chamferPaths: [],
+        slantWalls: [], slantDrills: p.slantDrills.filter((sd) => !sd.through), curvedSlants: [], edgeRounds: [],
+        warnings: [], bottom: [],
+      });
+    }
+    const { ops, warnings, groups, defaultGroups, suppressed } = plan(p, cfg);
     const field = (override && override.field) || autoField(p, cfg);
     const L = [];
     const blank = () => L.push('');
@@ -1320,11 +1362,11 @@
     } else {
       L.push('CreateFinishedWorkpieceBox("Workpiece", ' + fmt(p.L) + ', ' + fmt(p.W) + ', ' + fmt(p.T) + ');'); blank();
     }
-    const o = fmt(cfg.rawOversize);
+    const o = fmt(cfg.side === 2 ? 0 : cfg.rawOversize); // Seite 2: Teil liegt formatiert an den Anschlägen
     L.push('CreateRawWorkpiece("Workpiece", ' + [o, o, o, o].join(', ') + ', 0, 0);'); blank();
     L.push('SetWorkpieceSetupPosition(' + o + ', ' + o + ', 0, 0);'); blank();
     // Sauger-Vorschlag: Konsolen und Drehsauger (Koordinaten zum Werkstück-Nullpunkt)
-    const suction = cfg.suctionOn ? planSuction(p, cfg) : { bars: [], warnings: [] };
+    const suction = cfg.suctionOn ? planSuction(pFull, cfg) : { bars: [], warnings: [] };
     warnings.push(...suction.warnings);
     if (suction.bars.length) {
       suction.bars.forEach((b, i) => {
@@ -1587,7 +1629,8 @@
     }
     L.push('CreateNullOperation("XN", ' + fmt(p.L + cfg.parkOffset) + ', null, 1, 50, false, " ");');
     L.push('');
-    return { text: L.join('\r\n'), ops: ops, warnings: warnings, field: field, groups: groups, defaultGroups: defaultGroups, suction: suction };
+    return { text: L.join('\r\n'), ops: ops, warnings: warnings, field: field, groups: groups, defaultGroups: defaultGroups, suction: suction,
+      suppressed: suppressed };
   }
 
   return { write: write, plan: plan, planSuction: planSuction, DEFAULTS: DEFAULTS, CATEGORIES: CATEGORIES, ruleSequence: ruleSequence };

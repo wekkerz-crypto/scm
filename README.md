@@ -29,6 +29,7 @@ node cli/step2xcs.js teil.step weitere.step -o ausgabe/ --bat
 ```
 
 Weitere Schalter: `--step mm` (Zustellung), `--no-order-rule`, `--schraege-5achs` (Schrägen an Rundungen 5-achsig fräsen),
+`--zweiseitig` (Teile mit Bearbeitungen von unten als `_S1`/`_S2`),
 `--kugelfraesen` (gewölbte Flächen zeilenfräsen, lädt OpenCascade), `--4achs` (gewölbte Oberseite als Zylinder 4-achsig mit
 dem Schaftfräser abzeilen, übrige Flächen Kugelfräser).
 
@@ -81,7 +82,7 @@ für die `.pgmx`. Beispiel: `Tür Öffnung groß` → `Tuer_Oeffnung_gross.xcs` 
 | **Zylinderfläche nach außen gewölbt** als ganze Oberseite (über volle Länge und Breite), Achse liegend in X oder Y | Wahl *4-Achs Schaftfräser* (Neigung bis 45°, einstellbar; darüber oder bei anderen Formen Kugelfräser): je Zeile eine tangential geneigte Ebene `CreateWorkplane(…, Drehung Z, Neigung X)`, darauf eine Gerade längs der Achse über die ganze Länge (+ Ein-/Auslauf), `CreateRoughFinish` Tiefe 0, Werkzeugmitte – der Fräser (`E020`) steht senkrecht auf der Fläche und fräst mit der Stirn. Vorfräsen in Schichten (10 mm) auf größerem Radius nur dort, wo Rohteil ist; Schlichten mit 10 mm Zeilenabstand (Resthöhe ≈ s² / 8R, bei R 310: 0,04 mm). Kein 3D-Netz nötig |
 | **Kantenrundung** (nach außen gerundet, Radius bis 5,5 mm) oben oder unten an Außenkontur oder Durchbruch (nicht an Rundlöchern – dort Kugelfräser) | Radiusfräser R2: oben `E061` mit Tiefe 0, unten `E060` mit Tiefe = Dicke + dz (dz = 1), entlang der Kontur mit Korrektur rechts, umlaufend mit An-/Abfahren wie das Formatfräsen, offene Kanten mit tangentialem Auslauf an Außenecken (endet die Rundung an einer Innenecke oder mitten in der Kante: Hinweis); eigene Art *Kantenrundungen* nach dem Formatfräsen. Andere Radien: Hinweis (Radius in den Einstellungen). Hohlkehlen sind gewölbte Flächen (Kugelfräser) |
 | Zustellungen | `CreateUnidirectionalMillingStrategy` (Konturen) / `CreateContourParallelStrategy` (Taschen) |
-| Bearbeitungen von unten | nur **Hinweis** – Platte wenden |
+| Bearbeitungen von unten (Bohrungen, Taschen, Nuten, Falze, Flächen) | Hinweis; Schalter je Teil **Einseitig / Zweiseitig** (erscheint nur dann). *Zweiseitig*: zwei Programme `Name_S1.xcs` / `Name_S2.xcs` (auch .pgmx und ZIP). **Seite 1** wie bisher mit Rohteil-Aufmaß und Formatfräsen. **Seite 2** = Platte um die Y-Achse gewendet (X → L − x, Y bleibt, Nullpunkt wieder vorne links unten), nur was von Seite 1 nicht ging (Sacklöcher, Taschen, Nuten, Falze, Flächen von unten), ohne Rohteil-Versatz (`CreateRawWorkpiece(…, 0, 0, 0, 0, …)`, `SetWorkpieceSetupPosition(0, 0, 0, 0)`), ohne Formatfräsen, Durchbrüche, Durchgangsbohrungen, Kanten und Rundungen. In der Ansicht *Seite 1 / Seite 2* umschalten (Werkzeuge, Zustellung, Reihenfolge, Löschen je Seite). Sauger meiden auf beiden Seiten die offenen Stellen der Gegenseite |
 | Auflagefläche unten | **Sauger-Vorschlag**: `SetBarPosition(Konsole, X)` und `SetSuctionCupPosition(Nr, Y, Winkel, "Code")` – siehe unten |
 
 **Einstellungen** (*Werkzeuge & Regeln*) wirken sofort; dauerhaft gespeichert werden sie mit dem Knopf *Einstellungen
@@ -100,6 +101,10 @@ stehen oben. Zustellung global oder je Bearbeitung; Warnung, wenn die Zustellung
 **Frästiefe:** Durchgehende Fräsungen (Formatfräsen, Konturausschnitte, Durchbrüche, Rundlöcher) fräsen
 Plattendicke + Zugabe (Einstellungen *Formatfräsen: Dicke +* bzw. *Ausschnitte: Dicke +*). Je Teil lässt sich die Tiefe
 in der Bearbeitungsliste im Feld *Tiefe* absolut in mm setzen; ist sie kleiner als die Plattendicke, gibt es einen Hinweis.
+
+**Bearbeitung löschen:** In der Schrittliste löscht ✕ eine erkannte Bearbeitung (bei Bohrungen die ganze Gruppe) aus dem
+Programm, aus Animation und Zählung. Sie steht dann unter *Gelöscht / unterdrückt* und lässt sich dort wiederherstellen
+(je Teil und Seite; beim Drehen/Wenden zurückgesetzt).
 
 **Reihenfolge:**
 - *Reihenfolge-Regel* unter *Werkzeuge & Regeln*: die Bearbeitungsarten (Bohrungen oben, Kantenbohrungen, schräge
@@ -214,6 +219,9 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
   prüfen, dass der Formatfräser (Dicke + 3) es nicht berührt.
 - **Taschen in den Kanten:** Geometrie in denselben Kantenkoordinaten wie die Kantenbohrungen (X waagerecht, Y = Höhe ab
   Plattenunterseite); in Maestro noch nicht simuliert.
+- **Zweiseitig, Seite 2:** Rohteil = fertiges Teil (`CreateRawWorkpiece` und `SetWorkpieceSetupPosition` mit 0), Platte um Y
+  gewendet, Nullpunkt vorne links unten an den Anschlägen. In der Simulation prüfen, ob die gespiegelte Lage (X → L − x)
+  zur Wendung in der Werkstatt passt und die Sauger auf der fertigen Oberseite von Seite 1 richtig sitzen.
 - **Kantenrundung mit dem Radiusfräser:** `E061` (oben, Tiefe 0) und `E060` (unten, Tiefe = Dicke + 1) entlang der Kontur,
   Korrektur rechts wie beim Formatfräsen. In der Simulation prüfen, ob das Profil mit diesen Tiefen genau an der
   Ober-/Unterkante sitzt (sonst Tiefe/dz in den Einstellungen anpassen).

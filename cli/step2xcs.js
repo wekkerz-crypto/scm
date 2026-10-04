@@ -11,6 +11,8 @@
  *   --schraege-5achs Schrägen an Rundungen 5-achsig fräsen (CreateSlantedRoughFinish entlang der Kontur)
  *   --kugelfraesen   gewölbte Flächen mit dem Kugelfräser zeilenfräsen (lädt OpenCascade für das 3D-Netz)
  *   --4achs          gewölbte Zylinderflächen 4-achsig mit dem Schaftfräser abzeilen (übrige: Kugelfräser)
+ *   --zweiseitig     Teile mit Bearbeitungen von unten: Seite 1 (mit Formatfräsen) und Seite 2 (um Y gewendet,
+ *                    ohne Rohteil-Versatz) als Name_S1.xcs / Name_S2.xcs
  */
 'use strict';
 const fs = require('fs');
@@ -28,6 +30,7 @@ let orderRule = true;
 let curvedSlant = false;
 let curvedSurface = false;
 let flat4 = false;
+let twoSided = false;
 const files = [];
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '-o' || args[i] === '--out') outDir = args[++i];
@@ -38,6 +41,7 @@ for (let i = 0; i < args.length; i++) {
   else if (args[i] === '--schraege-5achs') curvedSlant = true;
   else if (args[i] === '--kugelfraesen') curvedSurface = true;
   else if (args[i] === '--4achs') { curvedSurface = true; flat4 = true; }
+  else if (args[i] === '--zweiseitig') twoSided = true;
   else files.push(args[i]);
 }
 if (!files.length) {
@@ -62,7 +66,7 @@ async function main() {
     try {
       const text = fs.readFileSync(file, 'utf8');
       const meshes = occt ? OcctMesh.read(occt, text) : null;
-      parts = readParts(text, path.basename(file)).map((s) => convertSolid(s, settings, { meshes: meshes }));
+      parts = readParts(text, path.basename(file)).map((s) => convertSolid(s, settings, { meshes: meshes, overrides: { twoSided: twoSided } }));
     } catch (e) {
       failed++;
       console.error('✗ ' + file + ': ' + (e.message || e));
@@ -73,22 +77,24 @@ async function main() {
     dirs.add(dir);
     if (!used.has(dir)) used.set(dir, new Set());
     const taken = used.get(dir);
-    for (const part of parts) {
-      if (part.error) {
+    for (const part0 of parts) {
+      if (part0.error) {
         failed++;
-        console.error('✗ ' + file + ' / ' + part.name + ': ' + part.error);
+        console.error('✗ ' + file + ' / ' + part0.name + ': ' + part0.error);
         continue;
       }
-      let name = part.fileName.replace(/\.xcs$/i, '');
-      let k = name;
-      for (let j = 2; taken.has(k.toLowerCase()); j++) k = name + '_' + j;
-      taken.add(k.toLowerCase());
-      const target = path.join(dir, k + '.xcs');
-      fs.writeFileSync(target, part.xcs);
-      const p = part.panel;
-      console.log('✓ ' + target + '  (' + [p.L, p.W, p.T].map((v) => Math.round(v * 100) / 100).join(' × ') + ' mm, ' +
-        part.ops.length + ' Bearbeitungen)');
-      for (const w of part.warnings) console.log('  ⚠ ' + w);
+      for (const part of part0.side2 ? [part0, part0.side2] : [part0]) {
+        const name = part.fileName.replace(/\.xcs$/i, '');
+        let k = name;
+        for (let j = 2; taken.has(k.toLowerCase()); j++) k = name + '_' + j;
+        taken.add(k.toLowerCase());
+        const target = path.join(dir, k + '.xcs');
+        fs.writeFileSync(target, part.xcs);
+        const p = part.panel;
+        console.log('✓ ' + target + '  (' + [p.L, p.W, p.T].map((v) => Math.round(v * 100) / 100).join(' × ') + ' mm, ' +
+          part.ops.length + ' Bearbeitungen' + (part.side === 2 ? ', Seite 2' : '') + ')');
+        for (const w of part.warnings) console.log('  ⚠ ' + w);
+      }
     }
   }
   if (bat) {

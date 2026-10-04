@@ -225,13 +225,29 @@ def l_innen_r2():
     return s.edges(cq.selectors.BoxSelector((149, 99, 18), (301, 101, 20))).fillet(2)
 
 
+def zweiseitig():
+    """Platte mit Bearbeitungen oben und unten: Tasche/Bohrungen oben, Tasche/Bohrungen/Nut unten, Durchbruch und Durchgangsbohrung."""
+    L, W, T = 600, 400, 19
+    b = cq.Workplane("XY").box(L, W, T, centered=False)
+    b = b.cut(cq.Workplane("XY").box(100, 80, 6, centered=False).translate((100, 250, T - 6)))       # Tasche oben
+    for x in (450, 482):
+        b = drill_top(b, x, 300, 8, 10, T)                                                           # Sacklöcher oben
+    b = b.cut(cq.Workplane("XY").box(120, 60, 5, centered=False).translate((350, 60, 0)))           # Tasche unten
+    for y in (80, 112):
+        b = b.cut(cq.Workplane("XY").center(80, y).circle(2.5).extrude(8))                           # Sacklöcher unten
+    b = b.cut(cq.Workplane("XY").box(L, 8, 6, centered=False).translate((0, 180, 0)))               # Nut unten längs
+    b = b.cut(cq.Workplane("XY").center(300, 200).circle(4).extrude(T))                              # Durchgangsbohrung
+    b = b.cut(cq.Workplane("XY").box(100, 60, T, centered=False).translate((450, 150, 0)))         # Durchbruch
+    return b
+
+
 if __name__ == "__main__":
     for name, fn in [("seitenwand_32", seitenwand_32), ("oberboden_27", oberboden_27), ("testplatte", testplatte),
                      ("fuenfachs", fuenfachs), ("sonderkontur", sonderkontur), ("seite4", seite4),
                      ("schraege_rund", schraege_rund), ("mulde", mulde), ("schraege_innen", schraege_innen),
                      ("kanten_r2", kanten_r2), ("kanten_r2_offen", kanten_r2_offen), ("woelbung", woelbung),
                      ("hohlkehle_r2", hohlkehle_r2), ("viertelrund", viertelrund), ("woelbung_teil", woelbung_teil),
-                     ("l_innen_r2", l_innen_r2)]:
+                     ("l_innen_r2", l_innen_r2), ("zweiseitig", zweiseitig)]:
         path = os.path.join(OUT, name + ".step")
         cq.exporters.export(fn(), path)
         print("geschrieben:", path)

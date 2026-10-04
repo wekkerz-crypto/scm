@@ -230,6 +230,10 @@ details.settings + details.settings { margin-top: 14px; }
 .profilebar .pbtn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
 .profilebar .pbtn[aria-pressed="true"] .k { color: var(--accent-ink); opacity: 0.8; }
 .profilebar .hint { font-size: 0.82rem; color: var(--muted); }
+.profilebar .ibtn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; }
+.profilebar .ibtn svg { flex: none; color: var(--accent); }
+.profilebar .ibtn:hover svg { color: inherit; }
+.profilebar .pbtn { min-width: 8rem; }
 .profedit { display: grid; gap: 10px; margin-top: 10px; }
 .profedit .ptabs { display: flex; flex-wrap: wrap; gap: 6px; }
 .profedit .pname { display: flex; gap: 8px; align-items: center; max-width: 30rem; }
@@ -379,7 +383,7 @@ table.fmt.one .onet { display: inline; }
   <details class="card settings" id="profilebox">
     <summary><span class="sumtitle">Werkstück-Profile</span><span class="savebar"><span class="state" aria-live="polite">Alle Änderungen gespeichert</span>
       <button class="btn primary" data-save type="button">Einstellungen speichern</button></span></summary>
-    <p class="note">Vier Profile für die Knöpfe oben (z. B. Spanplatte, Massivholz). Ein Profil legt nur die Werte fest, die hier gesetzt sind –
+    <p class="note">Fünf Profile für die Knöpfe oben (z. B. Spanplatte, Massivholz). Ein Profil legt nur die Werte fest, die hier gesetzt sind –
       leere Felder nehmen die Einstellung aus <i>Werkzeuge &amp; Regeln</i>. Was du bei einem Teil von Hand änderst, geht dem Profil vor.</p>
     <div class="profedit" id="profedit"></div>
   </details>
@@ -1523,6 +1527,11 @@ table.fmt.one .onet { display: inline; }
   function render() { renderProfileBar(); renderParts(); renderDetail(); }
 
   // ------------------------------------------------ Werkstück-Profile
+  // Symbole (Strich in Textfarbe): mehrere Blätter = für alle Teile, Stift = bearbeiten
+  const ICON_ALL = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+    '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/><path d="M11 14l2 2 4-4"/></svg>';
+  const ICON_EDIT = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="M13.5 8.5l3 3"/></svg>';
   const profName = (i) => (state.settings.profiles[i] && state.settings.profiles[i].name) || 'Profil ' + (i + 1);
   // Leiste oben: aktiv = Profil des gewählten Teils (ohne Teil: Vorgabe für neue Teile)
   function renderProfileBar() {
@@ -1532,9 +1541,9 @@ table.fmt.one .onet { display: inline; }
     bar.innerHTML = '<span class="lbl">Werkstück:</span>' + state.settings.profiles.map((pr, i) =>
       '<button type="button" class="pbtn" data-profile="' + i + '" aria-pressed="' + (cur === i) + '" title="' +
       esc('Werkzeuge und Strategie für ' + profName(i) + ' – noch einmal klicken: ohne Profil') + '"><span class="k">' + (i + 1) + '</span>' + esc(profName(i)) + '</button>').join('') +
-      (part && part.solid && state.parts.filter((x) => x.solid).length > 1 ? '<button type="button" class="btn ghost small" id="profileall">' +
+      (part && part.solid && state.parts.filter((x) => x.solid).length > 1 ? '<button type="button" class="btn ghost small ibtn" id="profileall">' + ICON_ALL +
         (cur === null ? 'Für alle Teile: ohne Profil' : 'Für alle Teile: ' + esc(profName(cur))) + '</button>' : '') +
-      '<button type="button" class="btn ghost small" id="profileedit">Profile bearbeiten</button>' +
+      '<button type="button" class="btn ghost small ibtn" id="profileedit">' + ICON_EDIT + 'Profile bearbeiten</button>' +
       '<span class="hint">' + (cur === null ? 'ohne Profil – Einstellungen aus „Werkzeuge &amp; Regeln“' : 'neue Teile bekommen ' + esc(profName(state.newProfile ?? cur))) + '</span>';
     bar.querySelectorAll('[data-profile]').forEach((b) => b.addEventListener('click', () => {
       const i = Number(b.dataset.profile);

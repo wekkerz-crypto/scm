@@ -110,12 +110,13 @@
     cupsPerBar: 4,             // höchstens so viele Sauger je Konsole
     cupEdgeMargin: 15,         // Abstand Sauger – Plattenkante (Formatfräser, Säge)
     cupHoleMargin: 10,         // Abstand Sauger – Durchbrüche und Durchgangsbohrungen
-    // Werkstück-Profile (4 Knöpfe oben): je Profil Name und abweichende Werte (nur gesetzte Werte gelten, sonst Einstellung)
+    // Werkstück-Profile (5 Knöpfe oben): je Profil Name und abweichende Werte (nur gesetzte Werte gelten, sonst Einstellung)
     profiles: [
       { name: 'Spanplatte', values: { formatTwoStep: false } },
       { name: 'Massivholz', values: { formatTwoStep: true } },
       { name: 'Profil 3', values: {} },
       { name: 'Profil 4', values: {} },
+      { name: 'Profil 5', values: {} },
     ],
   };
 
@@ -1664,7 +1665,7 @@
     ['cyl4Tool', '4-Achs: Schaftfräser', 'mill'],
   ];
 
-  // Einstellungen mit Profil i (0–3; null = ohne Profil): gesetzte Werte des Profils gehen vor
+  // Einstellungen mit Profil i (0–4; null = ohne Profil): gesetzte Werte des Profils gehen vor
   function applyProfile(settings, i) {
     const cfg = Object.assign({}, DEFAULTS, settings || {});
     const pr = i === null || i === undefined ? null : (cfg.profiles || [])[i];

@@ -102,13 +102,13 @@ stehen oben. Zustellung global oder je Bearbeitung; Warnung, wenn die Zustellung
 Plattendicke + Zugabe (Einstellungen *Formatfräsen: Dicke +* bzw. *Ausschnitte: Dicke +*). Je Teil lässt sich die Tiefe
 in der Bearbeitungsliste im Feld *Tiefe* absolut in mm setzen; ist sie kleiner als die Plattendicke, gibt es einen Hinweis.
 
-**Werkstück-Profile:** Oben stehen vier frei benennbare Knöpfe (Vorgabe: *Spanplatte*, *Massivholz* = Formatfräsen
-zweistufig, *Profil 3*, *Profil 4*). Ein Klick gibt dem gewählten Teil dieses Profil (aktiver Knopf farbig, noch einmal
+**Werkstück-Profile:** Ganz oben stehen fünf frei benennbare Knöpfe (Vorgabe: *Spanplatte*, *Massivholz* = Formatfräsen
+zweistufig, *Profil 3* bis *Profil 5*). Ein Klick gibt dem gewählten Teil dieses Profil (aktiver Knopf farbig, noch einmal
 klicken = ohne Profil); neue Teile bekommen das zuletzt gewählte, *Für alle Teile* setzt es überall. Im Bereich
 *Werkstück-Profile* je Profil Name und die Werte, die es festlegt: Formatfräser, zweistufig ja/nein, Vorfräser, Aufmaß,
 Zugabe, Zustellungen, Fräser für Ausschnitte/Taschen/Falz/Fasen/Schrägen, Radiusfräser, Sägen, Kugel- und 4-Achs-Fräser.
 Leere Felder nehmen die Einstellung aus *Werkzeuge & Regeln*; Änderungen am einzelnen Teil gehen dem Profil vor.
-Das Profil steht im Programmkopf (`SetComment("STEP2XCS: Teil - Profil Massivholz")`). CLI: `--profil 1…4`.
+Das Profil steht im Programmkopf (`SetComment("STEP2XCS: Teil - Profil Massivholz")`). CLI: `--profil 1…5`.
 
 **Bearbeitung löschen:** In der Schrittliste löscht ✕ eine erkannte Bearbeitung (bei Bohrungen die ganze Gruppe) aus dem
 Programm, aus Animation und Zählung. In der Draufsicht und in der 3D-Ansicht ist sie rot dort eingezeichnet, wo sie wäre.

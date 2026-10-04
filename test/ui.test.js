@@ -305,7 +305,8 @@ test('Web-Tool: Werkstück-Profile oben (benennen, aktiv, je Teil, neue Teile)',
     p.on('pageerror', (e) => errors.push(e.message));
     await p.goto(page);
     await p.waitForSelector('.part');
-    assert.strictEqual(await p.$$eval('#profilebar [data-profile]', (x) => x.length), 4);
+    assert.strictEqual(await p.$$eval('#profilebar [data-profile]', (x) => x.length), 5);
+    assert.ok(await p.$('#profileedit svg') && await p.$('#profileall svg'));
     assert.strictEqual(await p.$$eval('#profilebar [aria-pressed="true"]', (x) => x.length), 0);
     // Profil 2 (Massivholz) für das gewählte Teil: aktiv, zweistufig im Programm
     await p.click('#profilebar [data-profile="1"]');

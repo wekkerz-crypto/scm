@@ -475,23 +475,23 @@ table.fmt.one .onet { display: inline; }
   </section>
 
   <details class="card settings" id="settings">
-    <summary><span class="sumtitle">Werkzeuge &amp; Regeln<small>Bohrer, Fräser, Zugaben, Sauger, Clamex, Etiketten …</small></span><span class="savebar" id="savebar"><span class="state" id="savestate" aria-live="polite">Alle Änderungen gespeichert</span>
-      <button class="btn primary" id="savesettings" type="button">Einstellungen speichern</button></span></summary>
+    <summary><span class="sumtitle">Werkzeuge &amp; Regeln<small>Bohrer, Fräser, Zugaben, Sauger, Clamex, Etiketten …</small></span><span class="savebar" id="savebar"><span class="state" id="savestate" aria-live="polite">Automatisch gespeichert</span>
+      <button class="btn primary" id="savesettings" type="button">Erneut versuchen</button></span></summary>
     <p class="note">Voreinstellungen aus den Beispielprogrammen und der Werkzeugliste def.tlgx. Änderungen gelten sofort für alle Teile; dauerhaft (auch nach dem Schließen) erst mit <b>Einstellungen speichern</b> oben.</p>
     <div class="grid-set" id="setgrid"></div>
     <div style="margin-top:12px"><button class="btn" id="reset" type="button">Auf Standard zurücksetzen</button></div>
   </details>
   <!-- eigene aufklappbare Bereiche: Werkstück-Profile, Reihenfolge-Regel, Werkzeugliste mit Favoriten -->
   <details class="card settings" id="profilebox">
-    <summary><span class="sumtitle">Werkstück-Profile<small>Die fünf Knöpfe oben benennen und belegen</small></span><span class="savebar"><span class="state" aria-live="polite">Alle Änderungen gespeichert</span>
-      <button class="btn primary" data-save type="button">Einstellungen speichern</button></span></summary>
+    <summary><span class="sumtitle">Werkstück-Profile<small>Die fünf Knöpfe oben benennen und belegen</small></span><span class="savebar"><span class="state" aria-live="polite">Automatisch gespeichert</span>
+      <button class="btn primary" data-save type="button">Erneut versuchen</button></span></summary>
     <p class="note">Fünf Profile für die Knöpfe oben (z. B. Spanplatte, Massivholz). Ein Profil legt nur die Werte fest, die hier gesetzt sind –
       leere Felder nehmen die Einstellung aus <i>Werkzeuge &amp; Regeln</i>. Was du bei einem Teil von Hand änderst, geht dem Profil vor.</p>
     <div class="profedit" id="profedit"></div>
   </details>
   <details class="card settings" id="rulebox">
-    <summary><span class="sumtitle">Reihenfolge-Regel<small>In welcher Folge die Bearbeitungsarten ins Programm kommen</small></span><span class="savebar"><span class="state" aria-live="polite">Alle Änderungen gespeichert</span>
-      <button class="btn primary" data-save type="button">Einstellungen speichern</button></span></summary>
+    <summary><span class="sumtitle">Reihenfolge-Regel<small>In welcher Folge die Bearbeitungsarten ins Programm kommen</small></span><span class="savebar"><span class="state" aria-live="polite">Automatisch gespeichert</span>
+      <button class="btn primary" data-save type="button">Erneut versuchen</button></span></summary>
     <div class="rule" id="rule">
       <div class="bar"><label class="ruleon"><input type="checkbox" id="ruleon"> Regel verwenden</label>
         <button class="btn ghost small" id="ruledefault" type="button">Standardfolge</button></div>
@@ -685,37 +685,34 @@ table.fmt.one .onet { display: inline; }
     s.profiles = def.map((d, i) => (s.profiles && s.profiles[i] ? { name: s.profiles[i].name || d.name, values: Object.assign({}, s.profiles[i].values) } : d));
     return Object.assign({}, XcsWriter.DEFAULTS, s);
   }
-  // Einstellungen und Regel wirken sofort; gespeichert (dauerhaft) erst mit dem Knopf „Einstellungen speichern“
+  // Einstellungen und Regel wirken sofort und werden sofort im Browser gespeichert (bleiben nach dem Neuladen).
+  // Nur wenn der Browser keinen Speicher erlaubt, bleibt „nicht gespeichert“ stehen (Knopf zum erneuten Versuch).
   let settingsDirty = false;
   function saveSettings() {
-    settingsDirty = true;
-    showSaveState();
+    persistSettings(true);
   }
-  function persistSettings() {
+  function persistSettings(quiet) {
     try {
       localStorage.setItem(KEY, JSON.stringify(state.settings));
     } catch (e) {
-      toast('Speichern nicht möglich – der Browser erlaubt hier keinen Speicher.');
+      settingsDirty = true;
+      showSaveState();
+      if (!quiet) toast('Speichern nicht möglich – der Browser erlaubt hier keinen Speicher.');
       return;
     }
     settingsDirty = false;
     showSaveState();
-    toast('Einstellungen gespeichert.');
+    if (!quiet) toast('Einstellungen gespeichert.');
   }
   function showSaveState() {
     // alle Speicher-Leisten (Werkzeuge & Regeln, Reihenfolge-Regel, Werkstück-Profile)
     document.querySelectorAll('.savebar').forEach((bar) => {
       bar.classList.toggle('dirty', settingsDirty);
-      bar.querySelector('.state').textContent = settingsDirty ? '● Ungespeicherte Änderungen' : 'Alle Änderungen gespeichert';
+      bar.querySelector('.state').textContent = settingsDirty ? '● Nicht gespeichert – Browser erlaubt keinen Speicher' : 'Automatisch gespeichert';
     });
   }
   // Knopf sitzt in der Kopfzeile: Klick speichert, ohne den Bereich auf- oder zuzuklappen
   document.querySelectorAll('#savesettings, [data-save]').forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); persistSettings(); }));
-  window.addEventListener('beforeunload', (e) => {
-    if (!settingsDirty) return;
-    e.preventDefault();
-    e.returnValue = '';
-  });
 
   // ------------------------------------------------ Werkzeuge und Favoriten
   const TOOLS_KEY = 'step2xcs.tools.v1';
@@ -939,6 +936,101 @@ table.fmt.one .onet { display: inline; }
   }
 
   // ------------------------------------------------ Teile
+  // Sitzung im Browser (IndexedDB – Platz auch für große STEP-Dateien): geladene Dateien, Teile mit allen Änderungen
+  // (Drehung, Feld, Werkzeuge, Reihenfolge, Profil …) und das gewählte Teil. Nach dem Neuladen kommt alles wieder;
+  // die Beispielteile nur beim allerersten Öffnen.
+  const srcFiles = new Map();
+  let srcSeq = 0;
+  function srcFile(label, kind, text) {
+    for (const [id, f] of srcFiles) if (f.kind === kind && f.label === label && f.text === text) return id;
+    const id = ++srcSeq;
+    srcFiles.set(id, { label: label, kind: kind, text: text });
+    return id;
+  }
+  const SESSION_KEY = 'session.v1';
+  let sessionReady = false;
+  let sessionTimer = null;
+  function idbOpen() {
+    return new Promise((resolve, reject) => {
+      if (!window.indexedDB) { reject(new Error('kein IndexedDB')); return; }
+      const r = indexedDB.open('step2xcs', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('kv');
+      r.onsuccess = () => resolve(r.result);
+      r.onerror = () => reject(r.error);
+    });
+  }
+  async function idbGet(key) {
+    const db = await idbOpen();
+    return new Promise((resolve, reject) => {
+      const q = db.transaction('kv', 'readonly').objectStore('kv').get(key);
+      q.onsuccess = () => resolve(q.result);
+      q.onerror = () => reject(q.error);
+    });
+  }
+  async function idbSet(key, value) {
+    const db = await idbOpen();
+    return new Promise((resolve, reject) => {
+      const t = db.transaction('kv', 'readwrite');
+      t.objectStore('kv').put(value, key);
+      t.oncomplete = () => resolve();
+      t.onerror = () => reject(t.error);
+    });
+  }
+  function sessionData() {
+    const parts = state.parts.filter((p) => p.solid && p.src);
+    const used = new Set(parts.map((p) => p.src.file));
+    return {
+      v: 1,
+      sel: state.sel,
+      files: Array.from(srcFiles).filter(([id]) => used.has(id)).map(([id, f]) => ({ id: id, label: f.label, kind: f.kind, text: f.text })),
+      parts: parts.map((p) => ({ file: p.src.file, idx: p.src.idx, label: p.label, name: p.solid.name, orientation: p.orientation, field: p.field,
+        fileName: p.fileName, side: p.side, profile: p.profile, overrides: p.overrides, overrides2: p.overrides2 })),
+    };
+  }
+  function writeSession() {
+    sessionTimer = null;
+    let data;
+    try { data = JSON.parse(JSON.stringify(sessionData())); } catch (e) { return; }
+    idbSet(SESSION_KEY, data).catch(() => { /* ohne Speicher: nur für diese Sitzung */ });
+  }
+  function saveSession() {
+    if (!sessionReady) return;
+    clearTimeout(sessionTimer);
+    sessionTimer = setTimeout(writeSession, 150);
+  }
+  // beim Neuladen/Schließen noch ausstehendes Speichern sofort anstoßen
+  window.addEventListener('pagehide', () => { if (sessionTimer) { clearTimeout(sessionTimer); writeSession(); } });
+  async function restoreSession() {
+    let data = null;
+    try { data = await idbGet(SESSION_KEY); } catch (e) { data = null; }
+    if (!data || data.v !== 1) return false;
+    const files = new Map((data.files || []).map((f) => [f.id, f]));
+    const solidsOf = new Map();
+    for (const sp of data.parts || []) {
+      const f = files.get(sp.file);
+      if (!f) continue;
+      const fileId = srcFile(f.label, f.kind, f.text);
+      let solid;
+      if (f.kind === 'dxf') solid = { name: sp.name };
+      else {
+        if (!solidsOf.has(sp.file)) {
+          try { solidsOf.set(sp.file, StepToXcs.readParts(f.text, f.label.replace(/^Beispiel: /, ''))); } catch (e) { solidsOf.set(sp.file, []); }
+        }
+        const base = solidsOf.get(sp.file)[sp.idx];
+        if (!base) continue;
+        solid = base;
+        solid.name = sp.name;
+      }
+      const part = { label: sp.label || f.label, src: { file: fileId, idx: sp.idx }, solid: solid, orientation: sp.orientation || null,
+        field: sp.field || null, fileName: sp.fileName || null, result: null, side: sp.side || 1, profile: sp.profile === undefined ? null : sp.profile,
+        overrides: sp.overrides || { tools: {}, steps: {}, depths: {} }, overrides2: sp.overrides2 || { tools: {}, steps: {}, depths: {} } };
+      if (f.kind === 'dxf') part.dxfText = f.text; else part.stepText = f.text;
+      try { compute(part); } catch (e) { continue; }
+      state.parts.push(part);
+    }
+    state.sel = Math.max(0, Math.min(data.sel || 0, state.parts.length - 1));
+    return true;
+  }
   function addStep(text, label) {
     let solids;
     try { solids = StepToXcs.readParts(text, label.replace(/^Beispiel: /, '')); } catch (e) {
@@ -953,8 +1045,9 @@ table.fmt.one .onet { display: inline; }
       taken.add(k.toLowerCase());
       s.name = k;
     }
-    for (const s of solids) {
-      const part = { label: label, solid: s, stepText: text, orientation: null, field: null, fileName: null, result: null, side: 1,
+    const fileId = srcFile(label, 'step', text);
+    for (const [idx, s] of solids.entries()) {
+      const part = { label: label, src: { file: fileId, idx: idx }, solid: s, stepText: text, orientation: null, field: null, fileName: null, result: null, side: 1,
         profile: state.newProfile,
         overrides: { tools: {}, steps: {}, depths: {} }, overrides2: { tools: {}, steps: {}, depths: {} } };
       compute(part);
@@ -967,7 +1060,8 @@ table.fmt.one .onet { display: inline; }
     const base = StepToXcs.partName(label.replace(/^.*[\\/]/, '').replace(/\.dxf$/i, ''));
     let name = base;
     for (let j = 2; taken.has(name.toLowerCase()); j++) name = base + '_' + j;
-    const part = { label: label, solid: { name: name }, dxfText: text, orientation: null, field: null, fileName: null, result: null, side: 1,
+    const part = { label: label, src: { file: srcFile(label, 'dxf', text), idx: 0 }, solid: { name: name }, dxfText: text, orientation: null, field: null,
+      fileName: null, result: null, side: 1,
       profile: state.newProfile, overrides: { tools: {}, steps: {}, depths: {}, dxf: { T: state.settings.dxfThickness || 19, features: {} } } };
     compute(part);
     state.parts.push(part);
@@ -2000,7 +2094,7 @@ table.fmt.one .onet { display: inline; }
     } catch (e) { /* ohne Speicher: nur für diese Sitzung */ }
   }
 
-  function render() { renderProfileBar(); renderParts(); renderDetail(); }
+  function render() { renderProfileBar(); renderParts(); renderDetail(); saveSession(); }
 
   // ------------------------------------------------ Werkstück-Profile
   // Symbole (Strich in Textfarbe): mehrere Blätter = für alle Teile, Stift = bearbeiten
@@ -2915,8 +3009,13 @@ table.fmt.one .onet { display: inline; }
   renderRule();
   renderSettings();
   renderProfileEditor();
-  for (const s of (window.SAMPLE_STEPS || [])) addStep(s.text, 'Beispiel: ' + s.name);
-  render();
+  (async () => {
+    // gespeicherte Sitzung (auch eine geleerte Liste) – sonst beim ersten Öffnen die Beispielteile
+    const had = await restoreSession();
+    if (!had) for (const s of (window.SAMPLE_STEPS || [])) addStep(s.text, 'Beispiel: ' + s.name);
+    sessionReady = true;
+    render();
+  })();
 })();
 </script>
 <!--/page-->

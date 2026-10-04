@@ -181,8 +181,11 @@ für die `.pgmx`. Beispiel: `Tür Öffnung groß` → `Tuer_Oeffnung_gross.xcs` 
 | Bearbeitungen von unten (Bohrungen, Taschen, Nuten, Falze, Flächen) | Hinweis; Schalter je Teil **Einseitig / Zweiseitig** (erscheint nur dann). *Zweiseitig*: zwei Programme `Name_S1.xcs` / `Name_S2.xcs` (auch .pgmx und ZIP). **Seite 1** wie bisher mit Rohteil-Aufmaß und Formatfräsen. **Seite 2** = Platte um die Y-Achse gewendet (X → L − x, Y bleibt, Nullpunkt wieder vorne links unten), nur was von Seite 1 nicht ging (Sacklöcher, Taschen, Nuten, Falze, Flächen von unten), ohne Rohteil-Versatz (`CreateRawWorkpiece(…, 0, 0, 0, 0, …)`, `SetWorkpieceSetupPosition(0, 0, 0, 0)`), ohne Formatfräsen, Durchbrüche, Durchgangsbohrungen, Kanten und Rundungen. In der Ansicht *Seite 1 / Seite 2* umschalten (Werkzeuge, Zustellung, Reihenfolge, Löschen je Seite). Sauger meiden auf beiden Seiten die offenen Stellen der Gegenseite |
 | Auflagefläche unten | **Sauger-Vorschlag**: `SetBarPosition(Konsole, X)` und `SetSuctionCupPosition(Nr, Y, Winkel, "Code")` – siehe unten |
 
-**Einstellungen** (*Werkzeuge & Regeln*) wirken sofort; dauerhaft gespeichert werden sie mit dem Knopf *Einstellungen
-speichern* in der Kopfzeile (zeigt ungespeicherte Änderungen an, beim Schließen kommt eine Nachfrage). Sie sind nach Bearbeitungsart gruppiert: Bohren, Taschen, Formatfräsen & Konturen,
+**Einstellungen** (*Werkzeuge & Regeln*) wirken sofort und werden sofort im Browser gespeichert („✓ Automatisch gespeichert“;
+erlaubt der Browser keinen Speicher, steht dort „Nicht gespeichert“). Auch die **Teileliste** bleibt nach dem Neuladen erhalten:
+geladene STEP/DXF-Dateien mit allen Änderungen je Teil (Drehung, Feld, Werkzeuge, Reihenfolge, Profil, gelöschte
+Bearbeitungen …) und das gewählte Teil (IndexedDB im Browser, je Gerät und Adresse). Die Beispielteile kommen nur beim
+allerersten Öffnen; *Liste leeren* bleibt leer. Sie sind nach Bearbeitungsart gruppiert: Bohren, Taschen, Formatfräsen & Konturen,
 Säge, Fasen, Rundungen & schräge Kanten (u. a. Radiusfräser oben/unten mit Tiefe), Gekrümmte Flächen (Kugelfräser,
 Zeilenabstand, Zustellung, Punktabstand, Toleranz, Abheben; 4-Achs: Schaftfräser, Zeilenabstand, Schichtdicke),
 Sauger & Konsolen, Programmkopf, Arbeitsfeld & Rohteil, X-Konverter. Taschen haben eine eigene **Zustelltiefe** (0 = wie Fräsen),
@@ -212,7 +215,7 @@ Sie steht unter *Gelöscht / unterdrückt* und lässt sich dort wiederherstellen
 (je Teil und Seite; beim Drehen/Wenden zurückgesetzt).
 
 **Reihenfolge:**
-- *Reihenfolge-Regel* (eigener aufklappbarer Bereich unter *Werkzeuge & Regeln*, mit eigenem Speichern-Knopf): die Bearbeitungsarten (Bohrungen oben, Kantenbohrungen, schräge
+- *Reihenfolge-Regel* (eigener aufklappbarer Bereich unter *Werkzeuge & Regeln*): die Bearbeitungsarten (Bohrungen oben, Kantenbohrungen, schräge
   Bohrungen, Nuten, Taschen, Falze, Fasen, schräge Kanten, Sägeschnitte, Bearbeitungen auf schrägen Ebenen, gewölbte
   Flächen, Durchbrüche, Konturausschnitte, Formatfräsen, Clamex, Schleifen, Kantenrundungen) mit der Maus an die richtige Stelle
   ziehen (Zeile packen, Esc bricht ab; am Handy am Griff ⠿) oder mit ↑/↓ in die gewünschte Folge bringen, mit

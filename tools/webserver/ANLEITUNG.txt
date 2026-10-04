@@ -18,8 +18,9 @@ Wichtig zu wissen
 * Alles läuft im Browser des Benutzers. STEP-/DXF-Dateien und .xcs-Programme
   werden NICHT auf den Server hochgeladen. Es werden keine Cookies gesetzt und
   keine fremden Server angefragt.
-* Einstellungen, Profile und die geladene Werkzeugdatei (.tlgx) speichert der
-  Browser – je Gerät, Browser und Adresse. Auf dem Server gelten also andere
+* Einstellungen, Profile, die geladene Werkzeugdatei (.tlgx) und die Teileliste
+  (mit allen Änderungen je Teil) speichert der Browser automatisch – je Gerät,
+  Browser und Adresse. Nach dem Neuladen ist alles wieder da. Auf dem Server gelten also andere
   Einstellungen als in der STEP2XCS.exe. Werkzeugdatei auf dem Server einmal
   neu laden (Abschnitt "Werkzeugliste & Favoriten").
 * HTTPS verwenden (bei Strato im Paket enthalten). Ohne HTTPS funktioniert

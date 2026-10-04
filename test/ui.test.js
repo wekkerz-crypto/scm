@@ -261,7 +261,7 @@ test('Web-Tool: Schalter für gekrümmte Flächen nur bei Bedarf', { skip: !chro
   }
 });
 
-test('Web-Tool: Einstellungen erst mit „Einstellungen speichern“ dauerhaft', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+test('Web-Tool: Einstellungen und Teileliste bleiben nach dem Neuladen', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
   const browser = await chromium.launch();
   try {
     const p = await browser.newPage({ viewport: { width: 1400, height: 900 } });
@@ -270,20 +270,35 @@ test('Web-Tool: Einstellungen erst mit „Einstellungen speichern“ dauerhaft',
     await p.goto(page);
     await p.waitForSelector('.part');
     await p.evaluate(() => { document.getElementById('settings').open = true; document.getElementById('rulebox').open = true; });
-    assert.match(await p.textContent('#savestate'), /Alle Änderungen gespeichert/);
-    // Regel ändern: wirkt sofort, ist aber noch nicht gespeichert
+    assert.match(await p.textContent('#savestate'), /Automatisch gespeichert/);
+    // Einstellung ändern: sofort gespeichert, kein Knopf nötig
     await p.click('#ruleon');
-    assert.match(await p.textContent('#savestate'), /Ungespeicherte Änderungen/);
-    assert.ok(await p.$eval('#savebar', (b) => b.classList.contains('dirty')));
-    assert.ok(await p.$eval('#rulebox .savebar', (b) => b.classList.contains('dirty'))); // auch in der Regel-Leiste
     const stored = () => p.evaluate(() => JSON.parse(localStorage.getItem('step2xcs.settings.v1') || '{}'));
-    assert.notStrictEqual((await stored()).orderRule && (await stored()).orderRule.on, false);
-    await p.click('#savesettings');
-    assert.match(await p.textContent('#savestate'), /Alle Änderungen gespeichert/);
     assert.strictEqual((await stored()).orderRule.on, false);
+    assert.ok(!(await p.$eval('#savebar', (b) => b.classList.contains('dirty'))));
+    // eigene Datei laden, ein Beispiel entfernen, ein Teil drehen
+    const names = () => p.$$eval('.part .n', (x) => x.map((e) => e.textContent));
+    const [chooser] = await Promise.all([p.waitForEvent('filechooser'), p.click('#pick')]);
+    await chooser.setFiles(fixture('korpus1.step'));
+    await p.waitForFunction(() => document.querySelectorAll('.part').length === 7);
+    await p.locator('.part').first().locator('.del').click();
+    await p.locator('.part', { hasText: 'Rechte_Seite' }).last().locator('.sel').click();
+    await p.click('#rot');
+    const dims = await p.textContent('.dims');
+    const before = await names();
+    assert.strictEqual(before.length, 6);
+    await p.waitForTimeout(500);
     await p.reload();
     await p.waitForSelector('.part');
+    assert.deepStrictEqual(await names(), before, 'gleiche Teile nach dem Neuladen');
+    assert.strictEqual(await p.textContent('.dims'), dims, 'gewähltes Teil mit Drehung');
     assert.strictEqual(await p.$eval('#ruleon', (c) => c.checked), false);
+    // Liste leeren bleibt leer (keine Beispiele mehr)
+    await p.click('#clear');
+    await p.waitForTimeout(500);
+    await p.reload();
+    await p.waitForTimeout(800);
+    assert.strictEqual((await names()).length, 0);
     assert.deepStrictEqual(errors, []);
   } finally {
     await browser.close();

@@ -129,6 +129,7 @@ header.top p { margin: 2px 0 0; color: var(--muted); max-width: 90ch; font-size:
 .chip.warn { border-color: transparent; background: var(--warn-bg); color: var(--warn); }
 .chip.err { border-color: transparent; background: var(--err-bg); color: var(--err); }
 .chip.ok { border-color: transparent; background: var(--sunken); color: var(--ok); }
+.chip.prof { border-color: transparent; background: var(--accent); color: var(--accent-ink); }
 
 .detail { display: grid; gap: 16px; min-width: 0; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; min-width: 0; }
@@ -220,6 +221,25 @@ pre.xcs .s { color: var(--ok); }
 
 .rule { margin-top: 12px; display: grid; gap: 8px; }
 details.settings + details.settings { margin-top: 14px; }
+.profilebar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 14px 0 4px; }
+.profilebar .lbl { font-family: var(--font-display); font-weight: 600; color: var(--muted); margin-right: 2px; }
+.profilebar .pbtn { display: inline-flex; align-items: center; gap: 8px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink);
+  border-radius: 10px; padding: 8px 16px; font: inherit; font-weight: 600; cursor: pointer; min-width: 9rem; justify-content: center; }
+.profilebar .pbtn .k { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); font-weight: 500; }
+.profilebar .pbtn:hover { border-color: var(--accent); }
+.profilebar .pbtn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
+.profilebar .pbtn[aria-pressed="true"] .k { color: var(--accent-ink); opacity: 0.8; }
+.profilebar .hint { font-size: 0.82rem; color: var(--muted); }
+.profedit { display: grid; gap: 10px; margin-top: 10px; }
+.profedit .ptabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.profedit .pname { display: flex; gap: 8px; align-items: center; max-width: 30rem; }
+.profedit .pname input { flex: 1; font-weight: 600; }
+.profedit table { border-collapse: collapse; width: 100%; max-width: 52rem; }
+.profedit td { padding: 4px 6px; border-bottom: 1px solid var(--line); font-size: 0.88rem; vertical-align: middle; }
+.profedit td.c { width: 55%; }
+.profedit td.c select, .profedit td.c input { width: 100%; }
+.profedit tr.set td:first-child { font-weight: 600; }
+.profedit tr.set td:first-child::before { content: '● '; color: var(--accent); }
 .rule .bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
 .ruleon { display: flex; gap: 6px; align-items: center; font-size: 0.9rem; }
 .rulelist { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-width: 30rem; }
@@ -338,6 +358,7 @@ table.fmt.one .onet { display: inline; }
     <div class="flow" aria-label="Ablauf"><span class="on">STEP</span>→<span class="on">.xcs</span>→<span>X-Konverter</span>→<span>.pgmx</span>→<span>Maestro</span></div>
     </div>
   </header>
+  <nav class="profilebar" id="profilebar" aria-label="Werkstück-Profil"></nav>
 
   <input id="file" type="file" accept=".step,.stp,.STEP,.STP" multiple hidden>
   <div class="dropover" id="dropover" hidden>STEP-Dateien hier ablegen</div>
@@ -354,7 +375,14 @@ table.fmt.one .onet { display: inline; }
     <div class="grid-set" id="setgrid"></div>
     <div style="margin-top:12px"><button class="btn" id="reset" type="button">Auf Standard zurücksetzen</button></div>
   </details>
-  <!-- eigene aufklappbare Bereiche: Reihenfolge-Regel, Werkzeugliste mit Favoriten -->
+  <!-- eigene aufklappbare Bereiche: Werkstück-Profile, Reihenfolge-Regel, Werkzeugliste mit Favoriten -->
+  <details class="card settings" id="profilebox">
+    <summary><span class="sumtitle">Werkstück-Profile</span><span class="savebar"><span class="state" aria-live="polite">Alle Änderungen gespeichert</span>
+      <button class="btn primary" data-save type="button">Einstellungen speichern</button></span></summary>
+    <p class="note">Vier Profile für die Knöpfe oben (z. B. Spanplatte, Massivholz). Ein Profil legt nur die Werte fest, die hier gesetzt sind –
+      leere Felder nehmen die Einstellung aus <i>Werkzeuge &amp; Regeln</i>. Was du bei einem Teil von Hand änderst, geht dem Profil vor.</p>
+    <div class="profedit" id="profedit"></div>
+  </details>
   <details class="card settings" id="rulebox">
     <summary><span class="sumtitle">Reihenfolge-Regel</span><span class="savebar"><span class="state" aria-live="polite">Alle Änderungen gespeichert</span>
       <button class="btn primary" data-save type="button">Einstellungen speichern</button></span></summary>
@@ -513,6 +541,9 @@ table.fmt.one .onet { display: inline; }
     if (s.xconverterPath === 'C:\\Program Files (x86)\\Scm Group\\Maestro\\XConverter.exe') delete s.xconverterPath;
     if (s.toolsFile === 'C:\\Program Files (x86)\\Scm Group\\Maestro\\Tlgx\\def.tlgx' ||
       s.toolsFile === 'C:\\Program Files\\SCM Group\\Maestro\\Tlgx\\def.tlgx') delete s.toolsFile;
+    // Profile immer als eigene Kopie (die Vorgabe darf nicht verändert werden), fehlende auffüllen
+    const def = JSON.parse(JSON.stringify(XcsWriter.DEFAULTS.profiles));
+    s.profiles = def.map((d, i) => (s.profiles && s.profiles[i] ? { name: s.profiles[i].name || d.name, values: Object.assign({}, s.profiles[i].values) } : d));
     return Object.assign({}, XcsWriter.DEFAULTS, s);
   }
   // Einstellungen und Regel wirken sofort; gespeichert (dauerhaft) erst mit dem Knopf „Einstellungen speichern“
@@ -581,7 +612,8 @@ table.fmt.one .onet { display: inline; }
     tools: customTools ? customTools.tools : (window.DEFAULT_TOOLS || []),
     toolSource: customTools ? customTools.source : 'def.tlgx (Standard)',
     favorites: loadJson(FAV_KEY, []), mode3d: !!loadJson('step2xcs.view3d.v1', false),
-    showCode: !!loadJson('step2xcs.showcode.v1', false) };
+    showCode: !!loadJson('step2xcs.showcode.v1', false),
+    newProfile: (loadJson('step2xcs.profile.v1', null) || { i: null }).i ?? null }; // Profil für neue Teile
 
   const usableTools = (kind) => state.tools.filter((t) => t.kind === kind && !t.disabled);
 
@@ -777,6 +809,7 @@ table.fmt.one .onet { display: inline; }
     }
     for (const s of solids) {
       const part = { label: label, solid: s, stepText: text, orientation: null, field: null, fileName: null, result: null, side: 1,
+        profile: state.newProfile,
         overrides: { tools: {}, steps: {}, depths: {} }, overrides2: { tools: {}, steps: {}, depths: {} } };
       compute(part);
       state.parts.push(part);
@@ -786,7 +819,7 @@ table.fmt.one .onet { display: inline; }
     if (!part.solid) return;
     const cfg = Object.assign({}, state.settings, { toolInfo: ToolLibrary.infoMap(state.tools) });
     part.res = StepToXcs.convertSolid(part.solid, cfg, { orientation: part.orientation, field: part.field, overrides: part.overrides,
-      overrides2: part.overrides2, meshes: part.occtMeshes || null });
+      overrides2: part.overrides2, meshes: part.occtMeshes || null, profile: part.profile });
     if (part.res.panel && !part.orientation) part.orientation = Object.assign({}, part.res.panel.orientation);
     if (!part.fileName) part.fileName = part.res.fileName;
     if (!part.res.side2) part.side = 1;
@@ -985,6 +1018,7 @@ table.fmt.one .onet { display: inline; }
           (c.saw ? '<span class="chip ok">' + n(c.saw, 'Sägeschnitt', 'Sägeschnitte') + '</span>' : '') +
           '<span class="chip ok">' + n(c.mill, 'Fräsung', 'Fräsungen') + '</span>' +
           (r.side2 ? '<span class="chip ok">+ Seite 2: ' + r.side2.ops.length + '</span>' : '') +
+          (p.profile !== null && p.profile !== undefined ? '<span class="chip prof">' + esc(profName(p.profile)) + '</span>' : '') +
           (r.warnings.length ? '<span class="chip warn">' + r.warnings.length + ' Hinweis' + (r.warnings.length > 1 ? 'e' : '') + '</span>' : '') + '</span>';
       } else {
         html += '<span class="chips"><span class="chip err">Fehler</span></span>';
@@ -1305,7 +1339,7 @@ table.fmt.one .onet { display: inline; }
       .concat((r.suppressed || []).length ? [['color-mix(in srgb, var(--err) 35%, transparent);border:1.5px dashed var(--err)', 'Gelöscht (unterdrückt)']] : []);
     el.innerHTML =
       '<div class="work"><div class="card stagecard" id="stagecard"><div class="dhead"><div class="title"><h2>' + esc(p.name) + '</h2><span class="dims">' + fmt(p.L) + ' × ' + fmt(p.W) + ' × ' +
-      fmt(p.T) + ' mm · ' + esc(part.label) + (part.res.side2 ? ' · <b>Seite ' + part.side + (part.side === 2 ? ' (um Y gewendet, ohne Rohteil-Versatz)' : ' (mit Formatfräsen)') + '</b>' : '') + '</span></div>' +
+      fmt(p.T) + ' mm · ' + esc(part.label) + (part.profile !== null && part.profile !== undefined ? ' · <b>Profil ' + esc(profName(part.profile)) + '</b>' : '') + (part.res.side2 ? ' · <b>Seite ' + part.side + (part.side === 2 ? ' (um Y gewendet, ohne Rohteil-Versatz)' : ' (mit Formatfräsen)') + '</b>' : '') + '</span></div>' +
       '<div class="tools"><span class="seg" role="group" aria-label="Ansicht"><button type="button" data-vmode="2d" aria-pressed="' + !state.mode3d + '">2D</button>' +
       '<button type="button" data-vmode="3d" aria-pressed="' + !!state.mode3d + '">3D</button></span>' +
       (part.res.canTwoSided ? '<span class="seg" role="group" aria-label="Seiten"><button type="button" data-two="0" aria-pressed="' + !part.res.side2 +
@@ -1486,7 +1520,85 @@ table.fmt.one .onet { display: inline; }
     $('dl').addEventListener('click', () => saveFiles(partFiles(part), part.fileName.replace(/\.xcs$/i, '') + '.zip'));
   }
 
-  function render() { renderParts(); renderDetail(); }
+  function render() { renderProfileBar(); renderParts(); renderDetail(); }
+
+  // ------------------------------------------------ Werkstück-Profile
+  const profName = (i) => (state.settings.profiles[i] && state.settings.profiles[i].name) || 'Profil ' + (i + 1);
+  // Leiste oben: aktiv = Profil des gewählten Teils (ohne Teil: Vorgabe für neue Teile)
+  function renderProfileBar() {
+    const bar = $('profilebar');
+    const part = state.parts[state.sel];
+    const cur = part && part.solid ? (part.profile ?? null) : state.newProfile;
+    bar.innerHTML = '<span class="lbl">Werkstück:</span>' + state.settings.profiles.map((pr, i) =>
+      '<button type="button" class="pbtn" data-profile="' + i + '" aria-pressed="' + (cur === i) + '" title="' +
+      esc('Werkzeuge und Strategie für ' + profName(i) + ' – noch einmal klicken: ohne Profil') + '"><span class="k">' + (i + 1) + '</span>' + esc(profName(i)) + '</button>').join('') +
+      (part && part.solid && state.parts.filter((x) => x.solid).length > 1 ? '<button type="button" class="btn ghost small" id="profileall">' +
+        (cur === null ? 'Für alle Teile: ohne Profil' : 'Für alle Teile: ' + esc(profName(cur))) + '</button>' : '') +
+      '<button type="button" class="btn ghost small" id="profileedit">Profile bearbeiten</button>' +
+      '<span class="hint">' + (cur === null ? 'ohne Profil – Einstellungen aus „Werkzeuge &amp; Regeln“' : 'neue Teile bekommen ' + esc(profName(state.newProfile ?? cur))) + '</span>';
+    bar.querySelectorAll('[data-profile]').forEach((b) => b.addEventListener('click', () => {
+      const i = Number(b.dataset.profile);
+      const p = state.parts[state.sel];
+      const next = (p && p.solid ? (p.profile ?? null) : state.newProfile) === i ? null : i;
+      state.newProfile = next;
+      storeJson('step2xcs.profile.v1', next === null ? null : { i: next });
+      if (p && p.solid) { p.profile = next; compute(p); }
+      render();
+    }));
+    if ($('profileall')) $('profileall').addEventListener('click', () => {
+      for (const p of state.parts) if (p.solid) { p.profile = cur; compute(p); }
+      render();
+      toast('Profil für alle Teile: ' + (cur === null ? 'ohne Profil' : profName(cur)));
+    });
+    $('profileedit').addEventListener('click', () => {
+      const box = $('profilebox');
+      box.open = true;
+      state.profileTab = cur ?? state.profileTab ?? 0;
+      renderProfileEditor();
+      box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+
+  // Bereich „Werkstück-Profile“: Name und Werte je Profil (leer = wie Einstellung)
+  function renderProfileEditor() {
+    const el = $('profedit');
+    const i = state.profileTab ?? 0;
+    const pr = state.settings.profiles[i];
+    const st = state.settings;
+    const toolName = (n) => { const t = state.tools.find((x) => x.name === n); return t ? ToolLibrary.label(t) : n; };
+    let html = '<div class="ptabs seg" role="group" aria-label="Profil wählen">' + state.settings.profiles.map((x, k) =>
+      '<button type="button" data-ptab="' + k + '" aria-pressed="' + (k === i) + '">' + (k + 1) + ' · ' + esc(profName(k)) + '</button>').join('') + '</div>' +
+      '<label class="pname">Name <input id="pname" type="text" maxlength="24" value="' + esc(pr.name) + '"></label><table><tbody>';
+    for (const [k, label, type, unit] of XcsWriter.PROFILE_KEYS) {
+      const v = pr.values[k];
+      const set = v !== undefined && v !== null && v !== '';
+      let ctl;
+      if (type === 'mill' || type === 'saw') {
+        ctl = toolSelect('data-pkey="' + k + '"', type, set ? v : '').replace('<select data-pkey="' + k + '">',
+          '<select data-pkey="' + k + '"><option value=""' + (set ? '' : ' selected') + '>– wie Einstellung: ' + esc(toolName(st[k])) + ' –</option>');
+      } else if (type === 'bool') {
+        ctl = '<select data-pkey="' + k + '"><option value=""' + (set ? '' : ' selected') + '>– wie Einstellung: ' + (st[k] ? 'ja' : 'nein') + ' –</option>' +
+          '<option value="1"' + (set && v ? ' selected' : '') + '>ja</option><option value="0"' + (set && !v ? ' selected' : '') + '>nein</option></select>';
+      } else {
+        ctl = '<input data-pkey="' + k + '" type="number" step="any" value="' + (set ? esc(v) : '') + '" placeholder="wie Einstellung: ' + esc(st[k]) + '">';
+      }
+      html += '<tr' + (set ? ' class="set"' : '') + '><td>' + esc(label) + (unit ? ' <small>' + esc(unit) + '</small>' : '') + '</td><td class="c">' + ctl + '</td></tr>';
+    }
+    el.innerHTML = html + '</tbody></table>';
+    el.querySelectorAll('[data-ptab]').forEach((b) => b.addEventListener('click', () => { state.profileTab = Number(b.dataset.ptab); renderProfileEditor(); }));
+    const changed = () => { saveSettings(); state.parts.forEach(compute); renderProfileEditor(); render(); };
+    const nm = $('pname');
+    nm.addEventListener('change', () => { pr.name = nm.value.trim() || 'Profil ' + (i + 1); changed(); });
+    el.querySelectorAll('[data-pkey]').forEach((c) => c.addEventListener('change', () => {
+      const k = c.dataset.pkey;
+      const type = XcsWriter.PROFILE_KEYS.find((x) => x[0] === k)[2];
+      let v = c.value;
+      if (v === '') delete pr.values[k];
+      else if (type === 'bool') pr.values[k] = v === '1';
+      else if (type === 'number') { v = parseFloat(String(v).replace(',', '.')); if (isNaN(v)) return; pr.values[k] = v; } else pr.values[k] = v;
+      changed();
+    }));
+  }
   // Nach Eingaben (Feld verlassen) erst nach dem laufenden Klick neu aufbauen – sonst geht der Klick auf
   // einen Knopf verloren, weil die Seite zwischen Maus-Drücken und -Loslassen ersetzt wird.
   let ptrDown = false;
@@ -2192,8 +2304,9 @@ table.fmt.one .onet { display: inline; }
   document.addEventListener('drop', (e) => { e.preventDefault(); over.hidden = true; });
   document.addEventListener('drop', (e) => { if (e.dataTransfer && e.dataTransfer.files.length) loadFiles(e.dataTransfer.files); });
   $('reset').addEventListener('click', () => {
-    state.settings = Object.assign({}, XcsWriter.DEFAULTS, { orderRule: { on: true, seq: XcsWriter.DEFAULTS.orderRule.seq.slice() } });
-    saveSettings(); renderSettings(); renderRule(); state.parts.forEach(compute); render();
+    state.settings = Object.assign({}, XcsWriter.DEFAULTS, { orderRule: { on: true, seq: XcsWriter.DEFAULTS.orderRule.seq.slice() },
+      profiles: JSON.parse(JSON.stringify(XcsWriter.DEFAULTS.profiles)) });
+    saveSettings(); renderSettings(); renderRule(); renderProfileEditor(); state.parts.forEach(compute); render();
   });
 
   $('ruleon').addEventListener('change', (e) => {
@@ -2251,6 +2364,7 @@ table.fmt.one .onet { display: inline; }
   renderToolLib();
   renderRule();
   renderSettings();
+  renderProfileEditor();
   for (const s of (window.SAMPLE_STEPS || [])) addStep(s.text, 'Beispiel: ' + s.name);
   render();
 })();

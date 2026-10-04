@@ -90,6 +90,8 @@
    */
   function convertSolid(solid, settings, options) {
     options = options || {};
+    // Werkstück-Profil (Werkzeuge/Strategie je Material) über die Einstellungen legen
+    if (options.profile !== undefined && options.profile !== null) settings = XcsWriter.applyProfile(settings, options.profile);
     try {
       const panel = PanelAnalyzer.analyze(solid, options.orientation);
       const ov = options.overrides || {};

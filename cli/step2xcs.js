@@ -11,6 +11,7 @@
  *   --schraege-5achs Schrägen an Rundungen 5-achsig fräsen (CreateSlantedRoughFinish entlang der Kontur)
  *   --kugelfraesen   gewölbte Flächen mit dem Kugelfräser zeilenfräsen (lädt OpenCascade für das 3D-Netz)
  *   --4achs          gewölbte Zylinderflächen 4-achsig mit dem Schaftfräser abzeilen (übrige: Kugelfräser)
+ *   --profil n       Werkstück-Profil 1–4 (Vorgabe: 1 Spanplatte, 2 Massivholz = Formatfräsen zweistufig)
  *   --zweiseitig     Teile mit Bearbeitungen von unten: Seite 1 (mit Formatfräsen) und Seite 2 (um Y gewendet,
  *                    ohne Rohteil-Versatz) als Name_S1.xcs / Name_S2.xcs
  */
@@ -31,6 +32,7 @@ let curvedSlant = false;
 let curvedSurface = false;
 let flat4 = false;
 let twoSided = false;
+let profile = null;
 const files = [];
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '-o' || args[i] === '--out') outDir = args[++i];
@@ -42,6 +44,10 @@ for (let i = 0; i < args.length; i++) {
   else if (args[i] === '--kugelfraesen') curvedSurface = true;
   else if (args[i] === '--4achs') { curvedSurface = true; flat4 = true; }
   else if (args[i] === '--zweiseitig') twoSided = true;
+  else if (args[i] === '--profil') {
+    profile = parseInt(args[++i], 10) - 1;
+    if (!(profile >= 0 && profile <= 3)) { console.error('--profil: 1 bis 4'); process.exit(1); }
+  }
   else files.push(args[i]);
 }
 if (!files.length) {
@@ -66,7 +72,7 @@ async function main() {
     try {
       const text = fs.readFileSync(file, 'utf8');
       const meshes = occt ? OcctMesh.read(occt, text) : null;
-      parts = readParts(text, path.basename(file)).map((s) => convertSolid(s, settings, { meshes: meshes, overrides: { twoSided: twoSided } }));
+      parts = readParts(text, path.basename(file)).map((s) => convertSolid(s, settings, { meshes: meshes, overrides: { twoSided: twoSided }, profile: profile }));
     } catch (e) {
       failed++;
       console.error('✗ ' + file + ': ' + (e.message || e));

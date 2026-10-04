@@ -110,6 +110,13 @@
     cupsPerBar: 4,             // höchstens so viele Sauger je Konsole
     cupEdgeMargin: 15,         // Abstand Sauger – Plattenkante (Formatfräser, Säge)
     cupHoleMargin: 10,         // Abstand Sauger – Durchbrüche und Durchgangsbohrungen
+    // Werkstück-Profile (4 Knöpfe oben): je Profil Name und abweichende Werte (nur gesetzte Werte gelten, sonst Einstellung)
+    profiles: [
+      { name: 'Spanplatte', values: { formatTwoStep: false } },
+      { name: 'Massivholz', values: { formatTwoStep: true } },
+      { name: 'Profil 3', values: {} },
+      { name: 'Profil 4', values: {} },
+    ],
   };
 
   const FACE_NAMES = { Left: 'Left', Right: 'Right', Front: 'Front', Back: 'Back' };
@@ -1350,7 +1357,7 @@
     const ascii = (t) => String(t).replace(/[äöüÄÖÜß]/g, (c) => ({ 'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'Ä': 'Ae', 'Ö': 'Oe', 'Ü': 'Ue', 'ß': 'ss' }[c]))
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '').replace(/["\\]/g, '');
     if (cfg.commentOn) {
-      L.push('SetComment("' + ascii('STEP2XCS: ' + (p.name || 'Teil')) + '");');
+      L.push('SetComment("' + ascii('STEP2XCS: ' + (p.name || 'Teil') + (cfg.profileName ? ' - Profil ' + cfg.profileName : '')) + '");');
       L.push('SetDescription("' + ascii(fmt(p.L) + ' x ' + fmt(p.W) + ' x ' + fmt(p.T) + ' mm, ' + ops.length + ' Bearbeitungen') + '");');
     }
     if (cfg.optimizeOn) L.push('SetOptimization(true);');
@@ -1634,5 +1641,42 @@
       suppressed: suppressed };
   }
 
-  return { write: write, plan: plan, planSuction: planSuction, DEFAULTS: DEFAULTS, CATEGORIES: CATEGORIES, ruleSequence: ruleSequence };
+  // Einstellungen, die ein Werkstück-Profil festlegen kann (Werkzeuge und Strategie je Material)
+  const PROFILE_KEYS = [
+    ['contourTool', 'Formatfräser (bzw. Nachfräser)', 'mill'],
+    ['formatTwoStep', 'Formatfräsen zweistufig (vor- und nachfräsen)', 'bool'],
+    ['formatRoughTool', 'Vorfräser (zweistufig)', 'mill'],
+    ['formatAllowance', 'Aufmaß beim Vorfräsen', 'number', 'mm'],
+    ['contourExtra', 'Formatfräsen: Dicke +', 'number', 'mm'],
+    ['stepDown', 'Zustelltiefe je Durchgang', 'number', 'mm · 0 = ein Durchgang'],
+    ['finishDepth', 'Letzte Zustellung', 'number', 'mm'],
+    ['cutoutTool', 'Fräser Ausschnitte/Durchbrüche', 'mill'],
+    ['pocketTool', 'Fräser Taschen', 'mill'],
+    ['pocketStepDown', 'Zustelltiefe Taschen', 'number', 'mm'],
+    ['rebateTool', 'Fräser Falz', 'mill'],
+    ['chamferTool', 'Fräser Fasen', 'mill'],
+    ['slantTool', 'Fräser schräge Kanten', 'mill'],
+    ['roundTopTool', 'Radiusfräser oben', 'mill'],
+    ['roundBottomTool', 'Radiusfräser unten', 'mill'],
+    ['sawTool', 'Säge für Nuten', 'saw'],
+    ['bladeTool', 'Säge für Sägeschnitte', 'saw'],
+    ['ballTool', 'Kugelfräser', 'mill'],
+    ['cyl4Tool', '4-Achs: Schaftfräser', 'mill'],
+  ];
+
+  // Einstellungen mit Profil i (0–3; null = ohne Profil): gesetzte Werte des Profils gehen vor
+  function applyProfile(settings, i) {
+    const cfg = Object.assign({}, DEFAULTS, settings || {});
+    const pr = i === null || i === undefined ? null : (cfg.profiles || [])[i];
+    if (!pr) return cfg;
+    for (const [k] of PROFILE_KEYS) {
+      const v = pr.values && pr.values[k];
+      if (v !== undefined && v !== null && v !== '') cfg[k] = v;
+    }
+    cfg.profileName = pr.name || 'Profil ' + (i + 1);
+    return cfg;
+  }
+
+  return { write: write, plan: plan, planSuction: planSuction, DEFAULTS: DEFAULTS, CATEGORIES: CATEGORIES, ruleSequence: ruleSequence,
+    PROFILE_KEYS: PROFILE_KEYS, applyProfile: applyProfile };
 });

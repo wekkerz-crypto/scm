@@ -296,3 +296,43 @@ test('Web-Tool: zweiseitig (Seite 1/2) und Bearbeitung löschen/wiederherstellen
     await browser.close();
   }
 });
+
+test('Web-Tool: Werkstück-Profile oben (benennen, aktiv, je Teil, neue Teile)', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    assert.strictEqual(await p.$$eval('#profilebar [data-profile]', (x) => x.length), 4);
+    assert.strictEqual(await p.$$eval('#profilebar [aria-pressed="true"]', (x) => x.length), 0);
+    // Profil 2 (Massivholz) für das gewählte Teil: aktiv, zweistufig im Programm
+    await p.click('#profilebar [data-profile="1"]');
+    assert.strictEqual(await p.$eval('#profilebar [data-profile="1"]', (b) => b.getAttribute('aria-pressed')), 'true');
+    assert.match(await p.textContent('#xcs'), /_Vor"/);
+    assert.match(await p.textContent('.part[aria-current="true"]'), /Massivholz/);
+    // umbenennen und Werkzeug setzen im Bereich „Werkstück-Profile“
+    await p.click('#profileedit');
+    await p.fill('#pname', 'Massivholz Eiche');
+    await p.dispatchEvent('#pname', 'change');
+    assert.match(await p.textContent('#profilebar [data-profile="1"]'), /Massivholz Eiche/);
+    await p.selectOption('#profedit select[data-pkey="contourTool"]', 'E020');
+    assert.match(await p.textContent('#xcs'), /CreateRoughFinish\("Milling_\d+", [\d.]+, "", TypeOfProcess\.GeneralRouting, "E020"/);
+    // noch einmal klicken: ohne Profil
+    await p.click('#profilebar [data-profile="1"]');
+    assert.strictEqual(await p.$$eval('#profilebar [aria-pressed="true"]', (x) => x.length), 0);
+    assert.doesNotMatch(await p.textContent('#xcs'), /_Vor"/);
+    // Profil 1 wählen, dann neues Teil: bekommt Profil 1
+    await p.click('#profilebar [data-profile="0"]');
+    const before = await p.$$eval('.part', (x) => x.length);
+    const [chooser] = await Promise.all([p.waitForEvent('filechooser', { timeout: 3000 }), p.click('#pick')]);
+    await chooser.setFiles([fixture('testplatte.step')]);
+    await p.waitForFunction((n) => document.querySelectorAll('.part').length > n, before);
+    assert.strictEqual(await p.$eval('#profilebar [data-profile="0"]', (b) => b.getAttribute('aria-pressed')), 'true');
+    assert.match(await p.textContent('#xcs'), /Profil Spanplatte/);
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});

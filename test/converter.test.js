@@ -1038,3 +1038,32 @@ test('Erkannte Bearbeitung löschen (unterdrücken) und wiederherstellen', () =>
   // wiederherstellen = Liste leer
   assert.strictEqual(convertSolid(s, { toolInfo }, { overrides: { suppress: [] } }).xcs, all.xcs);
 });
+
+test('Werkstück-Profile: Werkzeuge/Strategie je Material, Teil-Änderung geht vor', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const X = require('../web/js/xcs.js');
+  const T = require('../web/js/tools.js');
+  const toolInfo = T.infoMap(T.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
+  const [s] = readParts(read('test/fixtures/testplatte.step'), 'tp.step');
+  const base = convertSolid(s, { toolInfo });
+  // ohne Profil (null) = wie bisher
+  assert.strictEqual(convertSolid(s, { toolInfo }, { profile: null }).xcs, base.xcs);
+  // Massivholz (Vorgabe): zweistufig, Name im Kommentar
+  const mh = convertSolid(s, { toolInfo }, { profile: 1 });
+  assert.match(mh.xcs, /CreateRoughFinish\("Milling_\d+_Vor"/);
+  assert.match(mh.xcs, /SetComment\("STEP2XCS: tp - Profil Massivholz"\);/);
+  // eigenes Profil: Formatfräser und Taschenfräser; leere Werte = wie Einstellung
+  const profiles = X.DEFAULTS.profiles.map((p) => ({ name: p.name, values: Object.assign({}, p.values) }));
+  profiles[2] = { name: 'Spanplatte T114', values: { contourTool: 'E020', pocketTool: 'E010', stepDown: '' } };
+  const r = convertSolid(s, { toolInfo, profiles: profiles }, { profile: 2 });
+  assert.strictEqual(r.ops.find((o) => o.key === 'format').tool, 'E020');
+  assert.ok(r.ops.filter((o) => o.kind === 'pocket').every((o) => o.tool === 'E010'));
+  assert.ok(r.ops.filter((o) => /^cutout-/.test(o.key)).every((o) => o.tool === 'E016')); // nicht gesetzt → Einstellung
+  assert.ok(!/_Vor"/.test(r.xcs));
+  // Änderung am Teil geht dem Profil vor
+  const own = convertSolid(s, { toolInfo, profiles: profiles }, { profile: 2, overrides: { tools: { format: 'E022' }, twoStep: true } });
+  assert.strictEqual(own.ops.find((o) => o.key === 'format').tool, 'E022');
+  assert.match(own.xcs, /_Vor"/);
+  // Vorgabe bleibt unverändert (Profile werden nicht verändert)
+  assert.deepStrictEqual(X.DEFAULTS.profiles[2].values, {});
+});

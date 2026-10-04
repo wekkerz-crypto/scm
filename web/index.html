@@ -221,7 +221,7 @@ pre.xcs .s { color: var(--ok); }
 
 .rule { margin-top: 12px; display: grid; gap: 8px; }
 details.settings + details.settings { margin-top: 14px; }
-.profilebar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 14px 0 4px; }
+.profilebar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 0 0 16px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
 .profilebar .lbl { font-family: var(--font-display); font-weight: 600; color: var(--muted); margin-right: 2px; }
 .profilebar .pbtn { display: inline-flex; align-items: center; gap: 8px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink);
   border-radius: 10px; padding: 8px 16px; font: inherit; font-weight: 600; cursor: pointer; min-width: 9rem; justify-content: center; }
@@ -345,6 +345,7 @@ table.fmt.one .onet { display: inline; }
 </style>
 
 <div class="wrap">
+  <nav class="profilebar" id="profilebar" aria-label="Werkstück-Profil"></nav>
   <header class="top">
     <div>
       <h1>STEP-zu-XCS Konverter</h1>
@@ -358,7 +359,6 @@ table.fmt.one .onet { display: inline; }
     <div class="flow" aria-label="Ablauf"><span class="on">STEP</span>→<span class="on">.xcs</span>→<span>X-Konverter</span>→<span>.pgmx</span>→<span>Maestro</span></div>
     </div>
   </header>
-  <nav class="profilebar" id="profilebar" aria-label="Werkstück-Profil"></nav>
 
   <input id="file" type="file" accept=".step,.stp,.STEP,.STP" multiple hidden>
   <div class="dropover" id="dropover" hidden>STEP-Dateien hier ablegen</div>

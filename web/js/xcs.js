@@ -888,6 +888,12 @@
     // 8) Schräge Kanten über die ganze Dicke (5-Achs)
     for (const [i, w] of p.slantWalls.entries()) {
       if (curvedFaces.has(w.faceId)) continue; // in der Bahn an der Rundung enthalten
+      if (w.boss) {
+        // Zapfen auf der Schräge: Sägen oder Fräsen der ganzen Fläche würde ihn abtrennen
+        warnings.push('Schräge Kante ' + fmt(w.angle) + '° mit Zapfen (' + fmt(w.boss.height) + ' mm hoch): durchgehender Schnitt würde den Zapfen ' +
+          'abtrennen – nicht ausgegeben. Schräge mit Zapfen in Maestro von Hand programmieren.');
+        continue;
+      }
       const ll = cfg.leadLength;
       const d = [w.top.b[0] - w.top.a[0], w.top.b[1] - w.top.a[1]];
       const l = Math.hypot(d[0], d[1]) || 1;

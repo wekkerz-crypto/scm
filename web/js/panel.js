@@ -1012,7 +1012,36 @@
 
     // --- Schräge Flächen: schräge Kanten über die ganze Dicke, Fasen an Geraden (Ebene) und Rundungen (Kegel)
     const chamferFaces = [];
+    // Zapfen/Feder auf einer schrägen Fläche (z. B. Gehrung): Flächen, die aus der Ebene herausragen und an einer
+    // Innenkontur der schrägen Fläche hängen – ein durchgehender Schnitt würde sie abtrennen
+    const bossOf = new Map();
+    const bossFaces = new Set();
     for (const f of inclined) {
+      if (!f.bounds.some((b) => !b.outer)) continue;
+      const n = f.surf.n;
+      const p0 = f.surf.p;
+      const dist = (q) => (q[0] - p0[0]) * n[0] + (q[1] - p0[1]) * n[1] + (q[2] - p0[2]) * n[2];
+      const inner = new Set();
+      for (const b of f.bounds) if (!b.outer) for (const e of b.edges) for (const q of e.samples) inner.add(q.map((v) => Math.round(v * 100)).join(','));
+      const touches = (g) => g.pts.some((q) => inner.has(q.map((v) => Math.round(v * 100)).join(',')));
+      const out = faces.filter((g) => g.id !== f.id && g.pts.every((q) => dist(q) > -0.05) && g.pts.some((q) => dist(q) > 0.05));
+      // zusammenhängend ab der Innenkontur
+      const boss = out.filter(touches);
+      for (let grow = true; grow;) {
+        grow = false;
+        for (const g of out) {
+          if (boss.includes(g)) continue;
+          const key = new Set(g.pts.map((q) => q.map((v) => Math.round(v * 100)).join(',')));
+          if (boss.some((b) => b.pts.some((q) => key.has(q.map((v) => Math.round(v * 100)).join(','))))) { boss.push(g); grow = true; }
+        }
+      }
+      if (!boss.length) continue;
+      const h = Math.max(...boss.flatMap((g) => g.pts.map(dist)));
+      bossOf.set(f.id, { height: h, faceIds: boss.map((g) => g.id) });
+      boss.forEach((g) => bossFaces.add(g.id));
+    }
+    for (const f of inclined) {
+      if (bossFaces.has(f.id)) continue;
       const e = inclinedEdges(f);
       if (!e) continue;
       const full = e.zmin < TOL && e.zmax > T - TOL;
@@ -1021,7 +1050,8 @@
         const n = f.surf.n;
         const p0 = f.surf.p;
         const sawable = faces.every((g) => g.pts.every((q) => (q[0] - p0[0]) * n[0] + (q[1] - p0[1]) * n[1] + (q[2] - p0[2]) * n[2] <= 0.05));
-        res.slantWalls.push({ top: e.top, bottom: e.bottom, angle: e.angle, leanOut: e.offset > 0, path: e.path, sawable: sawable, faceId: f.id });
+        res.slantWalls.push({ top: e.top, bottom: e.bottom, angle: e.angle, leanOut: e.offset > 0, path: e.path, sawable: sawable, faceId: f.id,
+          boss: bossOf.get(f.id) || null });
       } else if (e.zmax > T - TOL) {
         chamferFaces.push({ kind: 'line', side: 'top', line: e.bottomLine, width: Math.abs(e.offset), height: T - e.zmin, path: e.path });
       } else if (e.zmin < TOL) {

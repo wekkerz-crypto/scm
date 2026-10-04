@@ -1296,3 +1296,15 @@ test('Clamex über das SCM-Makro SawCut_Lamello: Parameterliste wie in der Werks
   const r3 = convertSolid(a, { clamexTemplate: '{sx}, {sy}, {ex}, {ey}, {angle}, {angleZ}' });
   assert.match(r3.xcs, /CreateMacro\("SawCut_Lamello_1", "SawCut_Lamello", 250, 0, 250, 0, 90, 360\);/);
 });
+
+test('Gehrung mit Zapfen: kein durchgehender Schnitt (würde den Zapfen abtrennen), Hinweis', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const [s] = readParts(read('test/fixtures/zapfen.step'), 'zapfen.step'); // Meter-STEP: 400 × 200 × 30, Gehrung 45°, Zapfen 8 mm
+  const r = convertSolid(s, {});
+  assert.deepStrictEqual([r.panel.L, r.panel.W, Math.round(r.panel.T)], [400, 200, 30]);
+  const w = r.panel.slantWalls[0];
+  assert.ok(w.boss && Math.abs(w.boss.height - 8) < 1e-6);
+  assert.doesNotMatch(r.xcs, /CreateBladeCut|CreateSlantedRoughFinish/);
+  assert.ok(r.warnings.some((x) => /mit Zapfen \(8 mm hoch\).*nicht ausgegeben/.test(x)));
+  assert.ok(!r.warnings.some((x) => /ohne Verbindung/.test(x)));
+});

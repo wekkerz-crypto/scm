@@ -49,8 +49,23 @@ node cli/step2xcs.js teil.step weitere.step -o ausgabe/ --bat
 Weitere Schalter: `--step mm` (Zustellung), `--no-order-rule`, `--schraege-5achs` (Schrägen an Rundungen 5-achsig fräsen),
 `--zweiseitig` (Teile mit Bearbeitungen von unten als `_S1`/`_S2`),
 `--kugelfraesen` (gewölbte Flächen zeilenfräsen, lädt OpenCascade), `--4achs` (gewölbte Oberseite als Zylinder 4-achsig mit
-dem Schaftfräser abzeilen, übrige Flächen Kugelfräser), `--dicke mm` (Plattendicke für `.dxf`, Standard 19;
+dem Schaftfräser abzeilen, übrige Flächen Kugelfräser), `--oszillieren`, `--schleifen` (siehe unten), `--dicke mm` (Plattendicke für `.dxf`, Standard 19;
 Erkennungen wie vorgeschlagen).
+
+### Oszillieren und Schleifen (*Werkzeuge & Regeln → Oszillieren & Schleifen*, auch je Werkstück-Profil)
+
+- **Formatfräsen oszillierend:** Die Frästiefe pendelt entlang der Kontur zwischen *mindestens* und *höchstens* unter der
+  Platte (Vorgabe 2–8 mm), damit die Schneide über die ganze Länge genutzt wird. Ein Durchgang ohne Zustellung;
+  Hinweis, wenn Dicke + höchstens länger als die Schneide ist (E014: 28 mm → bei 19 mm Platte höchstens 9 mm).
+- **Schleifen mit der Schleifwalze** (`E091`, Ø 70,5, Schneidenlänge 90) nach dem Formatfräsen entlang der Außenkontur, immer
+  oszillierend, Walze ragt *mindestens* 10 bis *höchstens* 30 mm unter die Platte (einstellbar), **An- und Abfahrt immer
+  im Bogen** (`SetApproachStrategy(false, true, Faktor)`, Bogen = Faktor × Walzenradius), Überlappung am Ende 20 mm.
+  Mehrere Umläufe: jeder weitere um eine halbe Schwingung versetzt. *Schleifzugabe*: das Formatfräsen bleibt um diesen
+  Wert größer (`overMaterial`), die Walze schleift auf Endmaß. Innenecken/-rundungen kleiner als der Walzenradius → Hinweis.
+- Umsetzung: Die Kontur wird an den Wendepunkten geteilt, jeder Punkt bekommt seine Tiefe mit `SetAttribute("DEPTH", …)`
+  (Handbuch 3.8.5.1.2); Maestro rechnet Radiuskorrektur und Bogen-An-/Abfahrt weiter selbst. Die Schwingungslänge
+  (*Weg je Schwingung*, Vorgabe 300 mm) wird so angepasst, dass ganze Schwingungen auf einen Umlauf passen – Ende auf
+  derselben Tiefe wie der Anfang.
 
 ### Umwandeln in .pgmx mit `konvertieren.bat`
 
@@ -251,6 +266,10 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
   Überlappung; die bestätigten Beispiele haben 0. In der Simulation prüfen, dass die Kontur um 2 mm überfahren wird.
 - **Formatfräsen zweistufig:** `CreateRoughFinish("Milling_n_Vor", …, Aufmaß)` mit dem Aufmaß als 11. Wert (Handbuch),
   danach dasselbe auf Endmaß – in Maestro noch nicht bestätigt.
+- **Oszillieren / Schleifwalze:** `SetAttribute("DEPTH", Tiefe)` nach jedem Konturelement – laut Handbuch Tiefe am
+  Endpunkt des Elements. Zu prüfen: Tiefe ab Oberseite wie bei `CreateRoughFinish`, Übergang zwischen den Punkten
+  linear (Rampe, keine Stufe), zusammen mit Bogen-An-/Abfahrt und Überlappung. Schleifwalze `E091` als Werkzeug in
+  `CreateRoughFinish` mit Korrektur rechts; Drehzahl/Vorschub kommen aus der Werkzeugdatei.
 - **Taschen in den Kanten:** Geometrie in denselben Kantenkoordinaten wie die Kantenbohrungen (X waagerecht, Y = Höhe ab
   Plattenunterseite); in Maestro noch nicht simuliert.
 - **Zweiseitig, Seite 2:** Rohteil = fertiges Teil (`CreateRawWorkpiece` und `SetWorkpieceSetupPosition` mit 0), Platte um Y

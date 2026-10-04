@@ -1168,3 +1168,40 @@ test('Wiederhergestellte Bearbeitung kommt an ihren Platz (nicht hinter das Form
   assert.ok(r.groups.indexOf(drill) < r.groups.indexOf('format'), r.groups.join(' '));
   assert.strictEqual(r.groups[r.groups.length - 1], g[g.length - 1]);
 });
+
+test('Oszillieren (Formatfräsen) und Schleifen mit der Schleifwalze', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const Tl = require('../web/js/tools.js');
+  const toolInfo = Tl.infoMap(Tl.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
+  const [s] = readParts(read('test/fixtures/testplatte.step'), 'tp.step'); // 900 × 400 × 18
+  const r = convertSolid(s, { toolInfo, oscMill: true, sandOn: true, sandPasses: 2, sandAllowance: 0.3 });
+  assert.strictEqual(r.error, null);
+  // Reihenfolge: Schleifen nach dem Formatfräsen
+  assert.ok(r.groups.indexOf('sand') > r.groups.indexOf('format'));
+  const block = (name) => { const i = r.xcs.indexOf('CreateRoughFinish("' + name + '"'); const j = r.xcs.lastIndexOf('CreatePolyline', i); return r.xcs.slice(j, r.xcs.indexOf('\n', i)); };
+  const depths = (b) => [...b.matchAll(/SetAttribute\("DEPTH", ([\d.]+)\);/g)].map((m) => +m[1]);
+  const f = r.ops.find((o) => o.key === 'format');
+  const fb = block('Milling_' + f.contour);
+  const fd = depths(fb);
+  // Fräser: Dicke + 2 … Dicke + 8, Start oben, Ende wieder oben (ganze Schwingungen), keine Zustellung
+  assert.deepStrictEqual([Math.min(...fd), Math.max(...fd)], [20, 26]);
+  assert.strictEqual(fd[fd.length - 1], 20);
+  assert.match(fb, /CreateRoughFinish\("Milling_\d+", 20, .*"E014", "-1", 2, "-1", "-1", "-1", 0\.3\);/); // Schleifzugabe bleibt stehen
+  assert.doesNotMatch(fb, /CreateUnidirectionalMillingStrategy/);
+  // Schleifwalze: 10 … 30 unter der Platte, Bogen an/ab, zwei Umläufe (zweiter beginnt unten)
+  const sOp = r.ops.find((o) => o.key === 'sand');
+  const s1 = block('Milling_' + sOp.contour);
+  const s2 = block('Milling_' + sOp.contour + '_2');
+  assert.deepStrictEqual([Math.min(...depths(s1)), Math.max(...depths(s1))], [28, 48]);
+  assert.match(s1, /SetApproachStrategy\(false, true, 1\);\r?\nSetRetractStrategy\(false, true, 1, 20\);/);
+  assert.match(s1, /CreateRoughFinish\("Milling_\d+", 28, .*"E091", "-1", 2, "-1", "-1", "-1"\);/);
+  assert.match(s2, /CreateRoughFinish\("Milling_\d+_2", 48, .*"E091"/);
+  assert.ok(!r.warnings.some((w) => /Schneidenlänge|Walze/.test(w)), r.warnings.join(' | '));
+  // zu tief für die Schneide → Hinweis; Walze kommt nicht in Innenecken → Hinweis
+  const deep = convertSolid(s, { toolInfo, oscMill: true, oscMillMax: 15 });
+  assert.ok(deep.warnings.some((w) => /Schneidenlänge E014 nur 28 mm – Höchstwert verringern \(höchstens 10 mm/.test(w)));
+  const [l] = readParts(read('test/fixtures/l_innen_r2.step'), 'l.step');
+  assert.ok(convertSolid(l, { toolInfo, sandOn: true }).warnings.some((w) => /erreicht die Walze nicht/.test(w)));
+  // ohne Optionen: Programm unverändert (kein DEPTH)
+  assert.doesNotMatch(convertSolid(s, { toolInfo }).xcs, /DEPTH/);
+});

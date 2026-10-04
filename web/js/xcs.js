@@ -22,6 +22,19 @@
     formatRoughTool: 'E014',   // Werkzeug 1 (vorfräsen); Werkzeug 2 = contourTool
     formatAllowance: 1,        // Aufmaß beim Vorfräsen in mm (overMaterial)
     retractOverlap: 2,         // Umfräsen: Überlappung beim Verlassen in mm (SetRetractStrategy overlapLength)
+    // Oszillation: Tiefe pendelt entlang der Kontur zwischen min und max unter der Plattenunterseite (DEPTH-Attribut je Punkt)
+    oscMill: false,            // Formatfräsen oszillierend (Schneide gleichmäßig nutzen)
+    oscMillMin: 2,             // Fräser ragt mindestens … mm unter die Platte
+    oscMillMax: 8,             // … höchstens (Schneidenlänge beachten: Dicke + max ≤ Schneidenlänge)
+    oscWave: 300,              // Weg je Schwingung (einmal runter und wieder hoch) in mm
+    sandOn: false,             // Schleifen mit der Schleifwalze nach dem Formatfräsen (Außenkontur)
+    sandTool: 'E091',          // Schleifwalze
+    sandMin: 10,               // Walze ragt mindestens … mm unter die Platte
+    sandMax: 30,               // … höchstens
+    sandPasses: 1,             // Umläufe (jeder weitere um eine halbe Schwingung versetzt)
+    sandAllowance: 0,          // Schleifzugabe: Formatfräsen bleibt um … mm größer, die Walze schleift auf Endmaß
+    sandLead: 1,               // An- und Abfahrt im Bogen: Bogen = … × Walzenradius
+    sandOverlap: 20,           // Überlappung am Ende des Umlaufs in mm
     labelWidth: 40,            // Etikett (Browser-Druck): Breite in mm
     labelHeight: 60,           // Etikett: Höhe in mm
     labelRotate: false,        // Inhalt um 90° drehen (Drucker zieht das Etikett quer ein)
@@ -75,7 +88,7 @@
     contourMode: 'whole',      // Sonderkontur: 'whole' = Außenkontur am Stück, 'rect' = Rechteck + Ausschnitte
     // Reihenfolge-Regel: Bearbeitungsarten in dieser Folge (abschaltbar, vom Benutzer änderbar)
     orderRule: { on: true, seq: ['drillTop', 'drillSide', 'drillSlanted', 'slot', 'pocket', 'rebate', 'chamfer', 'slant',
-      'blade', 'slantPlane', 'surface', 'cutout', 'notch', 'format', 'edge'] },
+      'blade', 'slantPlane', 'surface', 'cutout', 'notch', 'format', 'edge', 'sand'] },
     throughExtra: 2,           // Durchgangsbohrung: Tiefe = Dicke + …
     drillsVertical: [3, 5, 7, 8, 10, 12, 15, 20, 35],
     drillsHorizontal: [5, 8],
@@ -144,6 +157,7 @@
     cutout: 'Durchbrüche und Rundlöcher',
     notch: 'Konturausschnitte',
     format: 'Formatfräsen',
+    sand: 'Schleifen (Schleifwalze)',
   };
 
   function category(op) {
@@ -152,6 +166,7 @@
     if (op.kind === 'sdrill') return 'drillSlanted';
     const k = op.key || '';
     if (k === 'format') return 'format';
+    if (k === 'sand') return 'sand';
     const prefix = k.split('-')[0];
     return { notch: 'notch', cutout: 'cutout', round: 'cutout', rebate: 'rebate', pocket: 'pocket', rpocket: 'pocket', spocket: 'pocket', chamfer: 'chamfer', chamferpath: 'chamfer',
       slant: 'slant', cslant: 'slant', blade: 'blade', slot: 'slot', surface: 'surface', cyl4: 'surface', edge: 'edge' }[prefix] || 'notch';
@@ -545,11 +560,27 @@
         depth: T + cfg.contourExtra, tool: cfg.contourTool, side: 2, label: 'Formatfräsen',
       });
     }
-    if (cfg.formatTwoStep && !side2) {
+    const fmtOp = side2 ? null : ops[ops.length - 1];
+    if (cfg.formatTwoStep && fmtOp) {
       // Vorfräsen mit Werkzeug 1 und Aufmaß, danach Werkzeug 2 auf Endmaß (gleiche Geometrie)
-      const f = ops[ops.length - 1];
-      f.rough = { tool: cfg.formatRoughTool || cfg.contourTool, allowance: Math.max(0, cfg.formatAllowance || 0) };
-      f.label += ' zweistufig';
+      fmtOp.rough = { tool: cfg.formatRoughTool || cfg.contourTool, allowance: Math.max(0, cfg.formatAllowance || 0) + Math.max(0, cfg.sandOn ? +cfg.sandAllowance || 0 : 0) };
+      fmtOp.label += ' zweistufig';
+    }
+    // Oszillation beim Formatfräsen: Tiefe pendelt zwischen Dicke + min und Dicke + max (ohne Zustellung)
+    const oscRange = (a, b) => { const lo = Math.max(0, Math.min(+a || 0, +b || 0)); return { min: T + lo, max: T + Math.max(lo, +a || 0, +b || 0) }; };
+    if (cfg.oscMill && fmtOp) {
+      fmtOp.osc = oscRange(cfg.oscMillMin, cfg.oscMillMax);
+      fmtOp.depth = fmtOp.osc.min;
+      fmtOp.label += ' oszillierend';
+    }
+    // Schleifen mit der Schleifwalze: gleiche Außenkontur, immer oszillierend, An- und Abfahrt im Bogen
+    if (cfg.sandOn && fmtOp) {
+      const allow = Math.max(0, +cfg.sandAllowance || 0);
+      if (allow > 0) fmtOp.finishAllowance = allow; // Formatfräsen bleibt um die Schleifzugabe größer
+      const osc = oscRange(cfg.sandMin, cfg.sandMax);
+      ops.push({ kind: 'contour', key: 'sand', toolKind: 'sand', toolDefault: 'sandTool', contour: ++nContour, milling: ++nMill, approach: true, sand: true,
+        start: fmtOp.start, segs: fmtOp.segs, depth: osc.min, osc: osc, passes: Math.max(1, Math.min(9, Math.round(+cfg.sandPasses || 1))),
+        tool: cfg.sandTool, side: 2, label: 'Schleifen oszillierend' + (allow > 0 ? ' (Zugabe ' + fmt(allow) + ')' : '') });
     }
 
     // 2) Nuten mit Säge
@@ -962,13 +993,14 @@
       if (op.kind === 'pocket') op.pocket = ++np;
     }
 
+    const stepDownWarn = (op) => op.key === 'format' && ((cfg.stepOverrides && cfg.stepOverrides[op.key] > 0) || cfg.stepDown > 0);
     // Werkzeug, Tiefe (durchgehende Fräsungen) und Zustellungen je Bearbeitung
     const throughKey = (k) => k === 'format' || /^(notch|cutout|round)-/.test(k);
     const depthWarned = new Set();
     for (const op of ops) {
       if (!op.key) continue;
       if (cfg.toolOverrides && cfg.toolOverrides[op.key]) op.tool = cfg.toolOverrides[op.key];
-      op.depthAdjustable = op.kind === 'contour' && throughKey(op.key);
+      op.depthAdjustable = op.kind === 'contour' && throughKey(op.key) && !op.osc;
       const dz = cfg.depthOverrides && cfg.depthOverrides[op.key];
       if (op.depthAdjustable && dz > 0) {
         op.depth = dz;
@@ -1015,7 +1047,30 @@
         if (op.tabs && !/Haltestege/.test(op.label)) op.label += ' mit Haltestegen';
         op.helix = !!cfg.helixOn;
       }
-      if ((op.kind === 'contour' && !op.profile) || op.kind === 'pocket') { // Radiusfräser: ein Durchgang, keine Zustellung
+      if (op.osc) {
+        // oszillierend: ein Durchgang ohne Zustellung; Schneide/Walze muss bis zur größten Tiefe reichen
+        op.step = 0;
+        const info = cfg.toolInfo && cfg.toolInfo[op.tool];
+        const r = info && info.d ? info.d / 2 : 0;
+        if (info && info.len && op.osc.max > info.len + 1e-9) {
+          warnings.push(op.label + ': bis ' + fmt(op.osc.max) + ' mm tief (Dicke + ' + fmt(op.osc.max - T) + '), Schneidenlänge ' + op.tool + ' nur ' + fmt(info.len) + ' mm – ' +
+            (info.len > T ? 'Höchstwert verringern (höchstens ' + fmt(info.len - T) + ' mm unter der Platte).' : 'kürzer als die Plattendicke, anderes Werkzeug wählen.'));
+        }
+        if (op.osc.max - op.osc.min < 1e-6) warnings.push(op.label + ': min = max – die Tiefe pendelt nicht.');
+        if (op.sand && r) {
+          // Walze kommt nicht in Innenecken mit kleinerem Radius (Außenkontur gegen den Uhrzeigersinn: Innenrundung = Bogen im Uhrzeigersinn)
+          const tight = op.segs.filter((q) => q.type === 'arc' && q.cw === true && Math.hypot(q.to[0] - q.c[0], q.to[1] - q.c[1]) < r - 1e-6);
+          const corners = op.segs.some((q, i2) => {
+            const a = i2 === 0 ? op.start : op.segs[i2 - 1].to;
+            const b = q.to;
+            const c = op.segs[(i2 + 1) % op.segs.length].to;
+            const cross = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]);
+            return q.type === 'line' && op.segs[(i2 + 1) % op.segs.length].type === 'line' && cross < -1e-6 && i2 < op.segs.length - 1; // Kontur gegen den Uhrzeigersinn: Rechtsknick = Innenecke
+          });
+          if (tight.length || corners) warnings.push(op.label + ': Innenecken bzw. Rundungen kleiner als R' + fmt(r) + ' erreicht die Walze nicht ganz.');
+        }
+        if (stepDownWarn(op)) warnings.push(op.label + ': Zustellung wird beim Oszillieren nicht verwendet (ein Durchgang).');
+      } else if ((op.kind === 'contour' && !op.profile) || op.kind === 'pocket') { // Radiusfräser: ein Durchgang, keine Zustellung
         const glob = op.kind === 'pocket' && cfg.pocketStepDown > 0 ? cfg.pocketStepDown : cfg.stepDown;
         const st = cfg.stepOverrides && cfg.stepOverrides[op.key] !== undefined ? cfg.stepOverrides[op.key] : glob;
         op.step = st > 0 && op.depth > st + 1e-9 ? st : 0;
@@ -1229,6 +1284,69 @@
       : { type: 'line', to: s.b };
   }
 
+  /*
+   * Oszillation: Polylinie (start, segs) so teilen, dass die Tiefe als Dreieck zwischen dMin und dMax pendelt
+   * (Weg je Schwingung ≈ wave, auf ganze Schwingungen je Umlauf angepasst; phase 0 = Beginn oben bei dMin, 0.5 = Beginn unten). Jedes Teilstück trägt die Tiefe
+   * an seinem Endpunkt (SetAttribute("DEPTH") gilt für den Endpunkt des zuletzt angefügten Elements); dazwischen linear.
+   */
+  function oscillate(start, segs, dMin, dMax, wave, phase) {
+    // ganze Zahl Schwingungen je Umlauf: Ende auf derselben Tiefe wie der Anfang (kein Absatz an der Naht)
+    let total = 0;
+    let p0 = start;
+    for (const q of segs) {
+      if (q.type === 'arc') {
+        const r = Math.hypot(p0[0] - q.c[0], p0[1] - q.c[1]);
+        let sw = Math.atan2(q.to[1] - q.c[1], q.to[0] - q.c[0]) - Math.atan2(p0[1] - q.c[1], p0[0] - q.c[0]);
+        if (q.cw) { while (sw >= -1e-12) sw -= Math.PI * 2; } else { while (sw <= 1e-12) sw += Math.PI * 2; }
+        total += Math.abs(sw) * r;
+      } else total += Math.hypot(q.to[0] - p0[0], q.to[1] - p0[1]);
+      p0 = q.to;
+    }
+    const w0 = wave > 1 ? wave : 300;
+    const w = total / Math.max(1, Math.round(total / w0));
+    const depthAt = (s) => {
+      const u = s / w + (phase || 0);
+      const v = u - Math.floor(u);
+      return dMin + (dMax - dMin) * (v < 0.5 ? 2 * v : 2 - 2 * v);
+    };
+    const half = w / 2;
+    const out = [];
+    let pos = 0;
+    let prev = start;
+    for (const q of segs) {
+      let len;
+      let at;
+      if (q.type === 'arc') {
+        const r = Math.hypot(prev[0] - q.c[0], prev[1] - q.c[1]);
+        const a0 = Math.atan2(prev[1] - q.c[1], prev[0] - q.c[0]);
+        let sw = Math.atan2(q.to[1] - q.c[1], q.to[0] - q.c[0]) - a0;
+        if (q.cw) { while (sw >= -1e-12) sw -= Math.PI * 2; } else { while (sw <= 1e-12) sw += Math.PI * 2; }
+        len = Math.abs(sw) * r;
+        at = (t) => [q.c[0] + r * Math.cos(a0 + sw * t), q.c[1] + r * Math.sin(a0 + sw * t)];
+      } else {
+        len = Math.hypot(q.to[0] - prev[0], q.to[1] - prev[1]);
+        const p0 = prev;
+        at = (t) => [p0[0] + (q.to[0] - p0[0]) * t, p0[1] + (q.to[1] - p0[1]) * t];
+      }
+      // Wendepunkte (alle halbe Schwingung, je nach Phase verschoben) innerhalb des Elements
+      const off = ((phase || 0) * w) % half;
+      let k = Math.floor((pos + off) / half + 1e-9) + 1;
+      for (;;) {
+        const sTurn = k * half - off;
+        if (sTurn >= pos + len - 0.5) break; // kein Stummel < 0,5 mm vor dem Elementende
+        if (sTurn > pos + 0.5) {
+          const t = (sTurn - pos) / len;
+          out.push(Object.assign({}, q, { to: at(t), depth: depthAt(sTurn) }));
+        }
+        k++;
+      }
+      pos += len;
+      out.push(Object.assign({}, q, { depth: depthAt(pos) }));
+      prev = q.to;
+    }
+    return { d0: depthAt(0), segs: out };
+  }
+
   // Geschlossene Kontur als Polylinie, Start in der Mitte der längsten Geraden (wie im Beispiel)
   function wholeContour(loop) {
     let k = -1;
@@ -1438,42 +1556,49 @@
           });
           lens.sort((a, b) => b.l - a.l).slice(0, Math.max(1, cfg.tabsCount)).forEach((x) => tabAt.add(x.i));
         }
-        L.push('CreatePolyline("Contour_' + op.contour + '", ' + pt(op.start) + ');');
-        op.segs.forEach((s, i) => {
-          if (s.type === 'line') L.push('AddSegmentToPolyline(' + pt(s.to) + ');');
-          else L.push('AddArc2PointCenterToPolyline(' + pt(s.to) + ', ' + pt(s.c) + ', ' + (s.cw ? 'true' : 'false') + ');');
-          if (tabAt.has(i)) L.push('SetParametricAttribute2("TAB", ' + fmt(cfg.tabLength) + ', ' + fmt(cfg.tabHeight) + ', 0.5);');
-        });
-        blank();
-        L.push('ResetApproachStrategy();');
-        L.push('ResetRetractStrategy();');
-        if (op.approach) {
-          L.push('SetApproachStrategy(false, true, 2);');
-          L.push('SetRetractStrategy(false, true, 2, ' + fmt(cfg.retractOverlap) + ');');
-        }
-        L.push('SetPneumaticHoodPosition(1);');
-        if (op.rough) {
-          // Vorfräsen: Werkzeug 1 mit Aufmaß (overMaterial), gleiche Geometrie
-          if (op.step) L.push('CreateUnidirectionalMillingStrategy(true, ' + fmt(op.step) + ', ' + fmt(cfg.finishDepth) + ', 1, false);');
-          L.push('CreateRoughFinish("Milling_' + op.milling + '_Vor", ' + fmt(op.depth) + ', "", TypeOfProcess.GeneralRouting, "' +
-            op.rough.tool + '", "-1", ' + op.side + ', "-1", "-1", "-1", ' + fmt(op.rough.allowance) + ');');
+        // oszillierend: je Umlauf eigene Kontur (weitere Umläufe um eine halbe Schwingung versetzt), Tiefe je Punkt als DEPTH-Attribut
+        const passes = op.osc ? op.passes || 1 : 1;
+        for (let pi = 0; pi < passes; pi++) {
+          const suffix = pi ? '_' + (pi + 1) : '';
+          const o = op.osc ? oscillate(op.start, op.segs, op.osc.min, op.osc.max, cfg.oscWave, pi * 0.5) : null;
+          const depth = o ? o.d0 : op.depth;
+          L.push('CreatePolyline("Contour_' + op.contour + suffix + '", ' + pt(op.start) + ');');
+          (o ? o.segs : op.segs).forEach((s, i) => {
+            if (s.type === 'line') L.push('AddSegmentToPolyline(' + pt(s.to) + ');');
+            else L.push('AddArc2PointCenterToPolyline(' + pt(s.to) + ', ' + pt(s.c) + ', ' + (s.cw ? 'true' : 'false') + ');');
+            if (s.depth !== undefined) L.push('SetAttribute("DEPTH", ' + fmt(s.depth) + ');');
+            if (!o && tabAt.has(i)) L.push('SetParametricAttribute2("TAB", ' + fmt(cfg.tabLength) + ', ' + fmt(cfg.tabHeight) + ', 0.5);');
+          });
           blank();
-          L.push('ResetApproachStrategy();');
-          L.push('ResetRetractStrategy();');
-          if (op.approach) {
-            L.push('SetApproachStrategy(false, true, 2);');
-            L.push('SetRetractStrategy(false, true, 2, ' + fmt(cfg.retractOverlap) + ');');
+          // An- und Abfahrt im Bogen (Schleifwalze immer; Bogen = Faktor × Werkzeugradius)
+          const lead = () => {
+            L.push('ResetApproachStrategy();');
+            L.push('ResetRetractStrategy();');
+            if (op.approach) {
+              const f = op.sand ? fmt(cfg.sandLead > 0 ? cfg.sandLead : 1) : '2';
+              L.push('SetApproachStrategy(false, true, ' + f + ');');
+              L.push('SetRetractStrategy(false, true, ' + f + ', ' + fmt(op.sand ? cfg.sandOverlap : cfg.retractOverlap) + ');');
+            }
+            L.push('SetPneumaticHoodPosition(1);');
+          };
+          lead();
+          if (op.rough && pi === 0) {
+            // Vorfräsen: Werkzeug 1 mit Aufmaß (overMaterial), gleiche Geometrie
+            if (op.step) L.push('CreateUnidirectionalMillingStrategy(true, ' + fmt(op.step) + ', ' + fmt(cfg.finishDepth) + ', 1, false);');
+            L.push('CreateRoughFinish("Milling_' + op.milling + '_Vor", ' + fmt(depth) + ', "", TypeOfProcess.GeneralRouting, "' +
+              op.rough.tool + '", "-1", ' + op.side + ', "-1", "-1", "-1", ' + fmt(op.rough.allowance) + ');');
+            blank();
+            lead();
           }
-          L.push('SetPneumaticHoodPosition(1);');
+          if (op.helix) {
+            // spiralförmig eintauchen: Zustellung je Umlauf, letzte Zustellung (Form wie im Handbuch-Beispiel)
+            const hs = op.step || cfg.helixStep;
+            L.push('CreateHelicMillingStrategy(' + fmt(hs) + ', ' + fmt(cfg.finishDepth) + ', ' + (cfg.finishDepth > 0 ? 'true' : 'false') + ');');
+          } else if (op.step) L.push('CreateUnidirectionalMillingStrategy(true, ' + fmt(op.step) + ', ' + fmt(cfg.finishDepth) + ', 1, false);');
+          L.push('CreateRoughFinish("Milling_' + op.milling + suffix + '", ' + fmt(depth) + ', "", TypeOfProcess.GeneralRouting, "' +
+            op.tool + '", "-1", ' + op.side + ', "-1", "-1", "-1"' + (op.finishAllowance > 0 ? ', ' + fmt(op.finishAllowance) : '') + ');');
+          blank();
         }
-        if (op.helix) {
-          // spiralförmig eintauchen: Zustellung je Umlauf, letzte Zustellung (Form wie im Handbuch-Beispiel)
-          const hs = op.step || cfg.helixStep;
-          L.push('CreateHelicMillingStrategy(' + fmt(hs) + ', ' + fmt(cfg.finishDepth) + ', ' + (cfg.finishDepth > 0 ? 'true' : 'false') + ');');
-        } else if (op.step) L.push('CreateUnidirectionalMillingStrategy(true, ' + fmt(op.step) + ', ' + fmt(cfg.finishDepth) + ', 1, false);');
-        L.push('CreateRoughFinish("Milling_' + op.milling + '", ' + fmt(op.depth) + ', "", TypeOfProcess.GeneralRouting, "' +
-          op.tool + '", "-1", ' + op.side + ', "-1", "-1", "-1");');
-        blank();
       } else if (op.kind === 'pocket') {
         const names = op.islands.map((isl, j) => 'Island_' + op.pocket + '_' + (j + 1));
         op.islands.forEach((isl, j) => writePoly(L, names[j], isl));
@@ -1673,6 +1798,14 @@
     ['bladeTool', 'Säge für Sägeschnitte', 'saw'],
     ['ballTool', 'Kugelfräser', 'mill'],
     ['cyl4Tool', '4-Achs: Schaftfräser', 'mill'],
+    ['oscMill', 'Formatfräsen oszillierend', 'bool'],
+    ['oscMillMin', 'Oszillation Fräser: min. unter der Platte', 'number', 'mm'],
+    ['oscMillMax', 'Oszillation Fräser: max. unter der Platte', 'number', 'mm'],
+    ['sandOn', 'Schleifen mit der Schleifwalze', 'bool'],
+    ['sandTool', 'Schleifwalze', 'sand'],
+    ['sandMin', 'Schleifwalze: min. unter der Platte', 'number', 'mm'],
+    ['sandMax', 'Schleifwalze: max. unter der Platte', 'number', 'mm'],
+    ['sandAllowance', 'Schleifzugabe', 'number', 'mm'],
   ];
 
   // Einstellungen mit Profil i (0–4; null = ohne Profil): gesetzte Werte des Profils gehen vor

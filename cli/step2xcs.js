@@ -12,6 +12,8 @@
  *   --kugelfraesen   gewölbte Flächen mit dem Kugelfräser zeilenfräsen (lädt OpenCascade für das 3D-Netz)
  *   --4achs          gewölbte Zylinderflächen 4-achsig mit dem Schaftfräser abzeilen (übrige: Kugelfräser)
  *   --profil n       Werkstück-Profil 1–5 (Vorgabe: 1 Spanplatte, 2 Massivholz = Formatfräsen zweistufig)
+ *   --oszillieren    Formatfräsen oszillierend (Tiefe pendelt zwischen den Einstellungen min/max unter der Platte)
+ *   --schleifen      nach dem Formatfräsen mit der Schleifwalze schleifen (oszillierend, An-/Abfahrt im Bogen)
  *   --dicke mm       Plattendicke für DXF-Dateien (Standard 19); Erkennungen wie vorgeschlagen
  *   --zweiseitig     Teile mit Bearbeitungen von unten: Seite 1 (mit Formatfräsen) und Seite 2 (um Y gewendet,
  *                    ohne Rohteil-Versatz) als Name_S1.xcs / Name_S2.xcs
@@ -35,6 +37,8 @@ let flat4 = false;
 let twoSided = false;
 let profile = null;
 let thickness = null;
+let osc = false;
+let sand = false;
 const files = [];
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '-o' || args[i] === '--out') outDir = args[++i];
@@ -46,6 +50,8 @@ for (let i = 0; i < args.length; i++) {
   else if (args[i] === '--kugelfraesen') curvedSurface = true;
   else if (args[i] === '--4achs') { curvedSurface = true; flat4 = true; }
   else if (args[i] === '--zweiseitig') twoSided = true;
+  else if (args[i] === '--oszillieren') osc = true;
+  else if (args[i] === '--schleifen') sand = true;
   else if (args[i] === '--dicke') {
     thickness = parseFloat(String(args[++i]).replace(',', '.'));
     if (!(thickness > 0)) { console.error('--dicke: Plattendicke in mm'); process.exit(1); }
@@ -66,6 +72,8 @@ if (!orderRule) settings.orderRule = { on: false };
 if (curvedSlant) settings.curvedSlantOn = true;
 if (curvedSurface) settings.curvedSurfaceOn = true;
 if (flat4) settings.curvedSurfaceMode = 'flat4';
+if (osc) settings.oscMill = true;
+if (sand) settings.sandOn = true;
 if (fs.existsSync(toolsFile)) settings.toolInfo = infoMap(parseTlgx(fs.readFileSync(toolsFile, 'utf8')));
 
 async function main() {

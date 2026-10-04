@@ -524,6 +524,19 @@ table.fmt.one .onet { display: inline; }
       ['helixStep', 'Spirale: Zustellung je Umlauf', 'number', 'mm'],
       ['stepDown', 'Zustelltiefe je Durchgang', 'number', 'mm · 0 = ein Durchgang'],
       ['finishDepth', 'Letzte Zustellung', 'number', 'mm · 0 = aus (auch Taschen)']] },
+    { title: 'Oszillieren & Schleifen', c: '--mill', fields: [
+      ['oscMill', 'Formatfräsen oszillierend (Tiefe pendelt)', 'bool'],
+      ['oscMillMin', 'Fräser: mindestens unter der Platte', 'number', 'mm'],
+      ['oscMillMax', 'Fräser: höchstens unter der Platte', 'number', 'mm'],
+      ['oscWave', 'Weg je Schwingung (runter und hoch)', 'number', 'mm'],
+      ['sandOn', 'Nach dem Formatfräsen schleifen (Außenkontur)', 'bool'],
+      ['sandTool', 'Schleifwalze', 'sand'],
+      ['sandMin', 'Schleifwalze: mindestens unter der Platte', 'number', 'mm'],
+      ['sandMax', 'Schleifwalze: höchstens unter der Platte', 'number', 'mm'],
+      ['sandPasses', 'Schleifen: Umläufe', 'number', 'Stück'],
+      ['sandAllowance', 'Schleifzugabe (Formatfräsen bleibt größer)', 'number', 'mm'],
+      ['sandLead', 'An-/Abfahrt im Bogen: Faktor', 'number', '× Radius'],
+      ['sandOverlap', 'Schleifen: Überlappung am Ende', 'number', 'mm']] },
     { title: 'Säge', c: '--saw', fields: [
       ['slantCut', 'Schräge Kanten von Kante zu Kante', 'choice', [['saw', 'mit der Säge schneiden'], ['mill', 'fräsen (5-Achs)']]],
       ['bladeTool', 'Säge für Sägeschnitte', 'saw'],
@@ -691,13 +704,14 @@ table.fmt.one .onet { display: inline; }
 
   // Auswahlliste: Favoriten oben, dann alle Werkzeuge der Art
   function toolSelect(attrs, kind, value) {
-    const list = usableTools(kind);
+    // Schleifwalzen (SandMill) eigene Liste
+    const list = kind === 'sand' ? state.tools.filter((t) => t.body === 'SandMill' && !t.disabled) : usableTools(kind);
     const favs = list.filter((t) => state.favorites.includes(t.name));
     const opt = (t) => '<option value="' + esc(t.name) + '"' + (t.name === value ? ' selected' : '') + '>' + esc(ToolLibrary.label(t)) + '</option>';
     let html = '<select ' + attrs + '>';
     if (value && !list.some((t) => t.name === value)) html += '<option value="' + esc(value) + '" selected>' + esc(value) + ' (nicht in der Werkzeugliste)</option>';
     if (favs.length) html += '<optgroup label="★ Favoriten">' + favs.map(opt).join('') + '</optgroup>';
-    html += '<optgroup label="' + (kind === 'saw' ? 'Alle Sägen' : 'Alle Fräser') + '">' + list.map(opt).join('') + '</optgroup></select>';
+    html += '<optgroup label="' + (kind === 'saw' ? 'Alle Sägen' : kind === 'sand' ? 'Schleifwalzen' : 'Alle Fräser') + '">' + list.map(opt).join('') + '</optgroup></select>';
     return html;
   }
 
@@ -819,7 +833,7 @@ table.fmt.one .onet { display: inline; }
         });
         continue;
       }
-      if (type === 'mill' || type === 'saw') {
+      if (type === 'mill' || type === 'saw' || type === 'sand') {
         l.innerHTML = cap + toolSelect('id="' + id + '"', type, v);
         g.appendChild(l);
         l.querySelector('select').addEventListener('change', (ev) => {
@@ -1089,7 +1103,10 @@ table.fmt.one .onet { display: inline; }
       html += '<label title="Frästiefe in mm, leer = Plattendicke + Zugabe aus den Einstellungen">Tiefe <input class="step" type="number" min="0" step="0.5" data-depth="' +
         esc(op.key) + '" value="' + (ownD !== undefined ? ownD : '') + '" placeholder="' + fmt(op.depth) + '"> mm</label>';
     }
-    if ((op.kind === 'contour' && !op.profile) || op.kind === 'pocket') {
+    if (op.osc) {
+      html += '<span class="note">Tiefe pendelt ' + fmt(op.osc.min) + '–' + fmt(op.osc.max) + ' mm (' + fmt(op.osc.min - part.result.panel.T) + '–' +
+        fmt(op.osc.max - part.result.panel.T) + ' unter der Platte)' + (op.passes > 1 ? ', ' + op.passes + ' Umläufe' : '') + '</span>';
+    } else if ((op.kind === 'contour' && !op.profile) || op.kind === 'pocket') {
       const own = ovOf(part).steps[op.key];
       // wirksame Vorgabe: Einstellung, ggf. vom Werkstück-Profil überschrieben
       const eff = part.profile !== null && part.profile !== undefined ? XcsWriter.applyProfile(state.settings, part.profile) : state.settings;
@@ -1872,7 +1889,7 @@ table.fmt.one .onet { display: inline; }
       const v = pr.values[k];
       const set = v !== undefined && v !== null && v !== '';
       let ctl;
-      if (type === 'mill' || type === 'saw') {
+      if (type === 'mill' || type === 'saw' || type === 'sand') {
         ctl = toolSelect('data-pkey="' + k + '"', type, set ? v : '').replace('<select data-pkey="' + k + '">',
           '<select data-pkey="' + k + '"><option value=""' + (set ? '' : ' selected') + '>– wie Einstellung: ' + esc(toolName(st[k])) + ' –</option>');
       } else if (type === 'bool') {

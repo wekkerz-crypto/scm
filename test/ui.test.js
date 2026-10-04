@@ -92,6 +92,47 @@ test('Web-Tool: Bearbeitungsschritte mit der Maus verschieben', { skip: !chromiu
   }
 });
 
+test('Web-Tool: Reihenfolge-Regel mit der Maus ziehen', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    await p.evaluate(() => { const l = document.getElementById('rulelist'); l.closest('details').open = true; l.scrollIntoView({ block: 'start' }); });
+    const cats = () => p.$$eval('#rulelist li.rrow', (x) => x.map((e) => e.dataset.cat));
+    const before = await cats();
+    const i = before.indexOf('format');
+    assert.ok(i > 0);
+    // ganze Zeile packen (nicht nur der Griff) und vor die erste ziehen
+    const row = await (await p.$('#rulelist li.rrow[data-cat="format"] .nm')).boundingBox();
+    const first = await (await p.$('#rulelist li.rrow')).boundingBox();
+    await p.mouse.move(row.x + 20, row.y + row.height / 2);
+    await p.mouse.down();
+    await p.mouse.move(row.x + 20, first.y + 3, { steps: 12 });
+    await p.mouse.up();
+    const after = await cats();
+    assert.strictEqual(after[0], 'format');
+    assert.deepStrictEqual(after.slice(1), before.filter((c) => c !== 'format'));
+    const stored = await p.evaluate(() => JSON.parse(localStorage.getItem('step2xcs.settings.v1') || 'null'));
+    if (stored && stored.orderRule) assert.strictEqual(stored.orderRule.seq[0], 'format');
+    // Esc bricht ab, Klick auf ↑/↓ verschiebt weiter um eins
+    const r2 = await (await p.$('#rulelist li.rrow[data-cat="format"] .nm')).boundingBox();
+    await p.mouse.move(r2.x + 20, r2.y + r2.height / 2);
+    await p.mouse.down();
+    await p.mouse.move(r2.x + 20, r2.y + 300, { steps: 8 });
+    await p.keyboard.press('Escape');
+    await p.mouse.up();
+    assert.strictEqual((await cats())[0], 'format');
+    await p.click('#rulelist [data-rule="format"][data-dir="1"]');
+    assert.strictEqual((await cats())[1], 'format');
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});
+
 test('Web-Tool: Schalter Hell/Dunkel', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
   const browser = await chromium.launch();
   try {

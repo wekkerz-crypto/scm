@@ -214,7 +214,8 @@ Sie steht unter *Gelöscht / unterdrückt* und lässt sich dort wiederherstellen
 **Reihenfolge:**
 - *Reihenfolge-Regel* (eigener aufklappbarer Bereich unter *Werkzeuge & Regeln*, mit eigenem Speichern-Knopf): die Bearbeitungsarten (Bohrungen oben, Kantenbohrungen, schräge
   Bohrungen, Nuten, Taschen, Falze, Fasen, schräge Kanten, Sägeschnitte, Bearbeitungen auf schrägen Ebenen, gewölbte
-  Flächen, Durchbrüche, Konturausschnitte, Formatfräsen, Kantenrundungen) mit ↑/↓ in die gewünschte Folge bringen, mit
+  Flächen, Durchbrüche, Konturausschnitte, Formatfräsen, Clamex, Schleifen, Kantenrundungen) mit der Maus an die richtige Stelle
+  ziehen (Zeile packen, Esc bricht ab; am Handy am Griff ⠿) oder mit ↑/↓ in die gewünschte Folge bringen, mit
   *Regel verwenden* zu- und abschalten. Standard: erst bohren, dann fräsen, Formatfräsen und danach die Kantenrundungen
   zuletzt. Fest bleibt: Bearbeitungen auf einer Schnittfläche nach dem Sägeschnitt, die Schräge an einem Ausschnitt nach
   dem Durchbruch. Ist die Regel aus, bleibt die erkannte Reihenfolge (wie in den Maestro-Beispielen).

@@ -305,6 +305,13 @@ details.settings + details.settings { margin-top: 14px; }
   background: var(--surface); font-size: 0.9rem; }
 .rulelist li .nm { flex: 1; min-width: 0; }
 .rulelist.off li { opacity: 0.45; }
+.rulelist { position: relative; }
+.rulelist li.rrow { cursor: grab; user-select: none; }
+.rulelist li.rrow .mvb { cursor: pointer; }
+.rulelist li.rrow:hover { border-color: var(--muted); }
+.rulelist li.rrow:hover .grip { color: var(--accent); }
+.rulelist li.lifted { opacity: 0.45; background: var(--hl); }
+.rulelist li.dropline { position: absolute; left: 0; right: 0; height: 3px; padding: 0; border: 0; margin-top: -1.5px; background: var(--accent); }
 .toollib { margin-top: 12px; display: grid; gap: 8px; }
 details.settings > summary #toolsrc { font-family: var(--font-body); font-weight: 400; font-size: 0.85rem; }
 .toollib .bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
@@ -489,7 +496,7 @@ table.fmt.one .onet { display: inline; }
       <div class="bar"><label class="ruleon"><input type="checkbox" id="ruleon"> Regel verwenden</label>
         <button class="btn ghost small" id="ruledefault" type="button">Standardfolge</button></div>
       <p class="note">Die Bearbeitungsarten kommen in dieser Folge ins Programm. Ist die Regel aus, bleibt die erkannte Reihenfolge.
-        Was du bei einem Teil von Hand verschiebst, hat Vorrang.</p>
+        Zeile mit der Maus packen und an die richtige Stelle ziehen (oder ↑/↓). Was du bei einem Teil von Hand verschiebst, hat Vorrang.</p>
       <ol class="rulelist" id="rulelist"></ol>
     </div>
   </details>
@@ -773,7 +780,8 @@ table.fmt.one .onet { display: inline; }
     $('ruleon').checked = !!rule.on;
     const ol = $('rulelist');
     ol.classList.toggle('off', !rule.on);
-    ol.innerHTML = seq.map((c, i) => '<li><span class="num">' + (i + 1) + '</span><span class="nm">' + esc(XcsWriter.CATEGORIES[c]) + '</span>' +
+    ol.innerHTML = '<li class="dropline" id="ruledrop" hidden aria-hidden="true"></li>' + seq.map((c, i) => '<li class="rrow" data-cat="' + c + '">' +
+      '<span class="grip" data-rgrip="' + c + '" title="Gedrückt halten und ziehen, um die Reihenfolge zu ändern" aria-hidden="true">⠿</span><span class="num">' + (i + 1) + '</span><span class="nm">' + esc(XcsWriter.CATEGORIES[c]) + '</span>' +
       '<button type="button" class="mvb" data-rule="' + c + '" data-dir="-1"' + (i === 0 ? ' disabled' : '') + ' aria-label="' +
       esc(XcsWriter.CATEGORIES[c]) + ' nach oben">↑</button><button type="button" class="mvb" data-rule="' + c + '" data-dir="1"' +
       (i === seq.length - 1 ? ' disabled' : '') + ' aria-label="' + esc(XcsWriter.CATEGORIES[c]) + ' nach unten">↓</button></li>').join('');
@@ -2808,6 +2816,69 @@ table.fmt.one .onet { display: inline; }
     setRule({ on: rule.on, seq: seq });
     const again = document.querySelector('[data-rule="' + b.dataset.rule + '"][data-dir="' + b.dataset.dir + '"]');
     if (again && !again.disabled) again.focus();
+  });
+  // Reihenfolge-Regel: Zeile mit der Maus (oder am Griff ⠿, auch per Finger) packen und an die richtige Stelle ziehen
+  $('rulelist').addEventListener('pointerdown', (e) => {
+    const row = e.target.closest('li.rrow');
+    if (!row || e.button > 0 || e.target.closest('button')) return;
+    if (e.pointerType !== 'mouse' && !e.target.closest('[data-rgrip]')) return; // Touch: nur am Griff, sonst scrollt die Seite
+    e.preventDefault();
+    const ol = $('rulelist');
+    const rows = Array.from(ol.querySelectorAll('li.rrow'));
+    const from = rows.indexOf(row);
+    const line = $('ruledrop');
+    const ghost = document.createElement('div');
+    ghost.className = 'dragghost';
+    ghost.textContent = row.querySelector('.nm').textContent;
+    document.body.appendChild(ghost);
+    row.classList.add('lifted');
+    document.body.classList.add('dragging-step');
+    let target = from;
+    let moved = false;
+    const place = (y) => {
+      target = rows.length;
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i].getBoundingClientRect();
+        if (y < r.top + r.height / 2) { target = i; break; }
+      }
+      const or = ol.getBoundingClientRect();
+      const gap = 4;
+      const ref = target < rows.length ? rows[target].getBoundingClientRect().top - gap / 2 : rows[rows.length - 1].getBoundingClientRect().bottom + gap / 2;
+      line.style.top = (ref - or.top) + 'px';
+      line.hidden = target === from || target === from + 1;
+    };
+    const move = (ev) => {
+      if (Math.abs(ev.clientY - e.clientY) > 3) moved = true;
+      ghost.style.left = (ev.clientX + 14) + 'px';
+      ghost.style.top = (ev.clientY + 10) + 'px';
+      ghost.hidden = !moved;
+      place(ev.clientY);
+    };
+    const end = (cancel) => {
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', up);
+      document.removeEventListener('pointercancel', cancelDrag);
+      document.removeEventListener('keydown', key);
+      ghost.remove();
+      line.hidden = true;
+      row.classList.remove('lifted');
+      document.body.classList.remove('dragging-step');
+      if (cancel || !moved || target === from || target === from + 1) return;
+      const rule = state.settings.orderRule || XcsWriter.DEFAULTS.orderRule;
+      const seq = XcsWriter.ruleSequence(rule);
+      const [c] = seq.splice(from, 1);
+      seq.splice(target > from ? target - 1 : target, 0, c);
+      setRule({ on: rule.on, seq: seq });
+      toast('Reihenfolge-Regel geändert.');
+    };
+    const up = () => end(false);
+    const cancelDrag = () => end(true);
+    const key = (ev) => { if (ev.key === 'Escape') end(true); };
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+    document.addEventListener('pointercancel', cancelDrag);
+    document.addEventListener('keydown', key);
+    move(e);
   });
   $('toolgrid').addEventListener('click', (e) => {
     const b = e.target.closest('[data-fav]');

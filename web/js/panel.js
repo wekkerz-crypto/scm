@@ -757,11 +757,51 @@
     return planes;
   }
 
+  /*
+   * Clamex-Nuten (Lamello P-System): Kreissegment einer Scheibe (Zylinder R 40–60, hohl) zwischen zwei ebenen, parallelen
+   * Wänden senkrecht zur Zylinderachse (Abstand = Nutbreite 3–12 mm). Ergebnis je Nut: Mitte der Scheibe c (Mittelebene),
+   * Achse a, Öffnungsrichtung n (aus dem Material heraus), Radius r, Breite w, Tiefe (ab der Oberfläche), Flächen-Ids.
+   */
+  const CLAMEX_R = [40, 60];
+  const CLAMEX_W = [3, 12];
+  function findClamex(faces) {
+    const out = [];
+    const ids = new Set();
+    for (const f of faces) {
+      const sf = f.surf;
+      if (sf.type !== 'cylinder' || !sf.concave || sf.r < CLAMEX_R[0] || sf.r > CLAMEX_R[1] || !f.pts.length) continue;
+      const a = sf.a;
+      const ts = f.pts.map((q) => dot(sub(q, sf.o), a));
+      const t0 = minOf(ts);
+      const t1 = maxOf(ts);
+      const w = t1 - t0;
+      if (w < CLAMEX_W[0] || w > CLAMEX_W[1]) continue;
+      const c = add(sf.o, mul(a, (t0 + t1) / 2));
+      const radial = (q) => { const v = sub(q, c); return sub(v, mul(a, dot(v, a))); };
+      // Wände: Ebenen senkrecht zur Achse bei t0 und t1, innerhalb des Scheibenradius
+      const walls = faces.filter((g) => g.surf.type === 'plane' && Math.abs(Math.abs(dot(g.surf.n, a)) - 1) < 1e-6 &&
+        [t0, t1].some((t) => Math.abs(dot(sub(g.surf.p, sf.o), a) - t) < 0.05) && g.pts.every((q) => len(radial(q)) < sf.r + 0.1));
+      if (walls.length < 2) continue;
+      // Öffnung: Mitte der Bogenrichtungen zeigt ins Material, n = Gegenrichtung
+      let m = [0, 0, 0];
+      for (const q of f.pts) m = add(m, unit(radial(q)));
+      const n = mul(unit(m), -1);
+      const dist = minOf(f.pts.map((q) => dot(radial(q), mul(n, -1)))); // Abstand Mitte → Oberfläche (Sehne)
+      out.push({ c: c, a: a, n: n, r: sf.r, w: w, depth: sf.r - dist, chord: 2 * Math.sqrt(Math.max(0, sf.r * sf.r - dist * dist)),
+        faceIds: [f.id].concat(walls.map((g) => g.id)) });
+      ids.add(f.id);
+      walls.forEach((g) => ids.add(g.id));
+    }
+    return { grooves: out, faceIds: ids };
+  }
+
   function extract(prep, fr) {
     const side = findSidePockets(prep, fr);
     const all = transformSolid(prep, fr);
-    const slant = findSlantPlanes(prep, fr, all, side.faceIds);
+    const clamex = findClamex(all);
+    const slant = findSlantPlanes(prep, fr, all.filter((f) => !clamex.faceIds.has(f.id)), side.faceIds);
     const skip = new Set(side.faceIds);
+    clamex.faceIds.forEach((id) => skip.add(id));
     for (const sp of slant) sp.faceIds.forEach((id) => skip.add(id));
     const faces = all.filter((f) => !skip.has(f.id));
     const L = fr.L;
@@ -770,6 +810,13 @@
     const warnings = prep.warnings.slice();
     const res = { L: L, W: W, T: T, outline: null, cutouts: [], drills: [], circles: [], grooves: [], rebates: [],
       pockets: [], sidePockets: side.pockets, slantPlanes: slant.filter((sp) => sp.up), chamfers: [], slantWalls: [], slantDrills: [], bottom: [], warnings: warnings };
+
+    // Clamex: Öffnung oben, in einer Kante oder schräg; von unten nur als Hinweis (Seite 2 bzw. wenden)
+    res.clamex = [];
+    for (const g of clamex.grooves) {
+      if (g.n[2] < -0.5) { res.bottom.push({ kind: 'Clamex', text: 'Clamex-Nut von unten (' + fmt(g.c[0]) + ' / ' + fmt(g.c[1]) + ')' }); continue; }
+      res.clamex.push(g);
+    }
 
     // Höhen der nach oben offenen Böden (Taschen, Nuten): Bohrungen dort beginnen „oben“
     const upFloors = faces.filter((f) => f.surf.type === 'plane' && f.surf.n[2] > 1 - ATOL &&
@@ -1327,6 +1374,7 @@
       res.rebates.length * 3 + res.pockets.length * 3 + res.slantDrills.length +
       res.chamfers.filter((c) => c.side === 'top').length * 2 + (res.chamferPaths || []).filter((c) => c.side === 'top').length * 2 +
       (res.curvedSurfaces || []).length * 3 + (res.curvedSlants || []).filter((c) => c.up).length * 2 +
+      (res.clamex || []).filter((g) => g.n[2] > 0.5).length * 3 +
       (res.edgeRounds || []).filter((e) => e.side === 'top').length * 0.5; // bei Gleichstand: Rundungen lieber oben
   }
 

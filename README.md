@@ -52,6 +52,22 @@ Weitere Schalter: `--step mm` (Zustellung), `--no-order-rule`, `--schraege-5achs
 dem Schaftfräser abzeilen, übrige Flächen Kugelfräser), `--oszillieren`, `--schleifen` (siehe unten), `--dicke mm` (Plattendicke für `.dxf`, Standard 19;
 Erkennungen wie vorgeschlagen).
 
+### Clamex (Lamello P-System)
+
+**So in der STEP modellieren:** die Nut so, wie die Scheibe sie fräst – Kreis **Ø 100** (Radius 50) auf der Mittelebene der
+Nut, Mittelpunkt **36 mm** vor der Oberfläche (= 14 mm tief), symmetrisch in Nutbreite (z. B. 6 mm) extrudieren und abziehen.
+Das Tool erkennt jedes Kreissegment R 40–60 zwischen zwei parallelen Wänden 3–12 mm Abstand als Clamex-Nut (nicht als Tasche
+oder gewölbte Fläche) – in der Kante oder in der Fläche (Beispiel `test/fixtures/schrank1.step`).
+
+**Programm:** Scheibenfräser `E030` (*Werkzeuge & Regeln → Clamex*), Werkzeugachse = Nutachse:
+- Nut in der **Kante** (Scheibe waagerecht): Ebene `Top`, Spindel von oben, Spitze an der unteren Nutwand.
+- Nut in der **Fläche** (Scheibe senkrecht): Kanten-Ebene `Left`/`Right`/`Front`/`Back` auf der näheren Seite, Werkzeug
+  waagerecht über der Platte; Tiefe = Abstand der Kante bis zur hinteren Nutwand. Ab 60 mm von der Kante Hinweis
+  (Reichweite/Kollision).
+- Bahn: `CreatePolyline` von außen (Scheibe ganz vor der Oberfläche) bis zur Scheibenmitte und auf demselben Weg zurück,
+  `CreateRoughFinish(…, Korrektur 0)` – nicht abheben, sonst schneidet die Scheibe heraus.
+- Nuten von unten nur als Hinweis (Platte wenden/zweiseitig); Nutachse geneigt: noch nicht unterstützt.
+
 ### Vorschub und Drehzahl
 
 Wird unter *Werkzeugliste & Favoriten* eine andere Werkzeugdatei geladen, ersetzt sie die bisherige (bleibt gespeichert)
@@ -280,6 +296,9 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
   Überlappung; die bestätigten Beispiele haben 0. In der Simulation prüfen, dass die Kontur um 2 mm überfahren wird.
 - **Formatfräsen zweistufig:** `CreateRoughFinish("Milling_n_Vor", …, Aufmaß)` mit dem Aufmaß als 11. Wert (Handbuch),
   danach dasselbe auf Endmaß – in Maestro noch nicht bestätigt.
+- **Clamex:** Scheibenfräser `E030` steht in `def.tlgx` mit 16 mm Schneidenhöhe – stimmt das mit der echten Scheibe
+  (Nutbreite) überein? Bezugspunkt der Tiefe (Werkzeugspitze = Scheibenseite weg von der Spindel), Bahn hin und auf
+  derselben Linie zurück, Nut in der Fläche mit waagerechtem Werkzeug auf der Kanten-Ebene – alles in der Simulation prüfen.
 - **Eigene Schnittwerte:** Einheiten laut Handbuch wie in Xilog (V/F in m/min, S in U/min) – an einer Bearbeitung mit
   eigenem Vorschub in Maestro prüfen, dass der Wert so ankommt (nicht als mm/min).
 - **Oszillieren / Schleifwalze:** `SetAttribute("DEPTH", Tiefe)` nach jedem Konturelement – laut Handbuch Tiefe am

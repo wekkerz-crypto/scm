@@ -547,6 +547,10 @@ table.fmt.one .onet { display: inline; }
       ['sandAllowance', 'Schleifzugabe (Formatfräsen bleibt größer)', 'number', 'mm'],
       ['sandLead', 'An-/Abfahrt im Bogen: Faktor', 'number', '× Radius'],
       ['sandOverlap', 'Schleifen: Überlappung am Ende', 'number', 'mm']] },
+    { title: 'Clamex (Lamello P-System)', c: '--saw', fields: [
+      ['clamexTool', 'Scheibenfräser', 'mill'],
+      ['clamexClear', 'Anfahrt: Abstand vor der Oberfläche', 'number', 'mm'],
+      ['clamexMaxReach', 'Hinweis ab Abstand zur Kante', 'number', 'mm']] },
     { title: 'Säge', c: '--saw', fields: [
       ['slantCut', 'Schräge Kanten von Kante zu Kante', 'choice', [['saw', 'mit der Säge schneiden'], ['mill', 'fräsen (5-Achs)']]],
       ['bladeTool', 'Säge für Sägeschnitte', 'saw'],
@@ -1064,7 +1068,7 @@ table.fmt.one .onet { display: inline; }
     if (op.kind === 'pocket') return op.face && op.face !== 'Top' ? '--hdrill' : '--pocket';
     if (op.kind === 'chamfer' || op.kind === 'slant' || op.kind === 'slantpath' || op.profile) return '--chamfer';
     if (op.kind === 'surface' || op.kind === 'cyl4') return '--pocket';
-    if (op.kind === 'slot' || op.kind === 'blade' || /^rebate-/.test(op.key || '')) return '--saw';
+    if (op.kind === 'slot' || op.kind === 'blade' || op.kind === 'clamex' || /^rebate-/.test(op.key || '')) return '--saw';
     return '--mill';
   }
 
@@ -1440,6 +1444,26 @@ table.fmt.one .onet { display: inline; }
       s += '<g><title>Schräge Bohrung Ø' + fmt(sd.d) + ' T' + fmt(sd.depth) + '</title><line x1="' + e[0] + '" y1="' + Y(e[1]) + '" x2="' + end[0] + '" y2="' + Y(end[1]) +
         '" stroke="var(--sdrill)" stroke-width="2" ' + sw + '/><circle cx="' + e[0] + '" cy="' + Y(e[1]) + '" r="' + rr +
         '" fill="var(--sdrill)" fill-opacity="0.5" stroke="var(--sdrill)" stroke-width="1.5" ' + sw + '/></g>';
+    }
+    // Clamex-Nuten: Kante – Kreissegment (Sehne × Tiefe), Fläche – Sehne × Nutbreite
+    for (const g of (p.clamex || [])) {
+      const dist = g.r - g.depth;
+      let pts;
+      if (Math.abs(g.n[2]) < 0.5) {
+        const a0 = Math.atan2(-g.n[1], -g.n[0]);
+        const half = Math.acos(Math.min(1, dist / g.r));
+        pts = [];
+        for (let k = 0; k <= 16; k++) { const t = a0 - half + (2 * half * k) / 16; pts.push([g.c[0] + g.r * Math.cos(t), g.c[1] + g.r * Math.sin(t)]); }
+      } else {
+        const s0 = [g.c[0] - g.n[0] * dist, g.c[1] - g.n[1] * dist];
+        const u = [g.a[1] * g.n[2] - g.a[2] * g.n[1], g.a[2] * g.n[0] - g.a[0] * g.n[2]];
+        const ul = Math.hypot(u[0], u[1]) || 1;
+        const h = g.chord / 2 / ul;
+        const v = [g.a[0] * g.w / 2, g.a[1] * g.w / 2];
+        pts = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([i, j]) => [s0[0] + u[0] * h * i + v[0] * j, s0[1] + u[1] * h * i + v[1] * j]);
+      }
+      s += '<path d="M' + pts.map((q) => q[0] + ' ' + Y(q[1])).join(' L') + ' Z" fill="var(--saw)" fill-opacity="0.45" stroke="var(--saw)" stroke-width="1.2" ' + sw +
+        '><title>Clamex-Nut ' + fmt(g.w) + '×' + fmt(g.depth) + (Math.abs(g.n[2]) < 0.5 ? ' in der Kante' : ' in der Fläche') + '</title></path>';
     }
     // Taschen in den Kanten: Grundriss von oben gesehen
     for (const k of (p.sidePockets || [])) {

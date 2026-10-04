@@ -328,6 +328,25 @@
         go(pts, info(op.tool).d || 10, op.label, op.tool, i, pts.map((q, k) => [q[0] - axes[k][0] * dd, q[1] - axes[k][1] * dd, p.T - axes[k][2] * dd]));
         return;
       }
+      if (op.kind === 'clamex') {
+        // Clamex-Nut in der Draufsicht: Kante – Fläche der Nut (Sehne × Tiefe), Fläche/Schräge – Sehne in Nutbreite
+        const g = op.groove;
+        const dist = g.r - g.depth;
+        const s0 = [g.c[0] - g.n[0] * dist, g.c[1] - g.n[1] * dist]; // Mitte der Öffnung
+        meta.kind = 'edge';
+        if (Math.abs(g.n[2]) < 0.5) {
+          const deep = [g.c[0] - g.n[0] * g.r, g.c[1] - g.n[1] * g.r];
+          meta.z = p.T - (g.c[2] - g.w / 2);
+          go([s0, deep], g.chord, op.label, op.tool, i);
+        } else {
+          const u = [g.a[1] * g.n[2] - g.a[2] * g.n[1], g.a[2] * g.n[0] - g.a[0] * g.n[2]];
+          const ul = Math.hypot(u[0], u[1]) || 1;
+          const h = g.chord / 2 / ul;
+          meta.z = g.depth;
+          go([[s0[0] - u[0] * h, s0[1] - u[1] * h], [s0[0] + u[0] * h, s0[1] + u[1] * h]], g.w, op.label, op.tool, i);
+        }
+        return;
+      }
       if (op.kind === 'cyl4') {
         // 4-Achs abzeilen: Fräser senkrecht auf der Fläche, je Zeile eine gerade Fahrt längs der Achse
         const d = info(op.tool).d || 16;

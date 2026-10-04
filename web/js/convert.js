@@ -67,6 +67,12 @@
       else if (r.edge === 'Right') zones.push(rect(L - r.width, 0, L, p.W));
     }
     for (const c of p.curvedSurfaces || []) for (const r of c.rects) zones.push(rect(r.x0, r.y0, r.x1, r.y1));
+    for (const g of p.clamex || []) {
+      if (g.n[2] < 0.5) continue; // nur Nuten in der Oberseite liegen nach dem Wenden unten
+      const hx = Math.abs(g.a[0]) * g.w / 2 + Math.abs(g.a[1]) * g.chord / 2;
+      const hy = Math.abs(g.a[1]) * g.w / 2 + Math.abs(g.a[0]) * g.chord / 2;
+      zones.push(rect(g.c[0] - hx, g.c[1] - hy, g.c[0] + hx, g.c[1] + hy));
+    }
     return zones;
   }
 

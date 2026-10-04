@@ -27,6 +27,9 @@
     oscMillMin: 2,             // Fräser ragt mindestens … mm unter die Platte
     oscMillMax: 8,             // … höchstens (Schneidenlänge beachten: Dicke + max ≤ Schneidenlänge)
     oscWave: 300,              // Weg je Schwingung (einmal runter und wieder hoch) in mm
+    clamexTool: 'E030',        // Clamex P (Lamello P-System): Scheibenfräser Ø 100
+    clamexClear: 5,            // Anfahrt: Scheibe so weit vor der Oberfläche (mm) beginnen
+    clamexMaxReach: 60,        // Nut weiter als … mm von der Bezugsebene (Kante/Oberseite) → Hinweis Kollision/Reichweite
     sandOn: false,             // Schleifen mit der Schleifwalze nach dem Formatfräsen (Außenkontur)
     sandTool: 'E091',          // Schleifwalze
     sandMin: 10,               // Walze ragt mindestens … mm unter die Platte
@@ -88,7 +91,7 @@
     contourMode: 'whole',      // Sonderkontur: 'whole' = Außenkontur am Stück, 'rect' = Rechteck + Ausschnitte
     // Reihenfolge-Regel: Bearbeitungsarten in dieser Folge (abschaltbar, vom Benutzer änderbar)
     orderRule: { on: true, seq: ['drillTop', 'drillSide', 'drillSlanted', 'slot', 'pocket', 'rebate', 'chamfer', 'slant',
-      'blade', 'slantPlane', 'surface', 'cutout', 'notch', 'format', 'edge', 'sand'] },
+      'blade', 'slantPlane', 'surface', 'cutout', 'notch', 'format', 'clamex', 'edge', 'sand'] },
     throughExtra: 2,           // Durchgangsbohrung: Tiefe = Dicke + …
     drillsVertical: [3, 5, 7, 8, 10, 12, 15, 20, 35],
     drillsHorizontal: [5, 8],
@@ -158,6 +161,7 @@
     notch: 'Konturausschnitte',
     format: 'Formatfräsen',
     sand: 'Schleifen (Schleifwalze)',
+    clamex: 'Clamex-Nuten (Scheibenfräser)',
   };
 
   function category(op) {
@@ -167,6 +171,7 @@
     const k = op.key || '';
     if (k === 'format') return 'format';
     if (k === 'sand') return 'sand';
+    if (/^clamex-/.test(k)) return 'clamex';
     const prefix = k.split('-')[0];
     return { notch: 'notch', cutout: 'cutout', round: 'cutout', rebate: 'rebate', pocket: 'pocket', rpocket: 'pocket', spocket: 'pocket', chamfer: 'chamfer', chamferpath: 'chamfer',
       slant: 'slant', cslant: 'slant', blade: 'blade', slot: 'slot', surface: 'surface', cyl4: 'surface', edge: 'edge' }[prefix] || 'notch';
@@ -442,6 +447,43 @@
   }
 
   // Wandelt eine Bohrung in lokale Koordinaten der Bearbeitungsebene um.
+  /*
+   * Clamex-Nut → Bearbeitungsebene und Bahn. Werkzeugachse = Nutachse; Spindel auf der Seite mit dem kürzeren Weg
+   * (Achse senkrecht: von oben, Ebene Top; Achse in X: Left/Right; in Y: Front/Back). Werkzeugspitze = Nutwand
+   * auf der Gegenseite der Spindel, Tiefe ab der Bezugsebene. Bahn in Ebenenkoordinaten: Start mit der Scheibe ganz
+   * außerhalb (Mitte r + Abstand vor der Oberfläche), bis zur Scheibenmitte und auf demselben Weg zurück.
+   */
+  function clamexPlan(p, g, cfg) {
+    const a = g.a;
+    const off = g.depth + (cfg.clamexClear > 0 ? cfg.clamexClear : 0); // Mitte r + Abstand vor der Oberfläche
+    const p0 = [g.c[0] + g.n[0] * off, g.c[1] + g.n[1] * off, g.c[2] + g.n[2] * off];
+    const half = g.w / 2;
+    let face;
+    let map;
+    let depth;
+    if (Math.abs(a[2]) > 0.999) {
+      face = 'Top';
+      map = (q) => [q[0], q[1]];
+      depth = p.T - (g.c[2] - half);
+      if (Math.abs(g.n[2]) > 0.01) return { error: 'Öffnung nicht senkrecht zur Achse – nicht unterstützt.' };
+    } else if (Math.abs(a[0]) > 0.999) {
+      const left = g.c[0] + half;
+      const right = p.L - (g.c[0] - half);
+      face = left <= right ? 'Left' : 'Right';
+      map = face === 'Left' ? (q) => [p.W - q[1], q[2]] : (q) => [q[1], q[2]];
+      depth = Math.min(left, right);
+    } else if (Math.abs(a[1]) > 0.999) {
+      const front = g.c[1] + half;
+      const back = p.W - (g.c[1] - half);
+      face = front <= back ? 'Front' : 'Back';
+      map = face === 'Front' ? (q) => [q[0], q[2]] : (q) => [p.L - q[0], q[2]];
+      depth = Math.min(front, back);
+    } else {
+      return { error: 'Nutachse geneigt – noch nicht unterstützt (Achse senkrecht oder parallel zu einer Plattenkante modellieren).' };
+    }
+    return { face: face, start: map(p0), end: map(g.c), depth: depth, reach: face === 'Top' ? 0 : depth };
+  }
+
   function localDrill(p, d) {
     switch (d.face) {
       case 'Top': return { x: d.x, y: d.y };
@@ -643,6 +685,16 @@
       if (k.open && k.open.length) warnings.push('Tasche ' + size + ' ist zur Kante offen (' + k.open.join(', ') + ') – Anfahrt in Maestro prüfen.');
       ops.push({ kind: 'pocket', key: key, toolKind: 'mill', toolDefault: 'pocketTool', pocket: i + 1, segs: k.segs, islands: k.islands,
         depth: k.depth, tool: auto, label: 'Tasche ' + size + '×' + fmt(k.depth) + (k.islands.length ? ' mit Insel' : '') });
+    }
+
+    // 6a) Clamex-Nuten: Scheibenfräser fährt auf der Mittelebene der Nut von außen bis zur Nutmitte und zurück
+    for (const [i, g] of (side2 ? [] : p.clamex || []).entries()) {
+      const pl = clamexPlan(p, g, cfg);
+      const where = pl.face === 'Top' ? 'Kante ' + ({ '0,-1': 'vorne', '0,1': 'hinten', '-1,0': 'links', '1,0': 'rechts' }[Math.round(g.n[0]) + ',' + Math.round(g.n[1])] || 'schräg')
+        : g.n[2] > 0.99 ? 'Fläche' : 'Schräge';
+      if (pl.error) { warnings.push('Clamex-Nut ' + where + ' (' + fmt(g.c[0]) + ' / ' + fmt(g.c[1]) + '): ' + pl.error); continue; }
+      ops.push({ kind: 'clamex', key: 'clamex-' + i, toolKind: 'mill', toolDefault: 'clamexTool', face: pl.face, start: pl.start, end: pl.end, depth: pl.depth,
+        reach: pl.reach, groove: g, tool: cfg.clamexTool, label: 'Clamex-Nut ' + where + ' ' + fmt(g.w) + '×' + fmt(g.depth) });
     }
 
     // 6b) Taschen in den Kanten (Stirn-/Längsseiten, eigene Bearbeitungsebene)
@@ -994,6 +1046,7 @@
     }
 
     const missingWarned = new Set();
+    const clamexWarned = new Set();
     const stepDownWarn = (op) => op.key === 'format' && ((cfg.stepOverrides && cfg.stepOverrides[op.key] > 0) || cfg.stepDown > 0);
     // Werkzeug, Tiefe (durchgehende Fräsungen) und Zustellungen je Bearbeitung
     const throughKey = (k) => k === 'format' || /^(notch|cutout|round)-/.test(k);
@@ -1067,7 +1120,20 @@
         if (op.tabs && !/Haltestege/.test(op.label)) op.label += ' mit Haltestegen';
         op.helix = !!cfg.helixOn;
       }
-      if (op.osc) {
+      if (op.kind === 'clamex') {
+        // Scheibe passt zur Nut? (Radius, Breite = Schneidenhöhe in der Werkzeugdatei); Reichweite von der Kante
+        const info = cfg.toolInfo && cfg.toolInfo[op.tool];
+        const g = op.groove;
+        if (info && info.d && Math.abs(info.d / 2 - g.r) > 0.5 && !clamexWarned.has(op.tool + '|r' + g.r)) clamexWarned.add(op.tool + '|r' + g.r) && warnings.push('Clamex-Nuten: R' + fmt(g.r) + ', Werkzeug ' + op.tool + ' Ø' + fmt(info.d) + ' – Nutlänge weicht ab.');
+        if (info && info.len && Math.abs(info.len - g.w) > 0.5 && !clamexWarned.has(op.tool + '|' + g.w)) {
+          clamexWarned.add(op.tool + '|' + g.w);
+          warnings.push('Clamex-Nuten: ' + fmt(g.w) + ' mm breit, ' + op.tool + ' laut Werkzeugdatei ' + fmt(info.len) + ' mm hoch – Schneidenhöhe in der Werkzeugdatei bzw. Nutbreite prüfen.');
+        }
+        if (op.reach > (cfg.clamexMaxReach > 0 ? cfg.clamexMaxReach : 60)) {
+          warnings.push(op.label + ': ' + fmt(op.reach) + ' mm von der Kante – Werkzeug liegt waagerecht über der Platte, Reichweite und Kollision in der Simulation prüfen.');
+        }
+        op.step = 0;
+      } else if (op.osc) {
         // oszillierend: ein Durchgang ohne Zustellung; Schneide/Walze muss bis zur größten Tiefe reichen
         op.step = 0;
         const info = cfg.toolInfo && cfg.toolInfo[op.tool];
@@ -1537,7 +1603,7 @@
     let nSlot = 0;
     let nSeg = 0;
     const nDrill = { V: 0, H: 0 };
-    const counts = { chamfer: 0, slant: 0, sdrill: 0, blade: 0, pdrill: 0, surface: 0, cyl4: 0 };
+    const counts = { chamfer: 0, slant: 0, sdrill: 0, blade: 0, pdrill: 0, surface: 0, cyl4: 0, clamex: 0 };
     let plane = 'Top';
     const madePlanes = new Set();
     let multiStep = false;
@@ -1558,7 +1624,7 @@
         madePlanes.add(q.name);
       }
       if (op.kind !== 'drill' || op.plane) {
-        const want = op.plane ? op.plane.name : (op.kind === 'pocket' && op.face) || 'Top';
+        const want = op.plane ? op.plane.name : ((op.kind === 'pocket' || op.kind === 'clamex') && op.face) || 'Top';
         if (plane !== want) {
           L.push('SelectWorkplane("' + want + '");');
           blank();
@@ -1626,6 +1692,16 @@
             op.tool + '", "-1", ' + op.side + ', ' + S3(op, true) + (op.finishAllowance > 0 ? ', ' + fmt(op.finishAllowance) : '') + ');');
           blank();
         }
+      } else if (op.kind === 'clamex') {
+        // hinein bis zur Scheibenmitte und auf demselben Weg zurück (nicht abheben: sonst schneidet die Scheibe nach oben heraus)
+        const n = ++counts.clamex;
+        L.push('CreatePolyline("ClamexPath_' + n + '", ' + pt(op.start) + ');');
+        L.push('AddSegmentToPolyline(' + pt(op.end) + ');');
+        L.push('AddSegmentToPolyline(' + pt(op.start) + ');');
+        L.push('ResetApproachStrategy();');
+        L.push('ResetRetractStrategy();');
+        L.push('CreateRoughFinish("Clamex_' + n + '", ' + fmt(op.depth) + ', "", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", 0, ' + S3(op, true) + ');');
+        blank();
       } else if (op.kind === 'pocket') {
         const names = op.islands.map((isl, j) => 'Island_' + op.pocket + '_' + (j + 1));
         op.islands.forEach((isl, j) => writePoly(L, names[j], isl));

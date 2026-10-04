@@ -550,6 +550,7 @@ table.fmt.one .onet { display: inline; }
     { title: 'Clamex (Lamello P-System)', c: '--saw', fields: [
       ['clamexMode', 'Clamex-Nuten', 'choice', [['macro', 'über SCM-Makro (nur Position)'], ['direct', 'direkt mit dem Scheibenfräser']]],
       ['clamexMacro', 'Makro-Name', 'text'],
+      ['clamexOrient', 'Richtung des Verbinders', 'choice', [['angle', 'Start = Ende + Winkel um Z (mit Einfügehöhe)'], ['line', 'Start ≠ Ende (Linie über die Nut)']]],
       ['clamexType', 'Verbindertyp Kante/Schnittfläche', 'text', 'z. B. Cl-Fräsen, Cl-Komplett'],
       ['clamexFaceType', 'Verbindertyp Fläche', 'text', 'z. B. Cl-Nest90'],
       ['clamexParams', 'Makro-Parameternamen (Rolle=Name; …)', 'text', 'Namen wie in Maestro'],

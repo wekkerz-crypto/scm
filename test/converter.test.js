@@ -1278,14 +1278,19 @@ test('Clamex über das SCM-Makro: nur Position, Richtung, Einfügehöhe; Paramet
   const { readParts, convertSolid } = require('../web/js/convert.js');
   const [a, b] = readParts(read('test/fixtures/schrank1.step'), 'schrank1.step');
   const r1 = convertSolid(a, {});
-  // Kante vorne: Start = Ende an der Nutmitte auf der Kante, gerade (90°), Richtung gegen den Uhrzeigersinn (0°), Höhe 9,5
+  // Kante vorne: Start = Ende an der Nutmitte auf der Kante, gerade (90°), Richtung gegen den Uhrzeigersinn (0° → 360°, 0 = „nicht angegeben“), Höhe 9,5
   assert.match(r1.xcs, /SetMacroParam\("Start X", 250\);\r?\nSetMacroParam\("Start Y", 0\);\r?\nSetMacroParam\("Ende X", 250\);\r?\nSetMacroParam\("Ende Y", 0\);\r?\n/);
-  assert.match(r1.xcs, /SetMacroParam\("Winkel", 90\);\r?\nSetMacroParam\("Schnitt ein", false\);\r?\nSetMacroParam\("Verbindertype", "Cl-Fräsen"\);\r?\nSetMacroParam\("Anzahl Verbinder", 1\);\r?\nSetMacroParam\("Abstand aussen", 0\);\r?\nSetMacroParam\("Winkel um Z-Achse", 0\);\r?\nSetMacroParam\("EinfHöhe", 9\.5\);\r?\nCreateMacro\("Clamex_1", "SawCut_Lamello"\);/);
+  assert.match(r1.xcs, /SetMacroParam\("Winkel", 90\);\r?\nSetMacroParam\("Schnitt ein", false\);\r?\nSetMacroParam\("Verbindertype", "Cl-Fräsen"\);\r?\nSetMacroParam\("Anzahl Verbinder", 1\);\r?\nSetMacroParam\("Abstand aussen", 0\);\r?\nSetMacroParam\("Winkel um Z-Achse", 360\);\r?\nSetMacroParam\("EinfHöhe", 9\.5\);\r?\nCreateMacro\("Clamex_1", "SawCut_Lamello"\);/);
   assert.strictEqual((r1.xcs.match(/CreateMacro\(/g) || []).length, 3);
   assert.doesNotMatch(r1.xcs, /ClamexPath_/);
   // Fläche: eigener Verbindertyp, Höhe = Dicke
   const r2 = convertSolid(b, {});
   assert.match(r2.xcs, /SetMacroParam\("Verbindertype", "Cl-Nest90"\);[\s\S]*SetMacroParam\("EinfHöhe", 19\);/);
+  // Richtung über eine Linie (Start ≠ Ende) über die Nut, ein Verbinder in der Mitte, ohne Winkel um Z/Einfügehöhe
+  const rl = convertSolid(a, { clamexOrient: 'line' });
+  assert.match(rl.xcs, /SetMacroParam\("Start X", 215\.301\);\r?\nSetMacroParam\("Start Y", 0\);\r?\nSetMacroParam\("Ende X", 284\.699\);\r?\nSetMacroParam\("Ende Y", 0\);/);
+  assert.match(rl.xcs, /SetMacroParam\("Abstand aussen", 34\.699\);\r?\nCreateMacro/);
+  assert.doesNotMatch(rl.xcs, /Winkel um Z-Achse|EinfHöhe/);
   // eigene Parameternamen, leere Rolle wird weggelassen
   const r3 = convertSolid(a, { clamexMacro: 'Clamex_SCM', clamexParams: 'startX=XS; startY=YS; endX=XE; endY=YE; height=H; cut=' });
   assert.match(r3.xcs, /SetMacroParam\("XS", 250\);\r?\nSetMacroParam\("YS", 0\);\r?\nSetMacroParam\("XE", 250\);\r?\nSetMacroParam\("YE", 0\);\r?\nSetMacroParam\("H", 9\.5\);\r?\nCreateMacro\("Clamex_1", "Clamex_SCM"\);/);

@@ -32,6 +32,7 @@
     clamexMacro: 'SawCut_Lamello',
     clamexType: 'Cl-Fräsen',   // Verbindertyp für Nuten in einer Kante/Schnittfläche (Cl-Komplett = mit Schlüsselbohrungen)
     clamexFaceType: 'Cl-Nest90', // Verbindertyp für Nuten in der Fläche (Gegenstück 90°)
+    clamexOrient: 'angle',     // Richtung: 'angle' = Start = Ende + Winkel um Z (0° als 360°), 'line' = Start ≠ Ende (Linie über die Nut)
     // Rolle=Parametername des Makros (Namen aus Maestro; Reihenfolge egal, SetMacroParam setzt nach Namen)
     clamexParams: 'startX=Start X; startY=Start Y; endX=Ende X; endY=Ende Y; angle=Winkel; cut=Schnitt ein; type=Verbindertype; ' +
       'count=Anzahl Verbinder; outer=Abstand aussen; angleZ=Winkel um Z-Achse; height=EinfHöhe',
@@ -714,11 +715,15 @@
         // Kante: Richtung gegen den Uhrzeigersinn um das Teil (Tangente = n um +90° gedreht); Fläche: Richtung der Nut
         const t = face ? [-g.n[1], g.n[0]] : [g.a[1] * g.n[2] - g.a[2] * g.n[1], g.a[2] * g.n[0] - g.a[0] * g.n[2]];
         let angZ = Math.atan2(t[1], t[0]) * 180 / Math.PI;
-        if (angZ < -1e-9) angZ += 360;
+        if (angZ < 0.5) angZ += 360; // 0° liest das Makro als „nicht angegeben“ → 360°
+        const tl = Math.hypot(t[0], t[1]) || 1;
+        const half = g.chord / 2;
+        const line = [s0[0] - (t[0] / tl) * half, s0[1] - (t[1] / tl) * half, s0[0] + (t[0] / tl) * half, s0[1] + (t[1] / tl) * half];
         const tilt = Math.asin(Math.max(-1, Math.min(1, g.n[2]))) * 180 / Math.PI; // Neigung der Schnittfläche
         const where = face ? 'Kante ' + ({ '0,-1': 'vorne', '0,1': 'hinten', '-1,0': 'links', '1,0': 'rechts' }[Math.round(g.n[0]) + ',' + Math.round(g.n[1])] || 'schräg') : 'Fläche';
         ops.push({ kind: 'clamex', key: 'clamex-' + i, macro: { x: s0[0], y: s0[1], angle: face ? 90 - tilt : 90, angleZ: angZ, height: face ? s0[2] : T,
-          type: face ? cfg.clamexType : cfg.clamexFaceType }, groove: g, depth: g.depth, label: 'Clamex ' + where + ' (Makro)' });
+          line: cfg.clamexOrient === 'line' ? line : null, half: half, type: face ? cfg.clamexType : cfg.clamexFaceType },
+          groove: g, depth: g.depth, label: 'Clamex ' + where + ' (Makro)' });
         continue;
       }
       const pl = clamexPlan(p, g, cfg);
@@ -1731,8 +1736,14 @@
         const n = ++counts.clamex;
         const names = clamexParamNames(cfg.clamexParams);
         const m = op.macro;
-        const vals = { startX: fmt(m.x), startY: fmt(m.y), endX: fmt(m.x), endY: fmt(m.y), angle: fmt(m.angle), cut: 'false',
-          type: '"' + String(m.type).replace(/"/g, '') + '"', count: '1', outer: '0', angleZ: fmt(m.angleZ), height: fmt(m.height) };
+        // Richtung entweder über Start = Ende + Winkel um Z (mit Einfügehöhe) oder über eine Linie Start → Ende über die Nut
+        // (dann ein Verbinder in der Mitte: Abstand außen = halbe Linie; Winkel um Z und Einfügehöhe gelten dann nicht)
+        const ln = m.line;
+        const vals = ln
+          ? { startX: fmt(ln[0]), startY: fmt(ln[1]), endX: fmt(ln[2]), endY: fmt(ln[3]), angle: fmt(m.angle), cut: 'false',
+            type: '"' + String(m.type).replace(/"/g, '') + '"', count: '1', outer: fmt(m.half) }
+          : { startX: fmt(m.x), startY: fmt(m.y), endX: fmt(m.x), endY: fmt(m.y), angle: fmt(m.angle), cut: 'false',
+            type: '"' + String(m.type).replace(/"/g, '') + '"', count: '1', outer: '0', angleZ: fmt(m.angleZ), height: fmt(m.height) };
         for (const k of Object.keys(vals)) if (names[k]) L.push('SetMacroParam("' + names[k] + '", ' + vals[k] + ');');
         L.push('CreateMacro("Clamex_' + n + '", "' + String(cfg.clamexMacro || 'SawCut_Lamello').replace(/"/g, '') + '");');
         blank();

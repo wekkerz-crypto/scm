@@ -64,7 +64,10 @@ ein Makro-Aufruf, nur die Lage wird übergeben (Fall „Start- und Endpunkt glei
 `SetMacroParam(Name, Wert)` je Parameter, dann `CreateMacro("Clamex_n", "SawCut_Lamello")` auf der Ebene `Top`.
 - Start X/Y = Ende X/Y = Mitte der Nutöffnung, *Schnitt ein* = false, *Anzahl Verbinder* = 1, *Abstand aussen* = 0.
 - *Winkel* = Neigung der Schnittfläche (90 = gerade), *Winkel um Z-Achse* = Richtung der Kante gegen den Uhrzeigersinn
-  (vorne 0°, rechts 90°, hinten 180°, links 270°), *EinfHöhe* = Höhe der Nutmitte über der Unterkante.
+  (vorne 360° – 0° liest das Makro als „nicht angegeben“ –, rechts 90°, hinten 180°, links 270°), *EinfHöhe* = Höhe der
+  Nutmitte über der Unterkante.
+- Alternativ (*Richtung des Verbinders: Start ≠ Ende*): Start/Ende = Linie über die Nut, *Abstand aussen* = halbe Linie,
+  ein Verbinder in der Mitte; *Winkel um Z-Achse* und *EinfHöhe* entfallen (gelten laut Makro nur bei Start = Ende).
 - *Verbindertype*: Kante/Schnittfläche `Cl-Fräsen` (oder `Cl-Komplett` mit Schlüsselbohrungen), Fläche `Cl-Nest90`.
 - Werkzeug (Scheibe oder zylindrischer Clamex-Fräser mit 5-Achs-Bogen), Tiefe 14,3, Oszillation 1,4 usw. kommen aus dem
   Makro bzw. `SawCut_Lamello.xspc` an der Maschine.
@@ -307,7 +310,9 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
   Überlappung; die bestätigten Beispiele haben 0. In der Simulation prüfen, dass die Kontur um 2 mm überfahren wird.
 - **Formatfräsen zweistufig:** `CreateRoughFinish("Milling_n_Vor", …, Aufmaß)` mit dem Aufmaß als 11. Wert (Handbuch),
   danach dasselbe auf Endmaß – in Maestro noch nicht bestätigt.
-- **Clamex über `SawCut_Lamello`:** Die Parameternamen sind aus der Makrohilfe übernommen (Anzeigenamen) – in Maestro
+- **Clamex über `SawCut_Lamello`:** Erster Test in Maestro: Makro wird aufgerufen; Meldung „Ausrichtung … über den
+  Parameter Winkel um Z-Achse“ bei 0° → jetzt 360°. Prüfen, ob die Richtung so ankommt, sonst Variante *Start ≠ Ende*.
+  Weiter: Die Parameternamen sind aus der Makrohilfe übernommen (Anzeigenamen) – in Maestro
   prüfen, ob `SetMacroParam` sie so annimmt (sonst unter *Clamex → Makro-Parameternamen* die echten Namen eintragen;
   am einfachsten aus einem gespeicherten Programm mit dem Makro ablesen). Ebenso: Schreibweise der Verbindertypen
   (`Cl-Fräsen` mit Umlaut), Bezug von Start X/Y (Oberkante/Unterkante, *Bezugspos.*), Richtung *Winkel um Z-Achse*,

@@ -223,6 +223,17 @@
       dash.renderOrder = 4;
       this.groups.suppressed.add(wide, dash);
     }
+    // Haltestege: Klötzchen quer über der Fräsbahn, vom Boden bis zur Steghöhe (dort bleibt Material stehen)
+    if (opts.tabs && opts.tabs.length) {
+      const mat = new T.MeshBasicMaterial({ color: new T.Color(opts.tabColor || '#c25a00') }); // unbeleuchtet: Farbe bleibt kräftig
+      for (const t of opts.tabs) {
+        const box = new T.Mesh(new T.BoxGeometry(t.len, t.w, t.h), mat);
+        box.position.set(t.c[0], t.c[1], t.h / 2);
+        box.rotation.z = Math.atan2(t.t[1], t.t[0]);
+        box.castShadow = true;
+        this.groups.suppressed.add(box);
+      }
+    }
     // Sauger (Vorschlag) unter der Platte, darunter die Konsolen; der Tisch liegt unter den Konsolen
     const CUP_H = 75;
     const BAR_H = 45;

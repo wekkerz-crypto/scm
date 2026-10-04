@@ -1282,6 +1282,15 @@
         }
         const size = Math.max(hi[0] - lo[0], hi[1] - lo[1]);
         op.tabs = cfg.tabsMode === 'all' || (cfg.tabsMode === 'small' && size <= cfg.tabsMaxSize);
+        // je Teil/Durchbruch umschaltbar (overrides.tabs = { Gruppe: true/false })
+        const tabOv = cfg.tabsOverrides && cfg.tabsOverrides[op.key];
+        if (typeof tabOv === 'boolean') op.tabs = tabOv;
+        op.tabsOption = true;
+        if (op.tabs) {
+          Object.assign(op, tabPlan(op.start, op.segs, cfg.tabsCount));
+          op.tabLength = cfg.tabLength;
+          op.tabHeight = cfg.tabHeight;
+        }
         if (op.tabs && !/Haltestege/.test(op.label)) op.label += ' mit Haltestegen';
         op.helix = !!cfg.helixOn;
       }
@@ -1541,6 +1550,38 @@
     return out;
   }
 
+  /*
+   * Haltestege: die count längsten Elemente, je Steg in der Elementmitte (wie SetParametricAttribute2(…, 0.5)).
+   * tabSegs = Elementnummern, tabMarks = Lage für die Ansichten: at (Punkt auf der Kontur), t (Richtung der Bahn);
+   * die Werkzeugseite ergibt sich aus op.side (Korrektur links/rechts).
+   */
+  function tabPlan(start, segs, count) {
+    let prev = start;
+    const info = segs.map((q, i) => {
+      let l;
+      let at;
+      let t;
+      if (q.type === 'arc') {
+        const r = Math.hypot(prev[0] - q.c[0], prev[1] - q.c[1]);
+        const a0 = Math.atan2(prev[1] - q.c[1], prev[0] - q.c[0]);
+        let sw = Math.atan2(q.to[1] - q.c[1], q.to[0] - q.c[0]) - a0;
+        if (q.cw) { while (sw >= 0) sw -= Math.PI * 2; } else { while (sw <= 0) sw += Math.PI * 2; }
+        l = Math.abs(sw) * r;
+        const am = a0 + sw / 2;
+        at = [q.c[0] + r * Math.cos(am), q.c[1] + r * Math.sin(am)];
+        t = q.cw ? [Math.sin(am), -Math.cos(am)] : [-Math.sin(am), Math.cos(am)];
+      } else {
+        l = Math.hypot(q.to[0] - prev[0], q.to[1] - prev[1]);
+        at = [(prev[0] + q.to[0]) / 2, (prev[1] + q.to[1]) / 2];
+        t = l > 0 ? [(q.to[0] - prev[0]) / l, (q.to[1] - prev[1]) / l] : [1, 0];
+      }
+      prev = q.to;
+      return { i: i, l: l, at: at, t: t };
+    });
+    const pick = info.slice().sort((a, b) => b.l - a.l).slice(0, Math.max(1, count)).sort((a, b) => a.i - b.i);
+    return { tabSegs: pick.map((x) => x.i), tabMarks: pick.map((x) => ({ at: x.at, t: x.t })) };
+  }
+
   function toPolySeg(s) {
     return s.type === 'arc'
       ? { type: 'arc', to: s.b, c: s.c, cw: !s.ccw }
@@ -1725,6 +1766,7 @@
     if (cv && typeof cv.surface === 'string') { cfg.curvedSurfaceOn = true; cfg.curvedSurfaceMode = cv.surface; } // 'ball' / 'flat4'
     if (override && override.mesh) cfg.mesh = override.mesh;
     if (override && override.suppress) cfg.suppress = override.suppress;
+    if (override && override.tabs) cfg.tabsOverrides = override.tabs; // je Durchbruch: Haltestege an/aus
     if (override && override.avoid) cfg.avoid = override.avoid; // Saugerverbot: offene Stellen der Auflagefläche
     if (override && override.twoSided) cfg.twoSided = true;
     const pFull = p; // ganze Platte (Durchbrüche, Durchgangsbohrungen) für Sauger und Werkstück
@@ -1808,23 +1850,8 @@
         }
       }
       if (op.kind === 'contour') {
-        // Haltestege in der Mitte der längsten Elemente (Attribut gilt für das zuletzt angefügte Element)
-        const tabAt = new Set();
-        if (op.tabs) {
-          let prev = op.start;
-          const lens = op.segs.map((q, i) => {
-            let l;
-            if (q.type === 'arc') {
-              const r = Math.hypot(prev[0] - q.c[0], prev[1] - q.c[1]);
-              let sw = Math.atan2(q.to[1] - q.c[1], q.to[0] - q.c[0]) - Math.atan2(prev[1] - q.c[1], prev[0] - q.c[0]);
-              if (q.cw) { while (sw >= 0) sw -= Math.PI * 2; } else { while (sw <= 0) sw += Math.PI * 2; }
-              l = Math.abs(sw) * r;
-            } else l = Math.hypot(q.to[0] - prev[0], q.to[1] - prev[1]);
-            prev = q.to;
-            return { i: i, l: l };
-          });
-          lens.sort((a, b) => b.l - a.l).slice(0, Math.max(1, cfg.tabsCount)).forEach((x) => tabAt.add(x.i));
-        }
+        // Haltestege in der Mitte der längsten Elemente (bei der Planung gewählt: op.tabSegs; Attribut gilt für das zuletzt angefügte Element)
+        const tabAt = new Set(op.tabs ? op.tabSegs || [] : []);
         // oszillierend: je Umlauf eigene Kontur (weitere Umläufe um eine halbe Schwingung versetzt), Tiefe je Punkt als DEPTH-Attribut
         const passes = op.osc ? op.passes || 1 : 1;
         for (let pi = 0; pi < passes; pi++) {

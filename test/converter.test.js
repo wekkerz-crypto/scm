@@ -1438,3 +1438,22 @@ test('Animation: Werkzeugwechsel beim zweistufigen Formatfräsen, Vor-/Nachfräs
   assert.ok(!same.some((m) => m.change && m.change.to === 'E014' && m.change.from === 'E014'));
   assert.ok(!moves.some((m) => m.change && /^0\d\d$/.test(m.change.to) && moves.find((x) => x.tool === m.change.to && x.kind === 'drill')));
 });
+
+test('Haltestege je Durchbruch an/aus (overrides.tabs), Lage für die Ansichten', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const [s] = readParts(read('test/fixtures/testplatte.step'), 'tp.step');
+  const plain = convertSolid(s, {});
+  const cut = plain.ops.find((o) => o.tabsOption);
+  assert.ok(cut, 'Durchbruch/Rundloch mit Haltesteg-Option');
+  assert.ok(!cut.tabs && !/TAB/.test(plain.xcs));
+  // je Teil einschalten: TAB im Programm, Marken in der Mitte der längsten Elemente
+  const on = convertSolid(s, {}, { overrides: { tabs: { [cut.key]: true } } });
+  const op = on.ops.find((o) => o.key === cut.key);
+  assert.ok(op.tabs && /mit Haltestegen/.test(op.label));
+  assert.strictEqual(op.tabMarks.length, (on.xcs.match(/SetParametricAttribute2\("TAB"/g) || []).length);
+  assert.strictEqual(op.tabSegs.length, op.tabMarks.length);
+  for (const m of op.tabMarks) assert.ok(Math.abs(Math.hypot(m.t[0], m.t[1]) - 1) < 1e-9);
+  // Vorgabe „alle“, aber je Teil ausgeschaltet
+  const off = convertSolid(s, { tabsMode: 'all' }, { overrides: { tabs: { [cut.key]: false } } });
+  assert.ok(!off.ops.find((o) => o.key === cut.key).tabs);
+});

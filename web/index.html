@@ -228,6 +228,14 @@ table.ops td.k .jump:hover { color: var(--accent); }
 .v3bar button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.18); }
 .v3msg { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 0.95rem; z-index: 1; pointer-events: none; padding: 20px; text-align: center; }
 .view canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.view { touch-action: pan-y; }
+.view.zoomed { cursor: grab; touch-action: none; }
+.view.panning { cursor: grabbing; }
+.zoombar { position: absolute; left: 10px; bottom: 10px; top: auto; right: auto; z-index: 2; display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 99px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent); border: 1px solid var(--line); backdrop-filter: blur(6px); }
+.zoombar button { min-width: 28px; font-size: 0.95rem; line-height: 1; padding: 4px 9px; }
+.zoombar button[data-z="fit"] { font-size: 0.8rem; }
+.zoombar .zk { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); min-width: 3.6em; text-align: center; }
 .anim { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; }
 .anim input[type="range"] { flex: 1 1 200px; min-width: 0; accent-color: var(--accent); }
 .anim .now { flex: 1 1 100%; font-size: 0.85rem; color: var(--muted); min-height: 1.4em; }
@@ -385,6 +393,7 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
 .seg button:hover { color: var(--ink); }
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.18); }
 .seg.small button { font-size: 0.78rem; padding: 2px 10px; }
+.seg .lab { align-self: center; padding: 0 6px 0 8px; font-size: 0.78rem; color: var(--muted); }
 .ctl .rough { font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
 .ctl details.tech { flex: 1 1 100%; font-size: 0.75rem; }
 .ctl details.tech summary { cursor: pointer; color: var(--muted); list-style-position: inside; }
@@ -1291,6 +1300,14 @@ table.fmt.one .onet { display: inline; }
         '<button type="button" data-twostep="1" aria-pressed="' + two + '">Zweistufig</button></span>' +
         (two ? '<span class="rough" title="Werkzeug 1 und Aufmaß unter Werkzeuge &amp; Regeln">vor: ' + esc(op.rough.tool) + ' +' + fmt(op.rough.allowance) + ' mm · nach:</span>' : '');
     }
+    if (op.tabsOption) {
+      // Haltestege je Durchbruch an/aus (Vorgabe aus Werkzeuge & Regeln)
+      const on = !!op.tabs;
+      html += '<span class="seg small" role="group" aria-label="Haltestege für diesen Durchbruch" title="Haltestege: Innenstück bleibt hängen (' +
+        fmt(state.settings.tabsCount) + ' Stege, ' + fmt(state.settings.tabLength) + ' × ' + fmt(state.settings.tabHeight) + ' mm)">' +
+        '<span class="lab">Haltestege</span><button type="button" data-tabs="' + esc(op.key) + '" data-on="0" aria-pressed="' + !on + '">Aus</button>' +
+        '<button type="button" data-tabs="' + esc(op.key) + '" data-on="1" aria-pressed="' + on + '">An</button></span>';
+    }
     if (op.rebateStop && op === part.result.ops.find((o) => o.key === op.key)) {
       // abgesetzter Falz je Teil: einfach (ein-, durch-, austauchen) oder nochmal zurück mit der Mitte auf der Kante
       const back = !!op.rebateReturn;
@@ -1569,9 +1586,15 @@ table.fmt.one .onet { display: inline; }
       }
     }
     // Fräsbahnen (außer Formatfräsen)
+    let tabsSvg = '';
     for (const op of r.ops) {
       if ((op.kind !== 'contour' && op.kind !== 'slantpath') || op.key === 'format') continue;
       s += '<path d="' + svgPath(op.start, op.segs, Y) + '" fill="none" stroke="var(' + opToken(op) + ')" stroke-width="2" stroke-dasharray="6 3" ' + sw + '/>';
+      // Haltestege: Material bleibt quer über der Fräsbahn stehen (zuletzt gezeichnet, über der Lochfläche)
+      for (const t of tabRects(op)) {
+        tabsSvg += '<polygon class="tabmark" points="' + t.pts.map((q) => q[0] + ',' + Y(q[1])).join(' ') + '" fill="var(--warn)" fill-opacity="0.85" stroke="var(--ink)" stroke-width="1" ' + sw +
+          '><title>Haltesteg ' + fmt(t.len) + ' × ' + fmt(t.h) + ' mm (Länge × Höhe)</title></polygon>';
+      }
     }
     // Bohrungen
     for (const d of p.drills) {
@@ -1687,7 +1710,7 @@ table.fmt.one .onet { display: inline; }
     s += '<text x="' + (-u * 3 - fs * 0.5) + '" y="' + W / 2 + '" text-anchor="middle" transform="rotate(-90 ' + (-u * 3 - fs * 0.5) + ' ' + W / 2 + ')">Y ' + fmt(W) + '</text>';
     s += '</g>';
     s += '<circle cx="0" cy="' + W + '" r="' + u * 1.2 + '" fill="var(--err)"><title>Nullpunkt X0 Y0</title></circle>';
-    s += '</svg>';
+    s += tabsSvg + '</svg>';
     return s;
   }
 
@@ -1802,7 +1825,7 @@ table.fmt.one .onet { display: inline; }
       if (ov.order || ov.suppress || indexed(ov.tools) || indexed(ov.steps) || indexed(ov.depths) || indexed(ov.tech)) {
         part.notice = 'Eigene Reihenfolge, gelöschte Bearbeitungen und Werkzeug/Zustellung/Tiefe je Kontur wurden nach der DXF-Änderung zurückgesetzt.';
       }
-      for (const m of [ov.tools, ov.steps, ov.depths, ov.tech]) for (const k of Object.keys(m || {})) if (/-\d+$/.test(k)) delete m[k];
+      for (const m of [ov.tools, ov.steps, ov.depths, ov.tech, ov.tabs]) for (const k of Object.keys(m || {})) if (/-\d+$/.test(k)) delete m[k];
       delete ov.order;
       delete ov.suppress;
       compute(part); render();
@@ -1853,10 +1876,16 @@ table.fmt.one .onet { display: inline; }
       compute(part); render();
     }));
     setupStepDrag(part);
+    setupZoom(part);
     el.querySelectorAll('[data-curved]').forEach((b) => b.addEventListener('click', () => {
       const v = b.dataset.on;
       const val = v === '1' ? true : v === '0' || v === 'off' ? false : v; // Schräge: an/aus; Flächen: aus/ball/flat4
       part.overrides.curved = Object.assign({}, part.overrides.curved, { [b.dataset.curved]: val });
+      compute(part); render();
+    }));
+    el.querySelectorAll('[data-tabs]').forEach((b) => b.addEventListener('click', () => {
+      const ov = ovOf(part);
+      ov.tabs = Object.assign({}, ov.tabs, { [b.dataset.tabs]: b.dataset.on === '1' });
       compute(part); render();
     }));
     el.querySelectorAll('[data-rebret]').forEach((b) => b.addEventListener('click', () => {
@@ -2191,6 +2220,112 @@ table.fmt.one .onet { display: inline; }
   function renderSoon() { if (ptrDown) pendingRender = true; else render(); }
 
   // Schritte mit gedrückter Maus (oder Finger) am Griff verschieben
+  // ------------------------------------------------ Zoom der Draufsicht (2D): Mausrad an der Mausposition, Ziehen verschiebt,
+  // Doppelklick oder „Ganz“ zeigt wieder alles. Wirkt auf das SVG (viewBox) – die Animation zeichnet im selben Ausschnitt.
+  const zoom = { part: null, k: 1, cx: 0, cy: 0 };
+  function setupZoom(part) {
+    const view = $('view');
+    const svg = view && view.querySelector('svg');
+    if (!svg) return;
+    const base = svg.viewBox.baseVal;
+    const B = { x: base.x, y: base.y, w: base.width, h: base.height };
+    if (zoom.part !== part || zoom.key !== B.w + 'x' + B.h) { zoom.part = part; zoom.key = B.w + 'x' + B.h; zoom.k = 1; zoom.cx = B.x + B.w / 2; zoom.cy = B.y + B.h / 2; }
+    const apply = () => {
+      const w = B.w / zoom.k;
+      const h = B.h / zoom.k;
+      // nicht aus dem Bild schieben
+      zoom.cx = Math.min(B.x + B.w - w / 2, Math.max(B.x + w / 2, zoom.cx));
+      zoom.cy = Math.min(B.y + B.h - h / 2, Math.max(B.y + h / 2, zoom.cy));
+      svg.setAttribute('viewBox', (zoom.cx - w / 2) + ' ' + (zoom.cy - h / 2) + ' ' + w + ' ' + h);
+      view.classList.toggle('zoomed', zoom.k > 1.001);
+      const lab = $('zoomk');
+      if (lab) lab.textContent = Math.round(zoom.k * 100) + ' %';
+      drawAnim();
+    };
+    // Bildschirmpunkt → SVG-Koordinaten (preserveAspectRatio meet: zentriert)
+    const toSvg = (cx, cy) => {
+      const r = svg.getBoundingClientRect();
+      const vb = svg.viewBox.baseVal;
+      const sc = Math.min(r.width / vb.width, r.height / vb.height);
+      return [vb.x + (cx - r.left - (r.width - vb.width * sc) / 2) / sc, vb.y + (cy - r.top - (r.height - vb.height * sc) / 2) / sc, sc];
+    };
+    const zoomAt = (k, cx, cy) => {
+      const nk = Math.min(40, Math.max(1, k));
+      if (cx === undefined) { zoom.k = nk; apply(); return; }
+      const [x, y] = toSvg(cx, cy);
+      // Punkt unter der Maus bleibt stehen
+      zoom.cx = x + (zoom.cx - x) * (zoom.k / nk);
+      zoom.cy = y + (zoom.cy - y) * (zoom.k / nk);
+      zoom.k = nk;
+      apply();
+    };
+    // Bedienleiste
+    const bar = document.createElement('div');
+    bar.className = 'v3bar zoombar';
+    bar.innerHTML = '<button type="button" data-z="out" aria-label="Verkleinern" title="Verkleinern (Mausrad)">−</button>' +
+      '<span class="zk" id="zoomk">100 %</span><button type="button" data-z="in" aria-label="Vergrößern" title="Vergrößern (Mausrad)">+</button>' +
+      '<button type="button" data-z="fit" title="Ganzes Teil zeigen (Doppelklick)">Ganz</button>';
+    view.appendChild(bar);
+    bar.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-z]');
+      if (!b) return;
+      if (b.dataset.z === 'fit') { zoom.k = 1; zoom.cx = B.x + B.w / 2; zoom.cy = B.y + B.h / 2; apply(); }
+      else zoomAt(zoom.k * (b.dataset.z === 'in' ? 1.5 : 1 / 1.5));
+    });
+    bar.addEventListener('dblclick', (e) => e.stopPropagation());
+    view.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      zoomAt(zoom.k * Math.pow(1.0018, -e.deltaY * (e.deltaMode === 1 ? 30 : 1)), e.clientX, e.clientY);
+    }, { passive: false });
+    view.addEventListener('dblclick', () => { zoom.k = 1; zoom.cx = B.x + B.w / 2; zoom.cy = B.y + B.h / 2; apply(); });
+    // Verschieben mit gedrückter Maus (bzw. einem Finger), wenn vergrößert; zwei Finger: zoomen
+    const touches = new Map();
+    let pinch = null;
+    view.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.zoombar') || e.button > 0) return;
+      touches.set(e.pointerId, [e.clientX, e.clientY]);
+      if (touches.size === 2) {
+        const [a, b] = Array.from(touches.values());
+        pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), k: zoom.k };
+        return;
+      }
+      if (zoom.k <= 1.001) return;
+      const start = [e.clientX, e.clientY];
+      const c0 = [zoom.cx, zoom.cy];
+      let moved = false;
+      const move = (ev) => {
+        if (touches.has(ev.pointerId)) touches.set(ev.pointerId, [ev.clientX, ev.clientY]);
+        if (pinch && touches.size === 2) {
+          const [a, b] = Array.from(touches.values());
+          const mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+          zoomAt(pinch.k * Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch.d, mid[0], mid[1]);
+          return;
+        }
+        const sc = toSvg(0, 0)[2];
+        if (!moved && Math.hypot(ev.clientX - start[0], ev.clientY - start[1]) < 3) return;
+        moved = true;
+        view.classList.add('panning');
+        zoom.cx = c0[0] - (ev.clientX - start[0]) / sc;
+        zoom.cy = c0[1] - (ev.clientY - start[1]) / sc;
+        apply();
+      };
+      const up = (ev) => {
+        touches.delete(ev.pointerId);
+        if (touches.size < 2) pinch = null;
+        view.classList.remove('panning');
+        document.removeEventListener('pointermove', move);
+        document.removeEventListener('pointerup', up);
+        document.removeEventListener('pointercancel', up);
+      };
+      document.addEventListener('pointermove', move);
+      document.addEventListener('pointerup', up);
+      document.addEventListener('pointercancel', up);
+    });
+    view.addEventListener('pointerup', (e) => { touches.delete(e.pointerId); if (touches.size < 2) pinch = null; });
+    view.addEventListener('pointercancel', (e) => { touches.delete(e.pointerId); pinch = null; });
+    apply();
+  }
+
   function setupStepDrag(part) {
     const table = $('opstable');
     const aside = table && table.closest('.steps');
@@ -2288,6 +2423,8 @@ table.fmt.one .onet { display: inline; }
         t += d;
       }
       anim.total = t;
+      anim.opStart = {};
+      anim.moves.forEach((m, k) => { if (m.op >= 0 && m.type !== 'rapid' && anim.opStart[m.op] === undefined) anim.opStart[m.op] = anim.times[k][0]; });
       anim.t = 0;
       anim.playing = false;
       // Abschnitte der Zeitleiste: je Bearbeitungsgruppe von der ersten bis zur letzten Bewegung
@@ -2383,6 +2520,24 @@ table.fmt.one .onet { display: inline; }
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
   }
   const mix = (a, b, k) => 'rgb(' + a.map((v, i) => Math.round(v + (b[i] - v) * k)).join(',') + ')';
+  // Haltestege eines Durchbruchs als Rechtecke (Plattenkoordinaten): quer über die Fräsbahn (Breite = Fräser),
+  // Länge = Steglänge, Mitte = Bahnmitte auf der Werkzeugseite
+  function tabRects(op) {
+    if (!op || !op.tabs || !op.tabMarks) return [];
+    const info = ToolLibrary.infoMap(state.tools)[op.tool] || {};
+    const d = info.d || 10;
+    const len = op.tabLength || 5;
+    // Werkzeugseite wie die Radiuskorrektur der Bearbeitung: 1 = links, 2 = rechts der Bahn, sonst Mitte
+    const sgn = op.side === 1 ? 1 : op.side === 2 ? -1 : 0;
+    return op.tabMarks.map((k) => {
+      const nl = [-k.t[1], k.t[0]];
+      const c = [k.at[0] + nl[0] * sgn * d / 2, k.at[1] + nl[1] * sgn * d / 2];
+      const a = [k.t[0] * len / 2, k.t[1] * len / 2];
+      const b = [nl[0] * d / 2, nl[1] * d / 2];
+      return { c: c, t: k.t, len: len, w: d, h: op.tabHeight || 2,
+        pts: [[c[0] - a[0] - b[0], c[1] - a[1] - b[1]], [c[0] + a[0] - b[0], c[1] + a[1] - b[1]], [c[0] + a[0] + b[0], c[1] + a[1] + b[1]], [c[0] - a[0] + b[0], c[1] - a[1] + b[1]]] };
+    });
+  }
   // Farbe einer Bewegung: Bearbeitungsart; beim zweistufigen Formatfräsen das Vorfräsen heller (gleicher Farbton der Palette)
   function moveColor(m, op, col) {
     const base = col(opToken(op));
@@ -2623,6 +2778,7 @@ table.fmt.one .onet { display: inline; }
           suction: cur.result.suction,
           // gelöscht: immer kräftiges Rot (das Holz ist in beiden Modi hell)
           suppressed: suppressedMoves(cur.result), suppressedColor: '#c62a1c',
+          tabs: ops.flatMap((op) => tabRects(op)), tabColor: '#c25a00', // Haltestege: kräftig, in hell und dunkel gut zu sehen
         });
       }
       v3message('');
@@ -2746,6 +2902,16 @@ table.fmt.one .onet { display: inline; }
         if (m.slug && f >= 1 && m.through) { ctx.fillStyle = table; path(m.slug); ctx.closePath(); ctx.fill(); }
       }
     }
+
+    // Haltestege: ab Beginn des Durchbruchs als stehen bleibendes Material markieren
+    anim.result.ops.forEach((op, k) => {
+      if (!op.tabs || !(anim.opStart && anim.opStart[k] !== undefined && anim.opStart[k] <= anim.t)) return;
+      for (const t of tabRects(op)) {
+        ctx.fillStyle = col('--warn'); ctx.globalAlpha = 0.9;
+        ctx.beginPath(); t.pts.forEach((q, j) => (j ? ctx.lineTo(X(q[0]), Y(q[1])) : ctx.moveTo(X(q[0]), Y(q[1])))); ctx.closePath(); ctx.fill();
+        ctx.globalAlpha = 1; ctx.strokeStyle = col('--ink'); ctx.lineWidth = 1; ctx.stroke();
+      }
+    });
 
     // Eilgang mit Pfeil, Werkzeug
     if (cur) {

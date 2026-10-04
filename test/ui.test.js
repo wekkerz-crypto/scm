@@ -133,6 +133,41 @@ test('Web-Tool: Reihenfolge-Regel mit der Maus ziehen', { skip: !chromium && 'Pl
   }
 });
 
+test('Web-Tool: Draufsicht zoomen, Haltestege am Durchbruch umschalten', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    await p.locator('.part').first().locator('.sel').click();
+    // Haltestege: Umschalter an der Bearbeitung, Marken in der Draufsicht, TAB im Programm
+    assert.strictEqual(await p.$$eval('#view polygon.tabmark', (x) => x.length), 0);
+    await p.click('[data-tabs][data-on="1"]');
+    assert.ok((await p.$$eval('#view polygon.tabmark', (x) => x.length)) >= 1);
+    assert.match(await p.textContent('#xcs'), /SetParametricAttribute2\("TAB"/);
+    await p.click('[data-tabs][data-on="0"]');
+    assert.strictEqual(await p.$$eval('#view polygon.tabmark', (x) => x.length), 0);
+    // Zoom: Mausrad vergrößert, „Ganz“ zeigt wieder alles
+    const vb = () => p.$eval('#view svg', (s) => s.viewBox.baseVal.width);
+    const full = await vb();
+    const box = await (await p.$('#view')).boundingBox();
+    await p.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await p.mouse.wheel(0, -400);
+    await p.waitForTimeout(100);
+    assert.ok((await vb()) < full * 0.8, 'vergrößert');
+    assert.notStrictEqual(await p.textContent('#zoomk'), '100 %');
+    await p.click('[data-z="fit"]');
+    assert.ok(Math.abs((await vb()) - full) < 1e-6);
+    await p.click('[data-z="in"]');
+    assert.ok((await vb()) < full);
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});
+
 test('Web-Tool: Schalter Hell/Dunkel', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
   const browser = await chromium.launch();
   try {

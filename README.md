@@ -267,7 +267,7 @@ Maestro geprüft):
 | *Programmkopf → Maestro optimiert beim Laden* | `SetOptimization(true)` |
 | *Programmkopf → Tisch beim Laden einrichten* | `SetAutoSetup(true)` (z. B. mit dem Sauger-Vorschlag) |
 | *Programmkopf → Werkstück: echte Außenkontur* | bei Sonderteilen Kontur als Polylinie + `CreateFinishedWorkpieceFromExtrusion("Workpiece", D)` statt Quader; Rohteil bleibt der Quader mit Aufmaß |
-| *Formatfräsen & Konturen → Haltestege* | bei Durchbrüchen/Rundlöchern `SetParametricAttribute2("TAB", Länge, Höhe, 0.5)` in der Mitte der längsten Elemente (alle oder nur kleine Innenstücke) |
+| *Formatfräsen & Konturen → Haltestege* | bei Durchbrüchen/Rundlöchern `SetParametricAttribute2("TAB", Länge, Höhe, 0.5)` in der Mitte der längsten Elemente (alle oder nur kleine Innenstücke); je Durchbruch direkt an der Bearbeitung *Haltestege Aus / An*. Stege sind in der Draufsicht und der Animation als Klötzchen quer über der Fräsbahn markiert, in 3D orange |
 | *Formatfräsen & Konturen → spiralförmig eintauchen* | vor Durchbrüchen/Rundlöchern `CreateHelicMillingStrategy(Zustellung, letzte Zustellung, Schlichtgang)` |
 | *Bohren → In Stufen bohren ab Tiefe* | vor tiefen Bohrungen `CreateMultiStepDrillingStrategy(true, Anzahl, Tiefe je Stufe, true)`, danach `CreateSingleStepDrillingStrategy()` |
 
@@ -277,6 +277,8 @@ Maestro geprüft):
 Zeitleiste und am Werkzeug in der Animation: Bohrung oben blau, Tasche orange, Fräsen/Kontur grün-türkis, Nut/Falz gelb,
 Fase/schräge Kante pink, schräge Bohrung grün, Kante (Bohrung/Tasche) violett. Die Palette ist für hell und dunkel
 getrennt abgestimmt und auch bei Farbsehschwäche unterscheidbar; die Legende unter der Ansicht nennt alle Farben.
+**Zoom** in der Draufsicht (2D, auch während der Animation): Mausrad an der Mausposition, Ziehen verschiebt, Doppelklick oder
+*Ganz* zeigt das ganze Teil; Knöpfe −/+ unten links, am Handy mit zwei Fingern.
 **Werkzeugwechsel** zeigt die Animation, sobald das Fräswerkzeug wechselt (Bohrungen laufen über das Bohraggregat): Eilgang
 zum Wechselplatz links neben der Platte, kurze Pause mit „⟳ alt → neu“, in der Anzeige *Werkzeugwechsel*. Beim **zweistufigen
 Formatfräsen** sind Vor- und Nachfräsen eigene Abschnitte der Zeitleiste; das Vorfräsen ist heller (gleicher Farbton), die

@@ -1230,10 +1230,7 @@ table.fmt.one .onet { display: inline; }
     }
     // Gelöschte (unterdrückte) Bearbeitungen: rot dort, wo sie wären – Werkzeugbahn wie in der Animation
     if ((r.suppressed || []).length) {
-      let moves = [];
-      try {
-        moves = Toolpath.build({ panel: p, ops: r.suppressed.flatMap((g) => g.ops) }, ToolLibrary.infoMap(state.tools), state.settings);
-      } catch (e) { moves = []; }
+      const moves = suppressedMoves(r);
       s += '<g class="suppressed-ops">';
       moves.forEach((m) => {
         if (m.type === 'rapid' || m.op < 0) return;
@@ -1880,6 +1877,14 @@ table.fmt.one .onet { display: inline; }
     m.textContent = text || '';
   }
 
+  // Werkzeugbahn der gelöschten Bearbeitungen (für die rote Markierung in 2D und 3D)
+  function suppressedMoves(r) {
+    if (!(r.suppressed || []).length) return [];
+    try {
+      return Toolpath.build({ panel: r.panel, ops: r.suppressed.flatMap((g) => g.ops) }, ToolLibrary.infoMap(state.tools), state.settings);
+    } catch (e) { return []; }
+  }
+
   function mount3d(part) {
     const slot = $('v3slot');
     if (!slot) return;
@@ -1906,9 +1911,11 @@ table.fmt.one .onet { display: inline; }
         const ops = cur.result.ops;
         v3.viewer.setPart({
           meshes: View3D.stepMeshes(occt, cur.stepText), panel: cur.result.panel, tf: cur.result.panel.tf,
-          raw: state.settings.rawOversize || 0, board: '#d4ae7b',
+          raw: cur.result.side === 2 ? 0 : (state.settings.rawOversize || 0), board: '#d4ae7b', // Seite 2: ohne Rohteil-Versatz
           colorOf: (m) => col(opToken(ops[m.op])),
           suction: cur.result.suction,
+          // gelöscht: immer kräftiges Rot (das Holz ist in beiden Modi hell)
+          suppressed: suppressedMoves(cur.result), suppressedColor: '#c62a1c',
         });
       }
       v3message('');

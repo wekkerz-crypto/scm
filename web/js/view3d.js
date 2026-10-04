@@ -124,7 +124,7 @@
     this.scene.add(this.sun);
     this.scene.add(this.sun.target);
     this.groups = {};
-    for (const g of ['part', 'raw', 'trails', 'tool', 'ground', 'fixture']) { this.groups[g] = new THREE.Group(); this.scene.add(this.groups[g]); }
+    for (const g of ['part', 'raw', 'trails', 'tool', 'ground', 'fixture', 'suppressed']) { this.groups[g] = new THREE.Group(); this.scene.add(this.groups[g]); }
     this.fluteTex = new THREE.CanvasTexture(fluteCanvas());
     this.fluteTex.wrapS = this.fluteTex.wrapT = THREE.RepeatWrapping;
     this.fluteTex.encoding = THREE.sRGBEncoding;
@@ -203,7 +203,26 @@
     this.clear('raw');
     this.clear('ground');
     this.clear('fixture');
+    this.clear('suppressed');
     this.clearTrails();
+    // gelöschte (unterdrückte) Bearbeitungen: rot dort, wo sie wären – breites, durchscheinendes Band und gestrichelte Mittellinie
+    for (const m of opts.suppressed || []) {
+      if (m.type === 'rapid' || !m.pts3 || m.pts3.length < 2) continue;
+      const flat = [];
+      for (const q of m.pts3) flat.push(q[0], q[1], Math.max(q[2], 0) + 0.4);
+      const width = m.disc ? Math.max(1.5, m.disc.thick) : Math.max(1, (m.d || 4) * 0.92);
+      const red = new T.Color(opts.suppressedColor || '#d0453a');
+      const band = new T.LineGeometry();
+      band.setPositions(flat);
+      const wide = new T.Line2(band, this.lineMat({ color: red, linewidth: width, worldUnits: true, transparent: true, opacity: 0.45, depthWrite: false }));
+      wide.renderOrder = 3;
+      const mid = new T.LineGeometry();
+      mid.setPositions(flat);
+      const dash = new T.Line2(mid, this.lineMat({ color: red, linewidth: 2.2, dashed: true, dashSize: 6, gapSize: 4, transparent: true, opacity: 0.95, depthWrite: false }));
+      dash.computeLineDistances();
+      dash.renderOrder = 4;
+      this.groups.suppressed.add(wide, dash);
+    }
     // Sauger (Vorschlag) unter der Platte, darunter die Konsolen; der Tisch liegt unter den Konsolen
     const CUP_H = 75;
     const BAR_H = 45;

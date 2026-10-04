@@ -103,7 +103,7 @@ Plattendicke + Zugabe (Einstellungen *Formatfräsen: Dicke +* bzw. *Ausschnitte:
 in der Bearbeitungsliste im Feld *Tiefe* absolut in mm setzen; ist sie kleiner als die Plattendicke, gibt es einen Hinweis.
 
 **Bearbeitung löschen:** In der Schrittliste löscht ✕ eine erkannte Bearbeitung (bei Bohrungen die ganze Gruppe) aus dem
-Programm, aus Animation und Zählung. In der Draufsicht ist sie rot schraffiert dort eingezeichnet, wo sie wäre.
+Programm, aus Animation und Zählung. In der Draufsicht und in der 3D-Ansicht ist sie rot dort eingezeichnet, wo sie wäre.
 Sie steht unter *Gelöscht / unterdrückt* und lässt sich dort wiederherstellen
 (je Teil und Seite; beim Drehen/Wenden zurückgesetzt).
 

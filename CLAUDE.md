@@ -26,8 +26,8 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
 - DXF (2D): `dxf.js` (`DxfReader.analyze`, ohne Layer; größte Kontur = Teil, Vorschläge je Kontur mit stabiler `id`)
   → `convertDxf` in `convert.js`; Änderungen je Teil in `overrides.dxf = {T, features: {id: {kind, depth}}}`, Drehen über
   `orientation.rot`. Test-DXF: `node tools/make_dxf.js`.
-- Oszillieren/Schleifen: `op.osc = {min, max}` (Tiefen ab Oberseite) → `oscillate()` in `xcs.js` teilt die Kontur an den
-  Wendepunkten, je Punkt `SetAttribute("DEPTH")`; `fmtOp.osc` (Einstellung `oscMill`), Schleifen = Op `sand` (Kategorie
+- Oszillieren/Schleifen: `op.osc = {min, max}` (Tiefen ab Oberseite) → `oscillate()` in `xcs.js`: Kontur bleibt ganz (nicht
+  zerteilen – brach in Maestro die Korrektur), Elementende `SetAttribute("DEPTH")`, Wendepunkte `SetParametricAttribute("DEPTH", t, u)`; `fmtOp.osc` (Einstellung `oscMill`), Schleifen = Op `sand` (Kategorie
   `sand`, Werkzeugart `sand` = SandMill, An-/Abfahrt im Bogen, `passes`, Schleifzugabe → `finishAllowance` am Formatfräsen).
 - Zapfen auf Schräge: `bossOf` in `panel.js` (herausragende Flächen an einer Innenkontur der schrägen Fläche) →
   `slantWall.boss = {height, plane, islands, bottomZ}`; `xcs.js`: Vorschnitt auf versetzter Linie (`tenonPrecut`) und

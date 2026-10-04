@@ -123,8 +123,8 @@ zurück. Beim zweistufigen Formatfräsen gelten sie für den Nachfräser (der Vo
   im Bogen** (`SetApproachStrategy(false, true, Faktor)`, Bogen = Faktor × Walzenradius), Überlappung am Ende 20 mm.
   Mehrere Umläufe: jeder weitere um eine halbe Schwingung versetzt. *Schleifzugabe*: das Formatfräsen bleibt um diesen
   Wert größer (`overMaterial`), die Walze schleift auf Endmaß. Innenecken/-rundungen kleiner als der Walzenradius → Hinweis.
-- Umsetzung: Die Kontur wird an den Wendepunkten geteilt, jeder Punkt bekommt seine Tiefe mit `SetAttribute("DEPTH", …)`
-  (Handbuch 3.8.5.1.2); Maestro rechnet Radiuskorrektur und Bogen-An-/Abfahrt weiter selbst. Die Schwingungslänge
+- Umsetzung: Die Kontur bleibt wie ohne Oszillation; die Tiefe steht am Ende jedes Elements (`SetAttribute("DEPTH", …)`)
+  und an den Wendepunkten mitten im Element (`SetParametricAttribute("DEPTH", Tiefe, Lage 0–1)`, Handbuch 3.8.5.1.2); Maestro rechnet Radiuskorrektur und Bogen-An-/Abfahrt weiter selbst. Die Schwingungslänge
   (*Weg je Schwingung*, Vorgabe 300 mm) wird so angepasst, dass ganze Schwingungen auf einen Umlauf passen – Ende auf
   derselben Tiefe wie der Anfang.
 
@@ -293,6 +293,10 @@ umgewandelt, im X-Konverter als Script importiert und als Maestro-Programm angel
 - Bohrungen von oben inkl. Lochreihen (`CreatePattern`)
 - horizontale Bohrungen links/rechts (`SelectWorkplane("Left"/"Right")`)
 - Kreisfräsung mit Bögen (`AddArc2PointCenterToPolyline`) für das Rundloch Ø 100
+- **Oszillieren beim Formatfräsen:** Kontur unverändert wie ohne Oszillation, Tiefe am Elementende
+  `SetAttribute("DEPTH", Tiefe)` (nach dem Element) und an den Wendepunkten im Element
+  `SetParametricAttribute("DEPTH", Tiefe, Lage 0–1)` – Kontur geschlossen, Tiefe pendelt. (Die erste Fassung zerteilte die
+  Kontur an den Wendepunkten; daran brach Maestro die Werkzeugkorrektur ab – entfernt.)
 
 ## Noch zu prüfen an der Maschine
 
@@ -338,15 +342,8 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
   zurück, Nut in der Fläche mit waagerechtem Werkzeug auf der Kanten-Ebene – in der Simulation prüfen.
 - **Eigene Schnittwerte:** Einheiten laut Handbuch wie in Xilog (V/F in m/min, S in U/min) – an einer Bearbeitung mit
   eigenem Vorschub in Maestro prüfen, dass der Wert so ankommt (nicht als mm/min).
-- **Oszillieren / Schleifwalze:** Erster Maschinentest (Kontur an den Wendepunkten zerteilt): Maestro brach die
-  Werkzeugkorrektur ab (rechte Hälfte fehlte, Bahn quer durchs Teil, „keine geschlossene Kontur“), ohne Oszillation alles
-  richtig. Jetzt bleibt die Kontur ganz wie ohne Oszillation; Wendepunkte als `SetParametricAttribute("DEPTH", Tiefe, Lage 0–1)`
-  im Element (Handbuch 3.8.5.1.2), Elementende `SetAttribute("DEPTH", Tiefe)`. Alte Zerteilung: Einstellung *Oszillation: Kontur
-  zerteilen*. Zu prüfen: Kontur geschlossen, Tiefen pendeln. – `SetAttribute("DEPTH", Tiefe)` nach jedem Konturelement – das Handbuch-Beispiel setzt
-  es nach dem 1. Element, der Text spricht vom Endpunkt des 2. Elements. Gilt es für das folgende Element, sind alle Tiefen
-  (und Haltestege `TAB`) um ein Element verschoben → Einstellung *Tiefen-Attribut setzen: vor dem Element*. Zu prüfen: Tiefe ab Oberseite wie bei `CreateRoughFinish`, Übergang zwischen den Punkten
-  linear (Rampe, keine Stufe), zusammen mit Bogen-An-/Abfahrt und Überlappung. Schleifwalze `E091` als Werkzeug in
-  `CreateRoughFinish` mit Korrektur rechts; Drehzahl/Vorschub kommen aus der Werkzeugdatei.
+- **Schleifwalze:** `E091` als Werkzeug in `CreateRoughFinish` mit Korrektur rechts, Bogen-An-/Abfahrt und Überlappung;
+  Drehzahl/Vorschub kommen aus der Werkzeugdatei. Das Pendeln der Tiefe ist mit dem Formatfräsen bestätigt (s. o.).
 - **Taschen in den Kanten:** Geometrie in denselben Kantenkoordinaten wie die Kantenbohrungen (X waagerecht, Y = Höhe ab
   Plattenunterseite); in Maestro noch nicht simuliert.
 - **Zweiseitig, Seite 2:** Rohteil = fertiges Teil (`CreateRawWorkpiece` und `SetWorkpieceSetupPosition` mit 0), Platte um Y

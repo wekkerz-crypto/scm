@@ -930,7 +930,8 @@
     for (const op of sorted) {
       if (!sup.has(op.group)) { ops.push(op); continue; }
       let g = suppressed.find((x) => x.group === op.group);
-      if (!g) { g = { group: op.group, label: opText(op), n: 0 }; suppressed.push(g); }
+      if (!g) { g = { group: op.group, label: opText(op), n: 0, ops: [] }; suppressed.push(g); }
+      g.ops.push(op); // für die Anzeige (rot, wo die Bearbeitung wäre)
       g.n += op.kind === 'drill' ? op.pattern.nX * op.pattern.nY : 1;
     }
     for (const g of suppressed) if (g.n > 1 && /Bohrung/.test(g.label)) g.label = g.n + ' × ' + g.label;

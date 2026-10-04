@@ -94,7 +94,7 @@ die Säge eine eigene **Extra-Tiefe** und optional **Vorritzen** (`CreateSection
 vor dem `CreateBladeCut`: erster Schnitt in Ritztiefe, Rückweg auf volle Tiefe).
 
 **Werkzeuge:** Das Web-Tool liest die Werkzeugliste (`.tlgx`) mit Durchmesser und Schneidenlänge.
-Für jede Fräsbearbeitung gibt es eine Auswahlliste mit allen Fräsern, Favoriten (★ unter *Werkzeuge & Regeln*)
+Für jede Fräsbearbeitung gibt es eine Auswahlliste mit allen Fräsern, Favoriten (★ im eigenen Bereich *Werkzeugliste & Favoriten*)
 stehen oben. Zustellung global oder je Bearbeitung; Warnung, wenn die Zustellung länger als die Schneide ist.
 `node tools/build_defaults.js` erzeugt die eingebaute Standardliste neu.
 
@@ -103,11 +103,12 @@ Plattendicke + Zugabe (Einstellungen *Formatfräsen: Dicke +* bzw. *Ausschnitte:
 in der Bearbeitungsliste im Feld *Tiefe* absolut in mm setzen; ist sie kleiner als die Plattendicke, gibt es einen Hinweis.
 
 **Bearbeitung löschen:** In der Schrittliste löscht ✕ eine erkannte Bearbeitung (bei Bohrungen die ganze Gruppe) aus dem
-Programm, aus Animation und Zählung. Sie steht dann unter *Gelöscht / unterdrückt* und lässt sich dort wiederherstellen
+Programm, aus Animation und Zählung. In der Draufsicht ist sie rot schraffiert dort eingezeichnet, wo sie wäre.
+Sie steht unter *Gelöscht / unterdrückt* und lässt sich dort wiederherstellen
 (je Teil und Seite; beim Drehen/Wenden zurückgesetzt).
 
 **Reihenfolge:**
-- *Reihenfolge-Regel* unter *Werkzeuge & Regeln*: die Bearbeitungsarten (Bohrungen oben, Kantenbohrungen, schräge
+- *Reihenfolge-Regel* (eigener aufklappbarer Bereich unter *Werkzeuge & Regeln*, mit eigenem Speichern-Knopf): die Bearbeitungsarten (Bohrungen oben, Kantenbohrungen, schräge
   Bohrungen, Nuten, Taschen, Falze, Fasen, schräge Kanten, Sägeschnitte, Bearbeitungen auf schrägen Ebenen, gewölbte
   Flächen, Durchbrüche, Konturausschnitte, Formatfräsen, Kantenrundungen) mit ↑/↓ in die gewünschte Folge bringen, mit
   *Regel verwenden* zu- und abschalten. Standard: erst bohren, dann fräsen, Formatfräsen und danach die Kantenrundungen

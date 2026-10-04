@@ -218,7 +218,8 @@ pre.xcs { margin: 0; background: var(--sunken); border-radius: var(--r); padding
 pre.xcs .c { color: var(--accent); }
 pre.xcs .s { color: var(--ok); }
 
-.rule { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 8px; }
+.rule { margin-top: 12px; display: grid; gap: 8px; }
+details.settings + details.settings { margin-top: 14px; }
 .rule .bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
 .ruleon { display: flex; gap: 6px; align-items: center; font-size: 0.9rem; }
 .rulelist { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-width: 30rem; }
@@ -226,7 +227,8 @@ pre.xcs .s { color: var(--ok); }
   background: var(--surface); font-size: 0.9rem; }
 .rulelist li .nm { flex: 1; min-width: 0; }
 .rulelist.off li { opacity: 0.45; }
-.toollib { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 8px; }
+.toollib { margin-top: 12px; display: grid; gap: 8px; }
+details.settings > summary #toolsrc { font-family: var(--font-body); font-weight: 400; font-size: 0.85rem; }
 .toollib .bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
 .toolgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 4px 12px; }
 .tool { display: flex; align-items: center; gap: 8px; padding: 3px 4px; border-radius: var(--r); font-size: 0.85rem; min-width: 0; }
@@ -242,7 +244,9 @@ table.ops td.mv { width: 6.4em; white-space: nowrap; text-align: right; }
 .suppressed summary { cursor: pointer; color: var(--muted); }
 .suppressed ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
 .suppressed li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 3px 8px; border-radius: var(--r); background: var(--sunken); }
-.suppressed .nm { text-decoration: line-through; color: var(--muted); }
+.suppressed .nm { text-decoration: line-through; color: var(--err); }
+.suppressed .nm::before { content: ''; display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 2px; vertical-align: -1px;
+  background: color-mix(in srgb, var(--err) 35%, transparent); border: 1.5px dashed var(--err); }
 .mvb { border: 1px solid var(--line); background: var(--surface); border-radius: 4px; width: 1.8em; height: 1.7em; padding: 0; line-height: 1; }
 .mvb:hover:not([disabled]) { border-color: var(--accent); color: var(--accent); }
 .mvb[disabled] { opacity: .3; cursor: default; }
@@ -349,20 +353,26 @@ table.fmt.one .onet { display: inline; }
     <p class="note">Voreinstellungen aus den Beispielprogrammen und der Werkzeugliste def.tlgx. Änderungen gelten sofort für alle Teile; dauerhaft (auch nach dem Schließen) erst mit <b>Einstellungen speichern</b> oben.</p>
     <div class="grid-set" id="setgrid"></div>
     <div style="margin-top:12px"><button class="btn" id="reset" type="button">Auf Standard zurücksetzen</button></div>
+  </details>
+  <!-- eigene aufklappbare Bereiche: Reihenfolge-Regel, Werkzeugliste mit Favoriten -->
+  <details class="card settings" id="rulebox">
+    <summary><span class="sumtitle">Reihenfolge-Regel</span><span class="savebar"><span class="state" aria-live="polite">Alle Änderungen gespeichert</span>
+      <button class="btn primary" data-save type="button">Einstellungen speichern</button></span></summary>
     <div class="rule" id="rule">
-      <div class="bar"><h3>Reihenfolge-Regel</h3>
-        <label class="ruleon"><input type="checkbox" id="ruleon"> Regel verwenden</label>
+      <div class="bar"><label class="ruleon"><input type="checkbox" id="ruleon"> Regel verwenden</label>
         <button class="btn ghost small" id="ruledefault" type="button">Standardfolge</button></div>
       <p class="note">Die Bearbeitungsarten kommen in dieser Folge ins Programm. Ist die Regel aus, bleibt die erkannte Reihenfolge.
         Was du bei einem Teil von Hand verschiebst, hat Vorrang.</p>
       <ol class="rulelist" id="rulelist"></ol>
     </div>
+  </details>
+  <details class="card settings" id="toolbox">
+    <summary><span class="sumtitle">Werkzeugliste &amp; Favoriten</span><span class="note" id="toolsrc"></span></summary>
     <div class="toollib">
-      <div class="bar"><h3>Werkzeugliste</h3><span class="note" id="toolsrc"></span>
-        <span class="tools"><button class="btn" id="loadtools" type="button">Werkzeugliste laden (.tlgx)</button>
+      <div class="bar"><span class="tools"><button class="btn" id="loadtools" type="button">Werkzeugliste laden (.tlgx)</button>
         <button class="btn ghost" id="resettools" type="button">Standardliste</button></span>
         <input id="tlgx" type="file" accept=".tlgx,.xml" hidden></div>
-      <p class="note">Mit ★ markierte Werkzeuge stehen in allen Auswahllisten oben.</p>
+      <p class="note">Mit ★ markierte Werkzeuge stehen in allen Auswahllisten oben. Favoriten und geladene Liste werden sofort gespeichert.</p>
       <div class="toolgrid" id="toolgrid"></div>
     </div>
   </details>
@@ -523,13 +533,14 @@ table.fmt.one .onet { display: inline; }
     toast('Einstellungen gespeichert.');
   }
   function showSaveState() {
-    const bar = document.getElementById('savebar');
-    if (!bar) return;
-    bar.classList.toggle('dirty', settingsDirty);
-    document.getElementById('savestate').textContent = settingsDirty ? '● Ungespeicherte Änderungen' : 'Alle Änderungen gespeichert';
+    // alle Speicher-Leisten (Werkzeuge & Regeln, Reihenfolge-Regel)
+    document.querySelectorAll('.savebar').forEach((bar) => {
+      bar.classList.toggle('dirty', settingsDirty);
+      bar.querySelector('.state').textContent = settingsDirty ? '● Ungespeicherte Änderungen' : 'Alle Änderungen gespeichert';
+    });
   }
   // Knopf sitzt in der Kopfzeile: Klick speichert, ohne den Bereich auf- oder zuzuklappen
-  document.getElementById('savesettings').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); persistSettings(); });
+  document.querySelectorAll('#savesettings, [data-save]').forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); persistSettings(); }));
   window.addEventListener('beforeunload', (e) => {
     if (!settingsDirty) return;
     e.preventDefault();
@@ -1217,6 +1228,29 @@ table.fmt.one .onet { display: inline; }
       s += '<rect x="' + x + '" y="' + Y(y + h) + '" width="' + w + '" height="' + h + '" rx="' + Math.min(w, h) * 0.15 + '" fill="var(--hdrill)" fill-opacity="0.3" stroke="var(--hdrill)" stroke-width="1.2" stroke-dasharray="4 2" ' + sw +
         '><title>Tasche ' + FACE[k.face] + ' ' + fmt(k.x1 - k.x0) + '×' + fmt(k.y1 - k.y0) + ' T' + fmt(k.depth) + '</title></rect>';
     }
+    // Gelöschte (unterdrückte) Bearbeitungen: rot dort, wo sie wären – Werkzeugbahn wie in der Animation
+    if ((r.suppressed || []).length) {
+      let moves = [];
+      try {
+        moves = Toolpath.build({ panel: p, ops: r.suppressed.flatMap((g) => g.ops) }, ToolLibrary.infoMap(state.tools), state.settings);
+      } catch (e) { moves = []; }
+      s += '<g class="suppressed-ops">';
+      moves.forEach((m) => {
+        if (m.type === 'rapid' || m.op < 0) return;
+        const op = r.suppressed.flatMap((g) => g.ops)[m.op];
+        const g = r.suppressed.find((x) => x.ops.includes(op));
+        const t = '<title>Gelöscht: ' + esc(g ? g.label : '') + '</title>';
+        const w = Math.max(1, m.d || 1);
+        if (m.pts.length === 1) {
+          s += '<circle cx="' + m.pts[0][0] + '" cy="' + Y(m.pts[0][1]) + '" r="' + w / 2 + '" fill="var(--err)" fill-opacity="0.35" stroke="var(--err)" stroke-width="1.5" stroke-dasharray="3 2" ' + sw + '>' + t + '</circle>';
+        } else {
+          const d = 'M' + m.pts.map((q) => q[0] + ' ' + Y(q[1])).join(' L');
+          s += '<path d="' + d + '" fill="none" stroke="var(--err)" stroke-opacity="0.3" stroke-width="' + w + '" stroke-linecap="round" stroke-linejoin="round">' + t + '</path>' +
+            '<path d="' + d + '" fill="none" stroke="var(--err)" stroke-width="1.5" stroke-dasharray="5 3" ' + sw + '>' + t + '</path>';
+        }
+      });
+      s += '</g>';
+    }
     // Sauger-Vorschlag: Konsolen (gestrichelt) und Drehsauger auf der Unterseite
     if (r.suction && r.suction.bars.length) {
       s += '<g class="cups">';
@@ -1270,7 +1304,8 @@ table.fmt.one .onet { display: inline; }
       .concat([r.field]).filter((f, i, a) => f && a.indexOf(f) === i);
     const legend = [['var(--drill)', 'Bohrung oben'], ['var(--pocket)', 'Tasche'], ['var(--mill)', 'Fräsen / Kontur'],
       ['var(--saw)', 'Sägeschnitt / Nut / Falz'], ['var(--chamfer)', 'Fase / schräge Kante'], ['var(--sdrill)', 'Bohrung schräg'],
-      ['var(--hdrill)', 'Kante (Bohrung / Tasche)'], ['var(--err)', 'Nullpunkt']].concat(r.suction && r.suction.bars.length ? [['transparent;border:1.5px dashed var(--muted)', 'Sauger (Vorschlag)']] : []);
+      ['var(--hdrill)', 'Kante (Bohrung / Tasche)'], ['var(--err)', 'Nullpunkt']].concat(r.suction && r.suction.bars.length ? [['transparent;border:1.5px dashed var(--muted)', 'Sauger (Vorschlag)']] : [])
+      .concat((r.suppressed || []).length ? [['color-mix(in srgb, var(--err) 35%, transparent);border:1.5px dashed var(--err)', 'Gelöscht (unterdrückt)']] : []);
     el.innerHTML =
       '<div class="work"><div class="card stagecard" id="stagecard"><div class="dhead"><div class="title"><h2>' + esc(p.name) + '</h2><span class="dims">' + fmt(p.L) + ' × ' + fmt(p.W) + ' × ' +
       fmt(p.T) + ' mm · ' + esc(part.label) + (part.res.side2 ? ' · <b>Seite ' + part.side + (part.side === 2 ? ' (um Y gewendet, ohne Rohteil-Versatz)' : ' (mit Formatfräsen)') + '</b>' : '') + '</span></div>' +

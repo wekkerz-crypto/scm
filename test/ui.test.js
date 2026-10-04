@@ -228,12 +228,13 @@ test('Web-Tool: Einstellungen erst mit „Einstellungen speichern“ dauerhaft',
     p.on('pageerror', (e) => errors.push(e.message));
     await p.goto(page);
     await p.waitForSelector('.part');
-    await p.evaluate(() => { document.getElementById('settings').open = true; });
+    await p.evaluate(() => { document.getElementById('settings').open = true; document.getElementById('rulebox').open = true; });
     assert.match(await p.textContent('#savestate'), /Alle Änderungen gespeichert/);
     // Regel ändern: wirkt sofort, ist aber noch nicht gespeichert
     await p.click('#ruleon');
     assert.match(await p.textContent('#savestate'), /Ungespeicherte Änderungen/);
     assert.ok(await p.$eval('#savebar', (b) => b.classList.contains('dirty')));
+    assert.ok(await p.$eval('#rulebox .savebar', (b) => b.classList.contains('dirty'))); // auch in der Regel-Leiste
     const stored = () => p.evaluate(() => JSON.parse(localStorage.getItem('step2xcs.settings.v1') || '{}'));
     assert.notStrictEqual((await stored()).orderRule && (await stored()).orderRule.on, false);
     await p.click('#savesettings');
@@ -277,12 +278,16 @@ test('Web-Tool: zweiseitig (Seite 1/2) und Bearbeitung löschen/wiederherstellen
     await p.click('#opstable [data-suppress]');
     assert.strictEqual(await rows(), n0 - 1);
     assert.strictEqual(await p.$$eval('.suppressed li [data-restore]', (x) => x.length), 1);
+    // in der Draufsicht rot dort, wo die gelöschte Bearbeitung wäre
+    assert.ok(await p.$$eval('#view svg .suppressed-ops > *', (x) => x.length) > 0);
+    assert.match(await p.textContent('#view svg .suppressed-ops'), /Gelöscht: /);
     await p.click('[data-side="1"]'); // Seite 1 bleibt unberührt
     assert.strictEqual(await p.$('.suppressed'), null);
     await p.click('[data-side="2"]');
     await p.click('.suppressed [data-restore]');
     assert.strictEqual(await rows(), n0);
     assert.strictEqual(await p.$('.suppressed'), null);
+    assert.strictEqual(await p.$('#view svg .suppressed-ops'), null);
     // zurück auf einseitig
     await p.click('[data-two="0"]');
     assert.strictEqual(await p.inputValue('#fname'), 'zweiseitig.xcs');

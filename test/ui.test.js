@@ -439,3 +439,30 @@ test('Web-Tool: Vorschub/Drehzahl je Bearbeitung (Untermenü)', { skip: !chromiu
     await browser.close();
   }
 });
+
+test('Web-Tool: andere Werkzeugdatei laden → Teile und Schnittwerte neu berechnet', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const fs = require('fs');
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('details.tech[data-techgrp="format"]');
+    // E014 mit anderem Vorschub (10 statt 12), E016 entfernt
+    let t = fs.readFileSync(path.join(__dirname, '..', 'maestro', 'werkzeuge', 'def.tlgx'), 'utf8');
+    const i = t.indexOf('>E014</Name>');
+    const j = t.indexOf('<FeedRate>', i);
+    t = t.slice(0, j) + t.slice(j).replace(/<Standard>12<\/Standard>/, '<Standard>10</Standard>');
+    t = t.replace('>E016</Name>', '>E016X</Name>');
+    const file = path.join(require('os').tmpdir(), 'andere.tlgx');
+    fs.writeFileSync(file, t);
+    await p.evaluate(() => { for (const d of document.querySelectorAll('details')) d.open = true; });
+    await p.setInputFiles('#tlgx', file);
+    await p.waitForFunction(() => /10 m\/min/.test(document.querySelector('details.tech[data-techgrp="format"] summary').textContent));
+    assert.match(await p.textContent('aside.steps'), /Werkzeug E016 steht nicht in der Werkzeugdatei/);
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});

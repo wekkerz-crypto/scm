@@ -993,6 +993,7 @@
       if (op.kind === 'pocket') op.pocket = ++np;
     }
 
+    const missingWarned = new Set();
     const stepDownWarn = (op) => op.key === 'format' && ((cfg.stepOverrides && cfg.stepOverrides[op.key] > 0) || cfg.stepDown > 0);
     // Werkzeug, Tiefe (durchgehende Fräsungen) und Zustellungen je Bearbeitung
     const throughKey = (k) => k === 'format' || /^(notch|cutout|round)-/.test(k);
@@ -1001,6 +1002,14 @@
       if (!op.key) continue;
       if (cfg.toolOverrides && cfg.toolOverrides[op.key]) op.tool = cfg.toolOverrides[op.key];
       op.depthAdjustable = op.kind === 'contour' && throughKey(op.key) && !op.osc;
+      // Werkzeug fehlt in der geladenen Werkzeugdatei (z. B. nach dem Laden einer anderen .tlgx) → Hinweis
+      const lib = cfg.toolInfo && Object.keys(cfg.toolInfo).length ? cfg.toolInfo : null;
+      for (const t of [op.tool, op.rough && op.rough.tool]) {
+        if (lib && t && t !== '-1' && !lib[t] && !missingWarned.has(t)) {
+          missingWarned.add(t);
+          warnings.push('Werkzeug ' + t + ' steht nicht in der Werkzeugdatei – in Maestro wird es nicht gefunden. Anderes Werkzeug wählen oder die Einstellung anpassen.');
+        }
+      }
       // eigene Schnittwerte außerhalb des Bereichs aus der Werkzeugdatei → Hinweis
       const own = cfg.techOverrides && cfg.techOverrides[op.group];
       const db = own && cfg.toolInfo && cfg.toolInfo[op.tool] && cfg.toolInfo[op.tool].tech;

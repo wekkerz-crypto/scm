@@ -1231,3 +1231,20 @@ test('Vorschub/Drehzahl: aus der Werkzeugdatei gelesen, je Bearbeitung einstellb
   // andere Bearbeitungen unverändert
   assert.match(r.xcs, /CreateDrill \("Drill_Vertical_2", [^;]*, 1, -1, -1, "P"\);/);
 });
+
+test('Werkzeug fehlt in der Werkzeugdatei → Hinweis; geschliffen wird nur die Außenkontur', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const Tl = require('../web/js/tools.js');
+  const all = Tl.parseTlgx(read('maestro/werkzeuge/def.tlgx'));
+  const [s] = readParts(read('test/fixtures/testplatte.step'), 'tp.step');
+  const ok = convertSolid(s, { toolInfo: Tl.infoMap(all), sandOn: true });
+  assert.ok(!ok.warnings.some((w) => /steht nicht in der Werkzeugdatei/.test(w)));
+  const miss = convertSolid(s, { toolInfo: Tl.infoMap(all.filter((t) => t.name !== 'E014')) });
+  assert.strictEqual(miss.warnings.filter((w) => /Werkzeug E014 steht nicht in der Werkzeugdatei/.test(w)).length, 1);
+  // Schleifen: genau eine Bearbeitung, gleiche Geometrie wie das Formatfräsen (Durchbrüche/Taschen nie)
+  const sand = ok.ops.filter((o) => o.sand);
+  const fmtOp = ok.ops.find((o) => o.key === 'format');
+  assert.strictEqual(sand.length, 1);
+  assert.deepStrictEqual(sand[0].segs, fmtOp.segs);
+  assert.ok(ok.ops.some((o) => /^cutout-/.test(o.key)) && !ok.ops.some((o) => o.sand && o.key !== 'sand'));
+});

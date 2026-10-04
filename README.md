@@ -54,6 +54,9 @@ Erkennungen wie vorgeschlagen).
 
 ### Vorschub und Drehzahl
 
+Wird unter *Werkzeugliste & Favoriten* eine andere Werkzeugdatei geladen, ersetzt sie die bisherige (bleibt gespeichert)
+und alle geladenen Teile werden sofort neu berechnet – Durchmesser, Schneidenlängen, Vorschub und Drehzahl kommen dann aus
+der neuen Datei. Steht ein eingestelltes Werkzeug nicht darin, gibt es einen Hinweis.
 Die Schnittwerte kommen aus der Werkzeugdatei (`.tlgx`, je Werkzeug Standard und Bereich: Vorschub und Eintauchen in
 m/min, Drehzahl in U/min). In der Schrittliste zeigt jede Bearbeitung sie in einem Untermenü (bei Bohrungen: Drehzahl und
 Bohrvorschub des Bohrers mit passendem Ø). Bleibt ein Feld leer, steht im Programm `-1` – Maestro nimmt dann den Wert

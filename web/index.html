@@ -1382,6 +1382,11 @@ table.fmt.one .onet { display: inline; }
       if (rb.edge === 'Back') { y = W - rb.width; h = rb.width; }
       if (rb.edge === 'Left') w = rb.width;
       if (rb.edge === 'Right') { x = L - rb.width; w = rb.width; }
+      // abgesetzter Falz: nur zwischen den Enden
+      const fr = rb.from === null || rb.from === undefined ? null : rb.from;
+      const to = rb.to === null || rb.to === undefined ? null : rb.to;
+      if (rb.edge === 'Front' || rb.edge === 'Back') { if (fr !== null) { w -= fr; x = fr; } if (to !== null) w = to - x; }
+      else { if (fr !== null) { h -= fr; y = fr; } if (to !== null) h = to - y; }
       s += '<rect x="' + x + '" y="' + Y(y + h) + '" width="' + w + '" height="' + h + '" fill="url(#hatch)" stroke="var(--saw)" stroke-width="1" ' + sw + '/>';
     }
     const loopPath = (lp) => {

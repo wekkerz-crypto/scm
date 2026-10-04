@@ -1389,3 +1389,23 @@ test('Oszillieren: Kontur bleibt wie ohne Oszillation, Wendepunkte als SetParame
   assert.ok(marks.length > 4);
   for (const m of marks) { assert.ok(+m[1] >= 20 && +m[1] <= 26); assert.ok(+m[2] > 0 && +m[2] < 1); }
 });
+
+test('Abgesetzter Falz (zur Kante offen, endet vor den Seiten) wird als Falz erkannt, nicht als Tasche', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const Tl = require('../web/js/tools.js');
+  const toolInfo = Tl.infoMap(Tl.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
+  const parts = readParts(read('test/fixtures/korpus1.step'), 'korpus1.step');
+  const seite = parts.find((s) => /Rechte_Seite/.test(s.name));
+  const r = convertSolid(seite, { toolInfo });
+  assert.strictEqual(r.panel.pockets.length, 0);
+  assert.strictEqual(r.panel.rebates.length, 1);
+  const rb = r.panel.rebates[0];
+  assert.deepStrictEqual([rb.edge, rb.width, Math.round(rb.depth * 10) / 10, rb.from, rb.to], ['Back', 10, 9.5, 9.5, 990.5]);
+  // Werkzeugmitte (Korrektur 0): von außen über die Hinterkante, Mitte einen Radius vor den Enden, letzte Bahn auf der Kante
+  assert.match(r.xcs, /CreatePolyline\("Contour_1", 984\.81, 425\.69\);\r?\nAddSegmentToPolyline\(984\.81, 395\.69\);\r?\nAddSegmentToPolyline\(15\.19, 395\.69\);\r?\nAddSegmentToPolyline\(15\.19, 400\);\r?\nAddSegmentToPolyline\(984\.81, 400\);\r?\nAddSegmentToPolyline\(984\.81, 425\.69\);/);
+  assert.match(r.xcs, /CreateRoughFinish\("Milling_1", 9\.5, "", TypeOfProcess\.GeneralRouting, "E016", "-1", 0,/);
+  assert.ok(!r.warnings.some((w) => /Tasche/.test(w)));
+  // durchgehender Falz (Boden) bleibt wie bisher
+  const boden = convertSolid(parts.find((s) => /Oberboden/.test(s.name)), { toolInfo });
+  assert.ok(boden.panel.rebates.every((x) => x.from === undefined));
+});

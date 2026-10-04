@@ -1414,6 +1414,28 @@
         lo(g.bb, axis) - TOL <= v && v <= hi(g.bb, axis) + TOL &&
         lo(g.bb, o) <= lo(fl.bb, o) + TOL && hi(g.bb, o) >= hi(fl.bb, o) - TOL);
     };
+    const stoppedRebate = (fl, bb, depth) => {
+      const lx = bb.x1 - bb.x0;
+      const ly = bb.y1 - bb.y0;
+      const front = bb.y0 < TOL;
+      const back = bb.y1 > W - TOL;
+      const left = bb.x0 < TOL;
+      const right = bb.x1 > L - TOL;
+      const end = (axis, v) => (reaches(fl, axis, v) ? null : v);
+      if (front !== back && lx >= 3 * ly) {
+        const r = { edge: front ? 'Front' : 'Back', depth: depth, width: ly, flank: front ? bb.y1 : bb.y0, from: end(0, bb.x0), to: end(0, bb.x1) };
+        if (r.from === null && r.to === null) return false;
+        res.rebates.push(r);
+        return true;
+      }
+      if (left !== right && ly >= 3 * lx) {
+        const r = { edge: left ? 'Left' : 'Right', depth: depth, width: lx, flank: left ? bb.x1 : bb.x0, from: end(1, bb.y0), to: end(1, bb.y1) };
+        if (r.from === null && r.to === null) return false;
+        res.rebates.push(r);
+        return true;
+      }
+      return false;
+    };
     for (const fl of floors) {
       const bb = fl.bb;
       const depth = T - fl.z;
@@ -1427,6 +1449,8 @@
         if (bb.x0 < TOL) res.rebates.push({ edge: 'Left', depth: depth, width: bb.x1, flank: bb.x1 });
         else if (bb.x1 > L - TOL) res.rebates.push({ edge: 'Right', depth: depth, width: L - bb.x0, flank: bb.x0 });
         else res.grooves.push({ dir: 'Y', from: bb.x0, to: bb.x1, depth: depth });
+      } else if (fl.rect && !fl.inner.length && stoppedRebate(fl, bb, depth)) {
+        // abgesetzter Falz: lang und schmal, zu genau einer Kante hin offen, endet vor der Plattenkante (from/to = Enden)
       } else {
         const outerLoop = orient(fl.segs, true);
         res.pockets.push({ x0: bb.x0, y0: bb.y0, x1: bb.x1, y1: bb.y1, depth: depth, segs: outerLoop,

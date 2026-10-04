@@ -61,10 +61,13 @@
     for (const d of p.drills || []) if (d.face === 'Top' && !d.through) zones.push({ c: mx([d.x, d.y]), r: d.d / 2 });
     for (const g of p.grooves || []) zones.push(g.dir === 'X' ? rect(0, g.from, L, g.to) : rect(g.from, 0, g.to, p.W));
     for (const r of p.rebates || []) {
-      if (r.edge === 'Front') zones.push(rect(0, 0, L, r.width));
-      else if (r.edge === 'Back') zones.push(rect(0, p.W - r.width, L, p.W));
-      else if (r.edge === 'Left') zones.push(rect(0, 0, r.width, p.W));
-      else if (r.edge === 'Right') zones.push(rect(L - r.width, 0, L, p.W));
+      // abgesetzter Falz: nur zwischen den Enden (from/to in Plattenkoordinaten vor dem Wenden)
+      const a = r.from === null || r.from === undefined ? 0 : r.from;
+      const ex = r.to === null || r.to === undefined ? null : r.to;
+      if (r.edge === 'Front') zones.push(rect(a, 0, ex === null ? L : ex, r.width));
+      else if (r.edge === 'Back') zones.push(rect(a, p.W - r.width, ex === null ? L : ex, p.W));
+      else if (r.edge === 'Left') zones.push(rect(0, a, r.width, ex === null ? p.W : ex));
+      else if (r.edge === 'Right') zones.push(rect(L - r.width, a, L, ex === null ? p.W : ex));
     }
     for (const c of p.curvedSurfaces || []) for (const r of c.rects) zones.push(rect(r.x0, r.y0, r.x1, r.y1));
     for (const g of p.clamex || []) {

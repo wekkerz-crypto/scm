@@ -677,6 +677,50 @@
       const rTool = (cfg.toolOverrides && cfg.toolOverrides[key]) || cfg.rebateTool;
       const dia = toolD(rTool, cfg.rebateToolDia);
       const n = Math.max(1, Math.ceil(r.width / (dia * 0.9)));
+      const stopped = (r.from !== undefined && r.from !== null) || (r.to !== undefined && r.to !== null);
+      if (stopped) {
+        // abgesetzter Falz: Bahn = Werkzeugmitte (Korrektur 0), Einfahren/Ausfahren quer über die offene Kante,
+        // an abgesetzten Enden hält die Mitte einen Radius vor dem Ende (Innenecken bleiben mit R Fräser rund)
+        const rad = dia / 2;
+        const ll = cfg.leadLength;
+        const along = r.edge === 'Front' || r.edge === 'Back' ? p.L : p.W;
+        const sgn = r.edge === 'Back' || r.edge === 'Right' ? 1 : -1; // Richtung zur offenen Kante
+        const edgeV = sgn > 0 ? (r.edge === 'Back' ? p.W : p.L) : 0;
+        const vOut = edgeV + sgn * (rad + ll);
+        const v0 = r.flank + sgn * rad;
+        // letzte Bahn mit der Mitte auf der Plattenkante: so bleibt an den Enden an der Kante nichts stehen;
+        // reicht der Radius bis zur Flanke, genügt diese eine Bahn
+        const v1 = edgeV;
+        const m = sgn * (v1 - v0) > 0 ? Math.ceil(sgn * (v1 - v0) / (dia * 0.9)) + 1 : 1;
+        const lo = r.from === null || r.from === undefined ? null : r.from + rad;
+        const hi = r.to === null || r.to === undefined ? null : r.to - rad;
+        const len = (hi === null ? along : hi) - (lo === null ? 0 : lo);
+        const fwd = r.edge === 'Front' || r.edge === 'Right'; // Laufrichtung wie beim durchgehenden Falz
+        const uS = fwd ? (lo === null ? -rad - ll : lo) : (hi === null ? along + rad + ll : hi);
+        const uE = fwd ? (hi === null ? along + rad + ll : hi) : (lo === null ? -rad - ll : lo);
+        const legS = fwd ? lo !== null : hi !== null;
+        const legE = fwd ? hi !== null : lo !== null;
+        const P = (u, v) => (r.edge === 'Front' || r.edge === 'Back' ? [u, v] : [v, u]);
+        if (len < 0) warnings.push('Abgesetzter Falz ' + fmt(r.width) + ' mm: zu kurz für Fräser Ø' + fmt(dia) + '.');
+        warnings.push('Abgesetzter Falz ' + fmt(r.width) + '×' + fmt(r.depth) + ': Innenecken bleiben mit R' + fmt(rad) + ' rund (Fräser Ø' + fmt(dia) + ').');
+        // alle Bahnen in einem Zug (hin und zurück), ein- und ausfahren über die offene Kante
+        const vs = [];
+        for (let i = 0; i < m; i++) vs.push(m > 1 ? v0 + ((v1 - v0) * i) / (m - 1) : v1);
+        const start = legS ? P(uS, vOut) : P(uS, vs[0]);
+        const segs = [];
+        if (legS) segs.push({ type: 'line', to: P(uS, vs[0]) });
+        vs.forEach((v, i) => {
+          const back = i % 2 === 1;
+          if (i) segs.push({ type: 'line', to: P(back ? uE : uS, v) });
+          segs.push({ type: 'line', to: P(back ? uS : uE, v) });
+        });
+        const lastAtE = vs.length % 2 === 1;
+        if (lastAtE ? legE : legS) segs.push({ type: 'line', to: P(lastAtE ? uE : uS, vOut) });
+        ops.push({ kind: 'contour', key: key, toolKind: 'mill', toolDefault: 'rebateTool', contour: ++nContour, milling: ++nMill, approach: false,
+          start: start, segs: segs, depth: r.depth, tool: cfg.rebateTool, side: 0,
+          label: 'Falz ' + fmt(r.width) + '×' + fmt(r.depth) + ' (abgesetzt)' });
+        continue;
+      }
       if (n > 1) warnings.push('Falz ' + fmt(r.width) + ' mm breiter als Fräser Ø' + fmt(dia) + ' – ' + n + ' Bahnen.');
       for (let i = 0; i < n; i++) {
         const off = (i * r.width) / n;

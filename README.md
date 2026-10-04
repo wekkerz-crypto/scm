@@ -164,6 +164,7 @@ für die `.pgmx`. Beispiel: `Tür Öffnung groß` → `Tuer_Oeffnung_gross.xcs` 
 | gleichabständige Lochreihen | `CreatePattern(...)` |
 | durchgehende Nut | Säge `066`, zwei Durchgänge wie im Beispiel; ein Durchgang, wenn die Nut so breit wie das Blatt ist; Hinweis bei Steg oder zu schmaler Nut |
 | Falz an einer Kante | Fräsbahn entlang der Falzflanke (ggf. mehrere Bahnen) |
+| Abgesetzter Falz (zu einer Kante offen, endet vor den Seiten, mindestens 3 × so lang wie breit) | Fräsbahn in Werkzeugmitte (Korrektur 0): von außen über die offene Kante einfahren, Mitte einen Fräserradius vor den Enden, mehrere Bahnen hin und zurück, letzte Bahn mit der Mitte auf der Plattenkante; Hinweis: Innenecken bleiben mit Fräserradius rund |
 | Tasche (auch mit Inseln, Eckenradius-Prüfung) | `CreateContourPocket` (Bohrungen im Taschenboden werden von oben gebohrt) |
 | runde Vertiefung von oben ohne passenden Bohrer | Kreistasche: `CreateCircleCenterRadius` + `CreateContourPocket` (Hinweis, wenn der Fräser nicht hineinpasst). Runde Taschen werden **immer im Uhrzeigersinn** ausgeräumt (`CreateContourParallelStrategy(true, 0 …)`) |
 | Tasche in einer Kante (Stirn- oder Längsseite, z. B. Langloch, auch schräg gedreht) | `SelectWorkplane("Left"/"Right"/"Front"/"Back")` + `CreateContourPocket` in Kantenkoordinaten (wie die Kantenbohrungen). Passt der Taschenfräser nicht hinein, wird automatisch der größte passende Fräser gewählt |
@@ -308,6 +309,8 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
 - **Nut:** Der Wert `-8,8` beim 2. Sägedurchgang ist laut Handbuch das Aufmaß (`overMaterial`) von `CreateSlot`.
   Die Lage der Nut (Flanke + Breite zur positiven Seite) passt dazu, ist aber noch nicht in Maestro geprüft.
 - **Falz und Durchbrüche:** gibt es in den Beispielen nicht.
+- **Abgesetzter Falz:** offene Polylinie (Einfahren quer über die Kante, Bahnen, Ausfahren) mit `CreateRoughFinish(…, Korrektur 0)` –
+  in der Simulation prüfen, dass die Enden genau sitzen (Mitte = Ende − Fräserradius).
 - **DXF-Import:** erzeugt dieselben Befehle wie STEP (Bohrungen, Durchbrüche, Taschen, Sonderkontur); Lage und Drehrichtung
   der Konturen an einer echten Werkstatt-DXF in der Simulation prüfen.
 - **Sägeschnitt schräg (`CreateBladeCut`):** Winkel laut Handbuch zur Z-Achse (90 = senkrecht); ausgegeben wird 90 − Neigung,

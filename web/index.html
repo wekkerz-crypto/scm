@@ -547,13 +547,10 @@ table.fmt.one .onet { display: inline; }
       ['sandAllowance', 'Schleifzugabe (Formatfräsen bleibt größer)', 'number', 'mm'],
       ['sandLead', 'An-/Abfahrt im Bogen: Faktor', 'number', '× Radius'],
       ['sandOverlap', 'Schleifen: Überlappung am Ende', 'number', 'mm']] },
-    { title: 'Clamex (Lamello P-System)', c: '--saw', fields: [
+    { title: 'Clamex (Lamello P-System)', c: '--saw', wide: true, fields: [
       ['clamexMode', 'Clamex-Nuten', 'choice', [['macro', 'über SCM-Makro (nur Position)'], ['direct', 'direkt mit dem Scheibenfräser']]],
       ['clamexMacro', 'Makro-Name', 'text'],
-      ['clamexOrient', 'Richtung des Verbinders', 'choice', [['angle', 'Start = Ende + Winkel um Z (mit Einfügehöhe)'], ['line', 'Start ≠ Ende (Linie über die Nut)']]],
-      ['clamexType', 'Verbindertyp Kante/Schnittfläche', 'text', 'z. B. Cl-Fräsen, Cl-Komplett'],
-      ['clamexFaceType', 'Verbindertyp Fläche', 'text', 'z. B. Cl-Nest90'],
-      ['clamexParams', 'Makro-Parameternamen (Rolle=Name; …)', 'text', 'Namen wie in Maestro'],
+      ['clamexTemplate', 'Makro-Parameter (Vorlage)', 'text', '{sx} {sy} {ex} {ey} {angle} {angleZ} {T} werden eingesetzt'],
       ['clamexTool', 'Scheibenfräser (nur direkt)', 'mill'],
       ['clamexClear', 'Anfahrt: Abstand vor der Oberfläche', 'number', 'mm'],
       ['clamexMaxReach', 'Hinweis ab Abstand zur Kante', 'number', 'mm']] },
@@ -1150,8 +1147,8 @@ table.fmt.one .onet { display: inline; }
     if (op.kind === 'drill' || op.kind === 'sdrill') return techBox(part, op);
     if (op.macro) {
       // Makro: Werkzeug, Tiefe und Schnittwerte kommen aus dem Makro bzw. SawCut_Lamello.xspc
-      return '<span class="note">Makro ' + esc(state.settings.clamexMacro || 'SawCut_Lamello') + ' · ' + esc(op.macro.type) + ' · X ' + fmt(op.macro.x) + ' Y ' + fmt(op.macro.y) +
-        ' · Höhe ' + fmt(op.macro.height) + ' · Winkel Z ' + fmt(op.macro.angleZ) + '° – Werkzeug und Tiefe aus dem Makro</span>';
+      return '<span class="note">Makro ' + esc(state.settings.clamexMacro || 'SawCut_Lamello') + ' · X ' + fmt(op.macro.x) + ' Y ' + fmt(op.macro.y) +
+        ' · Winkel ' + fmt(op.macro.angle) + '° · Richtung ' + fmt(op.macro.angleZ) + '° – Werkzeug, Tiefe und Höhe aus dem Makro</span>';
     }
     let html = '';
     if (op.key === 'format') {

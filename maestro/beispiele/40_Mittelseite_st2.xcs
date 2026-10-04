@@ -1,0 +1,21 @@
+SetMachiningParameters("IJ", 1, 10, 196608, false);
+
+CreateFinishedWorkpieceBox("Workpiece", 580, 328.75, 19);
+
+CreateRawWorkpiece("Workpiece", 0, 0, 0, 2, 0, 0);
+
+SetWorkpieceSetupPosition(0, 0, 0, 0);
+
+CreateSegment("BladeCutSegment_1", 580, 315.45, 0, 315.45);
+CreateSectioningMillingStrategy(2, 50, 0);
+CreateBladeCut("BladeCut_1", "Saw Cut", TypeOfProcess.GeneralRouting, "E070", "-1", 55, 2, -1, -1, -1, 0, true, true, 0, 20);
+
+CreateMacro("SawCut_Lamello_1", "SawCut_Lamello", 510, 328.75, 70, 328.75, 55, 1, 19, 1, 5, 3, 0.05, 144.86, 144.86, null, null, 3, "-1", "E070", null, "-1", "E030", null, '2', 0, false, -1, 0, 4, 0, false, "-1", "E031", null, null, null, 0, 0, 0, null, 2, 8.19, 1.4, "10", 0, "-1", "E030", 180, null);
+
+SelectWorkplane("Front");
+
+CreatePattern(1, 9, 0, 66.25, 0, 90);
+CreateDrill ("Drill_Horizontal_1", 25, 9.5, 27, 8, "", TypeOfProcess.Drilling);
+CreatePattern(1, 1, 0, 0, 0, 90);
+
+CreateNullOperation("XN", 1580, null, 1, 50, false, " ");

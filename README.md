@@ -59,20 +59,15 @@ Nut, Mittelpunkt **36 mm** vor der Oberfläche (= 14 mm tief), symmetrisch in Nu
 Das Tool erkennt jedes Kreissegment R 40–60 zwischen zwei parallelen Wänden 3–12 mm Abstand als Clamex-Nut (nicht als Tasche
 oder gewölbte Fläche) – in der Kante oder in der Fläche (Beispiel `test/fixtures/schrank1.step`).
 
-**Programm – Standard: SCM-Makro `SawCut_Lamello`** (Makrohilfe: `maestro/doku/SawCut_Lamello_Makrohilfe.pdf`). Je Nut
-ein Makro-Aufruf, nur die Lage wird übergeben (Fall „Start- und Endpunkt gleich – Verwendung für Softwarehäuser“):
-`SetMacroParam(Name, Wert)` je Parameter, dann `CreateMacro("Clamex_n", "SawCut_Lamello")` auf der Ebene `Top`.
-- Start X/Y = Ende X/Y = Mitte der Nutöffnung, *Schnitt ein* = false, *Anzahl Verbinder* = 1, *Abstand aussen* = 0.
-- *Winkel* = Neigung der Schnittfläche (90 = gerade), *Winkel um Z-Achse* = Richtung der Kante gegen den Uhrzeigersinn
-  (vorne 360° – 0° liest das Makro als „nicht angegeben“ –, rechts 90°, hinten 180°, links 270°), *EinfHöhe* = Höhe der
-  Nutmitte über der Unterkante.
-- Alternativ (*Richtung des Verbinders: Start ≠ Ende*): Start/Ende = Linie über die Nut, *Abstand aussen* = halbe Linie,
-  ein Verbinder in der Mitte; *Winkel um Z-Achse* und *EinfHöhe* entfallen (gelten laut Makro nur bei Start = Ende).
-- *Verbindertype*: Kante/Schnittfläche `Cl-Fräsen` (oder `Cl-Komplett` mit Schlüsselbohrungen), Fläche `Cl-Nest90`.
-- Werkzeug (Scheibe oder zylindrischer Clamex-Fräser mit 5-Achs-Bogen), Tiefe 14,3, Oszillation 1,4 usw. kommen aus dem
-  Makro bzw. `SawCut_Lamello.xspc` an der Maschine.
-- Makro-Name, Verbindertypen und die **Parameternamen** sind unter *Werkzeuge & Regeln → Clamex* einstellbar
-  (`Rolle=Name; …`), falls sie in Maestro anders heißen als in der Makrohilfe.
+**Programm – Standard: SCM-Makro `SawCut_Lamello`** (Makrohilfe: `maestro/doku/SawCut_Lamello_Makrohilfe.pdf`), so wie in
+den Werkstatt-Programmen `maestro/beispiele/33_SW-Schrag.xcs`, `38_SW-Schrag.xcs`, `40_Mittelseite_st2.xcs`: ein
+`CreateMacro("SawCut_Lamello_n", "SawCut_Lamello", …)` je Nut mit der **Parameterliste dieser Programme (nach Position)**;
+eingesetzt werden nur Start X/Y = Ende X/Y (Mitte der Nutöffnung auf der Kante, bei schrägen Schnittflächen auf der
+längeren Kante) – laut Makrohilfe dann automatisch ein Verbinder ohne Sägeschnitt –, *Winkel* der Schnittfläche (90 =
+gerade) und *Winkel um Z* (Richtung gegen den Uhrzeigersinn: vorne 360 – 0 gilt als „nicht angegeben“ –, rechts 90,
+hinten 180, links −90). Werkzeuge, Tiefe, Oszillation usw. wie in den Programmen bzw. aus `SawCut_Lamello.xspc`.
+Die Vorlage ist unter *Werkzeuge & Regeln → Clamex* änderbar (Platzhalter `{sx} {sy} {ex} {ey} {angle} {angleZ} {T}`).
+Nuten in der **Fläche** gehen über das Makro noch nicht (kein Beispiel) – Hinweis, nicht ausgegeben.
 
 **Alternativ direkt** (*Clamex-Nuten: direkt mit dem Scheibenfräser*): Scheibenfräser `E030` (auf Blattmitte vermessen),
 Werkzeugachse = Nutachse:
@@ -310,13 +305,10 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
   Überlappung; die bestätigten Beispiele haben 0. In der Simulation prüfen, dass die Kontur um 2 mm überfahren wird.
 - **Formatfräsen zweistufig:** `CreateRoughFinish("Milling_n_Vor", …, Aufmaß)` mit dem Aufmaß als 11. Wert (Handbuch),
   danach dasselbe auf Endmaß – in Maestro noch nicht bestätigt.
-- **Clamex über `SawCut_Lamello`:** Erster Test in Maestro: Makro wird aufgerufen; Meldung „Ausrichtung … über den
-  Parameter Winkel um Z-Achse“ bei 0° → jetzt 360°. Prüfen, ob die Richtung so ankommt, sonst Variante *Start ≠ Ende*.
-  Weiter: Die Parameternamen sind aus der Makrohilfe übernommen (Anzeigenamen) – in Maestro
-  prüfen, ob `SetMacroParam` sie so annimmt (sonst unter *Clamex → Makro-Parameternamen* die echten Namen eintragen;
-  am einfachsten aus einem gespeicherten Programm mit dem Makro ablesen). Ebenso: Schreibweise der Verbindertypen
-  (`Cl-Fräsen` mit Umlaut), Bezug von Start X/Y (Oberkante/Unterkante, *Bezugspos.*), Richtung *Winkel um Z-Achse*,
-  *EinfHöhe* und der Typ für Nuten in der Fläche (`Cl-Nest90`).
+- **Clamex über `SawCut_Lamello`:** Parameterliste nach Position aus den Werkstatt-Programmen; geprüft werden muss
+  der Fall Start = Ende (ein Verbinder an der Nutposition) mit *Winkel um Z* an Position 47, die Höhe der Nut (das
+  Makro nimmt sie aus seinen Vorgaben, Wert 10 an Position 41?) und die Lage bei schrägen Schnittflächen (längere Kante).
+  Erster Test mit Parameternamen (`SetMacroParam`) ergab „Ausrichtung … Winkel um Z-Achse“ – daher jetzt nach Position.
 - **Clamex direkt:** Tiefe bis zur Blattmitte (Scheibe auf Blattmitte vermessen), Bahn hin und auf derselben Linie
   zurück, Nut in der Fläche mit waagerechtem Werkzeug auf der Kanten-Ebene – in der Simulation prüfen.
 - **Eigene Schnittwerte:** Einheiten laut Handbuch wie in Xilog (V/F in m/min, S in U/min) – an einer Bearbeitung mit

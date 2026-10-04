@@ -30,8 +30,9 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   Wendepunkten, je Punkt `SetAttribute("DEPTH")`; `fmtOp.osc` (Einstellung `oscMill`), Schleifen = Op `sand` (Kategorie
   `sand`, Werkzeugart `sand` = SandMill, An-/Abfahrt im Bogen, `passes`, Schleifzugabe → `finishAllowance` am Formatfräsen).
 - Clamex: `findClamex` in `panel.js` (Zylinder R 40–60 hohl + zwei Wände ⟂ Achse, Abstand 3–12) → `panel.clamex`
-  `{c, a, n, r, w, depth, chord}`; Standard `clamexMode: 'macro'` → `SetMacroParam` + `CreateMacro(…, "SawCut_Lamello")`
-  (Namen aus `clamexParams`, Makrohilfe in `maestro/doku`), sonst `clamexPlan` (Ebene Top bzw. Kante, Bahn), Op `clamex-i`.
+  `{c, a, n, r, w, depth, chord}`; Standard `clamexMode: 'macro'` → `CreateMacro(…, "SawCut_Lamello", …)` nach Position mit
+  der Vorlage `clamexTemplate` aus den Werkstatt-Programmen (`maestro/beispiele/33_/38_SW-Schrag`, `40_Mittelseite_st2`),
+  sonst `clamexPlan` (Ebene Top bzw. Kante, Bahn), Op `clamex-i`.
 - Schnittwerte: `tools.js` liest je Werkzeug `tech = {feed, rot, descent}` (je [Standard, min, max]); je Teil/Seite
   `overrides.tech = {Gruppe: {feed, rot, descent}}` → `S3`/`SD` in `xcs.js` (sonst `-1` = Werkzeugdatei).
 - Etiketten (Browser-Druck): `labelHtml`/`labelSketch`/`openLabels` in `index.html`, Einstellungen `label*` (40 × 60 mm);

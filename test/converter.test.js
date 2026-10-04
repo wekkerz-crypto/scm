@@ -1274,24 +1274,25 @@ test('Clamex-Nuten direkt (Kreissegment R50): Kante von oben, Fläche von der Se
   assert.ok(!r2.warnings.some((w) => /Reichweite/.test(w)));
 });
 
-test('Clamex über das SCM-Makro: nur Position, Richtung, Einfügehöhe; Parameternamen einstellbar', () => {
+test('Clamex über das SCM-Makro SawCut_Lamello: Parameterliste wie in der Werkstatt, Lage/Winkel/Richtung eingesetzt', () => {
   const { readParts, convertSolid } = require('../web/js/convert.js');
   const [a, b] = readParts(read('test/fixtures/schrank1.step'), 'schrank1.step');
   const r1 = convertSolid(a, {});
-  // Kante vorne: Start = Ende an der Nutmitte auf der Kante, gerade (90°), Richtung gegen den Uhrzeigersinn (0° → 360°, 0 = „nicht angegeben“), Höhe 9,5
-  assert.match(r1.xcs, /SetMacroParam\("Start X", 250\);\r?\nSetMacroParam\("Start Y", 0\);\r?\nSetMacroParam\("Ende X", 250\);\r?\nSetMacroParam\("Ende Y", 0\);\r?\n/);
-  assert.match(r1.xcs, /SetMacroParam\("Winkel", 90\);\r?\nSetMacroParam\("Schnitt ein", false\);\r?\nSetMacroParam\("Verbindertype", "Cl-Fräsen"\);\r?\nSetMacroParam\("Anzahl Verbinder", 1\);\r?\nSetMacroParam\("Abstand aussen", 0\);\r?\nSetMacroParam\("Winkel um Z-Achse", 360\);\r?\nSetMacroParam\("EinfHöhe", 9\.5\);\r?\nCreateMacro\("Clamex_1", "SawCut_Lamello"\);/);
+  // Kante vorne: Start = Ende an der Nutmitte auf der Kante, gerade (90°), Richtung 0° → 360°, sonst wie im Werkstatt-Programm
+  assert.match(r1.xcs, /CreateMacro\("SawCut_Lamello_1", "SawCut_Lamello", 250, 0, 250, 0, 90, 1, 19, 1, 5, 3, 0\.05, 150, 150, null, null, 3, "-1", "E071", null, "-1", "E030", null, '2', 0, false, -1, 0, 4, 0, false, "-1", "E031", null, null, null, 0, 0, 0, null, 2, 10, 1\.4, "10", 0, "-1", "E030", 360, null\);/);
   assert.strictEqual((r1.xcs.match(/CreateMacro\(/g) || []).length, 3);
-  assert.doesNotMatch(r1.xcs, /ClamexPath_/);
-  // Fläche: eigener Verbindertyp, Höhe = Dicke
+  assert.doesNotMatch(r1.xcs, /ClamexPath_|SetMacroParam/);
+  // Parameterliste wie in 38_SW-Schrag.xcs: gleiche Anzahl Werte (48)
+  const args = /CreateMacro\("SawCut_Lamello_1", "SawCut_Lamello", (.*)\);/.exec(r1.xcs)[1].split(',');
+  assert.strictEqual(args.length, 48);
+  // Richtung gegen den Uhrzeigersinn wie in der Werkstatt: links −90, rechts 90, hinten 180 (Teil gedreht)
+  const r1b = convertSolid(a, {}, { orientation: { rot: 2, flip: false } });
+  assert.match(r1b.xcs, /"E030", 180, null\);/);
+  // Nuten in der Fläche: über das Makro noch nicht → Hinweis, kein Aufruf
   const r2 = convertSolid(b, {});
-  assert.match(r2.xcs, /SetMacroParam\("Verbindertype", "Cl-Nest90"\);[\s\S]*SetMacroParam\("EinfHöhe", 19\);/);
-  // Richtung über eine Linie (Start ≠ Ende) über die Nut, ein Verbinder in der Mitte, ohne Winkel um Z/Einfügehöhe
-  const rl = convertSolid(a, { clamexOrient: 'line' });
-  assert.match(rl.xcs, /SetMacroParam\("Start X", 215\.301\);\r?\nSetMacroParam\("Start Y", 0\);\r?\nSetMacroParam\("Ende X", 284\.699\);\r?\nSetMacroParam\("Ende Y", 0\);/);
-  assert.match(rl.xcs, /SetMacroParam\("Abstand aussen", 34\.699\);\r?\nCreateMacro/);
-  assert.doesNotMatch(rl.xcs, /Winkel um Z-Achse|EinfHöhe/);
-  // eigene Parameternamen, leere Rolle wird weggelassen
-  const r3 = convertSolid(a, { clamexMacro: 'Clamex_SCM', clamexParams: 'startX=XS; startY=YS; endX=XE; endY=YE; height=H; cut=' });
-  assert.match(r3.xcs, /SetMacroParam\("XS", 250\);\r?\nSetMacroParam\("YS", 0\);\r?\nSetMacroParam\("XE", 250\);\r?\nSetMacroParam\("YE", 0\);\r?\nSetMacroParam\("H", 9\.5\);\r?\nCreateMacro\("Clamex_1", "Clamex_SCM"\);/);
+  assert.doesNotMatch(r2.xcs, /CreateMacro/);
+  assert.ok(r2.warnings.some((w) => /Clamex-Nut in der Fläche .*nicht ausgegeben/.test(w)));
+  // eigene Vorlage
+  const r3 = convertSolid(a, { clamexTemplate: '{sx}, {sy}, {ex}, {ey}, {angle}, {angleZ}' });
+  assert.match(r3.xcs, /CreateMacro\("SawCut_Lamello_1", "SawCut_Lamello", 250, 0, 250, 0, 90, 360\);/);
 });

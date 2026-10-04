@@ -1416,3 +1416,25 @@ test('Abgesetzter Falz (zur Kante offen, endet vor den Seiten) wird als Falz erk
   const boden = convertSolid(parts.find((s) => /Oberboden/.test(s.name)), { toolInfo });
   assert.ok(boden.panel.rebates.every((x) => x.from === undefined));
 });
+
+test('Animation: Werkzeugwechsel beim zweistufigen Formatfräsen, Vor-/Nachfräsen als eigene Stufe', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const Toolpath = require('../web/js/toolpath.js');
+  const Tl = require('../web/js/tools.js');
+  const toolInfo = Tl.infoMap(Tl.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
+  const [s] = readParts(read('test/fixtures/testplatte.step'), 'tp.step');
+  const r = convertSolid(s, { toolInfo, formatTwoStep: true, formatRoughTool: 'E014', contourTool: 'E004' });
+  const moves = Toolpath.build(r, toolInfo, {});
+  const changes = moves.filter((m) => m.change);
+  const last = changes[changes.length - 1];
+  assert.deepStrictEqual([last.change.from, last.change.to], ['E014', 'E004']);
+  assert.ok(changes.every((m) => m.type === 'rapid' && m.change.from !== m.change.to));
+  // Reihenfolge: vorfräsen (E014) → Wechsel → nachfräsen (E004)
+  const i = moves.indexOf(last);
+  assert.ok(moves.slice(0, i).some((m) => m.stage === 'rough' && m.type === 'cut' && m.tool === 'E014'));
+  assert.ok(moves.slice(i + 1).some((m) => m.stage === 'finish' && m.type === 'cut' && m.tool === 'E004'));
+  // gleiches Werkzeug für beide Stufen: kein Wechsel dazwischen; Bohrungen lösen keinen Wechsel aus
+  const same = Toolpath.build(convertSolid(s, { toolInfo, formatTwoStep: true, formatRoughTool: 'E014', contourTool: 'E014' }), toolInfo, {});
+  assert.ok(!same.some((m) => m.change && m.change.to === 'E014' && m.change.from === 'E014'));
+  assert.ok(!moves.some((m) => m.change && /^0\d\d$/.test(m.change.to) && moves.find((x) => x.tool === m.change.to && x.kind === 'drill')));
+});

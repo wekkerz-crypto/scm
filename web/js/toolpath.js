@@ -182,6 +182,8 @@
     let lastAx = UP;
     let lastBack = 10;
     const plus = (a, v, k) => [a[0] + v[0] * k, a[1] + v[1] * k, a[2] + v[2] * k];
+    let lastTool = null;
+    let lastD = 0;
     const go = (pts, d, label, tool, opIndex, pts3In) => {
       if (!pts.length) return;
       const to3 = meta.to3 || ((q) => [q[0], q[1], p.T - (meta.z || 0)]);
@@ -199,6 +201,24 @@
       if (meta.ball) extra.ball = true;
       if (meta.disc) extra.disc = meta.disc;
       if (meta.len3) extra.len3 = meta.len3;
+      if (meta.stage) extra.stage = meta.stage; // zweistufig: 'rough' (vorfräsen) / 'finish' (nachfräsen)
+      // Werkzeugwechsel (Fräsaggregat; Bohrungen laufen über das Bohraggregat): zum Wechselplatz hinter der Platte,
+      // dort wechseln – in der Animation eine eigene Bewegung mit Pause
+      if (tool && extra.kind !== 'drill' && extra.kind !== 'edge') {
+        if (lastTool && lastTool !== tool) {
+          const park = [-30, p.W / 2];
+          const park3 = [park[0], park[1], p.T + 150];
+          moves.push({ type: 'rapid', change: { from: lastTool, to: tool, dFrom: lastD, dTo: d }, pts: [pos, park], d: lastD,
+            label: 'Werkzeugwechsel ' + lastTool + ' → ' + tool, tool: tool, op: opIndex, z: 0, kind: 'mill', group: extra.group,
+            stage: extra.stage, ax3: UP, pts3: [pos3, plus(pos3, lastAx, lastBack), park3] });
+          pos = park;
+          pos3 = park3;
+          lastAx = UP;
+          lastBack = 0;
+        }
+        lastTool = tool;
+        lastD = d;
+      }
       const start3 = pts3[0];
       if (Math.hypot(pos[0] - pts[0][0], pos[1] - pts[0][1]) > 1e-6 || Math.hypot(pos3[0] - start3[0], pos3[1] - start3[1], pos3[2] - start3[2]) > 1e-6) {
         // Eilgang: zurückziehen, über dem Teil hinfahren, anstellen
@@ -376,9 +396,12 @@
         if (op.rough) {
           // Vorfräsen mit Werkzeug 1, Aufmaß bleibt stehen
           const d1 = info(op.rough.tool).d || 10;
+          meta.stage = 'rough';
           go(offsetPath(raw, d1 / 2 + op.rough.allowance, op.side), d1, op.label + ' – vorfräsen', op.rough.tool, i);
+          meta.stage = 'finish';
         }
         go(offsetPath(raw, d / 2, op.side), d, op.label + (op.rough ? ' – nachfräsen' : ''), op.tool, i);
+        delete meta.stage;
         // Durchbruch/Rundloch: nach dem letzten Schnitt fällt das Innenstück heraus
         if (/^(cutout|round)-/.test(op.key || '') && !op.tabs && moves.length) moves[moves.length - 1].slug = raw; // mit Haltestegen bleibt es hängen
       } else if (op.kind === 'pocket' && op.face && op.face !== 'Top') {

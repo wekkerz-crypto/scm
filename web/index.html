@@ -2268,6 +2268,7 @@ table.fmt.one .onet { display: inline; }
   const FEED = 150;    // mm/s bei 1× (Darstellung, nicht Maschinenvorschub)
   const RAPID = 1500;  // mm/s Eilgang
   const PLUNGE = 0.45; // s je Bohrung bei 1×
+  const CHANGE = 2.5;  // s je Werkzeugwechsel bei 1×
   const anim = { result: null, moves: [], times: [], total: 0, t: 0, playing: false, speed: 5, last: 0, segs: [], wood: null };
   const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -2281,7 +2282,8 @@ table.fmt.one .onet { display: inline; }
       anim.times = [];
       let t = 0;
       for (const m of anim.moves) {
-        const d = m.type === 'plunge' ? PLUNGE : Math.max(0.03, plen(m.pts) / (m.type === 'rapid' ? RAPID : FEED));
+        let d = m.type === 'plunge' ? PLUNGE : Math.max(0.03, plen(m.pts) / (m.type === 'rapid' ? RAPID : FEED));
+        if (m.change) { m.travel = d / (d + CHANGE); d += CHANGE; } // Werkzeugwechsel: hinfahren, dann wechseln
         anim.times.push([t, t + d]);
         t += d;
       }
@@ -2293,14 +2295,20 @@ table.fmt.one .onet { display: inline; }
       anim.moves.forEach((m, i) => {
         if (m.op < 0) return;
         const last = segs[segs.length - 1];
-        if (last && last.group === m.group) last.t1 = anim.times[i][1];
-        else segs.push({ group: m.group, t0: anim.times[i][0], t1: anim.times[i][1], label: m.label, tok: opToken(r.ops[m.op]) });
+        // zweistufig: Vor- und Nachfräsen als eigene Abschnitte (Vorfräsen heller); Werkzeugwechsel gehört zum folgenden
+        if (last && last.group === m.group && last.stage === (m.stage || '')) {
+          last.t1 = anim.times[i][1];
+          if (!last.label && !m.change) last.label = m.label;
+        } else segs.push({ group: m.group, stage: m.stage || '', t0: anim.times[i][0], t1: anim.times[i][1], label: m.change ? '' : m.label,
+          tok: opToken(r.ops[m.op]) });
       });
+      for (const g of segs) if (!g.label) g.label = 'Werkzeugwechsel';
       anim.segs = segs;
     }
     const tl = $('tl');
     tl.innerHTML = anim.segs.map((g, i) => '<button type="button" data-seg="' + i + '" style="width:' + ((g.t1 - g.t0) / anim.total * 100).toFixed(3) +
-      '%;background:var(' + g.tok + ')" title="' + esc((i + 1) + ': ' + g.label) + '" aria-label="' + esc('Zu ' + g.label + ' springen') + '"></button>').join('') +
+      '%;background:' + (g.stage === 'rough' ? 'color-mix(in srgb, var(' + g.tok + ') 50%, var(--surface))' : 'var(' + g.tok + ')') + '" title="' +
+      esc((i + 1) + ': ' + g.label) + '" aria-label="' + esc('Zu ' + g.label + ' springen') + '"></button>').join('') +
       '<span class="head" id="tlhead"></span>';
     tl.addEventListener('click', (e) => {
       const b = e.target.closest('[data-seg]');
@@ -2375,6 +2383,12 @@ table.fmt.one .onet { display: inline; }
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
   }
   const mix = (a, b, k) => 'rgb(' + a.map((v, i) => Math.round(v + (b[i] - v) * k)).join(',') + ')';
+  // Farbe einer Bewegung: Bearbeitungsart; beim zweistufigen Formatfräsen das Vorfräsen heller (gleicher Farbton der Palette)
+  function moveColor(m, op, col) {
+    const base = col(opToken(op));
+    if (m.stage !== 'rough') return base;
+    try { return mix(rgb(base), rgb(col('--surface')), 0.5); } catch (e) { return base; }
+  }
 
   // Holzplatte mit Maserung (einmal je Größe/Farbe berechnet)
   function woodTexture(w, h, base) {
@@ -2605,7 +2619,7 @@ table.fmt.one .onet { display: inline; }
         v3.viewer.setPart({
           meshes: View3D.stepMeshes(occt, cur.stepText), panel: cur.result.panel, tf: cur.result.panel.tf,
           raw: cur.result.side === 2 ? 0 : (state.settings.rawOversize || 0), board: '#d4ae7b', // Seite 2: ohne Rohteil-Versatz
-          colorOf: (m) => col(opToken(ops[m.op])),
+          colorOf: (m) => moveColor(m, ops[m.op], col),
           suction: cur.result.suction,
           // gelöscht: immer kräftiges Rot (das Holz ist in beiden Modi hell)
           suppressed: suppressedMoves(cur.result), suppressedColor: '#c62a1c',
@@ -2700,7 +2714,7 @@ table.fmt.one .onet { display: inline; }
       const [t0, t1] = anim.times[i];
       if (t0 > anim.t) break;
       const f = t1 > t0 ? Math.min(1, (anim.t - t0) / (t1 - t0)) : 1;
-      const part = along(m.pts, f);
+      const part = along(m.pts, m.change ? Math.min(1, f / (m.travel || 1)) : f);
       cur = { m: m, at: part.at, f: f, i: i };
       if (m.type === 'rapid') continue;
       if (m.type === 'plunge') {
@@ -2723,6 +2737,11 @@ table.fmt.one .onet { display: inline; }
         ctx.lineWidth = Math.max(1, m.d * sc);
         if (m.blade) ctx.lineCap = 'butt';
         path(part.pts); ctx.stroke();
+        if (m.stage) {
+          // zweistufig: Bahnmitte in der Farbe der Stufe (vorfräsen hell, nachfräsen kräftig)
+          ctx.strokeStyle = moveColor(m, anim.result.ops[m.op], col); ctx.lineWidth = 2.5;
+          path(part.pts); ctx.stroke();
+        }
         ctx.lineCap = 'round';
         if (m.slug && f >= 1 && m.through) { ctx.fillStyle = table; path(m.slug); ctx.closePath(); ctx.fill(); }
       }
@@ -2736,8 +2755,25 @@ table.fmt.one .onet { display: inline; }
         const spin = reduceMotion ? 0 : ((now || performance.now()) / 1000) * 14;
         const op = anim.result.ops[m.op];
         const isDrill = m.kind === 'drill' || (op && op.kind === 'drill');
-        const ring = m.type === 'rapid' ? col('--muted') : col(opToken(op));
-        if (m.blade) {
+        const ring = m.type === 'rapid' ? col('--muted') : moveColor(m, op, col);
+        if (m.change) {
+          // Werkzeugwechsel: am Wechselplatz altes Werkzeug ab, neues an (Durchmesser springt), mit Hinweis
+          const swapped = cur.f >= (m.travel || 0) + (1 - (m.travel || 0)) / 2;
+          const atPark = cur.f >= (m.travel || 1);
+          const r0 = ((swapped ? m.change.dTo : m.change.dFrom) || m.d) / 2;
+          drawTool(ctx, X(cur.at[0]), Y(cur.at[1]), r0 * sc, atPark ? 0 : spin, true, false, col('--muted'));
+          if (atPark) {
+            const tx = X(cur.at[0]) + r0 * sc + 8;
+            const ty = Y(cur.at[1]);
+            ctx.font = '600 13px ' + (getComputedStyle(document.body).fontFamily || 'sans-serif');
+            ctx.textBaseline = 'middle';
+            const txt = '⟳ ' + m.change.from + ' → ' + m.change.to;
+            const w = ctx.measureText(txt).width + 14;
+            ctx.fillStyle = col('--surface'); ctx.strokeStyle = col('--accent'); ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.roundRect ? ctx.roundRect(tx, ty - 12, w, 24, 6) : ctx.rect(tx, ty - 12, w, 24); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = col('--ink'); ctx.fillText(txt, tx + 7, ty);
+          }
+        } else if (m.blade) {
           drawBlade(ctx, X(cur.at[0]), Y(cur.at[1]), m, sc, spin, m.type === 'rapid', ring);
         } else if (m.axis) {
           // von der Kante (liegend) oder auf schräger Ebene (gekippt): von oben gesehen verkürzt
@@ -2767,9 +2803,9 @@ table.fmt.one .onet { display: inline; }
     const m = cur.m;
     const info = ToolLibrary.infoMap(state.tools)[m.tool];
     const dia = info && info.d ? info.d : m.d;
-    const n = anim.segs.findIndex((g) => g.group === m.group) + 1;
+    const n = anim.segs.findIndex((g) => g.group === m.group && g.stage === (m.stage || '')) + 1;
     hud.innerHTML = '<b>' + (m.op >= 0 ? n + '/' + anim.segs.length + ' · ' : '') + esc(m.label) + '</b>' +
-      '<span class="m">' + esc(m.tool || '') + (dia ? ' Ø' + fmt(dia) : '') + (m.z ? ' · T ' + fmt(m.z) + ' mm' : '') + (m.type === 'rapid' ? ' · Eilgang' : '') + '</span>' +
+      '<span class="m">' + esc(m.tool || '') + (dia ? ' Ø' + fmt(dia) : '') + (m.z ? ' · T ' + fmt(m.z) + ' mm' : '') + (m.change ? ' · Werkzeugwechsel' : m.type === 'rapid' ? ' · Eilgang' : '') + '</span>' +
       '<span class="m">X ' + fmt(cur.at[0]) + ' · Y ' + fmt(cur.at[1]) + '</span>';
   }
 

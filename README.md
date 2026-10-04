@@ -277,6 +277,10 @@ Maestro geprüft):
 Zeitleiste und am Werkzeug in der Animation: Bohrung oben blau, Tasche orange, Fräsen/Kontur grün-türkis, Nut/Falz gelb,
 Fase/schräge Kante pink, schräge Bohrung grün, Kante (Bohrung/Tasche) violett. Die Palette ist für hell und dunkel
 getrennt abgestimmt und auch bei Farbsehschwäche unterscheidbar; die Legende unter der Ansicht nennt alle Farben.
+**Werkzeugwechsel** zeigt die Animation, sobald das Fräswerkzeug wechselt (Bohrungen laufen über das Bohraggregat): Eilgang
+zum Wechselplatz links neben der Platte, kurze Pause mit „⟳ alt → neu“, in der Anzeige *Werkzeugwechsel*. Beim **zweistufigen
+Formatfräsen** sind Vor- und Nachfräsen eigene Abschnitte der Zeitleiste; das Vorfräsen ist heller (gleicher Farbton), die
+Bahnmitte ist in der 2D-Ansicht in der Farbe der Stufe eingezeichnet, in 3D die Spur.
 
 Ausrichtung: Die längste Seite wird X, Bearbeitungsseite ist die Seite mit den meisten Bearbeitungen.
 Nullpunkt vorne links unten. Werkzeuge, Zugaben und Bohrerlisten sind im Web-Tool unter

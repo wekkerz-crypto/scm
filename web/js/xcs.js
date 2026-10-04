@@ -121,7 +121,6 @@
     ],
   };
 
-  const FACE_NAMES = { Left: 'Left', Right: 'Right', Front: 'Front', Back: 'Back' };
 
   // Bearbeitungsarten für die Reihenfolge-Regel
   const CATEGORIES = {
@@ -441,7 +440,6 @@
       let rest = points.slice();
       const out = [];
       for (const axis of [first, 1 - first]) {
-        const other = 1 - axis;
         const key = (q) => (axis === 0 ? q.y : q.x);
         const pos = (q) => (axis === 0 ? q.x : q.y);
         const lines = [];
@@ -472,7 +470,6 @@
             i++;
           }
         }
-        void other;
       }
       return out.concat(rest.map((q) => ({ p: q, nX: 1, nY: 1, dX: 0, dY: 0 })));
     };
@@ -903,8 +900,15 @@
     }
     const ruleGroups = order.slice();
     if (cfg.order && cfg.order.length) {
-      const wanted = cfg.order.filter((g) => defaultGroups.includes(g));
-      order = wanted.concat(order.filter((g) => !wanted.includes(g)));
+      // eigene Reihenfolge; Gruppen, die darin fehlen (z. B. wiederhergestellt), an ihren Platz nach der Regel – hinter ihren Vorgänger
+      const res = cfg.order.filter((g, i, all) => defaultGroups.includes(g) && all.indexOf(g) === i);
+      ruleGroups.forEach((g, i) => {
+        if (res.includes(g)) return;
+        let at = 0;
+        for (let j = i - 1; j >= 0; j--) { const k = res.indexOf(ruleGroups[j]); if (k >= 0) { at = k + 1; break; } }
+        res.splice(at, 0, g);
+      });
+      order = res;
     }
     // Bearbeitungen auf schrägen Ebenen erst nach dem Sägeschnitt, der die Fläche erzeugt (sonst Anfahrt ins Material)
     const catOfG = new Map(ops.map((op) => [op.group, category(op)]));
@@ -1359,7 +1363,7 @@
     const ascii = (t) => String(t).replace(/[äöüÄÖÜß]/g, (c) => ({ 'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'Ä': 'Ae', 'Ö': 'Oe', 'Ü': 'Ue', 'ß': 'ss' }[c]))
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '').replace(/["\\]/g, '');
     if (cfg.commentOn) {
-      L.push('SetComment("' + ascii('STEP2XCS: ' + (p.name || 'Teil') + (cfg.profileName ? ' - Profil ' + cfg.profileName : '')) + '");');
+      L.push('SetComment("' + ascii('STEP2XCS: ' + (p.name || 'Teil') + (cfg.profileName ? ' - ' + (/^profil\b/i.test(cfg.profileName) ? '' : 'Profil ') + cfg.profileName : '')) + '");');
       L.push('SetDescription("' + ascii(fmt(p.L) + ' x ' + fmt(p.W) + ' x ' + fmt(p.T) + ' mm, ' + ops.length + ' Bearbeitungen') + '");');
     }
     if (cfg.optimizeOn) L.push('SetOptimization(true);');
@@ -1406,7 +1410,7 @@
       if (op.kind !== 'drill' || op.plane) {
         const want = op.plane ? op.plane.name : (op.kind === 'pocket' && op.face) || 'Top';
         if (plane !== want) {
-          L.push('SelectWorkplane("' + (FACE_NAMES[want] || want) + '");');
+          L.push('SelectWorkplane("' + want + '");');
           blank();
           plane = want;
         }
@@ -1604,7 +1608,7 @@
         blank();
       } else if (op.kind === 'drill') {
         if (op.face !== plane) {
-          L.push('SelectWorkplane("' + (FACE_NAMES[op.face] || op.face) + '");');
+          L.push('SelectWorkplane("' + op.face + '");');
           blank();
           plane = op.face;
         }

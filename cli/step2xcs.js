@@ -78,6 +78,7 @@ async function main() {
     try {
       const text = fs.readFileSync(file, 'utf8');
       if (/\.dxf$/i.test(file)) {
+        if (twoSided || curvedSlant || curvedSurface) console.log('  ℹ ' + file + ': --zweiseitig/--schraege-5achs/--kugelfraesen/--4achs gelten nur für STEP.');
         parts = [convertDxf(text, path.basename(file), settings, { overrides: { dxf: { T: thickness || undefined } }, profile: profile })];
       } else {
         const meshes = occt ? OcctMesh.read(occt, text) : null;

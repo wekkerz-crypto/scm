@@ -1117,3 +1117,54 @@ test('DXF: größte Kontur = Teil, Vorschläge je Erkennung, Änderungen per ove
   // ohne geschlossene Kontur: Fehler statt Programm
   assert.ok(convertDxf('0\nSECTION\n2\nENTITIES\n0\nENDSEC\n0\nEOF\n', 'leer.dxf', {}).error);
 });
+
+test('DXF: Sonderfälle (Weltkoordinaten, Papierbereich, Bogen-Scheitel, doppelt, verschachtelt, Kreis aus Bögen)', () => {
+  const D = require('../web/js/dxf.js');
+  const dxf = (...ents) => ['0', 'SECTION', '2', 'ENTITIES'].concat(...ents, ['0', 'ENDSEC', '0', 'EOF']).join('\n');
+  const rect = (x0, y0, x1, y1, extra) => ['0', 'LWPOLYLINE', '90', '4', '70', '1'].concat(extra || [],
+    ['10', x0, '20', y0, '10', x1, '20', y0, '10', x1, '20', y1, '10', x0, '20', y1].map(String));
+  const line = (a, b, extra) => ['0', 'LINE'].concat(extra || [], ['10', a[0], '20', a[1], '11', b[0], '21', b[1]].map(String));
+  const part = rect(0, 0, 600, 400);
+  // LINE mit Extrusion −Z: Weltkoordinaten, nicht gespiegelt
+  const neg = ['210', '0', '220', '0', '230', '-1'];
+  let r = D.analyze(dxf(part, line([100, 100], [200, 100], neg), line([200, 100], [200, 200], neg), line([200, 200], [100, 200], neg), line([100, 200], [100, 100], neg)), {});
+  assert.strictEqual(r.cutouts.length, 1);
+  assert.strictEqual(r.dxf.features[0].x, 150);
+  // Papierbereich (Code 67 = 1) zählt nicht
+  r = D.analyze(dxf(part, rect(-100, -100, 1900, 900, ['67', '1'])), {});
+  assert.deepStrictEqual([r.L, r.W], [600, 400]);
+  // Bogen-Scheitel bestimmt die Breite (nicht die Stützpunkte)
+  const b = Math.tan(Math.atan(0.1));
+  r = D.analyze(dxf(['0', 'LWPOLYLINE', '90', '4', '70', '1', '10', '0', '20', '0', '10', '1000', '20', '0', '10', '1000', '20', '400', '42', String(b), '10', '0', '20', '400']), {});
+  assert.ok(Math.abs(r.W - 450) < 1e-6, 'W ' + r.W);
+  // doppelt gezeichneter Kreis → eine Bohrung
+  const circ = ['0', 'CIRCLE', '10', '50', '20', '50', '40', '4'];
+  r = D.analyze(dxf(part, circ, circ), {});
+  assert.strictEqual(r.drills.length, 1);
+  assert.ok(r.warnings.some((w) => /doppelt/.test(w)));
+  // Durchbruch ⊃ Kontur ⊃ Kreis: alles darin fällt heraus
+  r = D.analyze(dxf(part, rect(100, 100, 300, 300), rect(150, 150, 250, 250), ['0', 'CIRCLE', '10', '200', '20', '200', '40', '4']), {});
+  assert.deepStrictEqual(r.dxf.features.map((f) => f.kind).sort(), ['cutout', 'ignore', 'ignore']);
+  assert.strictEqual(r.drills.length, 0);
+  // Kreis als Polylinie aus zwei Halbbögen (bulge 1) → Bohrung
+  r = D.analyze(dxf(part, ['0', 'LWPOLYLINE', '90', '2', '70', '1', '10', '46', '20', '50', '42', '1', '10', '54', '20', '50', '42', '1']), {});
+  assert.strictEqual(r.drills.length, 1);
+  assert.strictEqual(r.drills[0].d, 8);
+  // Rechteck mit Zwischenpunkt bleibt Rechteck
+  r = D.analyze(dxf(['0', 'LWPOLYLINE', '90', '5', '70', '1', '10', '0', '20', '0', '10', '300', '20', '0', '10', '600', '20', '0', '10', '600', '20', '400', '10', '0', '20', '400']), {});
+  assert.ok(r.outlineIsRect);
+});
+
+test('Wiederhergestellte Bearbeitung kommt an ihren Platz (nicht hinter das Formatfräsen)', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const [s] = readParts(read('test/fixtures/testplatte.step'), 'tp.step');
+  const base = convertSolid(s, {});
+  const g = base.groups;
+  const drill = g.find((x) => /^drill:/.test(x));
+  // eigene Reihenfolge ohne die (gelöschte) Bohrung, dann wiederhergestellt
+  const own = g.filter((x) => x !== drill);
+  [own[0], own[1]] = [own[1], own[0]];
+  const r = convertSolid(s, {}, { overrides: { order: own } });
+  assert.ok(r.groups.indexOf(drill) < r.groups.indexOf('format'), r.groups.join(' '));
+  assert.strictEqual(r.groups[r.groups.length - 1], g[g.length - 1]);
+});

@@ -19,8 +19,9 @@ dann *Speichern* (einzeln) oder *Alle als ZIP*.
 heraus (ignorieren), was in einer Tasche liegt, wird Insel. Im Kasten *DXF-Erkennung* rechts lassen sich die Plattendicke
 (Vorgabe in *Werkzeuge & Regeln*, 19 mm) und je Kontur Art (Bohrung, Durchbruch, Tasche, Insel, ignorieren) und Tiefe ändern;
 ✓ markiert den Vorschlag. Gelesen werden LINE, ARC, CIRCLE, LWPOLYLINE/POLYLINE (mit Bögen), ELLIPSE und SPLINE (als
-kurze Geraden), Blöcke (INSERT, auch gedreht/gespiegelt) und die Einheit (`$INSUNITS`); Texte, Maße und Schraffuren
-werden übergangen, offene Linienzüge und Konturen außerhalb des Teils als Hinweis gemeldet. 3D-Ansicht und *Wenden*
+kurze Geraden), Blöcke (INSERT, auch gedreht/gespiegelt) und die Einheit (`$INSUNITS`); Texte, Maße, Schraffuren und der
+Papierbereich (Layouts, Zeichnungsrahmen) werden übergangen, doppelt gezeichnete Konturen nur einmal verwendet, Kreise
+aus Bögen/Polylinien als Kreis erkannt, offene Linienzüge und Konturen außerhalb des Teils als Hinweis gemeldet. 3D-Ansicht und *Wenden*
 gibt es nur für STEP.
 
 **Als Programm (Windows):** `STEP2XCS.exe` doppelklicken. Die .exe (ca. 2 MB, keine Installation) enthält das
@@ -239,6 +240,10 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
   Simulation abgelesen (Saugfläche 45 mm in +Y); **Drehrichtung** bei 90°/270° prüfen – zählt Maestro im Uhrzeigersinn,
   in den Einstellungen *Saugerwinkel im Uhrzeigersinn zählen* einschalten. Gehäuse ragt teils unter den Plattenrand:
   prüfen, dass der Formatfräser (Dicke + 3) es nicht berührt.
+- **Überlappung beim Verlassen (Formatfräsen):** `SetRetractStrategy(false, true, 2, 2)` – laut Handbuch 4. Wert =
+  Überlappung; die bestätigten Beispiele haben 0. In der Simulation prüfen, dass die Kontur um 2 mm überfahren wird.
+- **Formatfräsen zweistufig:** `CreateRoughFinish("Milling_n_Vor", …, Aufmaß)` mit dem Aufmaß als 11. Wert (Handbuch),
+  danach dasselbe auf Endmaß – in Maestro noch nicht bestätigt.
 - **Taschen in den Kanten:** Geometrie in denselben Kantenkoordinaten wie die Kantenbohrungen (X waagerecht, Y = Höhe ab
   Plattenunterseite); in Maestro noch nicht simuliert.
 - **Zweiseitig, Seite 2:** Rohteil = fertiges Teil (`CreateRawWorkpiece` und `SetWorkpieceSetupPosition` mit 0), Platte um Y
@@ -249,7 +254,7 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
   Ober-/Unterkante sitzt (sonst Tiefe/dz in den Einstellungen anpassen).
 - **4-Achs-Abzeilen (Zylinder):** je Zeile `CreateWorkplane(Name, X0, Y0, Z0, Drehung Z, Neigung X)` tangential an die
   Fläche, `CreateSegment` + `CreateRoughFinish` Tiefe 0 (Werkzeugmitte). Zu prüfen: Werkzeug steht senkrecht zur Ebene,
-  Tiefe 0 = Stirn auf der Ebene, Eintauchen außerhalb des Teils (Start vor der Stirnseite), Neigung bis ±30° im Kopf.
+  Tiefe 0 = Stirn auf der Ebene, Eintauchen außerhalb des Teils (Start vor der Stirnseite), Neigung bis 45° (Einstellung *4-Achs: größte Neigung*) im Kopf.
   Viele Ebenen (Teil 400 × 250: 46) – ggf. später als eine 3D-Bahn (`Create3DRoughFinish`) zusammenfassen.
 - **Gekrümmte Flächen** (neu, standardmäßig aus; erst in der Maestro-Simulation prüfen):
   - Schräge an Rundungen: `CreatePolyline` mit Bögen + `CreateSlantedRoughFinish(…, Winkel B, Anstellung 1/2, …)` wie bei

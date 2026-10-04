@@ -600,7 +600,7 @@ table.fmt.one .onet { display: inline; }
     toast('Einstellungen gespeichert.');
   }
   function showSaveState() {
-    // alle Speicher-Leisten (Werkzeuge & Regeln, Reihenfolge-Regel)
+    // alle Speicher-Leisten (Werkzeuge & Regeln, Reihenfolge-Regel, Werkstück-Profile)
     document.querySelectorAll('.savebar').forEach((bar) => {
       bar.classList.toggle('dirty', settingsDirty);
       bar.querySelector('.state').textContent = settingsDirty ? '● Ungespeicherte Änderungen' : 'Alle Änderungen gespeichert';
@@ -941,7 +941,7 @@ table.fmt.one .onet { display: inline; }
     const dx = part.res && part.res.dxf;
     if (part.dxfText === undefined || !dx) return '';
     const feats = dx.features;
-    const kinds = (f) => (f.shape === 'circle' ? ['drill'] : []).concat(['cutout', 'pocket'], f.parent ? ['island'] : [], ['ignore']);
+    const kinds = (f) => (f.shape === 'circle' ? ['drill'] : []).concat(['cutout', 'pocket'], f.parentKind === 'pocket' ? ['island'] : [], ['ignore']);
     const what = (f) => (f.shape === 'circle' ? 'Kreis Ø' + fmt(f.d) : 'Kontur ' + fmt(f.w) + '×' + fmt(f.h)) + ' · ' + fmt(f.x) + ' / ' + fmt(f.y);
     let html = '<details class="curved dxf" id="dxfbox" open><summary><span class="cap">DXF-Erkennung</span><span class="note">' + feats.length +
       ' Kontur' + (feats.length === 1 ? '' : 'en') + ' im Teil · Vorschläge änderbar</span></summary>' +
@@ -1055,8 +1055,10 @@ table.fmt.one .onet { display: inline; }
     }
     if ((op.kind === 'contour' && !op.profile) || op.kind === 'pocket') {
       const own = ovOf(part).steps[op.key];
+      // wirksame Vorgabe: Einstellung, ggf. vom Werkstück-Profil überschrieben
+      const eff = part.profile !== null && part.profile !== undefined ? XcsWriter.applyProfile(state.settings, part.profile) : state.settings;
       html += '<label title="Tiefe je Durchgang in mm, leer = Einstellung für alle Teile, 0 = ein Durchgang">Zustellung <input class="step" type="number" min="0" step="0.5" data-step="' + esc(op.key) + '" value="' +
-        (own !== undefined ? own : '') + '" placeholder="' + ((op.kind === 'pocket' && state.settings.pocketStepDown > 0 ? state.settings.pocketStepDown : state.settings.stepDown) || 'aus') + '"> mm</label>';
+        (own !== undefined ? own : '') + '" placeholder="' + ((op.kind === 'pocket' && eff.pocketStepDown > 0 ? eff.pocketStepDown : eff.stepDown) || 'aus') + '"> mm</label>';
     }
     return html;
   }
@@ -1502,9 +1504,15 @@ table.fmt.one .onet { display: inline; }
     if ($('resetorder')) $('resetorder').addEventListener('click', () => { delete ovOf(part).order; compute(part); render(); });
     // DXF: Dicke und Art/Tiefe je Erkennung; Gruppen ändern sich dabei → eigene Reihenfolge/Löschungen zurücksetzen
     const dxfChanged = () => {
-      if (part.overrides.order || part.overrides.suppress) part.notice = 'Eigene Reihenfolge und gelöschte Bearbeitungen wurden nach der DXF-Änderung zurückgesetzt.';
-      delete part.overrides.order;
-      delete part.overrides.suppress;
+      // Werkzeug/Zustellung/Tiefe je Bearbeitung hängen an der Nummer (cutout-1 …) – nach einer Änderung passen sie nicht mehr
+      const ov = part.overrides;
+      const indexed = (m) => Object.keys(m || {}).some((k) => /-\d+$/.test(k));
+      if (ov.order || ov.suppress || indexed(ov.tools) || indexed(ov.steps) || indexed(ov.depths)) {
+        part.notice = 'Eigene Reihenfolge, gelöschte Bearbeitungen und Werkzeug/Zustellung/Tiefe je Kontur wurden nach der DXF-Änderung zurückgesetzt.';
+      }
+      for (const m of [ov.tools, ov.steps, ov.depths]) for (const k of Object.keys(m || {})) if (/-\d+$/.test(k)) delete m[k];
+      delete ov.order;
+      delete ov.suppress;
       compute(part); render();
     };
     if ($('dxfT')) $('dxfT').addEventListener('change', (e) => {

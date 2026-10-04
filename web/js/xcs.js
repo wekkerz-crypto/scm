@@ -67,6 +67,7 @@
     maxGrooveWidth: 12,        // breitere Nuten → Warnung
     rebateTool: 'E016',        // Falz
     rebateToolDia: 12,         // nur falls der Fräser nicht in der Werkzeugliste steht
+    rebateStopReturn: true,    // abgesetzter Falz: true = nochmal zurück (Mitte auf der Kante), false = einfach ein-, durch-, austauchen
     pocketTool: 'E016',        // Taschen (CreateContourPocket)
     pocketOverlap: 50,         // Überdeckung in %
     pocketStepDown: 0,         // Zustelltiefe je Durchgang bei Taschen in mm (0 = wie stepDown)
@@ -703,22 +704,38 @@
         const P = (u, v) => (r.edge === 'Front' || r.edge === 'Back' ? [u, v] : [v, u]);
         if (len < 0) warnings.push('Abgesetzter Falz ' + fmt(r.width) + ' mm: zu kurz für Fräser Ø' + fmt(dia) + '.');
         warnings.push('Abgesetzter Falz ' + fmt(r.width) + '×' + fmt(r.depth) + ': Innenecken bleiben mit R' + fmt(rad) + ' rund (Fräser Ø' + fmt(dia) + ').');
-        // alle Bahnen in einem Zug (hin und zurück), ein- und ausfahren über die offene Kante
-        const vs = [];
-        for (let i = 0; i < m; i++) vs.push(m > 1 ? v0 + ((v1 - v0) * i) / (m - 1) : v1);
-        const start = legS ? P(uS, vOut) : P(uS, vs[0]);
-        const segs = [];
-        if (legS) segs.push({ type: 'line', to: P(uS, vs[0]) });
-        vs.forEach((v, i) => {
-          const back = i % 2 === 1;
-          if (i) segs.push({ type: 'line', to: P(back ? uE : uS, v) });
-          segs.push({ type: 'line', to: P(back ? uS : uE, v) });
-        });
-        const lastAtE = vs.length % 2 === 1;
-        if (lastAtE ? legE : legS) segs.push({ type: 'line', to: P(lastAtE ? uE : uS, vOut) });
-        ops.push({ kind: 'contour', key: key, toolKind: 'mill', toolDefault: 'rebateTool', contour: ++nContour, milling: ++nMill, approach: false,
-          start: start, segs: segs, depth: r.depth, tool: cfg.rebateTool, side: 0,
-          label: 'Falz ' + fmt(r.width) + '×' + fmt(r.depth) + ' (abgesetzt)' });
+        const label = 'Falz ' + fmt(r.width) + '×' + fmt(r.depth) + ' (abgesetzt)';
+        const push = (start, segs) => ops.push({ kind: 'contour', key: key, toolKind: 'mill', toolDefault: 'rebateTool', contour: ++nContour,
+          milling: ++nMill, approach: false, start: start, segs: segs, depth: r.depth, tool: cfg.rebateTool, side: 0, label: label,
+          rebateStop: true, rebateReturn: !!cfg.rebateStopReturn });
+        if (cfg.rebateStopReturn) {
+          // mit Rückweg: alle Bahnen in einem Zug hin und zurück, letzte mit der Mitte auf der Plattenkante
+          const vs = [];
+          for (let i = 0; i < m; i++) vs.push(m > 1 ? v0 + ((v1 - v0) * i) / (m - 1) : v1);
+          const segs = [];
+          if (legS) segs.push({ type: 'line', to: P(uS, vs[0]) });
+          vs.forEach((v, i) => {
+            const back = i % 2 === 1;
+            if (i) segs.push({ type: 'line', to: P(back ? uE : uS, v) });
+            segs.push({ type: 'line', to: P(back ? uS : uE, v) });
+          });
+          const lastAtE = vs.length % 2 === 1;
+          if (lastAtE ? legE : legS) segs.push({ type: 'line', to: P(lastAtE ? uE : uS, vOut) });
+          push(legS ? P(uS, vOut) : P(uS, vs[0]), segs);
+        } else {
+          // einfach: außen eintauchen, an der Flanke entlang, über die Kante austauchen; ist der Falz breiter als der
+          // Fräser, je Bahn eigenes Ein-/Austauchen (letzte Bahn 1 mm über die Kante)
+          const vLast = edgeV - sgn * (rad - 1);
+          const k = sgn * (vLast - v0) > 0 ? Math.ceil(sgn * (vLast - v0) / (dia * 0.9)) + 1 : 1;
+          for (let i = 0; i < k; i++) {
+            const v = k > 1 ? v0 + ((vLast - v0) * i) / (k - 1) : v0;
+            const segs = [];
+            if (legS) segs.push({ type: 'line', to: P(uS, v) });
+            segs.push({ type: 'line', to: P(uE, v) });
+            if (legE) segs.push({ type: 'line', to: P(uE, vOut) });
+            push(legS ? P(uS, vOut) : P(uS, v), segs);
+          }
+        }
         continue;
       }
       if (n > 1) warnings.push('Falz ' + fmt(r.width) + ' mm breiter als Fräser Ø' + fmt(dia) + ' – ' + n + ' Bahnen.');
@@ -1701,6 +1718,7 @@
     if (override && override.depths) cfg.depthOverrides = override.depths;
     if (override && override.tech) cfg.techOverrides = override.tech; // je Bearbeitung: Vorschub, Drehzahl, Eintauchen
     if (override && typeof override.twoStep === 'boolean') cfg.formatTwoStep = override.twoStep; // je Teil: normal / zweistufig
+    if (override && typeof override.rebateReturn === 'boolean') cfg.rebateStopReturn = override.rebateReturn; // je Teil: abgesetzter Falz
     const cv = override && override.curved; // je Teil: gekrümmte Flächen bearbeiten
     if (cv && typeof cv.slant === 'boolean') cfg.curvedSlantOn = cv.slant;
     if (cv && typeof cv.surface === 'boolean') cfg.curvedSurfaceOn = cv.surface;

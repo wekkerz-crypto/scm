@@ -549,6 +549,7 @@ table.fmt.one .onet { display: inline; }
       ['cutoutTool', 'Fräser Ausschnitte', 'mill'],
       ['cutoutExtra', 'Ausschnitte: Dicke +', 'number', 'mm'],
       ['rebateTool', 'Fräser Falz', 'mill'],
+      ['rebateStopReturn', 'Abgesetzter Falz: nochmal zurück (Mitte auf der Kante) – aus: einfach ein-, durch-, austauchen', 'bool'],
       ['leadLength', 'An-/Auslauf', 'number', 'mm'],
       ['tabsMode', 'Haltestege bei Durchbrüchen', 'choice', [['off', 'aus'], ['small', 'bei kleinen Innenstücken'], ['all', 'bei allen Durchbrüchen']]],
       ['tabsMaxSize', 'Haltestege: Innenstück bis', 'number', 'mm (größte Seite)'],
@@ -1188,6 +1189,13 @@ table.fmt.one .onet { display: inline; }
         '<button type="button" data-twostep="1" aria-pressed="' + two + '">Zweistufig</button></span>' +
         (two ? '<span class="rough" title="Werkzeug 1 und Aufmaß unter Werkzeuge &amp; Regeln">vor: ' + esc(op.rough.tool) + ' +' + fmt(op.rough.allowance) + ' mm · nach:</span>' : '');
     }
+    if (op.rebateStop && op === part.result.ops.find((o) => o.key === op.key)) {
+      // abgesetzter Falz je Teil: einfach (ein-, durch-, austauchen) oder nochmal zurück mit der Mitte auf der Kante
+      const back = !!op.rebateReturn;
+      html += '<span class="seg small" role="group" aria-label="Abgesetzter Falz für dieses Teil">' +
+        '<button type="button" data-rebret="0" aria-pressed="' + !back + '" title="außen eintauchen, an der Flanke entlang, über die Kante austauchen">Einfach</button>' +
+        '<button type="button" data-rebret="1" aria-pressed="' + back + '" title="nochmal zurück mit der Werkzeugmitte auf der Plattenkante – an den Enden bleibt nichts stehen">Mit Rückweg</button></span>';
+    }
     html += toolSelect('data-tool="' + esc(op.key) + '" aria-label="Werkzeug für ' + esc(op.label) + '"', op.toolKind, op.tool);
     if (op.depthAdjustable) {
       const ownD = ovOf(part).depths[op.key];
@@ -1747,6 +1755,10 @@ table.fmt.one .onet { display: inline; }
       const v = b.dataset.on;
       const val = v === '1' ? true : v === '0' || v === 'off' ? false : v; // Schräge: an/aus; Flächen: aus/ball/flat4
       part.overrides.curved = Object.assign({}, part.overrides.curved, { [b.dataset.curved]: val });
+      compute(part); render();
+    }));
+    el.querySelectorAll('[data-rebret]').forEach((b) => b.addEventListener('click', () => {
+      part.overrides.rebateReturn = b.dataset.rebret === '1';
       compute(part); render();
     }));
     el.querySelectorAll('[data-twostep]').forEach((b) => b.addEventListener('click', () => {

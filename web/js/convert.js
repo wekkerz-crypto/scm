@@ -108,7 +108,7 @@
       if (panel.bottom.length) other = PanelAnalyzer.analyze(solid, PanelAnalyzer.turnOverY(solid, panel.orientation));
       const two = !!(ov.twoSided && other);
       const out = XcsWriter.write(panel, settings, { field: options.field, tools: ov.tools, steps: ov.steps, order: ov.order, depths: ov.depths, tech: ov.tech,
-        twoStep: ov.twoStep, curved: ov.curved, mesh: placeMesh(options, panel), suppress: ov.suppress,
+        twoStep: ov.twoStep, rebateReturn: ov.rebateReturn, curved: ov.curved, mesh: placeMesh(options, panel), suppress: ov.suppress,
         avoid: other ? openZones(other) : null, twoSided: two });
       const base = safeFileName(solid.name);
       const res = result(solid, base + (two ? '_S1' : '') + '.xcs', panel, out);
@@ -116,7 +116,7 @@
       if (two) {
         const ov2 = options.overrides2 || {};
         const out2 = XcsWriter.write(other, settings, { side: 2, field: options.field, tools: ov2.tools, steps: ov2.steps, order: ov2.order,
-          depths: ov2.depths, tech: ov2.tech, curved: ov.curved, mesh: placeMesh(options, other), suppress: ov2.suppress, avoid: openZones(panel) });
+          depths: ov2.depths, tech: ov2.tech, rebateReturn: ov.rebateReturn, curved: ov.curved, mesh: placeMesh(options, other), suppress: ov2.suppress, avoid: openZones(panel) });
         res.side2 = result(solid, base + '_S2.xcs', other, out2);
         res.side2.side = 2;
       }
@@ -143,7 +143,7 @@
       const cfg = Object.assign({}, XcsWriter.DEFAULTS, settings || {});
       const panel = DR.analyze(text, { name: name, T: dx.T, rot: dx.rot, features: dx.features, drills: cfg.drillsVertical });
       const out = XcsWriter.write(panel, settings, { field: options.field, tools: ov.tools, steps: ov.steps, order: ov.order, depths: ov.depths, tech: ov.tech,
-        twoStep: ov.twoStep, suppress: ov.suppress });
+        twoStep: ov.twoStep, rebateReturn: ov.rebateReturn, suppress: ov.suppress });
       const res = result(solid, safeFileName(name) + '.xcs', panel, out);
       res.dxf = panel.dxf;
       return res;

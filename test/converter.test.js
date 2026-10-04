@@ -1405,6 +1405,13 @@ test('Abgesetzter Falz (zur Kante offen, endet vor den Seiten) wird als Falz erk
   assert.match(r.xcs, /CreatePolyline\("Contour_1", 984\.81, 425\.69\);\r?\nAddSegmentToPolyline\(984\.81, 395\.69\);\r?\nAddSegmentToPolyline\(15\.19, 395\.69\);\r?\nAddSegmentToPolyline\(15\.19, 400\);\r?\nAddSegmentToPolyline\(984\.81, 400\);\r?\nAddSegmentToPolyline\(984\.81, 425\.69\);/);
   assert.match(r.xcs, /CreateRoughFinish\("Milling_1", 9\.5, "", TypeOfProcess\.GeneralRouting, "E016", "-1", 0,/);
   assert.ok(!r.warnings.some((w) => /Tasche/.test(w)));
+  // Option „einfach“ (Einstellung oder je Teil): außen eintauchen, an der Flanke entlang, über die Kante austauchen
+  const one = convertSolid(seite, { toolInfo }, { overrides: { rebateReturn: false } });
+  assert.match(one.xcs, /CreatePolyline\("Contour_1", 984\.81, 425\.69\);\r?\nAddSegmentToPolyline\(984\.81, 395\.69\);\r?\nAddSegmentToPolyline\(15\.19, 395\.69\);\r?\nAddSegmentToPolyline\(15\.19, 425\.69\);\r?\n(?!AddSegment)/);
+  assert.strictEqual(convertSolid(seite, { toolInfo, rebateStopReturn: false }).xcs, one.xcs);
+  // schmaler Fräser: je Bahn eigenes Ein-/Austauchen, letzte 1 mm über die Kante
+  const narrow = convertSolid(seite, { toolInfo, rebateStopReturn: false, rebateTool: 'E008' });
+  assert.match(narrow.xcs, /AddSegmentToPolyline\(986\.5, 394\);[\s\S]*AddSegmentToPolyline\(986\.5, 397\);/);
   // durchgehender Falz (Boden) bleibt wie bisher
   const boden = convertSolid(parts.find((s) => /Oberboden/.test(s.name)), { toolInfo });
   assert.ok(boden.panel.rebates.every((x) => x.from === undefined));

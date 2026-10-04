@@ -30,6 +30,7 @@
     // SetAttribute (DEPTH/TAB): 'after' = nach dem Element (gilt für sein Ende, wie im Handbuch-Beispiel), 'before' = davor
     // (Handbuch-Text spricht vom folgenden Element) – an der Maschine prüfen
     attrPlacement: 'after',
+    oscSplit: false,           // true = Kontur an den Wendepunkten zerteilen (alt; brach in Maestro die Korrektur), false = SetParametricAttribute
     // Clamex P: über das SCM-Makro (nur Position übergeben) oder direkt mit dem Scheibenfräser
     clamexMode: 'macro',       // 'macro' = SCM-Makro SawCut_Lamello (Parameter nach Position), 'direct' = eigene Bahn mit clamexTool
     clamexMacro: 'SawCut_Lamello',
@@ -1490,8 +1491,10 @@
    * Oszillation: Polylinie (start, segs) so teilen, dass die Tiefe als Dreieck zwischen dMin und dMax pendelt
    * (Weg je Schwingung ≈ wave, auf ganze Schwingungen je Umlauf angepasst; phase 0 = Beginn oben bei dMin, 0.5 = Beginn unten). Jedes Teilstück trägt die Tiefe
    * an seinem Endpunkt (SetAttribute("DEPTH") gilt für den Endpunkt des zuletzt angefügten Elements); dazwischen linear.
+   * split = false: Elemente bleiben ganz (Geometrie wie ohne Oszillation), die Wendepunkte stehen als marks [{u, depth}]
+   * (u = Lage 0–1 im Element → SetParametricAttribute) – zerteilte Elemente brachen in Maestro die Werkzeugkorrektur.
    */
-  function oscillate(start, segs, dMin, dMax, wave, phase) {
+  function oscillate(start, segs, dMin, dMax, wave, phase, split) {
     // ganze Zahl Schwingungen je Umlauf: Ende auf derselben Tiefe wie der Anfang (kein Absatz an der Naht)
     let total = 0;
     let p0 = start;
@@ -1533,17 +1536,19 @@
       // Wendepunkte (alle halbe Schwingung, je nach Phase verschoben) innerhalb des Elements
       const off = ((phase || 0) * w) % half;
       let k = Math.floor((pos + off) / half + 1e-9) + 1;
+      const marks = [];
       for (;;) {
         const sTurn = k * half - off;
         if (sTurn >= pos + len - 0.5) break; // kein Stummel < 0,5 mm vor dem Elementende
         if (sTurn > pos + 0.5) {
           const t = (sTurn - pos) / len;
-          out.push(Object.assign({}, q, { to: at(t), depth: depthAt(sTurn) }));
+          if (split) out.push(Object.assign({}, q, { to: at(t), depth: depthAt(sTurn) }));
+          else marks.push({ u: t, depth: depthAt(sTurn) });
         }
         k++;
       }
       pos += len;
-      out.push(Object.assign({}, q, { depth: depthAt(pos) }));
+      out.push(Object.assign({}, q, marks.length ? { depth: depthAt(pos), marks: marks } : { depth: depthAt(pos) }));
       prev = q.to;
     }
     return { d0: depthAt(0), segs: out };
@@ -1772,11 +1777,12 @@
         const passes = op.osc ? op.passes || 1 : 1;
         for (let pi = 0; pi < passes; pi++) {
           const suffix = pi ? '_' + (pi + 1) : '';
-          const o = op.osc ? oscillate(op.start, op.segs, op.osc.min, op.osc.max, cfg.oscWave, pi * 0.5) : null;
+          const o = op.osc ? oscillate(op.start, op.segs, op.osc.min, op.osc.max, cfg.oscWave, pi * 0.5, cfg.oscSplit) : null;
           const depth = o ? o.d0 : op.depth;
           L.push('CreatePolyline("Contour_' + op.contour + suffix + '", ' + pt(op.start) + ');');
           (o ? o.segs : op.segs).forEach((s, i) => {
             const attrs = [];
+            for (const m of s.marks || []) attrs.push('SetParametricAttribute("DEPTH", ' + fmt(m.depth) + ', ' + fmt(Math.round(m.u * 1e4) / 1e4) + ');');
             if (s.depth !== undefined) attrs.push('SetAttribute("DEPTH", ' + fmt(s.depth) + ');');
             if (!o && tabAt.has(i)) attrs.push('SetParametricAttribute2("TAB", ' + fmt(cfg.tabLength) + ', ' + fmt(cfg.tabHeight) + ', 0.5);');
             if (cfg.attrPlacement === 'before') L.push(...attrs);

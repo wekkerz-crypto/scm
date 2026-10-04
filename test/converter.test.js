@@ -1179,7 +1179,7 @@ test('Oszillieren (Formatfräsen) und Schleifen mit der Schleifwalze', () => {
   // Reihenfolge: Schleifen nach dem Formatfräsen
   assert.ok(r.groups.indexOf('sand') > r.groups.indexOf('format'));
   const block = (name) => { const i = r.xcs.indexOf('CreateRoughFinish("' + name + '"'); const j = r.xcs.lastIndexOf('CreatePolyline', i); return r.xcs.slice(j, r.xcs.indexOf('\n', i)); };
-  const depths = (b) => [...b.matchAll(/SetAttribute\("DEPTH", ([\d.]+)\);/g)].map((m) => +m[1]);
+  const depths = (b) => [...b.matchAll(/Set(?:Parametric)?Attribute\("DEPTH", ([\d.]+)[,)]/g)].map((m) => +m[1]);
   const f = r.ops.find((o) => o.key === 'format');
   const fb = block('Milling_' + f.contour);
   const fd = depths(fb);
@@ -1370,9 +1370,25 @@ test('Zapfen auf Schräge: Sonderfälle (30°, bis an den Rand, Feder ganze Län
 test('Tiefen-Attribut wahlweise vor dem Element (Handbuch uneindeutig)', () => {
   const { readParts, convertSolid } = require('../web/js/convert.js');
   const [s] = readParts(read('test/fixtures/testplatte.step'), 'tp.step');
-  const after = convertSolid(s, { oscMill: true }).xcs;
-  const before = convertSolid(s, { oscMill: true, attrPlacement: 'before' }).xcs;
+  const after = convertSolid(s, { oscMill: true, oscSplit: true }).xcs;
+  const before = convertSolid(s, { oscMill: true, oscSplit: true, attrPlacement: 'before' }).xcs;
   assert.match(after, /CreatePolyline\("Contour_\d+", 0, 200\);\r?\nAddSegmentToPolyline\(0, 55\.556\);\r?\nSetAttribute\("DEPTH", 26\);/);
   assert.match(before, /CreatePolyline\("Contour_\d+", 0, 200\);\r?\nSetAttribute\("DEPTH", 26\);\r?\nAddSegmentToPolyline\(0, 55\.556\);/);
   assert.strictEqual((after.match(/SetAttribute/g) || []).length, (before.match(/SetAttribute/g) || []).length);
+});
+
+test('Oszillieren: Kontur bleibt wie ohne Oszillation, Wendepunkte als SetParametricAttribute', () => {
+  // zerteilte Elemente brachen in Maestro die Werkzeugkorrektur (Bahn quer durchs Teil, Kontur nicht geschlossen)
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const [s] = readParts(read('test/fixtures/testplatte.step'), 'tp.step');
+  const geo = (x) => x.split(/\r?\n/).filter((l) => /^(CreatePolyline|AddSegmentToPolyline|AddArc)/.test(l)).join('\n');
+  const plain = convertSolid(s, {}).xcs;
+  const osc = convertSolid(s, { oscMill: true }).xcs;
+  assert.strictEqual(geo(osc), geo(plain));
+  const marks = [...osc.matchAll(/SetParametricAttribute\("DEPTH", ([\d.]+), ([\d.]+)\);/g)];
+  assert.ok(marks.length > 4);
+  for (const m of marks) { assert.ok(+m[1] >= 20 && +m[1] <= 26); assert.ok(+m[2] > 0 && +m[2] < 1); }
+  // Bögen (Halbkreis-Ausschnitt) bleiben ganz
+  const split = convertSolid(s, { oscMill: true, oscSplit: true }).xcs;
+  assert.ok(geo(split).split('\n').length > geo(osc).split('\n').length);
 });

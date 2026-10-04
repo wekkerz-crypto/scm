@@ -338,7 +338,11 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
   zurück, Nut in der Fläche mit waagerechtem Werkzeug auf der Kanten-Ebene – in der Simulation prüfen.
 - **Eigene Schnittwerte:** Einheiten laut Handbuch wie in Xilog (V/F in m/min, S in U/min) – an einer Bearbeitung mit
   eigenem Vorschub in Maestro prüfen, dass der Wert so ankommt (nicht als mm/min).
-- **Oszillieren / Schleifwalze:** `SetAttribute("DEPTH", Tiefe)` nach jedem Konturelement – das Handbuch-Beispiel setzt
+- **Oszillieren / Schleifwalze:** Erster Maschinentest (Kontur an den Wendepunkten zerteilt): Maestro brach die
+  Werkzeugkorrektur ab (rechte Hälfte fehlte, Bahn quer durchs Teil, „keine geschlossene Kontur“), ohne Oszillation alles
+  richtig. Jetzt bleibt die Kontur ganz wie ohne Oszillation; Wendepunkte als `SetParametricAttribute("DEPTH", Tiefe, Lage 0–1)`
+  im Element (Handbuch 3.8.5.1.2), Elementende `SetAttribute("DEPTH", Tiefe)`. Alte Zerteilung: Einstellung *Oszillation: Kontur
+  zerteilen*. Zu prüfen: Kontur geschlossen, Tiefen pendeln. – `SetAttribute("DEPTH", Tiefe)` nach jedem Konturelement – das Handbuch-Beispiel setzt
   es nach dem 1. Element, der Text spricht vom Endpunkt des 2. Elements. Gilt es für das folgende Element, sind alle Tiefen
   (und Haltestege `TAB`) um ein Element verschoben → Einstellung *Tiefen-Attribut setzen: vor dem Element*. Zu prüfen: Tiefe ab Oberseite wie bei `CreateRoughFinish`, Übergang zwischen den Punkten
   linear (Rampe, keine Stufe), zusammen mit Bogen-An-/Abfahrt und Überlappung. Schleifwalze `E091` als Werkzeug in

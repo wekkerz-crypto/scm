@@ -80,9 +80,10 @@ den Werkstatt-Programmen `maestro/beispiele/33_SW-Schrag.xcs`, `38_SW-Schrag.xcs
 `CreateMacro("SawCut_Lamello_n", "SawCut_Lamello", …)` je Nut mit der **Parameterliste dieser Programme (nach Position)**;
 eingesetzt werden nur Start X/Y = Ende X/Y (Mitte der Nutöffnung auf der Kante, bei schrägen Schnittflächen auf der
 längeren Kante) – laut Makrohilfe dann automatisch ein Verbinder ohne Sägeschnitt –, *Winkel* der Schnittfläche (90 =
-gerade) und *Winkel um Z* (Richtung gegen den Uhrzeigersinn: vorne 360 – 0 gilt als „nicht angegeben“ –, rechts 90,
+gerade; schräg: Fläche nach oben 90 − Neigung, nach unten 90 + Neigung wie beim Sägeschnitt) und *Winkel um Z* (Richtung gegen den Uhrzeigersinn: vorne 360 – 0 gilt als „nicht angegeben“ –, rechts 90,
 hinten 180, links −90). Werkzeuge, Tiefe, Oszillation usw. wie in den Programmen bzw. aus `SawCut_Lamello.xspc`.
-Die Vorlage ist unter *Werkzeuge & Regeln → Clamex* änderbar (Platzhalter `{sx} {sy} {ex} {ey} {angle} {angleZ} {T}`).
+Die Vorlage ist unter *Werkzeuge & Regeln → Clamex* änderbar (Platzhalter `{sx} {sy} {ex} {ey} {angle} {angleZ} {T} {h}`;
+`{h}` = Höhe der Nutmitte an der Oberfläche, in der Vorgabe nicht verwendet – Position der *EinfHöhe* noch unbekannt).
 Nuten in der **Fläche** gehen über das Makro noch nicht (kein Beispiel) – Hinweis, nicht ausgegeben.
 
 **Alternativ direkt** (*Clamex-Nuten: direkt mit dem Scheibenfräser*): Scheibenfräser `E030` (auf Blattmitte vermessen),
@@ -332,8 +333,9 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
   zurück, Nut in der Fläche mit waagerechtem Werkzeug auf der Kanten-Ebene – in der Simulation prüfen.
 - **Eigene Schnittwerte:** Einheiten laut Handbuch wie in Xilog (V/F in m/min, S in U/min) – an einer Bearbeitung mit
   eigenem Vorschub in Maestro prüfen, dass der Wert so ankommt (nicht als mm/min).
-- **Oszillieren / Schleifwalze:** `SetAttribute("DEPTH", Tiefe)` nach jedem Konturelement – laut Handbuch Tiefe am
-  Endpunkt des Elements. Zu prüfen: Tiefe ab Oberseite wie bei `CreateRoughFinish`, Übergang zwischen den Punkten
+- **Oszillieren / Schleifwalze:** `SetAttribute("DEPTH", Tiefe)` nach jedem Konturelement – das Handbuch-Beispiel setzt
+  es nach dem 1. Element, der Text spricht vom Endpunkt des 2. Elements. Gilt es für das folgende Element, sind alle Tiefen
+  (und Haltestege `TAB`) um ein Element verschoben → Einstellung *Tiefen-Attribut setzen: vor dem Element*. Zu prüfen: Tiefe ab Oberseite wie bei `CreateRoughFinish`, Übergang zwischen den Punkten
   linear (Rampe, keine Stufe), zusammen mit Bogen-An-/Abfahrt und Überlappung. Schleifwalze `E091` als Werkzeug in
   `CreateRoughFinish` mit Korrektur rechts; Drehzahl/Vorschub kommen aus der Werkzeugdatei.
 - **Taschen in den Kanten:** Geometrie in denselben Kantenkoordinaten wie die Kantenbohrungen (X waagerecht, Y = Höhe ab

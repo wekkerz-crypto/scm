@@ -27,6 +27,9 @@
     oscMillMin: 2,             // Fräser ragt mindestens … mm unter die Platte
     oscMillMax: 8,             // … höchstens (Schneidenlänge beachten: Dicke + max ≤ Schneidenlänge)
     oscWave: 300,              // Weg je Schwingung (einmal runter und wieder hoch) in mm
+    // SetAttribute (DEPTH/TAB): 'after' = nach dem Element (gilt für sein Ende, wie im Handbuch-Beispiel), 'before' = davor
+    // (Handbuch-Text spricht vom folgenden Element) – an der Maschine prüfen
+    attrPlacement: 'after',
     // Clamex P: über das SCM-Makro (nur Position übergeben) oder direkt mit dem Scheibenfräser
     clamexMode: 'macro',       // 'macro' = SCM-Makro SawCut_Lamello (Parameter nach Position), 'direct' = eigene Bahn mit clamexTool
     clamexMacro: 'SawCut_Lamello',
@@ -1276,7 +1279,12 @@
     }
 
     if (!side2) {
-      for (const b of p.bottom) warnings.push(b.text + (cfg.twoSided ? ' – wird auf Seite 2 bearbeitet.' : ' – nicht von oben bearbeitbar (Zweiseitig einschalten oder Platte wenden).'));
+      for (const b of p.bottom) {
+        // Clamex in der Fläche geht über das Makro noch nicht – auch nicht auf Seite 2
+        const viaMacro = b.kind === 'Clamex' && cfg.clamexMode !== 'direct';
+        warnings.push(b.text + (viaMacro ? ' – über das Makro noch nicht möglich, nicht ausgegeben.'
+          : cfg.twoSided ? ' – wird auf Seite 2 bearbeitet.' : ' – nicht von oben bearbeitbar (Zweiseitig einschalten oder Platte wenden).'));
+      }
     }
     // Schleifzugabe: Radiusfräser erst nach dem Schleifen (sonst sitzt die Rundung um die Zugabe versetzt)
     const iSand = ops.findIndex((op) => op.sand);
@@ -1768,10 +1776,13 @@
           const depth = o ? o.d0 : op.depth;
           L.push('CreatePolyline("Contour_' + op.contour + suffix + '", ' + pt(op.start) + ');');
           (o ? o.segs : op.segs).forEach((s, i) => {
+            const attrs = [];
+            if (s.depth !== undefined) attrs.push('SetAttribute("DEPTH", ' + fmt(s.depth) + ');');
+            if (!o && tabAt.has(i)) attrs.push('SetParametricAttribute2("TAB", ' + fmt(cfg.tabLength) + ', ' + fmt(cfg.tabHeight) + ', 0.5);');
+            if (cfg.attrPlacement === 'before') L.push(...attrs);
             if (s.type === 'line') L.push('AddSegmentToPolyline(' + pt(s.to) + ');');
             else L.push('AddArc2PointCenterToPolyline(' + pt(s.to) + ', ' + pt(s.c) + ', ' + (s.cw ? 'true' : 'false') + ');');
-            if (s.depth !== undefined) L.push('SetAttribute("DEPTH", ' + fmt(s.depth) + ');');
-            if (!o && tabAt.has(i)) L.push('SetParametricAttribute2("TAB", ' + fmt(cfg.tabLength) + ', ' + fmt(cfg.tabHeight) + ', 0.5);');
+            if (cfg.attrPlacement !== 'before') L.push(...attrs);
           });
           blank();
           // An- und Abfahrt im Bogen (Schleifwalze immer; Bogen = Faktor × Werkzeugradius)

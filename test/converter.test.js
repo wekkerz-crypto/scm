@@ -1366,3 +1366,13 @@ test('Zapfen auf Schräge: Sonderfälle (30°, bis an den Rand, Feder ganze Län
   const yMin = +/CreatePolyline\("Pocket_1", [-\d.]+, (-[\d.]+)\);/.exec(low.xcs)[1];
   assert.ok(yMin <= -(17.31 + 1 - 2) + 1e-6, String(yMin));
 });
+
+test('Tiefen-Attribut wahlweise vor dem Element (Handbuch uneindeutig)', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const [s] = readParts(read('test/fixtures/testplatte.step'), 'tp.step');
+  const after = convertSolid(s, { oscMill: true }).xcs;
+  const before = convertSolid(s, { oscMill: true, attrPlacement: 'before' }).xcs;
+  assert.match(after, /AddSegmentToPolyline\(0, 50\);\r?\nSetAttribute\("DEPTH", 26\);/);
+  assert.match(before, /SetAttribute\("DEPTH", 26\);\r?\nAddSegmentToPolyline\(0, 50\);/);
+  assert.strictEqual((after.match(/SetAttribute/g) || []).length, (before.match(/SetAttribute/g) || []).length);
+});

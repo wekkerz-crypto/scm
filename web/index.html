@@ -539,6 +539,7 @@ table.fmt.one .onet { display: inline; }
       ['oscMillMin', 'Fräser: mindestens unter der Platte', 'number', 'mm'],
       ['oscMillMax', 'Fräser: höchstens unter der Platte', 'number', 'mm'],
       ['oscWave', 'Weg je Schwingung (runter und hoch)', 'number', 'mm'],
+      ['attrPlacement', 'Tiefen-Attribut (SetAttribute) setzen', 'choice', [['after', 'nach dem Element (Handbuch-Beispiel)'], ['before', 'vor dem Element']]],
       ['sandOn', 'Nach dem Formatfräsen schleifen (Außenkontur)', 'bool'],
       ['sandTool', 'Schleifwalze', 'sand'],
       ['sandMin', 'Schleifwalze: mindestens unter der Platte', 'number', 'mm'],
@@ -550,7 +551,7 @@ table.fmt.one .onet { display: inline; }
     { title: 'Clamex (Lamello P-System)', c: '--saw', wide: true, fields: [
       ['clamexMode', 'Clamex-Nuten', 'choice', [['macro', 'über SCM-Makro (nur Position)'], ['direct', 'direkt mit dem Scheibenfräser']]],
       ['clamexMacro', 'Makro-Name', 'text'],
-      ['clamexTemplate', 'Makro-Parameter (Vorlage)', 'text', '{sx} {sy} {ex} {ey} {angle} {angleZ} {T} werden eingesetzt'],
+      ['clamexTemplate', 'Makro-Parameter (Vorlage)', 'text', '{sx} {sy} {ex} {ey} {angle} {angleZ} {T} {h} werden eingesetzt'],
       ['clamexTool', 'Scheibenfräser (nur direkt)', 'mill'],
       ['clamexClear', 'Anfahrt: Abstand vor der Oberfläche', 'number', 'mm'],
       ['clamexMaxReach', 'Hinweis ab Abstand zur Kante', 'number', 'mm']] },

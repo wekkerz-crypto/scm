@@ -78,6 +78,36 @@ button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+/* Etiketten: Vorschau im Dialog, Druck nur des Etikettenbereichs */
+.ico { width: 1em; height: 1em; vertical-align: -0.15em; }
+.labeldlg { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); padding: 16px 18px; max-width: min(92vw, 760px); max-height: 92vh; overflow: auto; }
+.labeldlg::backdrop { background: rgba(0,0,0,0.45); }
+.labeldlg h3 { margin-bottom: 10px; }
+.labeldlg .lprev { display: flex; flex-wrap: wrap; gap: 14px; max-height: 58vh; overflow: auto; padding: 12px; background: var(--sunken); border-radius: var(--r); }
+.labeldlg .lprev .lbl { box-shadow: 0 1px 3px rgba(0,0,0,0.35); zoom: 1.7; }
+.labeldlg .row { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.labeldlg .row .sp { flex: 1; }
+.labeldlg .note { font-size: 0.82rem; color: var(--muted); margin: 10px 0 0; max-width: 70ch; }
+.lbl { position: relative; overflow: hidden; background: #fff; color: #000; flex: none; }
+.lbl .lin { position: absolute; left: 0; top: 0; transform-origin: 0 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 0.8mm; font-family: var(--font-body); }
+.lbl .lin.wide { flex-direction: row; gap: 1.8mm; }
+.lbl .tx { display: flex; flex-direction: column; min-width: 0; }
+.lbl .ln { line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lbl .nm { font-family: var(--font-display); font-weight: 700; text-overflow: clip; }
+.lbl .nm.wrap { white-space: normal; overflow-wrap: anywhere; max-height: 2.5em; }
+.lbl .dm { font-weight: 700; font-variant-numeric: tabular-nums; }
+.lbl .in { font-size: 2.3mm; }
+.lbl .ct { font-size: 2.1mm; white-space: normal; }
+.lbl .sk { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+.lbl svg text { font-family: var(--font-body); }
+#printarea { display: none; }
+@media print {
+  html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+  body > :not(#printarea) { display: none !important; }
+  #printarea { display: block !important; }
+  #printarea .lbl { break-after: page; page-break-after: always; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #printarea .lbl:last-child { break-after: auto; page-break-after: auto; }
+}
 h1.brand { display: flex; align-items: center; gap: 12px; font-size: clamp(1.7rem, 1.2rem + 1.6vw, 2.35rem); line-height: 1.1; letter-spacing: -0.005em; }
 h1.brand .logo { width: auto; height: 1.75em; flex: none; color: var(--ink); overflow: visible; }
 h1.brand .word { font-weight: 700; }
@@ -108,8 +138,8 @@ header.top p { margin: 2px 0 0; color: var(--muted); max-width: 90ch; font-size:
   max-height: calc(100vh - 24px); overflow-y: auto; padding: 2px 4px 4px 2px; }
 .parts .head { display: grid; gap: 6px; padding-bottom: 4px; }
 .parts .head .btn.primary { width: 100%; }
-.parts .head .tools { display: flex; gap: 6px; }
-.parts .head .tools .btn { flex: 1 1 0; }
+.parts .head .tools { display: flex; flex-wrap: wrap; gap: 6px; }
+.parts .head .tools .btn { flex: 1 1 auto; white-space: nowrap; }
 .parts .empty { padding: 10px 4px; text-align: left; font-size: 0.88rem; color: var(--muted); }
 .part { position: relative; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; transition: border-color .15s, box-shadow .15s; }
 .part:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
@@ -560,6 +590,12 @@ table.fmt.one .onet { display: inline; }
       ['fieldWidth', 'breit ab Breite Y über', 'number', 'mm'],
       ['rawOversize', 'Rohteil-Aufmaß je Seite', 'number', 'mm'],
       ['parkOffset', 'Parkposition: Länge +', 'number', 'mm']] },
+    { title: 'Etiketten (Druck über den Browser)', c: '--muted', fields: [
+      ['labelWidth', 'Etikett: Breite', 'number', 'mm'],
+      ['labelHeight', 'Etikett: Höhe', 'number', 'mm'],
+      ['labelRotate', 'Inhalt um 90° drehen (Etikett läuft quer ein)', 'bool'],
+      ['labelSketch', 'Draufsicht mit Bemaßung', 'bool'],
+      ['labelExtra', 'Zusatzzeile (Auftrag, Kunde …)', 'text', 'leer = ohne']] },
     { title: 'X-Konverter (konvertieren.bat)', c: '--muted', wide: true, fields: [
       ['xconverterPath', 'X-Konverter (XConverter.exe)', 'path'],
       ['toolsFile', 'Werkzeugdatei (.tlgx)', 'path'],
@@ -1080,6 +1116,7 @@ table.fmt.one .onet { display: inline; }
     const el = $('parts');
     const head = '<div class="head"><button class="btn primary" id="pick" type="button" title="STEP: ein Volumenkörper = ein Programm, Baugruppen werden zerlegt. DXF: größte Kontur = Teil, alles darin als Vorschlag">STEP/DXF wählen</button>' +
       (state.parts.length ? '<span class="tools"><button class="btn small" id="zipall" type="button">Alle als ZIP</button>' +
+        '<button class="btn small" id="labelall" type="button" title="Etiketten aller Teile drucken">' + ICON_PRINT + ' Etiketten</button>' +
         '<button class="btn ghost small" id="clear" type="button">Liste leeren</button></span>' : '') + '</div>';
     if (!state.parts.length) {
       el.innerHTML = head + '<div class="empty">Noch keine Teile – STEP- oder DXF-Dateien wählen oder auf die Seite ziehen.</div>';
@@ -1123,6 +1160,7 @@ table.fmt.one .onet { display: inline; }
       if (left + cur.offsetWidth > el.scrollLeft + el.clientWidth) el.scrollLeft = left + cur.offsetWidth - el.clientWidth + 4;
     }
     $('zipall').addEventListener('click', downloadAll);
+    $('labelall').addEventListener('click', () => openLabels(state.parts));
     $('pick').addEventListener('click', openPicker);
     $('clear').addEventListener('click', () => { state.parts = []; state.sel = 0; anim.result = null; render(); });
   }
@@ -1470,7 +1508,8 @@ table.fmt.one .onet { display: inline; }
         (part.notice ? '<li class="info">' + esc(part.notice) + '</li>' : '') + r.warnings.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ul>' : '') +
       '</aside></div>' +
       '<div class="card code"><div class="bar"><span class="fname"><input id="fname" type="text" value="' + esc(sideFile(part, part.side)) + '" aria-label="Dateiname"></span>' +
-      '<span class="tools"><button class="btn" id="copy" type="button">Kopieren</button><button class="btn primary" id="dl" type="button">' +
+      '<span class="tools"><button class="btn" id="label" type="button" title="Etikett mit Name, Maßen und Draufsicht drucken">' + ICON_PRINT + ' Etikett</button>' +
+      '<button class="btn" id="copy" type="button">Kopieren</button><button class="btn primary" id="dl" type="button">' +
         (part.res.side2 ? 'Beide Seiten speichern' : 'Speichern') + '</button></span></div>' +
       '<details class="xcsbox" id="xcsbox"' + (state.showCode ? ' open' : '') + '><summary>Programmcode (.xcs) anzeigen</summary>' +
       '<pre class="xcs" id="xcs">' + highlight(r.xcs) + '</pre></details></div>';
@@ -1636,6 +1675,143 @@ table.fmt.one .onet { display: inline; }
       } catch (e) { fallback(); }
     });
     $('dl').addEventListener('click', () => saveFiles(partFiles(part), part.fileName.replace(/\.xcs$/i, '') + '.zip'));
+    $('label').addEventListener('click', () => openLabels([part]));
+  }
+
+  // ------------------------------------------------ Etiketten (Druck über den Browser, z. B. 40 × 60 mm)
+  const ICON_PRINT = '<svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6V1.5h8V6M4 12H2.5A1 1 0 0 1 1.5 11V7a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H12" ' +
+    'fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><rect x="4" y="9.5" width="8" height="5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>';
+  const n1 = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
+  // Draufsicht in mm (w × h), schwarz-weiß für Thermodrucker: Kontur, Durchbrüche, Taschen, Bohrungen, Nullpunkt, Länge und Breite
+  function labelSketch(p, w, h) {
+    const fs = 2.3;
+    const ml = 4;
+    const mb = 4;
+    const k = Math.min((w - ml - 0.6) / p.L, (h - mb - 0.6) / p.W);
+    const dw = p.L * k;
+    const dh = p.W * k;
+    const ox = ml + (w - ml - 0.6 - dw) / 2;
+    const oy = 0.6 + (h - mb - 0.6 - dh) / 2;
+    const X = (x) => +(ox + x * k).toFixed(3);
+    const Y = (y) => +(oy + (p.W - y) * k).toFixed(3);
+    const loop = (segs) => {
+      const pts = [];
+      for (const q of segs) for (const t of PanelAnalyzer.segPoints(q)) pts.push(t);
+      return 'M' + pts.map((t) => X(t[0]) + ' ' + Y(t[1])).join(' L') + ' Z';
+    };
+    let s = '<svg viewBox="0 0 ' + w + ' ' + h + '" width="' + w + 'mm" height="' + h + 'mm" aria-hidden="true">';
+    s += '<path d="' + loop(p.outline) + '" fill="#fff" stroke="#000" stroke-width="0.3" stroke-linejoin="round"/>';
+    for (const c of p.cutouts) s += '<path d="' + loop(c) + '" fill="#000" fill-opacity="0.45" stroke="#000" stroke-width="0.2"/>';
+    for (const g of p.grooves || []) {
+      const r = g.dir === 'X' ? [0, g.from, p.L, g.to] : [g.from, 0, g.to, p.W];
+      s += '<rect x="' + X(r[0]) + '" y="' + Y(r[3]) + '" width="' + (X(r[2]) - X(r[0])) + '" height="' + (Y(r[1]) - Y(r[3])) + '" fill="none" stroke="#000" stroke-width="0.18" stroke-dasharray="0.6 0.4"/>';
+    }
+    for (const k2 of p.pockets) s += '<path d="' + loop(k2.segs) + '" fill="#000" fill-opacity="0.15" stroke="#000" stroke-width="0.18" stroke-dasharray="0.6 0.4"/>';
+    for (const d of p.drills) {
+      if (d.face !== 'Top') {
+        // Kantenbohrung: kurzer Strich von der Kante nach innen
+        const v = { Left: [1, 0], Right: [-1, 0], Front: [0, 1], Back: [0, -1] }[d.face];
+        if (!v) continue;
+        const len = Math.max(0.9, d.depth * k);
+        s += '<path d="M' + X(d.x) + ' ' + Y(d.y) + ' L' + (X(d.x) + v[0] * len).toFixed(3) + ' ' + (Y(d.y) - v[1] * len).toFixed(3) + '" stroke="#000" stroke-width="0.4"/>';
+        continue;
+      }
+      s += '<circle cx="' + X(d.x) + '" cy="' + Y(d.y) + '" r="' + Math.max(0.3, (d.d / 2) * k).toFixed(3) + '" fill="#000"' + (d.through ? '' : ' fill-opacity="0.6"') + '/>';
+    }
+    // Nullpunkt vorne links
+    s += '<circle cx="' + X(0) + '" cy="' + Y(0) + '" r="0.7" fill="#fff" stroke="#000" stroke-width="0.3"/>';
+    // Bemaßung: Länge unten, Breite links
+    const yb = Y(0) + 1.6;
+    const xl = X(0) - 1.6;
+    const tick = (x, y) => '<path d="M' + (x - 0.5) + ' ' + (y + 0.5) + ' L' + (x + 0.5) + ' ' + (y - 0.5) + '" stroke="#000" stroke-width="0.22"/>';
+    s += '<path d="M' + X(0) + ' ' + yb + ' H' + X(p.L) + ' M' + X(0) + ' ' + (Y(0) + 0.3) + ' V' + (yb + 0.5) + ' M' + X(p.L) + ' ' + (Y(0) + 0.3) + ' V' + (yb + 0.5) +
+      ' M' + xl + ' ' + Y(0) + ' V' + Y(p.W) + ' M' + (X(0) - 0.3) + ' ' + Y(0) + ' H' + (xl - 0.5) + ' M' + (X(0) - 0.3) + ' ' + Y(p.W) + ' H' + (xl - 0.5) + '" stroke="#000" stroke-width="0.15" fill="none"/>';
+    s += tick(X(0), yb) + tick(X(p.L), yb) + tick(xl, Y(0)) + tick(xl, Y(p.W));
+    const tx = (x, y, t, rot) => '<text x="' + x + '" y="' + y + '" font-size="' + fs + '" font-weight="600" text-anchor="middle" dominant-baseline="' + (rot ? 'auto' : 'hanging') + '"' +
+      (rot ? ' transform="rotate(-90 ' + x + ' ' + y + ')"' : '') + ' paint-order="stroke" stroke="#fff" stroke-width="0.6">' + t + '</text>';
+    s += tx((X(0) + X(p.L)) / 2, yb + 0.35, n1(p.L));
+    s += tx(xl - 0.35, (Y(0) + Y(p.W)) / 2, n1(p.W), true);
+    return s + '</svg>';
+  }
+  function labelHtml(part) {
+    const r = part.res;
+    const p = r.panel;
+    const cfg = state.settings;
+    const LW = cfg.labelWidth > 0 ? +cfg.labelWidth : 40;
+    const LH = cfg.labelHeight > 0 ? +cfg.labelHeight : 60;
+    const rot = !!cfg.labelRotate;
+    const cw = rot ? LH : LW; // Inhalt in Leserichtung
+    const ch = rot ? LW : LH;
+    const pad = 1.8;
+    const name = part.fileName.replace(/\.xcs$/i, '');
+    const c = counts(r);
+    if (r.side2) { const c2 = counts(r.side2); c.drills += c2.drills; c.mill += c2.mill; c.saw += c2.saw; }
+    const cnt = [[c.drills, 'Bohrung', 'Bohrungen'], [c.mill, 'Fräsung', 'Fräsungen'], [c.saw, 'Sägeschnitt', 'Sägeschnitte']]
+      .filter((x) => x[0]).map((x) => x[0] + ' ' + (x[0] === 1 ? x[1] : x[2])).join(' · ');
+    const d = new Date();
+    const date = String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getFullYear()).slice(2);
+    const info = [part.profile !== null && part.profile !== undefined ? profName(part.profile) : '', r.side2 ? 'Seite 1 + 2' : '', date].filter(Boolean).join(' · ');
+    const wide = cw >= ch * 1.25; // quer: Text links, Draufsicht rechts
+    const tw = wide ? cw * 0.42 : cw - 2 * pad; // Breite der Textspalte
+    // Name in einer Zeile, so groß wie es passt; nur sehr lange Namen umbrechen
+    const nameSize = Math.max(2.2, Math.min(3.6, tw / (Math.max(6, name.length) * 0.62)));
+    const dims = n1(p.L) + ' × ' + n1(p.W) + ' × ' + n1(p.T);
+    const dimSize = Math.max(2.2, Math.min(3.4, tw / (dims.length * 0.72)));
+    let text = '<div class="ln nm' + (nameSize <= 2.2 ? ' wrap' : '') + '" style="font-size:' + nameSize.toFixed(2) + 'mm">' + esc(name) + '</div>' +
+      '<div class="ln dm" style="font-size:' + dimSize.toFixed(2) + 'mm">' + dims + '</div>' +
+      '<div class="ln in">' + esc(info) + '</div>' +
+      (cfg.labelExtra ? '<div class="ln in">' + esc(cfg.labelExtra) + '</div>' : '') +
+      (cnt ? '<div class="ln ct">' + esc(cnt) + '</div>' : '');
+    const lines = 4.6 + 4.4 + 3 + (cfg.labelExtra ? 3 : 0) + (cnt ? 2.8 : 0);
+    let sketch = '';
+    if (cfg.labelSketch !== false) {
+      const sw = wide ? cw - tw - 3 * pad : cw - 2 * pad;
+      const sh = wide ? ch - 2 * pad : ch - 2 * pad - lines - 0.8;
+      if (sw > 8 && sh > 8) sketch = '<div class="sk">' + labelSketch(p, +sw.toFixed(2), +sh.toFixed(2)) + '</div>';
+    }
+    return '<div class="lbl" style="width:' + LW + 'mm;height:' + LH + 'mm"><div class="lin' + (wide ? ' wide' : '') + '" style="width:' + cw + 'mm;height:' + ch + 'mm;padding:' + pad + 'mm;' +
+      (rot ? 'transform:translate(' + LW + 'mm,0) rotate(90deg);' : '') + '">' +
+      (wide ? '<div class="tx" style="width:' + tw + 'mm">' + text + '</div>' + sketch : '<div class="tx">' + text + '</div>' + sketch) + '</div></div>';
+  }
+  // Vorschau mit Druckknopf; gedruckt wird nur der Etikettenbereich (@page = Etikettgröße, ohne Rand)
+  function openLabels(parts) {
+    const list = parts.filter((x) => x.res && x.res.panel);
+    if (!list.length) { toast('Keine Teile mit Programm zum Beschriften.'); return; }
+    let dlg = $('labeldlg');
+    if (!dlg) {
+      dlg = document.createElement('dialog');
+      dlg.id = 'labeldlg';
+      dlg.className = 'labeldlg';
+      document.body.appendChild(dlg);
+    }
+    const cfg = state.settings;
+    dlg.innerHTML = '<h3>' + (list.length === 1 ? 'Etikett' : list.length + ' Etiketten') + ' · ' + esc(String(cfg.labelWidth)) + ' × ' + esc(String(cfg.labelHeight)) + ' mm</h3>' +
+      '<div class="lprev">' + list.map(labelHtml).join('') + '</div>' +
+      '<p class="note">Im Druckdialog den Etikettendrucker wählen, Papiergröße ' + esc(String(cfg.labelWidth)) + ' × ' + esc(String(cfg.labelHeight)) +
+      ' mm, Ränder „Keine“, Skalierung 100 %. Größe und Drehung unter <i>Werkzeuge &amp; Regeln → Etiketten</i>.</p>' +
+      '<div class="row"><button class="btn ghost" type="button" id="lrot">Inhalt drehen: ' + (cfg.labelRotate ? 'an' : 'aus') + '</button>' +
+      '<span class="sp"></span><button class="btn ghost" type="button" id="lclose">Schließen</button><button class="btn primary" type="button" id="lprint">' + ICON_PRINT + ' Drucken</button></div>';
+    if (!dlg.open) dlg.showModal();
+    $('lclose').addEventListener('click', () => dlg.close());
+    $('lrot').addEventListener('click', () => { state.settings.labelRotate = !state.settings.labelRotate; persistLabelRotate(); openLabels(parts); });
+    $('lprint').addEventListener('click', () => {
+      let area = $('printarea');
+      if (!area) { area = document.createElement('div'); area.id = 'printarea'; document.body.appendChild(area); }
+      area.innerHTML = list.map(labelHtml).join('');
+      let pg = $('labelpage');
+      if (!pg) { pg = document.createElement('style'); pg.id = 'labelpage'; document.head.appendChild(pg); }
+      pg.textContent = '@page { size: ' + (+cfg.labelWidth || 40) + 'mm ' + (+cfg.labelHeight || 60) + 'mm; margin: 0; }';
+      dlg.close();
+      window.print();
+    });
+  }
+  // Drehung gleich merken (wie eine Einstellung, ohne die übrigen ungespeicherten Änderungen mitzuspeichern)
+  function persistLabelRotate() {
+    try {
+      const s = JSON.parse(localStorage.getItem(KEY) || '{}') || {};
+      s.labelRotate = state.settings.labelRotate;
+      localStorage.setItem(KEY, JSON.stringify(s));
+    } catch (e) { /* ohne Speicher: nur für diese Sitzung */ }
   }
 
   function render() { renderProfileBar(); renderParts(); renderDetail(); }

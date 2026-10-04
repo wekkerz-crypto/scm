@@ -22,6 +22,11 @@
     formatRoughTool: 'E014',   // Werkzeug 1 (vorfräsen); Werkzeug 2 = contourTool
     formatAllowance: 1,        // Aufmaß beim Vorfräsen in mm (overMaterial)
     retractOverlap: 2,         // Umfräsen: Überlappung beim Verlassen in mm (SetRetractStrategy overlapLength)
+    labelWidth: 40,            // Etikett (Browser-Druck): Breite in mm
+    labelHeight: 60,           // Etikett: Höhe in mm
+    labelRotate: false,        // Inhalt um 90° drehen (Drucker zieht das Etikett quer ein)
+    labelSketch: true,         // Draufsicht mit Bemaßung aufs Etikett
+    labelExtra: '',            // Zusatzzeile (Auftrag, Kunde …)
     dxfThickness: 19,          // DXF-Import: Plattendicke, solange im Teil keine andere eingetragen ist
     cutoutTool: 'E016',        // Ausschnitte / Durchbrüche / Konturabweichungen
     cutoutExtra: 2,

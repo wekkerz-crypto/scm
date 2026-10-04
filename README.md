@@ -13,6 +13,13 @@ STEP oder DXF (Onshape o. a. CAD) ──► Web-Tool / CLI ──► .xcs ──
 STEP-Dateien hineinziehen, Draufsicht und Bearbeitungen prüfen, ggf. *Drehen 90°* / *Wenden*,
 dann *Speichern* (einzeln) oder *Alle als ZIP*.
 
+**Etiketten:** *Etikett* (am Teil) bzw. *Etiketten* (alle Teile) öffnet eine Vorschau, *Drucken* druckt über den Browser
+auf den Etikettendrucker – je Teil ein Etikett mit Teilename (= Dateiname), Maßen L × B × D, Profil, „Seite 1 + 2“ bei
+zweiseitigen Teilen, Datum, Anzahl der Bearbeitungen und einer schwarz-weißen Draufsicht mit Länge/Breite, Nullpunkt,
+Bohrungen (Kantenbohrungen als Striche), Durchbrüchen und Taschen. Größe (Vorgabe 40 × 60 mm), Drehung um 90° (wenn der
+Drucker das Etikett quer einzieht), Draufsicht an/aus und eine Zusatzzeile (Auftrag, Kunde …) unter *Werkzeuge & Regeln →
+Etiketten*. Im Druckdialog den Etikettendrucker wählen, Papier = Etikettgröße, Ränder „Keine“, Skalierung 100 %.
+
 **DXF (2D-Zeichnung):** wird wie STEP geladen, ohne Layer-Steuerung. Die größte geschlossene Kontur ist das Teil
 (lange Seite in X, *Drehen 90°* möglich), alles darin wird vorgeschlagen: Kreis mit passendem Bohrer → Bohrung
 (Ø ≥ 30: 13 mm tief, sonst 12), anderer Kreis oder geschlossene Kontur → Durchbruch; was in einem Durchbruch liegt, fällt mit

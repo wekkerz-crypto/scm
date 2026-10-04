@@ -377,3 +377,35 @@ test('Web-Tool: DXF laden, Vorschläge ändern (Art, Tiefe, Dicke)', { skip: !ch
     await browser.close();
   }
 });
+
+test('Web-Tool: Etiketten 40 × 60 (Vorschau, Druckbereich, Seitengröße)', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    await p.evaluate(() => { window.__printed = 0; window.print = () => { window.__printed++; }; });
+    // ein Teil: Name, Maße, Draufsicht mit Bemaßung
+    await p.click('#label');
+    await p.waitForSelector('#labeldlg[open] .lbl');
+    assert.strictEqual(await p.$$eval('#labeldlg .lbl', (x) => x.length), 1);
+    const txt = await p.textContent('#labeldlg .lbl');
+    assert.match(txt, /\d+ × \d+ × \d+/);
+    assert.ok(await p.$('#labeldlg .lbl svg text'));
+    await p.click('#lprint');
+    assert.strictEqual(await p.evaluate(() => window.__printed), 1);
+    assert.match(await p.textContent('#labelpage'), /size: 40mm 60mm; margin: 0/);
+    assert.strictEqual(await p.evaluate(() => getComputedStyle(document.querySelector('#printarea .lbl')).width), '151.181px'); // 40 mm
+    // alle Teile: je Teil ein Etikett
+    const n = await p.$$eval('.part', (x) => x.length);
+    await p.click('#labelall');
+    await p.waitForSelector('#labeldlg[open]');
+    assert.strictEqual(await p.$$eval('#labeldlg .lbl', (x) => x.length), n);
+    await p.click('#lclose');
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});

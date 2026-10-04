@@ -23,6 +23,9 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   Überschreibungen Seite 2 in `overrides2`. Löschen: `overrides.suppress` (Gruppen) → `result.suppressed`.
 - Werkstück-Profile: `settings.profiles` (5 × {name, values}), Schlüssel `XcsWriter.PROFILE_KEYS`; Teil `part.profile`
   → `convertSolid(…, { profile })` legt `applyProfile` über die Einstellungen (Reihenfolge: Einstellung < Profil < Teil).
+- DXF (2D): `dxf.js` (`DxfReader.analyze`, ohne Layer; größte Kontur = Teil, Vorschläge je Kontur mit stabiler `id`)
+  → `convertDxf` in `convert.js`; Änderungen je Teil in `overrides.dxf = {T, features: {id: {kind, depth}}}`, Drehen über
+  `orientation.rot`. Test-DXF: `node tools/make_dxf.js`.
 - `exe/` – kleine Windows-.exe (Go), bettet `web/` ein und öffnet es im Browser; bauen mit `npm run build:exe` → `dist/`.
 - `cli/step2xcs.js` – Kommandozeile. `test/` – `npm test` (node:test; UI-Tests mit Playwright, werden ohne übersprungen).
 - `maestro/doku/Maestro_MSL_KI_Referenz.pdf` – Handbuch der Script-Sprache; Befehlsparameter **immer** dort prüfen

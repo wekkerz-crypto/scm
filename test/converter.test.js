@@ -1067,3 +1067,53 @@ test('Werkstück-Profile: Werkzeuge/Strategie je Material, Teil-Änderung geht v
   // Vorgabe bleibt unverändert (Profile werden nicht verändert)
   assert.deepStrictEqual(X.DEFAULTS.profiles[2].values, {});
 });
+
+test('DXF: größte Kontur = Teil, Vorschläge je Erkennung, Änderungen per overrides', () => {
+  const { convertDxf } = require('../web/js/convert.js');
+  const D = require('../web/js/dxf.js');
+  const text = read('test/fixtures/platte.dxf');
+  const r = convertDxf(text, 'Platte Küche.dxf', {});
+  assert.strictEqual(r.error, null);
+  assert.strictEqual(r.fileName, 'Platte_Kueche.xcs');
+  const p = r.panel;
+  assert.deepStrictEqual([p.L, p.W, p.T], [600, 400, 19]);
+  assert.ok(!p.outlineIsRect); // Ecke R20 (bulge) → Sonderkontur
+  assert.match(r.xcs, /AddArc2PointCenterToPolyline\(580, 400, 580, 380, false\);/);
+  const by = (k) => r.dxf.features.filter((f) => f.kind === k);
+  // Ø8 ×3, Ø35 (Topf 13 tief), Ø5 aus dem Block → Bohrungen; Ø50, Rechteck, Langloch, Ellipse → Durchbrüche
+  assert.deepStrictEqual(by('drill').map((f) => f.d).sort((a, b) => a - b), [5, 8, 8, 8, 35]);
+  assert.strictEqual(by('drill').find((f) => f.d === 35).depth, 13);
+  assert.strictEqual(by('cutout').length, 4);
+  assert.strictEqual(drillSet(r.xcs).length, 5);
+  assert.strictEqual(r.ops.filter((o) => /^cutout-/.test(o.key)).length, 4);
+  // ganzer Kreis als Durchbruch: zwei Halbkreise (Anfang ≠ Ende)
+  assert.match(r.xcs, /AddArc2PointCenterToPolyline\(275, 300, 300, 300, true\);\r\nAddArc2PointCenterToPolyline\(325, 300, 300, 300, true\);/);
+  assert.ok(r.warnings.some((w) => /offener Linienzug/.test(w)));
+  assert.ok(!r.warnings.some((w) => /TEXT|DIMENSION/.test(w))); // Texte/Maße still übergangen
+  // Änderungen: Rechteck → Tasche 8 tief, Ø50 → ignorieren, Dicke 25, gedreht
+  const rect = r.dxf.features.find((f) => f.shape === 'loop' && f.w === 120);
+  const hole = r.dxf.features.find((f) => f.d === 50);
+  const r2 = convertDxf(text, 'p.dxf', {}, { overrides: { dxf: { T: 25, rot: 1, features: { [rect.id]: { kind: 'pocket', depth: 8 }, [hole.id]: { kind: 'ignore' } } } } });
+  assert.deepStrictEqual([r2.panel.L, r2.panel.W, r2.panel.T], [400, 600, 25]);
+  assert.strictEqual(r2.ops.filter((o) => o.kind === 'pocket').length, 1);
+  assert.strictEqual(r2.ops.find((o) => o.kind === 'pocket').depth, 8);
+  assert.strictEqual(r2.ops.filter((o) => /^cutout-/.test(o.key)).length, 2);
+  // Kennungen bleiben beim Drehen gleich
+  assert.deepStrictEqual(r2.dxf.features.map((f) => f.id).sort(), r.dxf.features.map((f) => f.id).sort());
+  // Insel: Kreis in einer Tasche
+  const nest = ['0', 'SECTION', '2', 'ENTITIES',
+    '0', 'LWPOLYLINE', '90', '4', '70', '1', '10', '0', '20', '0', '10', '500', '20', '0', '10', '500', '20', '300', '10', '0', '20', '300',
+    '0', 'LWPOLYLINE', '90', '4', '70', '1', '10', '100', '20', '100', '10', '300', '20', '100', '10', '300', '20', '200', '10', '100', '20', '200',
+    '0', 'CIRCLE', '10', '200', '20', '150', '40', '20', '0', 'ENDSEC', '0', 'EOF'].join('\n');
+  const a = D.analyze(nest, {});
+  const frame = a.dxf.features.find((f) => f.shape === 'loop');
+  assert.strictEqual(frame.kind, 'cutout');
+  assert.strictEqual(a.dxf.features.find((f) => f.shape === 'circle').kind, 'ignore'); // fällt mit heraus
+  const b = D.analyze(nest, { features: { [frame.id]: { kind: 'pocket' } } });
+  assert.strictEqual(b.dxf.features.find((f) => f.shape === 'circle').kind, 'island');
+  assert.strictEqual(b.pockets.length, 1);
+  assert.strictEqual(b.pockets[0].islands.length, 1);
+  assert.strictEqual(b.pockets[0].depth, 5);
+  // ohne geschlossene Kontur: Fehler statt Programm
+  assert.ok(convertDxf('0\nSECTION\n2\nENTITIES\n0\nENDSEC\n0\nEOF\n', 'leer.dxf', {}).error);
+});

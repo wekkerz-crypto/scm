@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /*
- * Kommandozeile: STEP → XCS
+ * Kommandozeile: STEP/DXF → XCS
  *
- *   node cli/step2xcs.js teil.step [weitere.step …] [-o ausgabeordner] [--bat]
+ *   node cli/step2xcs.js teil.step [weitere.step|.dxf …] [-o ausgabeordner] [--bat]
  *
  *   --bat            legt zusätzlich konvertieren.bat für den Maestro X-Konverter in den Ausgabeordner
  *   --tools datei    Werkzeugliste (.tlgx) für Durchmesser/Schneidenlängen (Standard: maestro/werkzeuge/def.tlgx)
@@ -12,13 +12,14 @@
  *   --kugelfraesen   gewölbte Flächen mit dem Kugelfräser zeilenfräsen (lädt OpenCascade für das 3D-Netz)
  *   --4achs          gewölbte Zylinderflächen 4-achsig mit dem Schaftfräser abzeilen (übrige: Kugelfräser)
  *   --profil n       Werkstück-Profil 1–5 (Vorgabe: 1 Spanplatte, 2 Massivholz = Formatfräsen zweistufig)
+ *   --dicke mm       Plattendicke für DXF-Dateien (Standard 19); Erkennungen wie vorgeschlagen
  *   --zweiseitig     Teile mit Bearbeitungen von unten: Seite 1 (mit Formatfräsen) und Seite 2 (um Y gewendet,
  *                    ohne Rohteil-Versatz) als Name_S1.xcs / Name_S2.xcs
  */
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { readParts, convertSolid, makeBatch } = require('../web/js/convert.js');
+const { readParts, convertSolid, convertDxf, makeBatch } = require('../web/js/convert.js');
 const OcctMesh = require('../web/js/occtmesh.js');
 const { parseTlgx, infoMap } = require('../web/js/tools.js');
 
@@ -33,6 +34,7 @@ let curvedSurface = false;
 let flat4 = false;
 let twoSided = false;
 let profile = null;
+let thickness = null;
 const files = [];
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '-o' || args[i] === '--out') outDir = args[++i];
@@ -44,6 +46,10 @@ for (let i = 0; i < args.length; i++) {
   else if (args[i] === '--kugelfraesen') curvedSurface = true;
   else if (args[i] === '--4achs') { curvedSurface = true; flat4 = true; }
   else if (args[i] === '--zweiseitig') twoSided = true;
+  else if (args[i] === '--dicke') {
+    thickness = parseFloat(String(args[++i]).replace(',', '.'));
+    if (!(thickness > 0)) { console.error('--dicke: Plattendicke in mm'); process.exit(1); }
+  }
   else if (args[i] === '--profil') {
     profile = parseInt(args[++i], 10) - 1;
     if (!(profile >= 0 && profile <= 4)) { console.error('--profil: 1 bis 5'); process.exit(1); }
@@ -51,7 +57,7 @@ for (let i = 0; i < args.length; i++) {
   else files.push(args[i]);
 }
 if (!files.length) {
-  console.error('Aufruf: node cli/step2xcs.js teil.step [weitere.step …] [-o ausgabeordner] [--bat]');
+  console.error('Aufruf: node cli/step2xcs.js teil.step|teil.dxf [weitere …] [-o ausgabeordner] [--bat] [--dicke mm]');
   process.exit(1);
 }
 
@@ -71,8 +77,12 @@ async function main() {
     let parts;
     try {
       const text = fs.readFileSync(file, 'utf8');
-      const meshes = occt ? OcctMesh.read(occt, text) : null;
-      parts = readParts(text, path.basename(file)).map((s) => convertSolid(s, settings, { meshes: meshes, overrides: { twoSided: twoSided }, profile: profile }));
+      if (/\.dxf$/i.test(file)) {
+        parts = [convertDxf(text, path.basename(file), settings, { overrides: { dxf: { T: thickness || undefined } }, profile: profile })];
+      } else {
+        const meshes = occt ? OcctMesh.read(occt, text) : null;
+        parts = readParts(text, path.basename(file)).map((s) => convertSolid(s, settings, { meshes: meshes, overrides: { twoSided: twoSided }, profile: profile }));
+      }
     } catch (e) {
       failed++;
       console.error('✗ ' + file + ': ' + (e.message || e));

@@ -118,6 +118,31 @@
     }
   }
 
+  /*
+   * DXF (2D-Zeichnung) → Teil. Ohne Layer: die größte geschlossene Kontur ist das Teil, alles darin wird vorgeschlagen
+   * (DxfReader.analyze). options wie convertSolid, dazu overrides.dxf = { T (Dicke), rot (0–3), features: { id: { kind, depth } } }.
+   */
+  function convertDxf(text, sourceName, settings, options) {
+    options = options || {};
+    const DR = typeof DxfReader !== 'undefined' ? DxfReader : require('./dxf.js');
+    if (options.profile !== undefined && options.profile !== null) settings = XcsWriter.applyProfile(settings, options.profile);
+    const name = partName(String(sourceName || 'DXF').replace(/^.*[\\/]/, '').replace(/\.dxf$/i, ''));
+    const solid = { name: name };
+    try {
+      const ov = options.overrides || {};
+      const dx = ov.dxf || {};
+      const cfg = Object.assign({}, XcsWriter.DEFAULTS, settings || {});
+      const panel = DR.analyze(text, { name: name, T: dx.T, rot: dx.rot, features: dx.features, drills: cfg.drillsVertical });
+      const out = XcsWriter.write(panel, settings, { field: options.field, tools: ov.tools, steps: ov.steps, order: ov.order, depths: ov.depths,
+        twoStep: ov.twoStep, suppress: ov.suppress });
+      const res = result(solid, safeFileName(name) + '.xcs', panel, out);
+      res.dxf = panel.dxf;
+      return res;
+    } catch (err) {
+      return { name: name, fileName: safeFileName(name) + '.xcs', panel: null, xcs: '', ops: [], warnings: [], error: err.message || String(err) };
+    }
+  }
+
   function convert(stepText, settings, sourceName) {
     return readParts(stepText, sourceName).map((s) => convertSolid(s, settings));
   }
@@ -185,6 +210,6 @@
     return lines.filter((l) => l !== null).join('\r\n');
   }
 
-  return { convert: convert, readParts: readParts, convertSolid: convertSolid, safeFileName: safeFileName, partName: partName,
+  return { convert: convert, readParts: readParts, convertSolid: convertSolid, convertDxf: convertDxf, safeFileName: safeFileName, partName: partName,
     makeBatch: makeBatch };
 });

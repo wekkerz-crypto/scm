@@ -4,7 +4,7 @@ Werkzeug, das aus Plattenteilen (STEP) automatisch Xilog-Skripte (`.xcs`) erzeug
 Der X-Konverter von Maestro übersetzt sie anschließend in `.pgmx`.
 
 ```
-STEP (Onshape o. a. CAD) ──► Web-Tool / CLI ──► .xcs ──► X-Konverter ──► .pgmx ──► Maestro
+STEP oder DXF (Onshape o. a. CAD) ──► Web-Tool / CLI ──► .xcs ──► X-Konverter ──► .pgmx ──► Maestro
 ```
 
 ## Benutzen
@@ -12,6 +12,16 @@ STEP (Onshape o. a. CAD) ──► Web-Tool / CLI ──► .xcs ──► X-Kon
 **Im Browser:** `web/index.html` öffnen (Doppelklick genügt, es läuft komplett offline im Browser).
 STEP-Dateien hineinziehen, Draufsicht und Bearbeitungen prüfen, ggf. *Drehen 90°* / *Wenden*,
 dann *Speichern* (einzeln) oder *Alle als ZIP*.
+
+**DXF (2D-Zeichnung):** wird wie STEP geladen, ohne Layer-Steuerung. Die größte geschlossene Kontur ist das Teil
+(lange Seite in X, *Drehen 90°* möglich), alles darin wird vorgeschlagen: Kreis mit passendem Bohrer → Bohrung
+(Ø ≥ 30: 13 mm tief, sonst 12), anderer Kreis oder geschlossene Kontur → Durchbruch; was in einem Durchbruch liegt, fällt mit
+heraus (ignorieren), was in einer Tasche liegt, wird Insel. Im Kasten *DXF-Erkennung* rechts lassen sich die Plattendicke
+(Vorgabe in *Werkzeuge & Regeln*, 19 mm) und je Kontur Art (Bohrung, Durchbruch, Tasche, Insel, ignorieren) und Tiefe ändern;
+✓ markiert den Vorschlag. Gelesen werden LINE, ARC, CIRCLE, LWPOLYLINE/POLYLINE (mit Bögen), ELLIPSE und SPLINE (als
+kurze Geraden), Blöcke (INSERT, auch gedreht/gespiegelt) und die Einheit (`$INSUNITS`); Texte, Maße und Schraffuren
+werden übergangen, offene Linienzüge und Konturen außerhalb des Teils als Hinweis gemeldet. 3D-Ansicht und *Wenden*
+gibt es nur für STEP.
 
 **Als Programm (Windows):** `STEP2XCS.exe` doppelklicken. Die .exe (ca. 2 MB, keine Installation) enthält das
 komplette Web-Tool, entpackt es nach `%LOCALAPPDATA%\STEP2XCS\app` und öffnet es im Standardbrowser – ohne Internet,
@@ -31,7 +41,8 @@ node cli/step2xcs.js teil.step weitere.step -o ausgabe/ --bat
 Weitere Schalter: `--step mm` (Zustellung), `--no-order-rule`, `--schraege-5achs` (Schrägen an Rundungen 5-achsig fräsen),
 `--zweiseitig` (Teile mit Bearbeitungen von unten als `_S1`/`_S2`),
 `--kugelfraesen` (gewölbte Flächen zeilenfräsen, lädt OpenCascade), `--4achs` (gewölbte Oberseite als Zylinder 4-achsig mit
-dem Schaftfräser abzeilen, übrige Flächen Kugelfräser).
+dem Schaftfräser abzeilen, übrige Flächen Kugelfräser), `--dicke mm` (Plattendicke für `.dxf`, Standard 19;
+Erkennungen wie vorgeschlagen).
 
 ### Umwandeln in .pgmx mit `konvertieren.bat`
 
@@ -209,6 +220,8 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
 - **Nut:** Der Wert `-8,8` beim 2. Sägedurchgang ist laut Handbuch das Aufmaß (`overMaterial`) von `CreateSlot`.
   Die Lage der Nut (Flanke + Breite zur positiven Seite) passt dazu, ist aber noch nicht in Maestro geprüft.
 - **Falz und Durchbrüche:** gibt es in den Beispielen nicht.
+- **DXF-Import:** erzeugt dieselben Befehle wie STEP (Bohrungen, Durchbrüche, Taschen, Sonderkontur); Lage und Drehrichtung
+  der Konturen an einer echten Werkstatt-DXF in der Simulation prüfen.
 - **Sägeschnitt schräg (`CreateBladeCut`):** Winkel laut Handbuch zur Z-Achse (90 = senkrecht); ausgegeben wird 90 − Neigung,
   wenn die Platte unten breiter ist. Ob Maestro die Neigung zur richtigen Seite kippt, in der Simulation prüfen.
 - **Schräge Ebenen (`CreateWorkplane` mit Ursprung und Drehungen):** erst um Z, dann um die neue X-Achse; Ursprung an der
@@ -264,10 +277,10 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
 
 | Ordner | Inhalt |
 |---|---|
-| `web/` | Web-Tool (`index.html`) und die JS-Module `step.js` (STEP-Leser), `panel.js` (Erkennung), `xcs.js` (Ausgabe), `surface.js` (Kugelfräser-Bahn), `occtmesh.js` (3D-Netz) |
+| `web/` | Web-Tool (`index.html`) und die JS-Module `step.js` (STEP-Leser), `panel.js` (Erkennung), `xcs.js` (Ausgabe), `surface.js` (Kugelfräser-Bahn), `occtmesh.js` (3D-Netz), `dxf.js` (DXF-Leser) |
 | `cli/` | Kommandozeilen-Aufruf |
-| `test/` | Tests (`npm test`) und Test-STEP-Dateien |
-| `tools/` | `make_fixtures.py` erzeugt die Test-STEP-Dateien (CadQuery), `build_defaults.js` die eingebaute Werkzeugliste und Beispiele |
+| `test/` | Tests (`npm test`) und Test-STEP/DXF-Dateien |
+| `tools/` | `make_fixtures.py` erzeugt die Test-STEP-Dateien (CadQuery), `make_dxf.js` die Test-DXF, `build_defaults.js` die eingebaute Werkzeugliste und Beispiele |
 | `step/` | Original-STEP-Exporte aus Onshape |
 | `maestro/beispiele/` | Beispiel-Programme (.xcs) aus Maestro – Referenz für das Format |
 | `maestro/werkzeuge/` | Werkzeugdaten (`def.tlgx`) |

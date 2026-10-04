@@ -6,9 +6,10 @@
 </head>
 <body>
 <!--page-->
-<title>STEP-zu-XCS Konverter</title>
+<title>Step2Maestro</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%2710%27 y=%272%27 width=%2744%27 height=%2726%27 rx=%275%27 fill=%27%231b2321%27/%3E%3Cpath d=%27M17 28h30l-5 8H22z%27 fill=%27%231b2321%27/%3E%3Crect x=%2728%27 y=%2736%27 width=%278%27 height=%2714%27 rx=%271.5%27 fill=%27%231f5fbf%27/%3E%3Crect x=%272%27 y=%2748%27 width=%2760%27 height=%2714%27 rx=%273%27 fill=%27%23e6d5b3%27 stroke=%27%238c7450%27 stroke-width=%272%27/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
 /* Layout: Werkbank – links Teileliste, rechts Draufsicht + Programm; schmal: gestapelt */
 :root {
@@ -77,6 +78,10 @@ button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+h1.brand { display: flex; align-items: center; gap: 12px; font-size: clamp(1.7rem, 1.2rem + 1.6vw, 2.35rem); line-height: 1.1; letter-spacing: -0.005em; }
+h1.brand .logo { width: auto; height: 1.75em; flex: none; color: var(--ink); overflow: visible; }
+h1.brand .word { font-weight: 700; }
+h1.brand .word b { color: var(--accent); font-weight: 700; }
 header.top p { margin: 2px 0 0; color: var(--muted); max-width: 90ch; font-size: 0.9rem; }
 .topright { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
 .theme { display: inline-flex; padding: 3px; gap: 2px; border: 1px solid var(--line); border-radius: 99px; background: var(--sunken); }
@@ -322,6 +327,18 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
 .curved { display: grid; gap: 6px; margin: 4px 0 10px; padding: 8px 10px; border-radius: var(--r); background: var(--sunken); border-left: 3px solid var(--pocket); }
 .curved .row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px; font-size: 0.82rem; }
 .curved .cap { color: var(--ink); }
+.curved.dxf { border-left-color: var(--mill); }
+.curved.dxf summary { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 10px; cursor: pointer; font-size: 0.82rem; }
+.curved.dxf[open] summary { margin-bottom: 6px; }
+.curved.dxf input[type=number] { width: 4.5em; font-size: 0.8rem; padding: 3px 4px; }
+.curved.dxf select { font-size: 0.8rem; padding: 3px 4px; }
+.dxft { list-style: none; margin: 4px 0 2px; padding: 0; font-size: 0.8rem; }
+.dxft li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; padding: 4px 0; }
+.dxft li + li { border-top: 1px solid var(--line); }
+.dxft .w { flex: 1 1 8em; font-variant-numeric: tabular-nums; color: var(--ink); }
+.dxft .w em { font-style: normal; font-size: 0.72rem; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0 6px; margin-left: 4px; }
+.dxft .c { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.dxft .d { color: var(--muted); }
 .curved .note { font-size: 0.75rem; color: var(--muted); }
 .fmtbox { padding: 4px 0 8px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
 .fmtbox .row { border-top: 0; }
@@ -352,8 +369,21 @@ table.fmt.one .onet { display: inline; }
   <nav class="profilebar" id="profilebar" aria-label="Werkstück-Profil"></nav>
   <header class="top">
     <div>
-      <h1>STEP-zu-XCS Konverter</h1>
-      <p>STEP laden oder auf die Seite ziehen, Bearbeitungen prüfen, .xcs speichern. Die Dateien bleiben im Browser.</p>
+      <h1 class="brand"><svg class="logo" viewBox="0 0 124 64" aria-hidden="true" focusable="false">
+        <path d="M6 7h22l11 11v39H6z" fill="var(--surface)" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/>
+        <path d="M28 7v11h11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/>
+        <rect x="3" y="32" width="33" height="13" rx="2.5" fill="currentColor"/>
+        <text x="19.5" y="42.2" text-anchor="middle" font-family="var(--font-display)" font-weight="700" font-size="10" letter-spacing="0.4" fill="var(--surface)">STEP</text>
+        <path d="M45 34h15" stroke="var(--accent)" stroke-width="4.4" stroke-linecap="round"/>
+        <path d="M57 26.5l9 7.5-9 7.5z" fill="var(--accent)" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>
+        <rect x="80" y="3" width="30" height="21" rx="3.5" fill="currentColor"/>
+        <path d="M84 9h22M84 14h22M84 19h22" stroke="var(--surface)" stroke-width="1.4" opacity="0.55"/>
+        <path d="M86 24h18l-3 6h-12z" fill="currentColor"/>
+        <rect x="92.6" y="30" width="4.8" height="15" rx="1" fill="var(--accent)"/>
+        <rect x="72" y="45" width="47" height="13" rx="2" fill="var(--board)" stroke="var(--board-edge)" stroke-width="1.6"/>
+        <path d="M77 50.5h11M101 53h13" stroke="var(--board-edge)" stroke-width="1.1" stroke-linecap="round" opacity="0.7"/>
+      </svg><span class="word">Step<b>2</b>Maestro</span></h1>
+      <p>STEP oder DXF laden oder auf die Seite ziehen, Bearbeitungen prüfen, .xcs speichern. Die Dateien bleiben im Browser.</p>
     </div>
     <div class="topright">
     <div class="theme" role="group" aria-label="Darstellung">
@@ -364,8 +394,8 @@ table.fmt.one .onet { display: inline; }
     </div>
   </header>
 
-  <input id="file" type="file" accept=".step,.stp,.STEP,.STP" multiple hidden>
-  <div class="dropover" id="dropover" hidden>STEP-Dateien hier ablegen</div>
+  <input id="file" type="file" accept=".step,.stp,.dxf,.STEP,.STP,.DXF" multiple hidden>
+  <div class="dropover" id="dropover" hidden>STEP- oder DXF-Dateien hier ablegen</div>
 
   <section class="bench">
     <aside class="parts" id="parts" aria-label="Teile"></aside>
@@ -414,6 +444,7 @@ table.fmt.one .onet { display: inline; }
 <script src="js/step.js"></script>
 <script src="js/panel.js"></script>
 <script src="js/xcs.js"></script>
+<script src="js/dxf.js"></script>
 <script src="js/convert.js"></script>
 <script src="js/tools.js"></script>
 <script src="js/toolpath.js"></script>
@@ -448,6 +479,7 @@ table.fmt.one .onet { display: inline; }
       ['formatTable', 'Formatfräsen', 'formatTable'],
       ['contourExtra', 'Formatfräsen: Dicke +', 'number', 'mm'],
       ['retractOverlap', 'Formatfräsen: Überlappung beim Verlassen', 'number', 'mm'],
+      ['dxfThickness', 'DXF: Plattendicke (Vorgabe)', 'number', 'mm · je Teil änderbar'],
       ['contourMode', 'Sonderkontur', 'choice', [['whole', 'Außenkontur am Stück'], ['rect', 'Rechteck + Ausschnitte einzeln']]],
       ['cutoutTool', 'Fräser Ausschnitte', 'mill'],
       ['cutoutExtra', 'Ausschnitte: Dicke +', 'number', 'mm'],
@@ -819,9 +851,30 @@ table.fmt.one .onet { display: inline; }
       state.parts.push(part);
     }
   }
+  // DXF: ein Teil je Datei (größte Kontur), Dicke und Art je Erkennung im Teil änderbar (overrides.dxf)
+  function addDxf(text, label) {
+    const taken = new Set(state.parts.filter((p) => p.solid).map((p) => p.solid.name.toLowerCase()));
+    const base = StepToXcs.partName(label.replace(/^.*[\\/]/, '').replace(/\.dxf$/i, ''));
+    let name = base;
+    for (let j = 2; taken.has(name.toLowerCase()); j++) name = base + '_' + j;
+    const part = { label: label, solid: { name: name }, dxfText: text, orientation: null, field: null, fileName: null, result: null, side: 1,
+      profile: state.newProfile, overrides: { tools: {}, steps: {}, depths: {}, dxf: { T: state.settings.dxfThickness || 19, features: {} } } };
+    compute(part);
+    state.parts.push(part);
+  }
   function compute(part) {
     if (!part.solid) return;
     const cfg = Object.assign({}, state.settings, { toolInfo: ToolLibrary.infoMap(state.tools) });
+    if (part.dxfText !== undefined) {
+      const dx = Object.assign({}, part.overrides.dxf, { rot: part.orientation ? part.orientation.rot : null });
+      part.res = StepToXcs.convertDxf(part.dxfText, part.solid.name, cfg, { field: part.field, profile: part.profile,
+        overrides: Object.assign({}, part.overrides, { dxf: dx }) });
+      if (part.res.panel && !part.orientation) part.orientation = Object.assign({}, part.res.panel.orientation);
+      if (!part.fileName) part.fileName = part.res.fileName;
+      part.side = 1;
+      part.result = part.res;
+      return;
+    }
     part.res = StepToXcs.convertSolid(part.solid, cfg, { orientation: part.orientation, field: part.field, overrides: part.overrides,
       overrides2: part.overrides2, meshes: part.occtMeshes || null, profile: part.profile });
     if (part.res.panel && !part.orientation) part.orientation = Object.assign({}, part.res.panel.orientation);
@@ -882,6 +935,28 @@ table.fmt.one .onet { display: inline; }
     });
   }
 
+  // DXF: Dicke und Vorschläge je Erkennung (Art, Tiefe) – ohne Layer, alles innerhalb der größten Kontur
+  const DXF_KIND = { drill: 'Bohrung', cutout: 'Durchbruch', pocket: 'Tasche', island: 'Insel', ignore: 'ignorieren' };
+  function dxfBox(part) {
+    const dx = part.res && part.res.dxf;
+    if (part.dxfText === undefined || !dx) return '';
+    const feats = dx.features;
+    const kinds = (f) => (f.shape === 'circle' ? ['drill'] : []).concat(['cutout', 'pocket'], f.parent ? ['island'] : [], ['ignore']);
+    const what = (f) => (f.shape === 'circle' ? 'Kreis Ø' + fmt(f.d) : 'Kontur ' + fmt(f.w) + '×' + fmt(f.h)) + ' · ' + fmt(f.x) + ' / ' + fmt(f.y);
+    let html = '<details class="curved dxf" id="dxfbox" open><summary><span class="cap">DXF-Erkennung</span><span class="note">' + feats.length +
+      ' Kontur' + (feats.length === 1 ? '' : 'en') + ' im Teil · Vorschläge änderbar</span></summary>' +
+      '<div class="row"><label for="dxfT" class="cap">Plattendicke</label><span><input id="dxfT" type="number" min="1" step="0.5" value="' + dx.T + '"> mm</span></div>';
+    if (feats.length) {
+      html += '<ul class="dxft">' + feats.map((f) => '<li><span class="w">' + esc(what(f)) + (f.kind !== f.suggested ? ' <em>geändert</em>' : '') + '</span>' +
+        '<span class="c"><select data-dxfkind="' + esc(f.id) + '" aria-label="Art für ' + esc(what(f)) + '" title="Vorschlag: ' + DXF_KIND[f.suggested] + '">' +
+        kinds(f).map((k) => '<option value="' + k + '"' + (k === f.kind ? ' selected' : '') + '>' + DXF_KIND[k] + (k === f.suggested ? ' ✓' : '') + '</option>').join('') +
+        '</select>' + (f.kind === 'drill' || f.kind === 'pocket'
+        ? '<label class="d">T <input type="number" min="0.5" step="0.5" data-dxfdepth="' + esc(f.id) + '" value="' + f.depth + '" aria-label="Tiefe für ' + esc(what(f)) + '" title="Tiefe in mm (= Dicke: durch)"> mm</label>'
+        : '') + '</span></li>').join('') + '</ul><span class="note">✓ = Vorschlag · Bohrung so tief wie die Platte = durch</span>';
+    }
+    return html + '</details>';
+  }
+
   function curvedBox(part) {
     const c = curvedState(part);
     if (!c.hasSlant && !c.hasSurface) return '';
@@ -904,10 +979,13 @@ table.fmt.one .onet { display: inline; }
   }
 
   async function loadFiles(list) {
-    const files = Array.from(list).filter((f) => /\.(step|stp)$/i.test(f.name));
-    if (!files.length) { toast('Bitte .step- oder .stp-Dateien wählen.'); return; }
+    const files = Array.from(list).filter((f) => /\.(step|stp|dxf)$/i.test(f.name));
+    if (!files.length) { toast('Bitte .step-, .stp- oder .dxf-Dateien wählen.'); return; }
     const first = state.parts.length;
-    for (const f of files) addStep(await f.text(), f.name);
+    for (const f of files) {
+      if (/\.dxf$/i.test(f.name)) addDxf(await f.text(), f.name);
+      else addStep(await f.text(), f.name);
+    }
     state.sel = first;
     render();
   }
@@ -998,11 +1076,11 @@ table.fmt.one .onet { display: inline; }
 
   function renderParts() {
     const el = $('parts');
-    const head = '<div class="head"><button class="btn primary" id="pick" type="button" title="Ein Volumenkörper = ein Programm; Baugruppen werden in Einzelteile zerlegt">STEP-Dateien wählen</button>' +
+    const head = '<div class="head"><button class="btn primary" id="pick" type="button" title="STEP: ein Volumenkörper = ein Programm, Baugruppen werden zerlegt. DXF: größte Kontur = Teil, alles darin als Vorschlag">STEP/DXF wählen</button>' +
       (state.parts.length ? '<span class="tools"><button class="btn small" id="zipall" type="button">Alle als ZIP</button>' +
         '<button class="btn ghost small" id="clear" type="button">Liste leeren</button></span>' : '') + '</div>';
     if (!state.parts.length) {
-      el.innerHTML = head + '<div class="empty">Noch keine Teile – STEP-Dateien wählen oder auf die Seite ziehen.</div>';
+      el.innerHTML = head + '<div class="empty">Noch keine Teile – STEP- oder DXF-Dateien wählen oder auf die Seite ziehen.</div>';
       $('pick').addEventListener('click', openPicker);
       return;
     }
@@ -1327,7 +1405,7 @@ table.fmt.one .onet { display: inline; }
   function renderDetail() {
     const el = $('detail');
     const part = state.parts[state.sel];
-    if (!part) { el.innerHTML = '<div class="card empty">STEP-Datei laden, um ein Programm zu erzeugen.</div>'; return; }
+    if (!part) { el.innerHTML = '<div class="card empty">STEP- oder DXF-Datei laden, um ein Programm zu erzeugen.</div>'; return; }
     const r = part.result;
     if (!r || !r.panel) {
       el.innerHTML = '<div class="card"><h2>' + esc(part.solid ? part.solid.name : part.label) + '</h2><ul class="warns"><li class="err">' +
@@ -1351,7 +1429,7 @@ table.fmt.one .onet { display: inline; }
         '" title="Seite 1 mit Formatfräsen, Seite 2 um Y gewendet ohne Rohteil-Versatz">Zweiseitig</button></span>' : '') +
       (part.res.side2 ? '<span class="seg sides" role="group" aria-label="Angezeigte Seite"><button type="button" data-side="1" aria-pressed="' + (part.side === 1) +
         '">Seite 1</button><button type="button" data-side="2" aria-pressed="' + (part.side === 2) + '">Seite 2</button></span>' : '') +
-      '<button class="btn" id="rot" type="button">Drehen 90°</button><button class="btn" id="flip" type="button">Wenden</button>' +
+      '<button class="btn" id="rot" type="button">Drehen 90°</button>' + (part.dxfText !== undefined ? '' : '<button class="btn" id="flip" type="button">Wenden</button>') +
       '<label for="field">Feld <select id="field">' + fieldOpts.map((f) => '<option' + (f === r.field ? ' selected' : '') + '>' + esc(f) + '</option>').join('') +
       '</select></label></div></div>' +
       '<div class="stage" style="margin-top:12px">' +
@@ -1371,7 +1449,7 @@ table.fmt.one .onet { display: inline; }
       '<div class="legend">' + legend.map(([c, t]) => '<span><i style="background:' + c + '"></i>' + t + '</span>').join('') + '</div></div></div>' +
       '<aside class="card steps" aria-label="Bearbeitungsschritte"><div class="opshead"><h3>Bearbeitungsschritte</h3>' +
       (ovOf(part).order ? '<button class="btn ghost small" id="resetorder" type="button">Reihenfolge zurücksetzen</button>' : '') +
-      '</div>' + curvedBox(part) + '<table class="ops" id="opstable">' +
+      '</div>' + dxfBox(part) + curvedBox(part) + '<table class="ops" id="opstable">' +
       opsSummary(r).map((x, i, all) => '<tbody class="grp" data-grp="' + esc(x.group) + '" style="--c:' + x.c + '"><tr data-group="' + esc(x.group) + '"' + (x.op ? ' class="has-ctl"' : '') + '><td class="k">' +
         '<span class="grip" data-grip="' + esc(x.group) + '" title="Gedrückt halten und ziehen, um die Reihenfolge zu ändern" aria-hidden="true">⠿</span><span class="num">' + (i + 1) + '</span>' +
         '<span class="sw" style="background:' + x.c + '"></span><button type="button" class="jump" data-jump="' + esc(x.group) + '" title="' + esc(x.k) + ' – in der Animation hierher springen">' +
@@ -1422,6 +1500,34 @@ table.fmt.one .onet { display: inline; }
       if (again && !again.disabled) again.focus();
     }));
     if ($('resetorder')) $('resetorder').addEventListener('click', () => { delete ovOf(part).order; compute(part); render(); });
+    // DXF: Dicke und Art/Tiefe je Erkennung; Gruppen ändern sich dabei → eigene Reihenfolge/Löschungen zurücksetzen
+    const dxfChanged = () => {
+      if (part.overrides.order || part.overrides.suppress) part.notice = 'Eigene Reihenfolge und gelöschte Bearbeitungen wurden nach der DXF-Änderung zurückgesetzt.';
+      delete part.overrides.order;
+      delete part.overrides.suppress;
+      compute(part); render();
+    };
+    if ($('dxfT')) $('dxfT').addEventListener('change', (e) => {
+      const v = parseFloat(String(e.target.value).replace(',', '.'));
+      if (v > 0) part.overrides.dxf.T = v;
+      dxfChanged();
+    });
+    el.querySelectorAll('[data-dxfkind]').forEach((sel) => sel.addEventListener('change', () => {
+      const f = part.overrides.dxf.features;
+      const cur = f[sel.dataset.dxfkind] || {};
+      f[sel.dataset.dxfkind] = { kind: sel.value };
+      if (cur.depth > 0 && sel.value !== 'cutout') f[sel.dataset.dxfkind].depth = cur.depth;
+      dxfChanged();
+    }));
+    el.querySelectorAll('[data-dxfdepth]').forEach((inp) => inp.addEventListener('change', () => {
+      const f = part.overrides.dxf.features;
+      const v = parseFloat(String(inp.value).replace(',', '.'));
+      const cur = Object.assign({}, f[inp.dataset.dxfdepth]);
+      if (!cur.kind) cur.kind = (part.res.dxf.features.find((x) => x.id === inp.dataset.dxfdepth) || {}).kind;
+      if (v > 0) cur.depth = v; else delete cur.depth;
+      f[inp.dataset.dxfdepth] = cur;
+      dxfChanged();
+    }));
     // Bearbeitung löschen (unterdrücken) und wiederherstellen – je Seite
     el.querySelectorAll('[data-suppress]').forEach((b) => b.addEventListener('click', () => {
       const ov = ovOf(part);
@@ -1500,7 +1606,7 @@ table.fmt.one .onet { display: inline; }
       compute(part); rerender();
     };
     $('rot').addEventListener('click', () => { part.orientation.rot = (part.orientation.rot + 1) % 4; turned(); });
-    $('flip').addEventListener('click', () => { part.orientation.flip = !part.orientation.flip; turned(); });
+    if ($('flip')) $('flip').addEventListener('click', () => { part.orientation.flip = !part.orientation.flip; turned(); });
     $('field').addEventListener('change', (e) => { part.field = e.target.value; compute(part); rerender(); });
     $('fname').addEventListener('change', (e) => {
       // eingegebener Name ohne .xcs und ohne _S1/_S2 ist der Grundname beider Seiten
@@ -2009,7 +2115,7 @@ table.fmt.one .onet { display: inline; }
   function mount3d(part) {
     const slot = $('v3slot');
     if (!slot) return;
-    if (!part.stepText) { v3message('Für dieses Teil gibt es keine 3D-Daten.'); return; }
+    if (!part.stepText) { v3message(part.dxfText !== undefined ? 'DXF ist eine 2D-Zeichnung – die 3D-Ansicht gibt es nur für STEP. Die Werkzeugbahn zeigt die 2D-Ansicht.' : 'Für dieses Teil gibt es keine 3D-Daten.'); return; }
     if (v3.error) { v3message(v3.error); return; }
     if (v3.host) slot.appendChild(v3.host);
     v3message(v3.viewer ? '' : '3D wird geladen …');

@@ -337,3 +337,43 @@ test('Web-Tool: Werkstück-Profile oben (benennen, aktiv, je Teil, neue Teile)',
     await browser.close();
   }
 });
+
+test('Web-Tool: DXF laden, Vorschläge ändern (Art, Tiefe, Dicke)', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    const before = await p.$$eval('.part', (x) => x.length);
+    const [chooser] = await Promise.all([p.waitForEvent('filechooser', { timeout: 3000 }), p.click('#pick')]);
+    await chooser.setFiles([fixture('platte.dxf')]);
+    await p.waitForFunction((n) => document.querySelectorAll('.part').length > n, before);
+    assert.strictEqual(await p.inputValue('#fname'), 'platte.xcs');
+    assert.match(await p.textContent('#xcs'), /CreateFinishedWorkpieceBox\("Workpiece", 600, 400, 19\)/);
+    assert.strictEqual(await p.$('#flip'), null); // DXF: nur drehen
+    assert.strictEqual(await p.$$eval('#dxfbox [data-dxfkind]', (x) => x.length), 9);
+    // Dicke ändern
+    await p.fill('#dxfT', '25');
+    await p.dispatchEvent('#dxfT', 'change');
+    await p.waitForFunction(() => /600, 400, 25\)/.test(document.getElementById('xcs').textContent));
+    // Rechteck-Durchbruch → Tasche, Tiefe 8
+    const id = await p.$$eval('#dxfbox li', (rows) => {
+      const r = rows.find((x) => /Kontur 120×80/.test(x.textContent));
+      return r.querySelector('select').dataset.dxfkind;
+    });
+    await p.selectOption('[data-dxfkind="' + id + '"]', 'pocket');
+    await p.waitForSelector('[data-dxfdepth="' + id + '"]');
+    await p.fill('[data-dxfdepth="' + id + '"]', '8');
+    await p.dispatchEvent('[data-dxfdepth="' + id + '"]', 'change');
+    await p.waitForFunction(() => /Tasche 120×80×8/.test(document.getElementById('opstable').textContent));
+    // 3D: Hinweis statt Modell
+    await p.click('[data-vmode="3d"]');
+    await p.waitForFunction(() => /nur für STEP/.test(document.getElementById('v3msg').textContent));
+    await p.click('[data-vmode="2d"]');
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});

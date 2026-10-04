@@ -22,6 +22,7 @@
     formatRoughTool: 'E014',   // Werkzeug 1 (vorfräsen); Werkzeug 2 = contourTool
     formatAllowance: 1,        // Aufmaß beim Vorfräsen in mm (overMaterial)
     retractOverlap: 2,         // Umfräsen: Überlappung beim Verlassen in mm (SetRetractStrategy overlapLength)
+    dxfThickness: 19,          // DXF-Import: Plattendicke, solange im Teil keine andere eingetragen ist
     cutoutTool: 'E016',        // Ausschnitte / Durchbrüche / Konturabweichungen
     cutoutExtra: 2,
     leadLength: 20,            // Ein-/Auslauf entlang der Kante bei Ausschnitten

@@ -40,6 +40,11 @@ Meldet der Virenscanner die unsignierte .exe fälschlich als Virus, die **portab
 gleicher Funktionsumfang, ohne .exe. Dauerhaft hilft nur eine Code-Signatur.
 Bauen: `npm run build:exe` (Go ≥ 1.21) → `dist/STEP2XCS.exe`; Quelltext in `exe/`.
 
+**Auf einem Webserver** (z. B. Strato-Webspace, Testserver): `npm run build:web` → `dist/Step2Maestro-Webserver.zip`
+mit dem Ordner `step2maestro/` zum Hochladen und `ANLEITUNG.txt` (Hochladen per SFTP/Datei-Manager, Subdomain,
+Verzeichnisschutz, Einbinden in den Strato KI-Website-Builder per Link oder iframe). Rein statisch, kein PHP; die Schriften
+liegen lokal bei (`tools/webserver/fonts`, statt Google Fonts), `.htaccess` sperrt Suchmaschinen und Browser-Cache.
+
 **Kommandozeile** (Node.js ≥ 18):
 
 ```bash
@@ -379,7 +384,7 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
 | `web/` | Web-Tool (`index.html`) und die JS-Module `step.js` (STEP-Leser), `panel.js` (Erkennung), `xcs.js` (Ausgabe), `surface.js` (Kugelfräser-Bahn), `occtmesh.js` (3D-Netz), `dxf.js` (DXF-Leser) |
 | `cli/` | Kommandozeilen-Aufruf |
 | `test/` | Tests (`npm test`) und Test-STEP/DXF-Dateien |
-| `tools/` | `make_fixtures.py` erzeugt die Test-STEP-Dateien (CadQuery), `make_dxf.js` die Test-DXF, `build_defaults.js` die eingebaute Werkzeugliste und Beispiele |
+| `tools/` | `make_fixtures.py` erzeugt die Test-STEP-Dateien (CadQuery), `make_dxf.js` die Test-DXF, `build_defaults.js` die eingebaute Werkzeugliste und Beispiele, `build_exe.sh`/`build_web.sh` die Pakete, `webserver/` Anleitung, `.htaccess` und Schriften für den Webserver |
 | `step/` | Original-STEP-Exporte aus Onshape |
 | `maestro/beispiele/` | Beispiel-Programme (.xcs) aus Maestro – Referenz für das Format |
 | `maestro/werkzeuge/` | Werkzeugdaten (`def.tlgx`) |

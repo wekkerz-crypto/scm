@@ -1,0 +1,133 @@
+STEP2MAESTRO AUF EINEM WEBSERVER (TESTSERVER) – ANLEITUNG
+==========================================================
+
+Inhalt der ZIP
+--------------
+  ANLEITUNG.txt        diese Datei
+  step2maestro/        DIESEN ORDNER auf den Server laden
+    index.html         das ganze Programm (Oberfläche)
+    js/                Rechenteile, 3D-Ansicht (three.js, OpenCascade)
+    fonts/             Schriften (lokal, damit nichts von Google geladen wird)
+    .htaccess          Server-Einstellungen (Zeichensatz, Komprimierung,
+                       nicht in Suchmaschinen, immer aktuelle Dateien)
+
+Wichtig zu wissen
+-----------------
+* Das Programm ist rein "statisch": nur HTML und JavaScript. Kein PHP, keine
+  Datenbank, nichts zu installieren. Jeder normale Webspace reicht.
+* Alles läuft im Browser des Benutzers. STEP-/DXF-Dateien und .xcs-Programme
+  werden NICHT auf den Server hochgeladen. Es werden keine Cookies gesetzt und
+  keine fremden Server angefragt.
+* Einstellungen, Profile und die geladene Werkzeugdatei (.tlgx) speichert der
+  Browser – je Gerät, Browser und Adresse. Auf dem Server gelten also andere
+  Einstellungen als in der STEP2XCS.exe. Werkzeugdatei auf dem Server einmal
+  neu laden (Abschnitt "Werkzeugliste & Favoriten").
+* HTTPS verwenden (bei Strato im Paket enthalten). Ohne HTTPS funktioniert
+  z. B. "Kopieren" in die Zwischenablage nicht.
+
+
+WEG A – Strato Webhosting (Webspace)   <- so wird das Programm gehostet
+---------------------------------------------------------------------------
+Der Webspace ist der Speicherplatz deines Strato-Pakets. Dort muss der Ordner
+"step2maestro" liegen. (Die Menünamen bei Strato ändern sich gelegentlich –
+sinngemäß suchen.)
+
+1. ZIP auf dem PC entpacken.
+
+2. Hochladen – eine der beiden Möglichkeiten:
+
+   a) Im Browser: STRATO Kunden-Login -> Paket wählen -> "Hosting" /
+      "Webspace" -> Datei-Manager (Webspace Explorer). Dort den Ordner
+      "step2maestro" hochladen (ggf. als ZIP hochladen und im Datei-Manager
+      entpacken, falls angeboten).
+
+   b) Per SFTP mit FileZilla (empfohlen, zuverlässig bei vielen Dateien):
+        Server:    ssh.strato.de   (Protokoll SFTP, Port 22)
+        Benutzer:  deine Domain bzw. der SFTP-Benutzer aus dem Kunden-Login
+        Passwort:  das Master-/SFTP-Passwort aus dem Kunden-Login
+      Den Ordner "step2maestro" ins Hauptverzeichnis ziehen.
+      ACHTUNG: In FileZilla unter "Server -> Anzeigen versteckter Dateien
+      erzwingen" einschalten, sonst wird die ".htaccess" leicht vergessen.
+
+3. Aufrufen:   https://www.deine-domain.de/step2maestro/
+
+4. Optional eigene Test-Adresse (Subdomain):
+   Kunden-Login -> "Domains" -> "Subdomain anlegen", z. B.
+   test.deine-domain.de, und als Ziel das Verzeichnis "/step2maestro"
+   einstellen. Danach SSL-Zertifikat für die Subdomain aktivieren.
+   Aufruf dann:  https://test.deine-domain.de/
+
+5. Optional Passwortschutz (empfohlen für einen Testserver):
+   Kunden-Login -> Webspace/Hosting -> "Verzeichnisschutz" (Schutz für den
+   Ordner "step2maestro" mit Benutzer und Passwort einrichten).
+
+Update auf eine neue Version: Ordner "step2maestro" einfach komplett durch den
+neuen ersetzen (alle Dateien überschreiben). Einstellungen im Browser bleiben
+erhalten. Falls der Browser noch die alte Version zeigt: Strg + F5.
+
+
+WEG B – Strato KI-Website-Builder (Website-Baukasten)
+-----------------------------------------------------
+Der KI-Builder baut Webseiten aus Bausteinen. Eigene Programmdateien
+(JavaScript-Ordner) kann man dort NICHT hochladen – das Programm selbst muss
+deshalb wie bei WEG A auf einem Webspace liegen. Im Builder wird es nur
+verlinkt oder eingebettet.
+
+Prüfen: Gehört zu deinem Paket ein Webspace (SFTP-Zugang / Datei-Manager)?
+  - Ja  -> WEG A machen, dann im Builder verlinken (unten).
+  - Nein -> Webspace dazubuchen (z. B. kleinstes Strato Hosting-Paket) oder
+           einen anderen Webspace nutzen; die Adresse wird dann im Builder
+           verlinkt.
+
+1. Seite im Builder anlegen
+   Im KI-Builder z. B. diesen Text als Wunsch (Prompt) eingeben:
+
+     "Erstelle eine schlichte Unterseite 'Step2Maestro' für eine Schreinerei.
+      Überschrift: Step2Maestro – STEP/DXF zu SCM Maestro. Kurzer Text: Das
+      Werkzeug wandelt STEP- und DXF-Dateien in Xilog-Programme (.xcs) für die
+      SCM Maestro um. Es läuft komplett im Browser, Dateien bleiben auf dem
+      eigenen Rechner. Darunter ein großer Button 'Programm öffnen'."
+
+2. Button verlinken (EMPFOHLEN)
+   Button anklicken -> Link -> "Externe Adresse/URL":
+     https://www.deine-domain.de/step2maestro/   (bzw. die Subdomain)
+   und "In neuem Fenster/Tab öffnen" einschalten.
+   So läuft das Programm in voller Fenstergröße, Drucken (Etiketten),
+   Speichern und Kopieren funktionieren ohne Einschränkung.
+
+3. Alternativ einbetten (nur wenn es unbedingt auf der Seite sein soll)
+   Im Builder ein "HTML/Code/Embed"-Element einfügen und diesen Code
+   einsetzen (Adresse anpassen):
+
+     <iframe src="https://www.deine-domain.de/step2maestro/"
+             style="width:100%;height:90vh;border:0"
+             allow="clipboard-write; fullscreen"
+             title="Step2Maestro"></iframe>
+
+   Einschränkungen eingebettet: kleineres Fenster; je nach Builder können
+   Etikettendruck, Datei-Download oder Kopieren blockiert sein. Dann den
+   Button-Link (Punkt 2) nehmen.
+
+   Hinweis: Programm und Builder-Seite sollten beide über https laufen,
+   sonst blockiert der Browser die Einbettung.
+
+
+TEST NACH DEM HOCHLADEN (Checkliste)
+------------------------------------
+[ ] Adresse öffnen -> Step2Maestro erscheint mit den Beispielteilen links.
+[ ] Schrift sieht aus wie in der .exe (sonst fehlt der Ordner "fonts").
+[ ] Ein Teil anklicken -> "3D" -> 3D-Ansicht lädt (beim ersten Mal ein paar
+    Sekunden, die 3D-Bibliothek ist mehrere MB groß).
+[ ] Eigene STEP- oder DXF-Datei laden -> Bearbeitungen erscheinen.
+[ ] "Speichern" -> .xcs-Datei wird heruntergeladen.
+[ ] "Etikett" -> Druckvorschau 40 x 60 mm.
+[ ] Auf dem Handy öffnen -> Bedienung passt auf den Bildschirm.
+
+Probleme
+--------
+* Seite bleibt weiß / "Fehler 500": .htaccess vorübergehend umbenennen
+  (z. B. in "htaccess.txt"). Läuft es dann, unterstützt der Server eine der
+  Einstellungen nicht – die Seite funktioniert auch ohne .htaccess.
+* 404 "nicht gefunden": Ordnername/Adresse prüfen; index.html muss direkt im
+  Ordner "step2maestro" liegen (nicht step2maestro/step2maestro/index.html).
+* Alte Version wird angezeigt: Strg + F5 (bzw. Browser-Cache leeren).

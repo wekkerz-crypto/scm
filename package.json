@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "test": "node --test test/*.test.js",
-    "build:exe": "sh tools/build_exe.sh"
+    "build:exe": "sh tools/build_exe.sh",
+    "build:web": "sh tools/build_web.sh"
   },
   "bin": {
     "step2xcs": "cli/step2xcs.js"

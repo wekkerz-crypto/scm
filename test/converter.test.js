@@ -1658,3 +1658,31 @@ test('Lamello Cabineo: 3 überlappende Bohrungen Ø15 (eine zur Kante offen) wer
   assert.match(part.xcs, /CreateDrill \("Drill_Vertical_1", 374, 50, 11, 15,/);
   assert.doesNotMatch(part.xcs, /CreateContourPocket/);
 });
+
+test('Zuschnittplan: erster Schnitt längs/quer bevorzugt, Ziel Verschnitt oder Schnitte', () => {
+  const CP = require('../web/js/cutplan.js');
+  const items = [{ id: '1', label: 'Seite', L: 720, W: 560, qty: 4, orient: 'long' }, { id: '2', label: 'Boden', L: 764, W: 560, qty: 4 },
+    { id: '3', label: 'Front', L: 796, W: 396, qty: 6 }, { id: '4', label: 'Fach', L: 760, W: 540, qty: 3 }, { id: '5', label: 'Leiste', L: 764, W: 100, qty: 8 }];
+  const res = {};
+  for (const dir of ['long', 'cross']) for (const goal of ['waste', 'cuts']) {
+    const r = CP.plan(items, { dir: dir, goal: goal });
+    res[dir + goal] = r;
+    assert.strictEqual(r.dir, dir);
+    assert.strictEqual(r.unplaced.length, 0);
+    assert.strictEqual(r.sheets.reduce((a, s) => a + s.parts.length, 0), 25);
+    for (const s of r.sheets) {
+      for (const p of s.parts) assert.ok(CP.fits(s, p, {}, p.uid), 'überlappt: ' + p.uid);
+      // Maserung: Teil 1 bleibt mit der langen Seite längs
+      for (const p of s.parts.filter((q) => q.id === '1')) assert.ok(p.l > p.w);
+      const seq = CP.cutSequence(s, { dir: dir });
+      assert.ok(seq.ok, 'durchgehend trennbar');
+      assert.strictEqual(seq.cuts[0].dir, dir === 'long' ? 'h' : 'v');
+      // Streifen: der erste Schnitt geht über die ganze besäumte Platte
+      assert.strictEqual(seq.cuts[0].to - seq.cuts[0].from, dir === 'long' ? s.L - 20 : s.W - 20);
+    }
+  }
+  // optimale Schnitte: nicht mehr Schnitte als bei minimalem Verschnitt
+  for (const dir of ['long', 'cross']) assert.ok(res[dir + 'cuts'].cuts <= res[dir + 'waste'].cuts);
+  const auto = CP.plan(items, {});
+  assert.ok(auto.sheets.length <= Math.min(...Object.values(res).map((r) => r.sheets.length)));
+});

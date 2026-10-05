@@ -709,6 +709,8 @@ table.fmt.one .onet { display: inline; }
         <label>Besäumen <input type="number" id="ctrim" min="0" step="1"> mm</label>
         <label><input type="checkbox" id="craw"> Rohmaß (mit Aufmaß)</label>
         <label><input type="checkbox" id="cgrain"> Maserung beachten</label>
+        <label title="Welche Schnitte zuerst: längs = Streifen über die ganze Plattenlänge, quer = über die Plattenbreite">Erster Schnitt <select id="cdir"><option value="auto">automatisch</option><option value="long">längs bevorzugt</option><option value="cross">quer bevorzugt</option></select></label>
+        <label title="Minimaler Verschnitt: wenig Platten, großes Reststück · Optimale Schnitte: wenig Schnitte, einfach zu sägen">Ziel <select id="cgoal"><option value="waste">minimaler Verschnitt</option><option value="cuts">optimale Schnitte</option></select></label>
         <label><input type="checkbox" id="ccuts"> Schnittfolge</label>
       </span>
       <span class="sp"></span>
@@ -2573,7 +2575,7 @@ table.fmt.one .onet { display: inline; }
     return lst.grain && View3D.boardOf(board).grain > 0 ? 'long' : 'free';
   }
   const LIST_KEY = 'step2xcs.lists.v1';
-  const lst = Object.assign({ tab: 'bom', group: true, raw: true, sheetL: 2800, sheetW: 2070, kerf: 4.4, trim: 10, grain: true, cuts: true }, loadJson(LIST_KEY, {}) || {});
+  const lst = Object.assign({ tab: 'bom', group: true, raw: true, sheetL: 2800, sheetW: 2070, kerf: 4.4, trim: 10, grain: true, cuts: true, dir: 'auto', goal: 'waste' }, loadJson(LIST_KEY, {}) || {});
   const saveLst = () => storeJson(LIST_KEY, lst);
 
   // Rohmaß (Zuschnitt) eines Teils: Fertigmaß + Rohteil-Aufmaß (Profil mit gesägten Stirnseiten: nur in der Länge)
@@ -2682,7 +2684,10 @@ table.fmt.one .onet { display: inline; }
 
   // Zuschnittplan je Material und Dicke; von Hand verschobene Pläne (lst.manual) gelten, solange Teile und Platte gleich bleiben
   let cutSel = null; // ausgewähltes Teil im Zuschnittplan { grp, uid }
-  const cutOpts = () => ({ sheetL: lst.sheetL, sheetW: lst.sheetW, kerf: lst.kerf, trim: lst.trim });
+  const cutOpts = () => ({ sheetL: lst.sheetL, sheetW: lst.sheetW, kerf: lst.kerf, trim: lst.trim, dir: lst.dir, goal: lst.goal });
+  // Schnittfolge einer Platte: automatisch angeordnet → Richtung des Plans, von Hand → Vorzugsrichtung der Einstellung
+  const seqOf = (s, g) => CutPlan.cutSequence(s, Object.assign(cutOpts(), { dir: g.plan.manual ? lst.dir : g.plan.dir }));
+  const dirText = (g) => ((d) => (d === 'long' ? ' · erst längs schneiden' : d === 'cross' ? ' · erst quer schneiden' : ''))(g.plan.manual ? lst.dir : g.plan.dir);
   function cutGroups() {
     const groups = new Map();
     for (const row of bomRows()) {
@@ -2749,7 +2754,7 @@ table.fmt.one .onet { display: inline; }
     if (lst.cuts) {
       const k2 = lst.kerf / 2;
       out += '<g class="cuts">';
-      for (const c of CutPlan.cutSequence(s, cutOpts()).cuts) {
+      for (const c of seqOf(s, g).cuts) {
         const x1 = c.dir === 'h' ? c.from : c.c + k2;
         const x2 = c.dir === 'h' ? c.to : c.c + k2;
         const y1 = s.W - (c.dir === 'h' ? c.c + k2 : c.from);
@@ -2785,7 +2790,7 @@ table.fmt.one .onet { display: inline; }
     return groups.map((g) => {
       const pl = g.plan;
       return '<section class="cutgrp"><h3>' + boardSwatch(g.board) + ' ' + esc(g.name) + ' ' + fmt(g.T) + ' mm <small>' + pl.sheets.length + ' Platte' + (pl.sheets.length === 1 ? '' : 'n') +
-        ' ' + fmt(lst.sheetL) + ' × ' + fmt(lst.sheetW) + ' · Ausnutzung ' + Math.round((1 - pl.waste) * 100) + ' %' + (g.grain && lst.grain ? ' · Maserung längs' : '') +
+        ' ' + fmt(lst.sheetL) + ' × ' + fmt(lst.sheetW) + ' · Ausnutzung ' + Math.round((1 - pl.waste) * 100) + ' %' + (g.grain && lst.grain ? ' · Maserung längs' : '') + dirText(g) +
         (pl.manual ? ' · von Hand angeordnet' : '') + '</small>' +
         (forPrint ? '' : '<span class="cutact"><button type="button" class="btn ghost small" data-cutadd="' + esc(g.key) + '" title="Leere Platte anhängen, um Teile darauf zu verschieben">+ Platte</button>' +
           (pl.manual ? '<button type="button" class="btn ghost small" data-cutreset="' + esc(g.key) + '" title="Eigene Anordnung verwerfen">Automatisch anordnen</button>' : '') + '</span>') + '</h3>' +
@@ -2794,7 +2799,7 @@ table.fmt.one .onet { display: inline; }
           !forPrint && cutSel && cutSel.grp === g.key ? pl.sheets.flatMap((x) => x.parts).find((q) => q.uid === cutSel.uid) : null) +
         (pl.unplaced.length ? '<p class="warn">Passt nicht auf die Platte: ' + pl.unplaced.map((x) => esc(x.label) + ' (' + n1(x.L) + ' × ' + n1(x.W) + ')').join(', ') + '</p>' : '') +
         pl.sheets.map((s, i) => {
-          const seq = lst.cuts ? CutPlan.cutSequence(s, cutOpts()) : null;
+          const seq = lst.cuts ? seqOf(s, g) : null;
           return '<figure class="sheetfig"><figcaption>Platte ' + (i + 1) + ' · ' + s.parts.length + ' Teile · genutzt ' + Math.round((s.used / (s.L * s.W)) * 100) + ' %' +
             (seq ? ' · ' + seq.cuts.length + ' Schnitte' : '') + '</figcaption>' +
             (seq && !seq.ok ? '<p class="warn">Nicht alle Teile sind mit durchgehenden Schnitten trennbar – Anordnung prüfen.</p>' : '') +
@@ -2818,7 +2823,7 @@ table.fmt.one .onet { display: inline; }
         page++;
         d.text(12, 16, 'Zuschnittplan – ' + g.name + ' ' + fmt(g.T) + ' mm', { size: 15, bold: true });
         d.text(12, 23, 'Platte ' + (i + 1) + ' von ' + g.plan.sheets.length + ' · ' + fmt(s.L) + ' × ' + fmt(s.W) + ' mm · ' + s.parts.length + ' Teile · genutzt ' +
-          Math.round((s.used / (s.L * s.W)) * 100) + ' %' + (g.grain && lst.grain ? ' · Maserung längs' : ''), { size: 9.5, color: [0.25, 0.25, 0.25] });
+          Math.round((s.used / (s.L * s.W)) * 100) + ' %' + (g.grain && lst.grain ? ' · Maserung längs' : '') + dirText(g), { size: 9.5, color: [0.25, 0.25, 0.25] });
         d.text(285, 203, info + ' · Seite ' + page + '/' + total, { size: 7.5, align: 'right', color: [0.35, 0.35, 0.35] });
         // links die Platte, rechts die Teileliste zum Abhaken
         const sc = Math.min(190 / s.L, 168 / s.W);
@@ -2850,7 +2855,7 @@ table.fmt.one .onet { display: inline; }
         }
         // Schnittfolge
         if (lst.cuts) {
-          const seq = CutPlan.cutSequence(s, cutOpts());
+          const seq = seqOf(s, g);
           const red = [0.78, 0.22, 0.1];
           const k2 = lst.kerf / 2;
           for (const c of seq.cuts) {
@@ -3004,6 +3009,10 @@ table.fmt.one .onet { display: inline; }
   for (const [id, k] of [['csheetL', 'sheetL'], ['csheetW', 'sheetW'], ['ckerf', 'kerf'], ['ctrim', 'trim']]) {
     $(id).value = lst[k];
     $(id).addEventListener('change', (e) => { const v = parseFloat(String(e.target.value).replace(',', '.')); if (v >= 0) { lst[k] = v; saveLst(); renderLists(); } });
+  }
+  for (const [id, k] of [['cdir', 'dir'], ['cgoal', 'goal']]) {
+    $(id).value = lst[k];
+    $(id).addEventListener('change', (e) => { lst[k] = e.target.value; saveLst(); renderLists(); });
   }
   for (const [id, k] of [['craw', 'raw'], ['cgrain', 'grain'], ['ccuts', 'cuts']]) {
     $(id).checked = lst[k];

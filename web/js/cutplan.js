@@ -2,6 +2,7 @@
  * Zuschnittplan: Teile (Rechtecke) auf Rohplatten verteilen – Guillotine-Schnitte (durchgehend, wie an der Plattensäge),
  * Schnittfuge und Besäumrand, Faserrichtung (Teil mit der langen Seite längs der Plattenlänge, nicht drehen).
  * plan(items, opts) → { sheets: [{ L, W, parts: [{ uid, id, label, x, y, l, w, rot, grain }], used }], unplaced: [items], waste }
+ *   opts.dir 'auto' | 'long' | 'cross' (erster Schnitt längs/quer bevorzugt), opts.goal 'waste' | 'cuts' (Verschnitt oder Schnitte)
  * fits(sheet, part, opts, skipUid) – passt das Teil dort (innerhalb Besäumen, Abstand Schnittfuge zu allen anderen)?
  *   items: [{ id, label, L, W, qty, orient }]  (orient 'long' | 'cross' | 'free'; alt: grain = true → 'long')
  *   opts:  { sheetL, sheetW, kerf, trim }
@@ -12,31 +13,29 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  function plan(items, opts) {
-    const o = Object.assign({ sheetL: 2800, sheetW: 2070, kerf: 4.4, trim: 10 }, opts || {});
+  // Lagen eines Teils: mit Maserung lange Seite längs der Plattenlänge, sonst beide
+  function orients(it) {
+    const a = { l: Math.max(it.L, it.W), w: Math.min(it.L, it.W), rot: it.L < it.W };
+    const b = { l: a.w, w: a.l, rot: !a.rot };
+    // Faserrichtung je Teil: 'long' = lange Seite längs der Platte, 'cross' = quer (gedreht), 'free' = beides erlaubt
+    const or = orientOf(it);
+    if (Math.abs(a.l - a.w) < 1e-6 || or === 'long') return [a];
+    return or === 'cross' ? [b] : [a, b];
+  }
+  const orientOf = (it) => it.orient || (it.grain ? 'long' : 'free');
+  const partOf = (it, x, y, or) => ({ uid: it.uid, id: it.id, label: it.label, x: x, y: y, l: or.l, w: or.w, rot: or.rot, grain: orientOf(it) !== 'free' });
+
+  // freie Aufteilung (Guillotine, Rest entlang der kürzeren Seite teilen) – Richtung ergibt sich je Teil
+  function packFree(list, o) {
     const UL = o.sheetL - 2 * o.trim;
     const UW = o.sheetW - 2 * o.trim;
     const k = Math.max(0, o.kerf);
-    // Einzelteile, größte zuerst (lange Seite, dann Fläche)
-    const list = [];
-    // je Stück eine feste Kennung (uid = id#Stück) – für das Verschieben von Hand
-    for (const it of items) for (let q = 0; q < (it.qty === undefined ? 1 : it.qty); q++) list.push(Object.assign({}, it, { uid: it.id + '#' + (q + 1) }));
-    list.sort((a, b) => Math.max(b.L, b.W) - Math.max(a.L, a.W) || b.L * b.W - a.L * a.W);
     const sheets = [];
     const unplaced = [];
     const newSheet = () => {
       const s = { L: o.sheetL, W: o.sheetW, parts: [], free: [{ x: o.trim, y: o.trim, l: UL, w: UW }], used: 0 };
       sheets.push(s);
       return s;
-    };
-    // Lagen eines Teils: mit Maserung lange Seite längs der Plattenlänge, sonst beide
-    const orients = (it) => {
-      const a = { l: Math.max(it.L, it.W), w: Math.min(it.L, it.W), rot: it.L < it.W };
-      const b = { l: a.w, w: a.l, rot: !a.rot };
-      // Faserrichtung je Teil: 'long' = lange Seite längs der Platte, 'cross' = quer (gedreht), 'free' = beides erlaubt
-      const or = it.orient || (it.grain ? 'long' : 'free');
-      if (Math.abs(a.l - a.w) < 1e-6 || or === 'long') return [a];
-      return or === 'cross' ? [b] : [a, b];
     };
     // bester freier Platz (kürzester Rest an der kürzeren Seite) in einer Platte
     const best = (s, it) => {
@@ -64,8 +63,8 @@
         pick = r;
       }
       const f = s.free.splice(pick.i, 1)[0];
-      const { l, w, rot } = pick.or;
-      s.parts.push({ uid: it.uid, id: it.id, label: it.label, x: f.x, y: f.y, l: l, w: w, rot: rot, grain: (it.orient || (it.grain ? 'long' : 'free')) !== 'free' });
+      const { l, w } = pick.or;
+      s.parts.push(partOf(it, f.x, f.y, pick.or));
       s.used += l * w;
       // Guillotine-Teilung des Rests (Schnittfuge abziehen): entlang der kürzeren Restseite schneiden
       const rl = f.l - l - k;
@@ -75,10 +74,147 @@
       const top = { x: f.x, y: f.y + w + k, l: splitAlongL ? f.l : l, w: rw };
       for (const n of [right, top]) if (n.l > 1 && n.w > 1) s.free.push(n);
     }
-    let usedAll = 0;
-    for (const s of sheets) { delete s.free; usedAll += s.used; }
-    const areaAll = sheets.length * o.sheetL * o.sheetW;
-    return { sheets: sheets, unplaced: unplaced, waste: areaAll ? 1 - usedAll / areaAll : 0 };
+    for (const s of sheets) delete s.free;
+    return { sheets: sheets, unplaced: unplaced, dir: 'auto' };
+  }
+
+  /*
+   * Streifen wie an der Plattensäge: dir 'long' = erst Längsschnitte (Streifen über die ganze Plattenlänge), darin quer
+   * ablängen; 'cross' = erst Querschnitte (Streifen über die ganze Plattenbreite), darin längs. Gerechnet wird in
+   * Streifen-Koordinaten (a = längs des Streifens, h = Streifenbreite), danach zurück auf die Platte.
+   *   v: { pref: 'flat' | 'tall' (Lage beim Anlegen eines neuen Streifens), stack (Teile im Feld übereinander), exact (nur gleich breite Teile in einen Streifen) }
+   */
+  function packStrips(list, o, dir, v) {
+    const UL = o.sheetL - 2 * o.trim;
+    const UW = o.sheetW - 2 * o.trim;
+    const k = Math.max(0, o.kerf);
+    const cross = dir === 'cross';
+    const A = cross ? UW : UL;
+    const B = cross ? UL : UW;
+    const e = 1e-6;
+    const ors = (it) => orients(it).map((or) => ({ or: or, a: cross ? or.w : or.l, h: cross ? or.l : or.w }));
+    const sheets = [];
+    const unplaced = [];
+    for (const it of list) {
+      const opts = ors(it);
+      let done = false;
+      // 1. in ein vorhandenes Feld stapeln, 2. in einen vorhandenen Streifen anhängen (am besten passende Breite)
+      for (const sh of sheets) {
+        let best = null;
+        for (const st of sh.strips) {
+          for (const c of opts) {
+            if (c.h > st.h + e) continue;
+            const gap = st.h - c.h;
+            if (v.exact && gap > e) continue;
+            if (v.stack) {
+              for (const col of st.cols) {
+                if (c.a <= col.a + e && col.fill + k + c.h <= st.h + e) {
+                  const sc = [0, col.a - c.a, st.h - col.fill - k - c.h];
+                  if (!best || less(sc, best.sc)) best = { sc: sc, st: st, col: col, c: c };
+                }
+              }
+            }
+            if (st.usedA + c.a <= A + e) {
+              const sc = [1, gap, A - st.usedA - c.a];
+              if (!best || less(sc, best.sc)) best = { sc: sc, st: st, c: c };
+            }
+          }
+        }
+        if (best) {
+          const { st, c } = best;
+          if (best.col) {
+            best.col.items.push({ it: it, c: c, a: best.col.pos, b: st.pos + best.col.fill + k });
+            best.col.fill += k + c.h;
+          } else {
+            st.cols.push({ pos: st.usedA, a: c.a, fill: c.h, items: [{ it: it, c: c, a: st.usedA, b: st.pos }] });
+            st.usedA += c.a + k;
+          }
+          done = true;
+          break;
+        }
+        // 3. neuer Streifen auf dieser Platte
+        const fit = opts.filter((c) => c.a <= A + e && sh.usedB + c.h <= B + e);
+        if (fit.length) { newStrip(sh, fit); done = true; break; }
+      }
+      if (done) continue;
+      const fit = opts.filter((c) => c.a <= A + e && c.h <= B + e);
+      if (!fit.length) { unplaced.push(it); continue; }
+      const sh = { strips: [], usedB: 0 };
+      sheets.push(sh);
+      newStrip(sh, fit);
+
+      function newStrip(sh2, fit2) {
+        fit2.sort((p, q) => (v.pref === 'tall' ? q.h - p.h : p.h - q.h));
+        const c = fit2[0];
+        const st = { pos: sh2.usedB, h: c.h, usedA: c.a + k, cols: [{ pos: 0, a: c.a, fill: c.h, items: [{ it: it, c: c, a: 0, b: sh2.usedB }] }] };
+        sh2.strips.push(st);
+        sh2.usedB += c.h + k;
+      }
+    }
+    return {
+      sheets: sheets.map((sh) => {
+        const parts = [];
+        for (const st of sh.strips) for (const col of st.cols) for (const p of col.items) {
+          parts.push(partOf(p.it, o.trim + (cross ? p.b : p.a), o.trim + (cross ? p.a : p.b), p.c.or));
+        }
+        return { L: o.sheetL, W: o.sheetW, parts: parts, used: parts.reduce((s2, p) => s2 + p.l * p.w, 0) };
+      }),
+      unplaced: unplaced,
+      dir: dir,
+    };
+  }
+  // lexikografischer Vergleich von Bewertungen
+  function less(p, q) {
+    for (let i = 0; i < p.length; i++) {
+      if (p[i] < q[i] - 1e-6) return true;
+      if (p[i] > q[i] + 1e-6) return false;
+    }
+    return false;
+  }
+
+  /*
+   * Zuschnittplan. opts.dir: 'auto' (frei), 'long' (Längsschnitte zuerst – Streifen über die Plattenlänge) oder 'cross'
+   * (Querschnitte zuerst); opts.goal: 'waste' (wenig Verschnitt: wenig Platten, großes Reststück) oder 'cuts' (wenig
+   * Schnitte, einfach zu sägen). Es werden mehrere Varianten gerechnet und die beste nach dem Ziel genommen.
+   */
+  function plan(items, opts) {
+    const o = Object.assign({ sheetL: 2800, sheetW: 2070, kerf: 4.4, trim: 10, dir: 'auto', goal: 'waste' }, opts || {});
+    // Einzelteile; je Stück eine feste Kennung (uid = id#Stück) – für das Verschieben von Hand
+    const list = [];
+    for (const it of items) for (let q = 0; q < (it.qty === undefined ? 1 : it.qty); q++) list.push(Object.assign({}, it, { uid: it.id + '#' + (q + 1) }));
+    const big = (a, b) => Math.max(b.L, b.W) - Math.max(a.L, a.W) || b.L * b.W - a.L * a.W;
+    const sorts = [
+      big,
+      (a, b) => b.L * b.W - a.L * a.W || big(a, b),
+      (a, b) => Math.min(b.L, b.W) - Math.min(a.L, a.W) || big(a, b),
+    ];
+    const cands = [];
+    if (o.dir === 'auto') cands.push(packFree(list.slice().sort(big), o));
+    const dirs = o.dir === 'auto' ? ['long', 'cross'] : [o.dir];
+    for (const d of dirs) for (const so of sorts) for (const pref of ['flat', 'tall']) for (const stack of [true, false]) for (const exact of [false, true]) {
+      if (exact && stack) continue;
+      cands.push(packStrips(list.slice().sort(so), o, d, { pref: pref, stack: stack, exact: exact }));
+    }
+    const UL = o.sheetL - 2 * o.trim;
+    const UW = o.sheetW - 2 * o.trim;
+    let best = null;
+    for (const c of cands) {
+      // Reststück der letzten Platte (größtes Rechteck hinter oder über den Teilen)
+      const last = c.sheets[c.sheets.length - 1];
+      let rest = 0;
+      if (last) {
+        const mx = Math.max(...last.parts.map((p) => p.x + p.l)) - o.trim;
+        const my = Math.max(...last.parts.map((p) => p.y + p.w)) - o.trim;
+        rest = Math.max((UL - mx) * UW, (UW - my) * UL);
+      }
+      const cuts = c.sheets.reduce((s2, sh) => s2 + cutSequence(sh, Object.assign({}, o, { dir: c.dir })).cuts.length, 0);
+      const sc = o.goal === 'cuts' ? [c.unplaced.length, c.sheets.length, cuts, -rest] : [c.unplaced.length, c.sheets.length, -rest, cuts];
+      if (!best || less(sc, best.sc)) best = { sc: sc, c: c, cuts: cuts };
+    }
+    const r = best.c;
+    const usedAll = r.sheets.reduce((s2, sh) => s2 + sh.used, 0);
+    const areaAll = r.sheets.length * o.sheetL * o.sheetW;
+    return { sheets: r.sheets, unplaced: r.unplaced, waste: areaAll ? 1 - usedAll / areaAll : 0, dir: r.dir, cuts: best.cuts };
   }
 
   // Lage prüfen (Verschieben von Hand): innerhalb der besäumten Platte und mit Schnittfuge zu allen anderen Teilen
@@ -140,8 +276,17 @@
       }
       if (parts.length > 1) ok = false; // nicht durchgehend trennbar
     }
-    run({ x0: o.trim, y0: o.trim, x1: sheet.L - o.trim, y1: sheet.W - o.trim }, 'h', 0);
-    return { cuts: cuts, ok: ok };
+    const go = (d) => {
+      cuts.length = 0;
+      ok = true;
+      run({ x0: o.trim, y0: o.trim, x1: sheet.L - o.trim, y1: sheet.W - o.trim }, d, 0);
+      return { cuts: cuts.slice(), ok: ok, dir: d === 'h' ? 'long' : 'cross' };
+    };
+    // Vorzugsrichtung: 'long' = erst Längsschnitte, 'cross' = erst Querschnitte, sonst die mit weniger Schnitten
+    if (o.dir === 'long' || o.dir === 'cross') return go(o.dir === 'long' ? 'h' : 'v');
+    const h = go('h');
+    const v = go('v');
+    return (v.ok && !h.ok) || (v.ok === h.ok && v.cuts.length < h.cuts.length) ? v : h;
   }
 
   return { plan: plan, fits: fits, cutSequence: cutSequence };

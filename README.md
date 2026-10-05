@@ -201,8 +201,12 @@ Dritte Seite oben (**Listen**):
 - **Zuschnittplan:** Teile auf Rohplatten (Format, Schnittfuge, Besäumrand einstellbar) je Material und Dicke, mit
   durchgehenden Schnitten wie an der Plattensäge; mit Maserung bleibt die lange Seite längs der Plattenlänge, Dekore werden
   bei Bedarf gedreht. Rohmaß oder Fertigmaß wählbar. Zeichnung je Platte mit Nummer und Maß, Ausnutzung.
-  **Schnittfolge** (abschaltbar): nummerierte, durchgehende Schnitte wie an der Plattensäge – zuerst längs einen Streifen ab,
-  diesen quer fertig schneiden, dann weiter am Rest; Abfall wird mit abgetrennt. Ist eine Anordnung von Hand nicht durchgehend
+  **Erster Schnitt:** *längs bevorzugt* = erst Streifen über die ganze Plattenlänge, darin quer ablängen; *quer bevorzugt* =
+  erst Streifen über die ganze Plattenbreite, darin längs; *automatisch* = was am besten passt. **Ziel:** *minimaler
+  Verschnitt* (wenig Platten, möglichst großes Reststück) oder *optimale Schnitte* (wenig Schnitte, gleich breite Teile im
+  selben Streifen, einfach zu sägen). Es werden mehrere Anordnungen gerechnet und die beste nach dem Ziel genommen.
+  **Schnittfolge** (abschaltbar): nummerierte, durchgehende Schnitte wie an der Plattensäge – zuerst in der gewählten Richtung einen Streifen ab,
+  diesen quer dazu fertig schneiden, dann weiter am Rest; Abfall wird mit abgetrennt. Ist eine Anordnung von Hand nicht durchgehend
   trennbar, kommt ein Hinweis. **Teileliste je Platte** (☐ zum Abhaken, Nr., Bezeichnung, Maß, Stück) neben der Zeichnung,
   auch im Druck und im PDF.
   Die Teile sind leicht **schraffiert** (nicht hinter der Schrift): bei Holz mit Maserung in Faserrichtung (längs der langen

@@ -228,6 +228,52 @@ table.ops td.k .jump:hover { color: var(--accent); }
 .v3bar button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.18); }
 .v3msg { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 0.95rem; z-index: 1; pointer-events: none; padding: 20px; text-align: center; }
 .view canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+/* Seiten: Programme (STEP → PGMX) / Möbel 3D */
+.pagetabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 2px 0 4px; }
+.pagetabs button { border: 0; background: none; color: var(--muted); font: inherit; font-weight: 600; padding: 8px 14px 9px; cursor: pointer;
+  border-bottom: 3px solid transparent; margin-bottom: -1px; display: inline-flex; align-items: baseline; gap: 8px; }
+.pagetabs button small { font-weight: 400; font-size: 0.78rem; }
+.pagetabs button:hover { color: var(--ink); }
+.pagetabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+body[data-page="model"] .profilebar, body[data-page="model"] .bench, body[data-page="model"] details.settings { display: none; }
+.modelpage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); gap: 16px; align-items: start; }
+.modelpage[hidden] { display: none; }
+@media (max-width: 1000px) { .modelpage { grid-template-columns: minmax(0, 1fr); } }
+.mview { display: grid; gap: 8px; }
+.mbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.v3bar.static { position: static; }
+.mopac, .mchk { display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; color: var(--muted); }
+.mopac input { width: 120px; accent-color: var(--accent); }
+.mopac span { font-family: var(--font-mono); font-size: 0.78rem; min-width: 3em; }
+#mmeasure[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.mhost { position: relative; height: max(420px, calc(100vh - 260px)); border-radius: var(--r); overflow: hidden; background: var(--sunken); }
+.mhost canvas { display: block; }
+.mlabelwrap { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; }
+.mlab { position: absolute; left: 0; top: 0; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 99px; display: grid; place-items: center;
+  font: 600 0.75rem/1 var(--font-mono); background: var(--surface); color: var(--ink); border: 1.5px solid var(--ink); box-shadow: 0 1px 4px rgba(0,0,0,0.25); white-space: nowrap; }
+.mlab.sel { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.mlab.meas { background: #e0442c; color: #fff; border-color: #e0442c; }
+.mhud { font-size: 0.85rem; color: var(--muted); min-height: 1.5em; }
+.mhud b { color: var(--ink); font-family: var(--font-mono); }
+.mlist { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow: auto; }
+.mlisthead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.mlisthead h2 { margin: 0; font-size: 1rem; }
+.mtable { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.mtable td { padding: 5px 6px; border-top: 1px solid var(--line); vertical-align: middle; }
+.mtable tr { cursor: pointer; }
+.mtable tr:hover td { background: var(--hl); }
+.mtable tr.sel td { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+.mtable tr.off td { opacity: 0.45; }
+.mtable .no { font: 600 0.8rem var(--font-mono); width: 2.4em; text-align: center; }
+.mtable .no span { display: inline-grid; place-items: center; min-width: 22px; height: 22px; border-radius: 99px; border: 1.5px solid var(--ink); }
+.mtable tr.sel .no span { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.mtable .nm { font-weight: 600; overflow-wrap: anywhere; }
+.mtable .dm { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); }
+.mtable .act { white-space: nowrap; text-align: right; }
+.mtable .act button { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 2px 6px; cursor: pointer; font-size: 0.8rem; color: var(--ink); }
+.mtable .act button:hover { border-color: var(--muted); }
+.part .pnum { display: inline-grid; place-items: center; min-width: 20px; height: 20px; margin-right: 6px; border-radius: 99px; border: 1.5px solid currentColor;
+  font: 600 0.72rem/1 var(--font-mono); vertical-align: 1px; }
 .view { touch-action: pan-y; }
 .view.zoomed { cursor: grab; touch-action: none; }
 .view.panning { cursor: grabbing; }
@@ -475,6 +521,29 @@ table.fmt.one .onet { display: inline; }
     </div>
   </header>
 
+  <nav class="pagetabs" role="tablist" aria-label="Ansicht">
+    <button type="button" role="tab" data-page="pgmx" aria-selected="true">Programme <small>STEP → PGMX</small></button>
+    <button type="button" role="tab" data-page="model" aria-selected="false">Möbel 3D <small>alle Bauteile zusammengebaut</small></button>
+  </nav>
+
+  <section class="modelpage" id="modelpage" hidden>
+    <div class="card mview">
+      <div class="mbar">
+        <span class="v3bar static" role="group" aria-label="Ansicht"><button type="button" data-mview="iso">Iso</button><button type="button" data-mview="top">Oben</button><button type="button" data-mview="front">Vorne</button><button type="button" data-mview="right">Rechts</button><button type="button" data-mview="fit" title="Alles einpassen (bzw. gewähltes Bauteil)">Einpassen</button></span>
+        <label class="mopac" title="Transparenz der Bauteile (das gewählte bleibt deckend)">Transparenz <input type="range" id="mopac" min="0" max="85" step="5" value="0"> <span id="mopacv">0 %</span></label>
+        <label class="mchk"><input type="checkbox" id="mlabels" checked> Nummern</label>
+        <button type="button" class="btn small" id="mmeasure" aria-pressed="false" title="Zwei Punkte anklicken – rastet auf Ecken ein; Esc beendet">📏 Messen</button>
+      </div>
+      <div class="mhost" id="mhost"><div class="mlabelwrap" id="mlabelwrap"></div><div class="v3msg" id="mmsg">3D-Ansicht wird geladen …</div></div>
+      <div class="mhud" id="mhud">Linke Maustaste: drehen · rechte Maustaste/Shift: verschieben · Mausrad: zoomen · Klick: Bauteil wählen</div>
+    </div>
+    <aside class="card mlist">
+      <div class="mlisthead"><h2>Bauteile</h2><span class="mlact"><button type="button" class="btn ghost small" id="mall">Alle zeigen</button></span></div>
+      <table class="mtable" id="mtable"></table>
+      <p class="note">Nummern wie in der Programmliste. Klick auf eine Zeile wählt das Bauteil, Doppelklick zoomt hin.</p>
+    </aside>
+  </section>
+
   <input id="file" type="file" accept=".step,.stp,.dxf,.STEP,.STP,.DXF" multiple hidden>
   <div class="dropover" id="dropover" hidden>STEP- oder DXF-Dateien hier ablegen</div>
 
@@ -486,7 +555,7 @@ table.fmt.one .onet { display: inline; }
   <details class="card settings" id="settings">
     <summary><span class="sumtitle">Werkzeuge &amp; Regeln<small>Bohrer, Fräser, Zugaben, Sauger, Clamex, Etiketten …</small></span><span class="savebar" id="savebar"><span class="state" id="savestate" aria-live="polite">Automatisch gespeichert</span>
       <button class="btn primary" id="savesettings" type="button">Erneut versuchen</button></span></summary>
-    <p class="note">Voreinstellungen aus den Beispielprogrammen und der Werkzeugliste def.tlgx. Änderungen gelten sofort für alle Teile; dauerhaft (auch nach dem Schließen) erst mit <b>Einstellungen speichern</b> oben.</p>
+    <p class="note">Voreinstellungen aus den Beispielprogrammen und der Werkzeugliste def.tlgx. Änderungen gelten sofort für alle Teile und werden automatisch gespeichert.</p>
     <div class="grid-set" id="setgrid"></div>
     <div style="margin-top:12px"><button class="btn" id="reset" type="button">Auf Standard zurücksetzen</button></div>
   </details>
@@ -532,6 +601,7 @@ table.fmt.one .onet { display: inline; }
 <script src="js/tools-default.js"></script>
 <script src="js/sample.js"></script>
 <script src="js/surface.js"></script>
+<script src="js/model3d.js"></script>
 <script src="js/occtmesh.js"></script>
 <script src="js/view3d.js"></script>
 <script>
@@ -761,6 +831,7 @@ table.fmt.one .onet { display: inline; }
     storeJson(THEME_KEY, b.dataset.themeSet);
     applyTheme(b.dataset.themeSet);
     if (v3.viewer) v3.viewer.setTheme(isDarkTheme());
+    if (typeof mdl !== 'undefined' && mdl.viewer) mdl.viewer.setTheme(isDarkTheme());
     if (typeof drawAnim === 'function') drawAnim(); // Leinwand mit den neuen Farben neu zeichnen
   }));
 
@@ -1373,7 +1444,7 @@ table.fmt.one .onet { display: inline; }
       b.setAttribute('aria-current', i === state.sel ? 'true' : 'false');
       const r = p.res || p.result; // Übersicht: Seite 1 (bei zweiseitig mit Hinweis auf Seite 2)
       const name = p.solid ? p.solid.name : p.label;
-      let html = (r && r.panel ? thumbSvg(r) : '') + '<span class="n">' + esc(name) + '</span>';
+      let html = (r && r.panel ? thumbSvg(r) : '') + '<span class="n"><span class="pnum" title="Bauteil-Nummer (wie in Möbel 3D)">' + (i + 1) + '</span>' + esc(name) + '</span>';
       if (r && r.panel) {
         const c = counts(r);
         html += '<span class="d">' + fmt(r.panel.L) + ' × ' + fmt(r.panel.W) + ' × ' + fmt(r.panel.T) + '</span>';
@@ -2131,7 +2202,158 @@ table.fmt.one .onet { display: inline; }
     } catch (e) { /* ohne Speicher: nur für diese Sitzung */ }
   }
 
-  function render() { renderProfileBar(); renderParts(); renderDetail(); saveSession(); }
+  function render() { renderProfileBar(); renderParts(); renderDetail(); if (state.page === 'model') renderModel(); saveSession(); }
+
+  // ------------------------------------------------ Möbel 3D: alle STEP-Bauteile zusammengebaut
+  const PAGE_KEY = 'step2xcs.page.v1';
+  state.page = loadJson(PAGE_KEY, 'pgmx') === 'model' ? 'model' : 'pgmx';
+  const mdl = { viewer: null, key: null, hidden: new Set(), sel: null, loading: false };
+  function setPage(pg) {
+    state.page = pg;
+    storeJson(PAGE_KEY, pg);
+    document.body.dataset.page = pg;
+    $('modelpage').hidden = pg !== 'model';
+    document.querySelectorAll('[data-page]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.page === pg)));
+    if (pg === 'model') renderModel();
+  }
+  document.querySelectorAll('.pagetabs [data-page]').forEach((b) => b.addEventListener('click', () => setPage(b.dataset.page)));
+  // Bauteile mit STEP (DXF hat kein 3D-Modell); Nummer = Platz in der Programmliste
+  function modelParts() {
+    return state.parts.map((p, i) => ({ p: p, num: i + 1 })).filter((x) => x.p.solid && x.p.stepText);
+  }
+  // Hüllquader eines Bauteils in Modellkoordinaten (Eckpunkte der Kanten)
+  function solidBox(solid) {
+    const lo = [Infinity, Infinity, Infinity];
+    const hi = [-Infinity, -Infinity, -Infinity];
+    for (const f of solid.faces) for (const b of f.bounds) for (const e of b.edges) for (const q of [e.start, e.end]) {
+      for (let k = 0; k < 3; k++) { if (q[k] < lo[k]) lo[k] = q[k]; if (q[k] > hi[k]) hi[k] = q[k]; }
+    }
+    return { lo: lo, hi: hi };
+  }
+  function renderModelList() {
+    const t = $('mtable');
+    const list = modelParts();
+    if (!list.length) { t.innerHTML = '<tr><td class="note">Keine STEP-Bauteile geladen.</td></tr>'; return; }
+    t.innerHTML = list.map(({ p, num }) => {
+      const r = p.res || p.result;
+      const dm = r && r.panel ? fmt(r.panel.L) + ' × ' + fmt(r.panel.W) + ' × ' + fmt(r.panel.T) : '';
+      const off = mdl.hidden.has(num);
+      return '<tr data-num="' + num + '" class="' + (mdl.sel === num ? 'sel' : '') + (off ? ' off' : '') + '"><td class="no"><span>' + num + '</span></td>' +
+        '<td><div class="nm">' + esc(p.solid.name) + '</div><div class="dm">' + dm + '</div></td>' +
+        '<td class="act"><button type="button" data-mvis="' + num + '" title="' + (off ? 'Einblenden' : 'Ausblenden') + '" aria-label="' + (off ? 'Einblenden' : 'Ausblenden') + '">' +
+        (off ? '◌' : '●') + '</button> <button type="button" data-monly="' + num + '" title="Nur dieses Bauteil zeigen">nur</button></td></tr>';
+    }).join('');
+  }
+  async function renderModel() {
+    renderModelList();
+    const list = modelParts();
+    const key = list.map(({ p, num }) => num + ':' + p.solid.name + ':' + p.stepText.length).join('|');
+    if (mdl.viewer && mdl.key === key) return;
+    if (mdl.loading) return;
+    $('mmsg').hidden = false;
+    $('mmsg').textContent = list.length ? '3D-Ansicht wird geladen …' : 'Keine STEP-Bauteile – unter „Programme“ STEP-Dateien laden.';
+    if (!list.length) { if (mdl.viewer) mdl.viewer.setParts([]); mdl.key = key; return; }
+    mdl.loading = true;
+    try {
+      const occt = await View3D.load();
+      if (!mdl.viewer) {
+        mdl.viewer = new Model3D.Viewer($('mhost'), $('mlabelwrap'));
+        mdl.viewer.onPick = (num) => { mdl.sel = num; renderModelList(); updateModelHud(); const tr = document.querySelector('#mtable tr[data-num="' + num + '"]'); if (tr) tr.scrollIntoView({ block: 'nearest' }); };
+        mdl.viewer.onMeasure = (m) => { mdl.meas = m; updateModelHud(); };
+      }
+      mdl.viewer.setTheme(isDarkTheme());
+      // je STEP-Datei die Netze von OpenCascade, Zuordnung über den Hüllquader
+      const byText = new Map();
+      for (const x of list) { if (!byText.has(x.p.stepText)) byText.set(x.p.stepText, []); byText.get(x.p.stepText).push(x); }
+      const parts = [];
+      for (const [text, xs] of byText) {
+        const meshes = View3D.stepMeshes(occt, text);
+        const got = Model3D.assign(meshes, xs.map((x) => solidBox(x.p.solid)));
+        xs.forEach((x, k) => parts.push({ num: x.num, name: x.p.solid.name, mesh: got[k] }));
+      }
+      parts.sort((a, b) => a.num - b.num);
+      mdl.viewer.setParts(parts);
+      for (const n of mdl.hidden) mdl.viewer.setVisible(n, false);
+      mdl.viewer.setOpacity(1 - (+$('mopac').value) / 100);
+      mdl.viewer.setLabels($('mlabels').checked);
+      mdl.key = key;
+      const missing = parts.filter((x) => !x.mesh).length;
+      $('mmsg').hidden = !missing;
+      $('mmsg').textContent = missing ? missing + ' Bauteil(e) ohne 3D-Netz' : '';
+    } catch (e) {
+      $('mmsg').hidden = false;
+      $('mmsg').textContent = '3D-Ansicht nicht verfügbar: ' + (e.message || e);
+    } finally {
+      mdl.loading = false;
+    }
+  }
+  function updateModelHud() {
+    const h = $('mhud');
+    const m = mdl.meas;
+    if (mdl.viewer && mdl.viewer.measuring) {
+      h.innerHTML = !m ? 'Messen: ersten Punkt anklicken (rastet auf Ecken ein) · Esc beendet'
+        : m.first ? 'Messen: zweiten Punkt anklicken'
+          : 'Abstand <b>' + fmt(Math.round(m.dist * 10) / 10) + ' mm</b> · ΔX <b>' + fmt(Math.round(m.dx * 10) / 10) + '</b> · ΔY <b>' +
+            fmt(Math.round(m.dy * 10) / 10) + '</b> · ΔZ <b>' + fmt(Math.round(m.dz * 10) / 10) + '</b> · nächster Klick: neue Messung';
+      return;
+    }
+    const x = mdl.sel ? modelParts().find((q) => q.num === mdl.sel) : null;
+    const r = x && (x.p.res || x.p.result);
+    h.innerHTML = x ? 'Bauteil <b>' + x.num + '</b> · ' + esc(x.p.solid.name) + (r && r.panel ? ' · <b>' + fmt(r.panel.L) + ' × ' + fmt(r.panel.W) + ' × ' + fmt(r.panel.T) + '</b> mm' : '') +
+      ' · <button type="button" class="btn ghost small" id="mtoprog">Im Programm öffnen</button>'
+      : 'Linke Maustaste: drehen · rechte Maustaste/Shift: verschieben · Mausrad: zoomen · Klick: Bauteil wählen';
+    if ($('mtoprog')) $('mtoprog').addEventListener('click', () => { state.sel = x.num - 1; setPage('pgmx'); render(); });
+  }
+  $('mtable').addEventListener('click', (e) => {
+    const vis = e.target.closest('[data-mvis]');
+    const only = e.target.closest('[data-monly]');
+    const tr = e.target.closest('tr[data-num]');
+    if (vis) {
+      const n = +vis.dataset.mvis;
+      if (mdl.hidden.has(n)) mdl.hidden.delete(n); else mdl.hidden.add(n);
+      if (mdl.viewer) mdl.viewer.setVisible(n, !mdl.hidden.has(n));
+      renderModelList();
+      return;
+    }
+    if (only) {
+      const n = +only.dataset.monly;
+      mdl.hidden = new Set(modelParts().map((q) => q.num).filter((q) => q !== n));
+      if (mdl.viewer) { for (const q of modelParts()) mdl.viewer.setVisible(q.num, q.num === n); mdl.viewer.select(n); mdl.viewer.view('iso', n); }
+      renderModelList();
+      return;
+    }
+    if (tr && mdl.viewer) mdl.viewer.select(+tr.dataset.num);
+  });
+  $('mtable').addEventListener('dblclick', (e) => {
+    const tr = e.target.closest('tr[data-num]');
+    if (tr && mdl.viewer) mdl.viewer.view('iso', +tr.dataset.num);
+  });
+  $('mall').addEventListener('click', () => {
+    mdl.hidden.clear();
+    if (mdl.viewer) for (const q of modelParts()) mdl.viewer.setVisible(q.num, true);
+    renderModelList();
+  });
+  document.querySelectorAll('[data-mview]').forEach((b) => b.addEventListener('click', () => {
+    if (!mdl.viewer) return;
+    const v = b.dataset.mview;
+    mdl.viewer.view(v === 'fit' ? 'iso' : v, v === 'fit' ? mdl.sel : undefined);
+  }));
+  $('mopac').addEventListener('input', (e) => {
+    $('mopacv').textContent = e.target.value + ' %';
+    if (mdl.viewer) mdl.viewer.setOpacity(1 - (+e.target.value) / 100);
+  });
+  $('mlabels').addEventListener('change', (e) => { if (mdl.viewer) mdl.viewer.setLabels(e.target.checked); });
+  $('mmeasure').addEventListener('click', () => {
+    if (!mdl.viewer) return;
+    const on = !mdl.viewer.measuring;
+    mdl.viewer.setMeasuring(on);
+    $('mmeasure').setAttribute('aria-pressed', String(on));
+    mdl.meas = null;
+    updateModelHud();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && state.page === 'model' && mdl.viewer && mdl.viewer.measuring) { $('mmeasure').click(); }
+  });
 
   // ------------------------------------------------ Werkstück-Profile
   // Symbole (Strich in Textfarbe): mehrere Blätter = für alle Teile, Stift = bearbeiten
@@ -3224,6 +3446,7 @@ table.fmt.one .onet { display: inline; }
     const had = await restoreSession();
     if (!had) for (const s of (window.SAMPLE_STEPS || [])) addStep(s.text, 'Beispiel: ' + s.name);
     sessionReady = true;
+    setPage(state.page);
     render();
   })();
 })();

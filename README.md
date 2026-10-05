@@ -155,6 +155,17 @@ Der Name kommt aus der STEP: der Teilename aus dem CAD, bei nichtssagenden Namen
 werden zu `_`, andere Sonderzeichen ebenfalls. Derselbe Name gilt für Anzeige, `.xcs`, ZIP und – über `konvertieren.bat` –
 für die `.pgmx`. Beispiel: `Tür Öffnung groß` → `Tuer_Oeffnung_gross.xcs` → `Tuer_Oeffnung_gross.pgmx`.
 
+
+### Möbel 3D (Gesamtansicht)
+
+Oben umschalten zwischen **Programme** (STEP → PGMX, wie bisher) und **Möbel 3D**: alle geladenen STEP-Bauteile
+zusammengebaut, so wie sie im Modell stehen (OpenCascade, three.js – offline, lädt beim ersten Öffnen).
+- Drehen (linke Maustaste), verschieben (rechte Maustaste/Shift), zoomen (Mausrad); Ansichten Iso, Oben, Vorne, Rechts, Einpassen.
+- **Bauteil-Nummern** am Bauteil und in der Liste rechts (Name, Maße) – dieselben Nummern wie in der Programmliste.
+  Klick auf Bauteil oder Zeile wählt es (blau, unten Name/Maße, *Im Programm öffnen*), Doppelklick auf die Zeile zoomt hin.
+- Je Bauteil **ein-/ausblenden** (●/◌), **nur** dieses zeigen, *Alle zeigen*; **Transparenz** für alle (das gewählte bleibt deckend).
+- **Messen:** zwei Punkte anklicken (rastet auf Ecken ein) – Abstand und ΔX/ΔY/ΔZ; Esc beendet.
+
 ## Was erkannt wird
 
 | Geometrie im STEP | XCS-Ausgabe |

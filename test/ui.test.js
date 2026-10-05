@@ -168,6 +168,53 @@ test('Web-Tool: Draufsicht zoomen, Haltestege am Durchbruch umschalten', { skip:
   }
 });
 
+test('Web-Tool: Möbel 3D – Baugruppe mit Nummern, Ein-/Ausblenden, Wählen, Messen', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1440, height: 950 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    await p.click('#clear');
+    const [chooser] = await Promise.all([p.waitForEvent('filechooser'), p.click('#pick')]);
+    await chooser.setFiles(fixture('clamex_korpus.step'));
+    await p.waitForFunction(() => document.querySelectorAll('.part').length === 6);
+    // Nummer auch in der Programmliste
+    assert.strictEqual(await p.textContent('.part .pnum'), '1');
+    await p.click('[data-page="model"]');
+    assert.ok(await p.$eval('.bench', (b) => getComputedStyle(b).display === 'none'));
+    await p.waitForFunction(() => document.querySelectorAll('#mlabelwrap .mlab').length === 6, null, { timeout: 60000 });
+    assert.strictEqual(await p.$$eval('#mtable tr[data-num]', (x) => x.length), 6);
+    // Ausblenden und nur ein Bauteil
+    await p.click('#mtable [data-mvis="5"]');
+    assert.ok(await p.$eval('#mtable tr[data-num="5"]', (t) => t.classList.contains('off')));
+    await p.click('#mall');
+    assert.ok(!(await p.$eval('#mtable tr[data-num="5"]', (t) => t.classList.contains('off'))));
+    // Zeile wählen → Hinweis unten, Nummer hervorgehoben
+    await p.click('#mtable tr[data-num="3"] .nm');
+    assert.match(await p.textContent('#mhud'), /Bauteil 3 · Aufkantung_3 · 462 × 500 × 19/);
+    // Messen in der Vorderansicht: Unterboden oben bis Aufkantung unten = 462 (lichte Höhe)
+    await p.click('[data-mview="front"]');
+    await p.waitForTimeout(300);
+    await p.click('#mmeasure');
+    const pos = await p.$$eval('#mlabelwrap .mlab', (els) => els.map((e) => { const r = e.getBoundingClientRect(); return [e.textContent, r.x + r.width / 2, r.y + r.height / 2]; }));
+    const a = pos.find((q) => q[0] === '4');
+    const b = pos.find((q) => q[0] === '3');
+    await p.mouse.click(a[1] + 30, a[2] + 3);
+    await p.mouse.click(b[1] + 30, b[2] + 3);
+    assert.match(await p.textContent('#mhud'), /ΔZ 462 /);
+    await p.keyboard.press('Escape');
+    assert.strictEqual(await p.getAttribute('#mmeasure', 'aria-pressed'), 'false');
+    // zurück zu den Programmen
+    await p.click('[data-page="pgmx"]');
+    assert.ok(await p.$eval('#modelpage', (m) => m.hidden));
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});
+
 test('Web-Tool: Schalter Hell/Dunkel', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
   const browser = await chromium.launch();
   try {
@@ -201,7 +248,7 @@ test('Web-Tool: Teile links mit Vorschau, einzeln löschen', { skip: !chromium &
     p.on('pageerror', (e) => errors.push(e.message));
     await p.goto(page);
     await p.waitForSelector('.part');
-    const names = () => p.$$eval('.part .n', (x) => x.map((n) => n.textContent));
+    const names = () => p.$$eval('.part .n', (x) => x.map((n) => n.textContent.replace(/^\d+/, '')));
     const before = await names();
     assert.ok(before.length >= 2);
     assert.strictEqual(await p.$$eval('.part svg.thumb', (x) => x.length), before.length);
@@ -216,7 +263,7 @@ test('Web-Tool: Teile links mit Vorschau, einzeln löschen', { skip: !chromium &
     await p.locator('.part').nth(0).locator('.del').click();
     const after = await names();
     assert.deepStrictEqual(after, before.slice(1));
-    assert.strictEqual(await p.$eval('.part[aria-current="true"] .n', (x) => x.textContent), second);
+    assert.strictEqual(await p.$eval('.part[aria-current="true"] .n', (x) => x.textContent.replace(/^\d+/, '')), second);
     assert.ok((await p.$eval('#detail .title', (x) => x.textContent)).includes(second));
     assert.deepStrictEqual(errors, []);
   } finally {

@@ -23,11 +23,13 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   → `nameBoard` in `index.html` (Einstellung `boardFromName`), Reihenfolge `part.board` < Name < Einstellung.
   Schnitt `setSection` (clippingPlanes in `applyLook`), Bild `snapshot()` (Leinwand + Schilder/Maße nachgezeichnet).
 - Listen (`state.page` 'lists'): Stückliste `bomRows` (gleiche Teile zusammengefasst, Anzahl `part.qty`), CSV, Druck A4 `printA4`;
-  Kantenband je Teil `part.edges = {l1, l2, b1, b2}` (0/1/2 = keine/dünn/dick, L1 vorne Y=0, B1 links X=0): `edgeWidget`,
-  `edgeMeters`, `edgeDeduct`, Mitte „ringsum“ = `data-side="all"` (`lst.edgeThin/edgeThick/edgeExtra/edgeDeduct`), Etikett `labelSketch(…, edges)`.
-  Möbel 3D: Schalter `#medges` (Einstellung `modelEdges`) → `bandsOf` = {m: panel.tf.m, e, hl} → `boardMaterials(…, bands)`
-  (hervorheben `#medgehl`/`#medgecol` = `modelEdgeHl`/`modelEdgeColor`; eigene Materialfarbe in `userData.tint`, `applyLook` lässt sie)
-  (`boardUV`: Gruppe 2 = Schmalflächen mit Band, Seite nach der Normalen in Plattenkoordinaten), `Viewer.setBoards(boards, bands)`.
+  Kantenband je Teil `part.edges = {l1, l2, b1, b2}` (0/1/2 = keine/Dekor 1/Dekor 2, L1 vorne Y=0, B1 links X=0; alle `lst.edgeMm`
+  dick, Namen `lst.edgeName1` (leer = Platte)/`edgeName2`, Farbe `edgeColor2`, `decoName`): `edgeWidget`,
+  `edgeMeters`, `edgeDeduct`, Mitte „ringsum“ = `data-side="all"` (`lst.edgeExtra/edgeDeduct`), Etikett `labelSketch(…, edges)`.
+  Möbel 3D: Schalter `#medges` (Einstellung `modelEdges`) → `bandsOf` = {m: panel.tf.m, e, c2, hl, hl2} → `boardMaterials(…, bands)`
+  (`boardUV`: Gruppe 2 = Schmalflächen mit Dekor 1, 3 = Dekor 2, Seite nach der Normalen in Plattenkoordinaten; hervorheben
+  `#medgehl`/`#medgecol`/`#medgecol2` = `modelEdgeHl`/`modelEdgeColor`/`modelEdgeColor2`, eigene Materialfarbe in `userData.tint` –
+  `applyLook` lässt sie stehen), `Viewer.setBoards(boards, bands)`.
   Zuschnittplan `web/js/cutplan.js` (`CutPlan.plan`, Guillotine, Schnittfuge/Besäumen/Maserung; `dir` auto/long/cross =
   `packFree` bzw. Streifen `packStrips`, `goal` waste/cuts wählt aus Varianten; `cutSequence` mit `dir`; `fits` beim Verschieben
   von Hand → `lst.manual[Gruppe] = {sig, sheets}`), PDF-Datei über `web/js/pdf.js` (`MiniPdf`, ohne Druckdialog) in `cutPdf`.

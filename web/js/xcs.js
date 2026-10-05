@@ -66,7 +66,8 @@
     boardFromName: true,       // Material aus dem Bauteilnamen („… (U708 ST9)“) als Platte des Teils (Farbe aus der STEP)
     modelEdges: false,         // Möbel 3D: Kantenbelegung zeigen (Kantenband im Dekor, offene Seiten als Rohkante)
     modelEdgeHl: false,        // Möbel 3D: Kantenband zusätzlich in eigener Farbe hervorheben
-    modelEdgeColor: '#22a34a', // Farbe dafür
+    modelEdgeColor: '#22a34a', // Farbe dafür (Dekor 1)
+    modelEdgeColor2: '#e8590c', // Farbe dafür (Dekor 2)
     labelWidth: 40,            // Etikett (Browser-Druck): Breite in mm
     labelHeight: 60,           // Etikett: Höhe in mm
     labelRotate: false,        // Inhalt um 90° drehen (Drucker zieht das Etikett quer ein)

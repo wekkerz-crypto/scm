@@ -199,11 +199,11 @@ test('Web-Tool: Möbel 3D – Baugruppe mit Nummern, Ein-/Ausblenden, Wählen, M
       const g = new T.BoxGeometry(800, 400, 19).toNonIndexed();
       const m = View3D.boardMaterials(T, g, 'weiss', null, { m: [[1, 0, 0], [0, 1, 0], [0, 0, 1]], e: { l1: 2, l2: 0, b1: 1, b2: 0 } });
       // hervorheben: Kantenband in der Signalfarbe
-      const h = View3D.boardMaterials(T, g, 'weiss', null, { m: [[1, 0, 0], [0, 1, 0], [0, 0, 1]], e: { l1: 2, l2: 0, b1: 1, b2: 0 }, hl: '#22a34a' });
+      const h = View3D.boardMaterials(T, g, 'weiss', null, { m: [[1, 0, 0], [0, 1, 0], [0, 0, 1]], e: { l1: 2, l2: 0, b1: 1, b2: 0 }, hl: '#22a34a', hl2: '#e8590c' });
       return { mats: m.length, groups: g.groups.map((x) => [x.count, x.materialIndex]), hl: h[2].color.getHexString() + '/' + h[2].userData.tint.getHexString() };
     });
-    // 4 Dreiecke Ober-/Unterseite, 4 offene Schmalflächen (L2, B2), 4 mit Kantenband (L1, B1)
-    assert.deepStrictEqual(groups, { mats: 3, groups: [[12, 0], [12, 1], [12, 2]], hl: '22a34a/22a34a' });
+    // 4 Dreiecke Ober-/Unterseite, 4 offene Schmalflächen (L2, B2), 2 mit Dekor 1 (B1), 2 mit Dekor 2 (L1)
+    assert.deepStrictEqual(groups, { mats: 4, groups: [[12, 0], [12, 1], [6, 2], [6, 3]], hl: '22a34a/22a34a' });
     assert.ok(!(await p.isDisabled('#medgehl')));
     await p.check('#medgehl');
     assert.strictEqual(await p.evaluate(() => JSON.parse(localStorage.getItem('step2xcs.settings.v1') || '{}').modelEdgeHl), true);
@@ -716,31 +716,32 @@ test('Web-Tool: Listen (Stückliste, Zuschnitt, Zeit) und Projektdatei speichern
     await p.press('[data-bomqty="1"]', 'Tab');
     await p.waitForFunction(() => /\b6\b Teile/.test(document.querySelector('.bomsum').textContent));
     assert.strictEqual(await p.textContent('#ptn-lists'), '6');
-    // ringsum: alle vier Seiten auf einmal (keine → dünn → dick → keine)
+    // ringsum: alle vier Seiten auf einmal (keine → Dekor 1 → Dekor 2 → keine)
     await p.click('[data-bomedge="1"][data-side="all"]');
-    assert.strictEqual(await p.textContent('table.bom tbody tr:nth-child(2) .et'), 'L1 1 · L2 1 · B1 1 · B2 1');
+    assert.strictEqual(await p.textContent('table.bom tbody tr:nth-child(2) .et'), 'L1 D1 · L2 D1 · B1 D1 · B2 D1');
     await p.click('[data-bomedge="1"][data-side="all"]');
     await p.click('[data-bomedge="1"][data-side="all"]');
     assert.strictEqual(await p.textContent('table.bom tbody tr:nth-child(2) .et'), '');
-    // Kantenband: L1 dick (2 × klicken), B2 dünn → Text, Laufmeter, Zuschnitt mit Abzug
+    // Kantenband: L1 Dekor 2 (2 × klicken), B2 Dekor 1 → Text, Laufmeter je Dekor, Zuschnitt mit Abzug (1 mm je Kante)
     await p.click('[data-bomedge="0"][data-side="l1"]');
     await p.click('[data-bomedge="0"][data-side="l1"]');
     await p.click('[data-bomedge="0"][data-side="b2"]');
-    assert.strictEqual(await p.textContent('table.bom tbody tr:first-child .et'), 'L1 2 · B2 1');
-    assert.match(await p.textContent('.bomsum'), /Kante .+ · 2 mm: [\d,]+ m/);
+    assert.strictEqual(await p.textContent('table.bom tbody tr:first-child .et'), 'L1 D2 · B2 D1');
+    assert.match(await p.textContent('.bomsum'), /Kante Dekor 2 · 1 mm: [\d,]+ m/);
+    assert.match(await p.textContent('.bomsum'), /Kante Eiche hell · 1 mm: [\d,]+ m/);
     const before = await p.textContent('table.bom tbody tr:first-child td:nth-child(9)');
     await p.check('#ededuct');
     const after = await p.textContent('table.bom tbody tr:first-child td:nth-child(9)');
     const nums = (t) => t.split('×').map((x) => parseFloat(x.trim().replace(',', '.')));
-    assert.deepStrictEqual(nums(after), [nums(before)[0] - 1, nums(before)[1] - 2]);
+    assert.deepStrictEqual(nums(after), [nums(before)[0] - 1, nums(before)[1] - 1]);
     await p.uncheck('#ededuct');
     // CSV
     const [csv] = await Promise.all([p.waitForEvent('download'), p.click('#lcsv')]);
     const text = fs.readFileSync(await csv.path(), 'utf8');
     assert.match(text, /^﻿"Pos";"Anzahl";"Bezeichnung"/);
     assert.match(text, /\n2;4;"kp1_-_Oberboden"/);
-    assert.match(text, /"Kante L1 mm";"Kante L2 mm";"Kante B1 mm";"Kante B2 mm";"Kantenband m"/);
-    assert.match(text, /\n1;1;[^\n]*;2;;;1;/);
+    assert.match(text, /"Kante L1";"Kante L2";"Kante B1";"Kante B2";"Kantendicke mm";"Kantenband m"/);
+    assert.match(text, /\n1;1;[^\n]*;"Dekor 2";;;"Eiche hell";1;/);
     // Zuschnittplan
     await p.click('[data-ltab="cut"]');
     await p.waitForSelector('svg.sheet');
@@ -758,7 +759,7 @@ test('Web-Tool: Listen (Stückliste, Zuschnitt, Zeit) und Projektdatei speichern
     assert.strictEqual(await p.textContent('#ptn-lists'), '6');
     await p.click('[data-page="lists"]');
     await p.click('[data-ltab="bom"]');
-    assert.strictEqual(await p.textContent('table.bom tbody tr:first-child .et'), 'L1 2 · B2 1');
+    assert.strictEqual(await p.textContent('table.bom tbody tr:first-child .et'), 'L1 D2 · B2 D1');
     assert.deepStrictEqual(errors, []);
   } finally {
     await browser.close();

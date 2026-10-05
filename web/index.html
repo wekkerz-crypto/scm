@@ -253,6 +253,8 @@ body[data-page="lists"] .profilebar, body[data-page="lists"] .bench, body[data-p
 .lbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 12px; }
 .lbar .sp { flex: 1; }
 .lbar label { display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; color: var(--muted); }
+.lbar input[type="text"] { width: 8.5em; font-size: 0.85rem; color: var(--ink); padding: 3px 6px; }
+.lbar input[type="color"], #medgecol2 { width: 26px; height: 20px; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: none; cursor: pointer; vertical-align: middle; }
 .lbar input[type="number"] { width: 5.5em; font-family: var(--font-mono); font-size: 0.85rem; color: var(--ink); padding: 3px 6px; }
 .tblwrap { overflow-x: auto; }
 table.bom { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
@@ -266,15 +268,15 @@ table.bom input[type=number] { width: 4.2em; text-align: right; }
 .edgew { display: inline-grid; grid-template-columns: 18px 84px 18px; grid-template-rows: 18px 40px 18px; gap: 3px; vertical-align: middle; flex: none; }
 .edgew button { padding: 0; border: 2px dashed color-mix(in srgb, var(--muted) 60%, transparent); background: transparent; border-radius: 4px; cursor: pointer; min-width: 0; min-height: 0; }
 .edgew button:hover, .edgew button:focus-visible { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
-.edgew button.e1 { border: 0; background: linear-gradient(var(--muted), var(--muted)) center / 100% 45% no-repeat; }
-.edgew button.b1.e1, .edgew button.b2.e1 { background-size: 45% 100%; }
-.edgew button.e2 { border: 0; background: var(--ink); }
+.edgew button.e1 { border: 0; background: var(--ink); }
+.edgew button.e2 { border: 2px solid var(--accent); background: repeating-linear-gradient(45deg, var(--accent) 0 3px, transparent 3px 6px); }
 .edgew .l2 { grid-column: 2; grid-row: 1; } .edgew .b1 { grid-column: 1; grid-row: 2; } .edgew .b2 { grid-column: 3; grid-row: 2; } .edgew .l1 { grid-column: 2; grid-row: 3; }
 .edgew .pc { grid-column: 2; grid-row: 2; border: 1.5px solid var(--line); border-radius: 4px; font-size: 0.72rem; line-height: 1.15; color: var(--ink); background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: inherit; }
 .edgew .pc small { font-size: 0.62rem; color: var(--muted); font-family: var(--font-mono); }
 .edgew .pc.all { border-color: var(--accent); }
 .edgecell { white-space: nowrap; display: flex; gap: 6px; align-items: center; }
-.edgecell .et { font-size: 0.8rem; color: var(--ink); font-family: var(--font-mono); max-width: 9em; white-space: normal; }
+.edgecell .et { font-size: 0.8rem; color: var(--ink); font-family: var(--font-mono); min-width: 7em; max-width: 12em; white-space: normal; line-height: 1.5; }
+.edgecell .et span { white-space: nowrap; }
 .bomsum { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-top: 12px; font-size: 0.9rem; }
 .bomsum small { color: var(--muted); }
 .cutgrp { margin-bottom: 18px; }
@@ -349,8 +351,8 @@ svg.sheet .ct { fill: var(--cutc, #d2451e); font: 700 46px var(--font-mono); tex
 .v3bar.static { position: static; }
 .mopac, .mchk { display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; color: var(--muted); }
 .mopac input { width: 96px; accent-color: var(--accent); }
-#medgecol { width: 26px; height: 20px; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: none; cursor: pointer; vertical-align: middle; }
-#medgecol:disabled { opacity: 0.4; cursor: default; }
+#medgecol, #medgecol2 { width: 26px; height: 20px; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: none; cursor: pointer; vertical-align: middle; }
+#medgecol:disabled, #medgecol2:disabled { opacity: 0.4; cursor: default; }
 .mopac input#msecpos { width: 100px; }
 .iconbtn { min-width: 30px; padding-inline: 6px; }
 [data-msec][aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
@@ -717,7 +719,9 @@ table.fmt.one .onet { display: inline; }
     <div class="lbar">
       <span class="seg" role="group" aria-label="Liste"><button type="button" data-ltab="bom" aria-pressed="true">Stückliste</button><button type="button" data-ltab="cut" aria-pressed="false">Zuschnittplan</button></span>
       <span id="bomopts"><label><input type="checkbox" id="lgroup"> Gleiche Teile zusammenfassen</label>
-        <label title="Kantenband: Klick auf eine Seite in der Spalte „Kanten“ wechselt keine → dünn → dick">Kante dünn <input type="number" id="ethin" min="0" step="0.1" aria-label="Dicke dünne Kante"> dick <input type="number" id="ethick" min="0" step="0.1" aria-label="Dicke dicke Kante"> mm</label>
+        <label title="Kantendicke (alle Kanten gleich)">Kante <input type="number" id="emm" min="0" step="0.1" aria-label="Kantendicke"> mm</label>
+        <label title="Dekor 1 – leer = wie die Platte (z. B. U708 ST9)">Dekor 1 <input type="text" id="ename1" placeholder="wie Platte" aria-label="Name Dekor 1"></label>
+        <label title="Dekor 2 – zweites Kantendekor, Farbe für Möbel 3D">Dekor 2 <input type="text" id="ename2" placeholder="Dekor 2" aria-label="Name Dekor 2"> <input type="color" id="ecol2" aria-label="Farbe Dekor 2"></label>
         <label title="Zugabe je Kante für die Laufmeter (Überstand zum Kappen)">Zugabe <input type="number" id="eextra" min="0" step="1" aria-label="Zugabe je Kante"> mm</label>
         <label><input type="checkbox" id="ededuct"> Kantendicke vom Zuschnitt abziehen</label></span>
       <span id="cutopts" hidden>
@@ -764,7 +768,7 @@ table.fmt.one .onet { display: inline; }
         <div class="mrow mlook">
           <span class="mopac">Platten <button type="button" class="btn small boardbtn" id="mboard" title="Plattenfarbe für alle Bauteile (je Bauteil: Farbfeld in der Liste)"></button></span>
           <label class="mchk" title="Kantenbelegung anzeigen: Seiten mit Kantenband im Dekor, offene Seiten als Rohkante (Spanplatte) – Kanten in „Listen › Stückliste“ setzen"><input type="checkbox" id="medges" autocomplete="off"> Kanten</label>
-          <label class="mchk" title="Kanten mit Kantenband zusätzlich in einer eigenen Farbe hervorheben"><input type="checkbox" id="medgehl" autocomplete="off"> hervorheben <input type="color" id="medgecol" value="#22a34a" aria-label="Farbe der hervorgehobenen Kanten"></label>
+          <label class="mchk" title="Kanten mit Kantenband zusätzlich in einer eigenen Farbe hervorheben"><input type="checkbox" id="medgehl" autocomplete="off"> hervorheben <input type="color" id="medgecol" value="#22a34a" aria-label="Farbe Dekor 1 hervorgehoben" title="Dekor 1"> <input type="color" id="medgecol2" value="#e8590c" aria-label="Farbe Dekor 2 hervorgehoben" title="Dekor 2"></label>
         </div>
       </div>
       <div class="mhost" id="mhost"><div class="mlabelwrap" id="mlabelwrap"></div><div class="v3msg" id="mmsg">3D-Ansicht wird geladen …</div></div>
@@ -2427,7 +2431,7 @@ table.fmt.one .onet { display: inline; }
       }
       s += '<circle cx="' + X(d.x) + '" cy="' + Y(d.y) + '" r="' + Math.max(0.3, (d.d / 2) * k).toFixed(3) + '" fill="#000"' + (d.through ? '' : ' fill-opacity="0.6"') + '/>';
     }
-    // Kantenband: dicker Strich außen an der Seite (dünn / dick)
+    // Kantenband: Strich außen an der Seite – Dekor 1 durchgezogen, Dekor 2 gestrichelt
     if (edges) {
       const o2 = 0.55;
       const side = { l1: [0, 0, p.L, 0, 0, o2], l2: [0, p.W, p.L, p.W, 0, -o2], b1: [0, 0, 0, p.W, -o2, 0], b2: [p.L, 0, p.L, p.W, o2, 0] };
@@ -2435,7 +2439,7 @@ table.fmt.one .onet { display: inline; }
         if (!edges[k]) continue;
         const q = side[k];
         s += '<path d="M' + (X(q[0]) + q[4]).toFixed(3) + ' ' + (Y(q[1]) + q[5]).toFixed(3) + ' L' + (X(q[2]) + q[4]).toFixed(3) + ' ' + (Y(q[3]) + q[5]).toFixed(3) +
-          '" stroke="#000" stroke-width="' + (edges[k] === 2 ? 0.9 : 0.45) + '" stroke-linecap="butt"/>';
+          '" stroke="#000" stroke-width="0.8" stroke-linecap="butt"' + (edges[k] === 2 ? ' stroke-dasharray="1.2 0.7"' : '') + '/>';
       }
     }
     // Nullpunkt vorne links
@@ -2610,22 +2614,24 @@ table.fmt.one .onet { display: inline; }
     return lst.grain && View3D.boardOf(board).grain > 0 ? 'long' : 'free';
   }
   const LIST_KEY = 'step2xcs.lists.v1';
-  const lst = Object.assign({ tab: 'bom', group: true, raw: true, sheetL: 2800, sheetW: 2070, kerf: 4.4, trim: 10, grain: true, cuts: true, dir: 'auto', goal: 'waste', edgeThin: 1, edgeThick: 2, edgeExtra: 50, edgeDeduct: false }, loadJson(LIST_KEY, {}) || {});
+  const lst = Object.assign({ tab: 'bom', group: true, raw: true, sheetL: 2800, sheetW: 2070, kerf: 4.4, trim: 10, grain: true, cuts: true, dir: 'auto', goal: 'waste', edgeMm: 1, edgeName1: '', edgeName2: 'Dekor 2', edgeColor2: '#5b4a3a', edgeExtra: 50, edgeDeduct: false }, loadJson(LIST_KEY, {}) || {});
   const saveLst = () => storeJson(LIST_KEY, lst);
 
   /*
-   * Kantenband je Teil: part.edges = { l1, l2, b1, b2 } mit 0 = keine, 1 = dünn, 2 = dick (Dicken lst.edgeThin/edgeThick).
+   * Kantenband je Teil: part.edges = { l1, l2, b1, b2 } mit 0 = keine, 1 = Dekor 1, 2 = Dekor 2 (Namen lst.edgeName1/2, Dekor 1 leer =
+   * wie die Platte); alle Kanten gleich dick (lst.edgeMm, Vorgabe 1 mm).
    * L1 = vorne (Y = 0), L2 = hinten (Y = B) – die langen Seiten der Länge L; B1 = links (X = 0), B2 = rechts (X = L).
    */
   const EDGE_SIDES = [['l1', 'L1', 'vorne'], ['l2', 'L2', 'hinten'], ['b1', 'B1', 'links'], ['b2', 'B2', 'rechts']];
   const edgesOf = (p) => { const e = (p && p.edges) || {}; return { l1: e.l1 | 0, l2: e.l2 | 0, b1: e.b1 | 0, b2: e.b2 | 0 }; };
-  const edgeMm = (v) => (v === 2 ? +lst.edgeThick || 0 : v === 1 ? +lst.edgeThin || 0 : 0);
+  const edgeMm = (v) => (v ? +lst.edgeMm || 0 : 0);
+  const decoName = (v, board) => (v === 2 ? String(lst.edgeName2 || '').trim() || 'Dekor 2' : String(lst.edgeName1 || '').trim() || (board ? View3D.boardOf(board).name : 'Dekor 1'));
   const edgeSig = (e) => EDGE_SIDES.map(([k]) => e[k]).join('');
-  // kurz für Listen: „L1 2 · L2 1 · B1 2“ – Dicke in mm hinter der Seite
+  // kurz für Listen: „L1 D1 · L2 D2 · B1 D1“ – Dekor hinter der Seite
   function edgeText(e) {
     const on = EDGE_SIDES.filter(([k]) => e[k]);
     if (!on.length) return '';
-    return on.map(([k, t]) => t + ' ' + fmt(edgeMm(e[k]))).join(' · ');
+    return on.map(([k, t]) => t + ' D' + e[k]).join(' · ');
   }
   // Abzug der Kantendicke vom Zuschnitt (Einstellung): Länge um B1 + B2, Breite um L1 + L2
   const edgeDeduct = (e) => (lst.edgeDeduct ? { L: edgeMm(e.b1) + edgeMm(e.b2), W: edgeMm(e.l1) + edgeMm(e.l2) } : { L: 0, W: 0 });
@@ -2636,25 +2642,26 @@ table.fmt.one .onet { display: inline; }
     const d = edgeDeduct(edgesOf(p));
     return { L: r.panel.L + 2 * o - d.L, W: r.panel.W + (prof ? 0 : 2 * o) - d.W };
   }
-  // Kantenband-Laufmeter einer Position nach Band (Material + Dicke): Seitenlänge + Zugabe je Kante, mal Anzahl
+  // Kantenband-Laufmeter einer Position nach Dekor: Seitenlänge + Zugabe je Kante, mal Anzahl
   function edgeMeters(r) {
     const e = edgesOf(r.parts[0]);
     const out = new Map();
     for (const [k] of EDGE_SIDES) {
       if (!e[k]) continue;
-      const key = View3D.boardOf(r.board).name + ' · ' + fmt(edgeMm(e[k])) + ' mm';
+      const key = decoName(e[k], r.board) + ' · ' + fmt(edgeMm(e[k])) + ' mm';
       const len = (k.charAt(0) === 'l' ? r.L : r.W) + (+lst.edgeExtra || 0);
       out.set(key, (out.get(key) || 0) + (len * r.qty) / 1000);
     }
     return out;
   }
-  // Schaltfläche je Seite (Klick: keine → dünn → dick)
-  function edgeWidget(e, k) {
-    const st = (v) => (v === 2 ? 'dick ' + fmt(edgeMm(2)) + ' mm' : v === 1 ? 'dünn ' + fmt(edgeMm(1)) + ' mm' : 'keine');
+  // Schaltfläche je Seite (Klick: keine → Dekor 1 → Dekor 2)
+  function edgeWidget(e, k, board) {
+    const st = (v) => (v ? 'Dekor ' + v + ' (' + decoName(v, board) + ')' : 'keine');
     return '<span class="edgecell"><span class="edgew">' + EDGE_SIDES.map(([s2, t, w]) => '<button type="button" class="' + s2 + ' e' + e[s2] + '" data-bomedge="' + k + '" data-side="' + s2 +
       '" title="Kante ' + t + ' (' + w + '): ' + st(e[s2]) + ' – Klick wechselt" aria-label="Position ' + (k + 1) + ' Kante ' + t + ' ' + w + ': ' + st(e[s2]) + '"></button>').join('') +
-      '<button type="button" class="pc' + (EDGE_SIDES.every(([s2]) => e[s2]) ? ' all' : '') + '" data-bomedge="' + k + '" data-side="all" title="Alle vier Kanten ringsum – Klick wechselt keine → dünn → dick" aria-label="Position ' +
-      (k + 1) + ' alle Kanten ringsum">ringsum<small>L ↔</small></button></span><span class="et">' + esc(edgeText(e)) + '</span></span>';
+      '<button type="button" class="pc' + (EDGE_SIDES.every(([s2]) => e[s2]) ? ' all' : '') + '" data-bomedge="' + k + '" data-side="all" title="Alle vier Kanten ringsum – Klick wechselt keine → Dekor 1 → Dekor 2" aria-label="Position ' +
+      (k + 1) + ' alle Kanten ringsum">ringsum<small>L ↔</small></button></span><span class="et">' +
+      esc(edgeText(e)).split(' · ').map((t, i, a) => '<span>' + t + (i < a.length - 1 ? ' ·' : '') + '</span>').join(' ') + '</span></span>';
   }
   // Positionen der Stückliste: gleiche Teile (Maße, Plattenfarbe, gleiches Programm) zusammengefasst
   function bomRows() {
@@ -2702,13 +2709,13 @@ table.fmt.one .onet { display: inline; }
     const tot = bomTotals(rows);
     if (!rows.length) { $('bomview').innerHTML = '<p class="note">Keine Teile geladen.</p>'; return; }
     $('bomview').innerHTML = '<div class="tblwrap"><table class="bom"><thead><tr><th>Pos.</th><th class="r">Anzahl</th><th>Bezeichnung</th><th class="r">Länge</th><th class="r">Breite</th>' +
-      '<th class="r">Dicke</th><th>Material / Kanten</th><th title="Kantenband je Seite: L1 vorne, L2 hinten (lange Seiten), B1 links, B2 rechts – Klick: keine → dünn → dick">Kantenband</th><th class="r">Zuschnitt (roh)</th><th class="r">m²</th><th class="r">Zeit je Stück</th><th title="Faserrichtung im Zuschnitt: Auto = nach Material (Maserung längs), längs, quer (gedreht) oder frei">Faser</th><th>Programm</th></tr></thead><tbody>' +
+      '<th class="r">Dicke</th><th>Material / Kanten</th><th title="Kantenband je Seite: L1 vorne, L2 hinten (lange Seiten), B1 links, B2 rechts – Klick: keine → Dekor 1 (schwarz) → Dekor 2 (gestreift); Mitte = ringsum">Kantenband</th><th class="r">Zuschnitt (roh)</th><th class="r">m²</th><th class="r">Zeit je Stück</th><th title="Faserrichtung im Zuschnitt: Auto = nach Material (Maserung längs), längs, quer (gedreht) oder frei">Faser</th><th>Programm</th></tr></thead><tbody>' +
       rows.map((r, k) => '<tr><td class="no">' + (k + 1) + '</td>' +
         '<td class="r"><input type="number" min="0" step="1" value="' + r.qty + '" data-bomqty="' + k + '" aria-label="Anzahl Position ' + (k + 1) + '"></td>' +
         '<td><b>' + r.names.map(esc).join(', ') + '</b><div class="sub">Bauteil ' + r.nums.join(', ') + '</div></td>' +
         '<td class="r">' + n1(r.L) + '</td><td class="r">' + n1(r.W) + '</td><td class="r">' + n1(r.T) + '</td>' +
         '<td>' + boardSwatch(r.board) + ' ' + esc(boardName(r.board)) + '</td>' +
-        '<td>' + edgeWidget(r.edges, k) + '</td>' +
+        '<td>' + edgeWidget(r.edges, k, r.board) + '</td>' +
         '<td class="r">' + n1(r.raw.L) + ' × ' + n1(r.raw.W) + '</td>' +
         '<td class="r">' + fmt(Math.round((r.L * r.W * r.qty) / 1e4) / 100) + '</td>' +
         '<td class="r">' + (r.time ? '<span title="' + esc(timeTitle(r.time)) + '">' + Toolpath.fmtTime(r.time.total) + '</span>' : '–') + '</td>' +
@@ -2724,9 +2731,9 @@ table.fmt.one .onet { display: inline; }
       const r = rows[+b.dataset.bomedge];
       const cur = edgesOf(r.parts[0]);
       const sd = b.dataset.side;
-      // ringsum: alle gleich → nächste Stufe für alle, sonst alle auf die stärkste vorhandene (mindestens dünn)
+      // ringsum: alle gleich → nächste Stufe für alle (keine → Dekor 1 → Dekor 2), sonst alle auf Dekor 1
       const vals = EDGE_SIDES.map(([k2]) => cur[k2]);
-      const v = sd === 'all' ? (vals.every((x) => x === vals[0]) ? (vals[0] + 1) % 3 : Math.max(1, ...vals)) : (cur[sd] + 1) % 3;
+      const v = sd === 'all' ? (vals.every((x) => x === vals[0]) ? (vals[0] + 1) % 3 : 1) : (cur[sd] + 1) % 3;
       for (const p of r.parts) { p.edges = edgesOf(p); for (const [k2] of EDGE_SIDES) if (sd === 'all' || sd === k2) p.edges[k2] = v; }
       applyBoards();
     }));
@@ -2747,12 +2754,12 @@ table.fmt.one .onet { display: inline; }
     const rows = bomRows();
     const c = (v) => '"' + String(v).replace(/"/g, '""') + '"';
     const num = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
-    const lines = [['Pos', 'Anzahl', 'Bezeichnung', 'Bauteil-Nr', 'Länge mm', 'Breite mm', 'Dicke mm', 'Material', 'Kanten', 'Kante L1 mm', 'Kante L2 mm', 'Kante B1 mm', 'Kante B2 mm',
-      'Kantenband m', 'Zuschnitt Länge mm', 'Zuschnitt Breite mm', 'Fläche m²', 'Zeit je Stück min', 'Programm'].map(c).join(';')];
+    const lines = [['Pos', 'Anzahl', 'Bezeichnung', 'Bauteil-Nr', 'Länge mm', 'Breite mm', 'Dicke mm', 'Material', 'Kanten', 'Kante L1', 'Kante L2', 'Kante B1', 'Kante B2',
+      'Kantendicke mm', 'Kantenband m', 'Zuschnitt Länge mm', 'Zuschnitt Breite mm', 'Fläche m²', 'Zeit je Stück min', 'Programm'].map(c).join(';')];
     rows.forEach((r, k) => {
       const b = View3D.boardOf(r.board);
       lines.push([k + 1, r.qty, c(r.names.join(', ')), c(r.nums.join(', ')), num(r.L), num(r.W), num(r.T), c(b.name), c(b.edgeName),
-        ...EDGE_SIDES.map(([k2]) => (r.edges[k2] ? num(edgeMm(r.edges[k2])) : '')), num(Array.from(edgeMeters(r).values()).reduce((a, v) => a + v, 0)), num(r.raw.L), num(r.raw.W),
+        ...EDGE_SIDES.map(([k2]) => (r.edges[k2] ? c(decoName(r.edges[k2], r.board)) : '')), EDGE_SIDES.some(([k2]) => r.edges[k2]) ? num(+lst.edgeMm || 0) : '', num(Array.from(edgeMeters(r).values()).reduce((a, v) => a + v, 0)), num(r.raw.L), num(r.raw.W),
         String(Math.round((r.L * r.W * r.qty) / 1e4) / 100).replace('.', ','), r.time ? String(Math.round(r.time.total / 6) / 10).replace('.', ',') : '', c(r.files.join(', '))].join(';'));
     });
     return '﻿' + lines.join('\r\n') + '\r\n';
@@ -3095,10 +3102,16 @@ table.fmt.one .onet { display: inline; }
   }
   document.querySelectorAll('[data-ltab]').forEach((b) => b.addEventListener('click', () => { lst.tab = b.dataset.ltab; saveLst(); renderLists(); }));
   $('lgroup').addEventListener('change', (e) => { lst.group = e.target.checked; saveLst(); renderLists(); });
-  for (const [id, k] of [['csheetL', 'sheetL'], ['csheetW', 'sheetW'], ['ckerf', 'kerf'], ['ctrim', 'trim'], ['ethin', 'edgeThin'], ['ethick', 'edgeThick'], ['eextra', 'edgeExtra']]) {
+  for (const [id, k] of [['csheetL', 'sheetL'], ['csheetW', 'sheetW'], ['ckerf', 'kerf'], ['ctrim', 'trim'], ['emm', 'edgeMm'], ['eextra', 'edgeExtra']]) {
     $(id).value = lst[k];
     $(id).addEventListener('change', (e) => { const v = parseFloat(String(e.target.value).replace(',', '.')); if (v >= 0) { lst[k] = v; saveLst(); renderLists(); } });
   }
+  for (const [id, k] of [['ename1', 'edgeName1'], ['ename2', 'edgeName2']]) {
+    $(id).value = lst[k] || '';
+    $(id).addEventListener('change', (e) => { lst[k] = e.target.value.trim(); saveLst(); applyBoards(); });
+  }
+  $('ecol2').value = /^#[0-9a-f]{6}$/i.test(lst.edgeColor2 || '') ? lst.edgeColor2 : '#5b4a3a';
+  $('ecol2').addEventListener('input', (e) => { lst.edgeColor2 = e.target.value; saveLst(); applyBoards(); });
   for (const [id, k] of [['cdir', 'dir'], ['cgoal', 'goal']]) {
     $(id).value = lst[k];
     $(id).addEventListener('change', (e) => { lst[k] = e.target.value; saveLst(); renderLists(); });
@@ -3214,8 +3227,11 @@ table.fmt.one .onet { display: inline; }
   const bandsOf = (part) => {
     const r = part && (part.res || part.result);
     if (!state.settings.modelEdges || !r || !r.panel || !r.panel.tf) return null;
-    const hl = state.settings.modelEdgeHl ? (/^#[0-9a-f]{6}$/i.test(state.settings.modelEdgeColor || '') ? state.settings.modelEdgeColor : '#22a34a') : null;
-    return { m: r.panel.tf.m, e: edgesOf(part), hl: hl };
+    const col = (v, d) => (/^#[0-9a-f]{6}$/i.test(v || '') ? v : d);
+    const hlOn = !!state.settings.modelEdgeHl;
+    // Dekor 2: eigene Farbe (Listen › Dekor 2); hervorheben: je Dekor eine Signalfarbe
+    return { m: r.panel.tf.m, e: edgesOf(part), c2: col(lst.edgeColor2, '#5b4a3a'),
+      hl: hlOn ? col(state.settings.modelEdgeColor, '#22a34a') : null, hl2: hlOn ? col(state.settings.modelEdgeColor2, '#e8590c') : null };
   };
   const boardKeyOf = (part) => (part && part.board) || nameBoard(part) || state.settings.boardMaterial || 'eiche';
   /*
@@ -3593,11 +3609,13 @@ table.fmt.one .onet { display: inline; }
   $('medges').checked = !!state.settings.modelEdges;
   $('medgehl').checked = !!state.settings.modelEdgeHl;
   $('medgecol').value = /^#[0-9a-f]{6}$/i.test(state.settings.modelEdgeColor || '') ? state.settings.modelEdgeColor : '#22a34a';
-  const edgeHlUi = () => { $('medgehl').disabled = !$('medges').checked; $('medgecol').disabled = !$('medges').checked || !$('medgehl').checked; };
+  $('medgecol2').value = /^#[0-9a-f]{6}$/i.test(state.settings.modelEdgeColor2 || '') ? state.settings.modelEdgeColor2 : '#e8590c';
+  const edgeHlUi = () => { $('medgehl').disabled = !$('medges').checked; $('medgecol').disabled = $('medgecol2').disabled = !$('medges').checked || !$('medgehl').checked; };
   edgeHlUi();
   $('medges').addEventListener('change', (e) => { state.settings.modelEdges = e.target.checked; edgeHlUi(); saveSettings(); applyBoards(); });
   $('medgehl').addEventListener('change', (e) => { state.settings.modelEdgeHl = e.target.checked; edgeHlUi(); saveSettings(); applyBoards(); });
   $('medgecol').addEventListener('input', (e) => { state.settings.modelEdgeColor = e.target.value; saveSettings(); applyBoards(); });
+  $('medgecol2').addEventListener('input', (e) => { state.settings.modelEdgeColor2 = e.target.value; saveSettings(); applyBoards(); });
   // Messen (vorübergehend) und Bemaßen (Maße bleiben stehen) – höchstens eins von beiden an
   function setMeasureMode(mode) {
     if (!mdl.viewer) return;

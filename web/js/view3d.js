@@ -224,8 +224,9 @@
    * langen Seite; auf Schmalflächen quer dazu die Dicke (Multiplex: 1 Texturhöhe = 19,5 mm ab Unterseite).
    */
   /*
-   * bands (Kantenbelegung, optional): { m: Zeilen von panel.tf (Modell → Platte), e: { l1, l2, b1, b2 }, hl: Farbe oder null } – Schmalflächen der
-   * Seiten mit Kantenband kommen in Gruppe 2 (Seite nach der Normalen in Plattenkoordinaten: −Y L1, +Y L2, −X B1, +X B2).
+   * bands (Kantenbelegung, optional): { m: Zeilen von panel.tf (Modell → Platte), e: { l1, l2, b1, b2 } (0/1/2 = keine/Dekor 1/Dekor 2),
+   * c2: Farbe Dekor 2, hl/hl2: Signalfarben oder null } – Schmalflächen mit Dekor 1 kommen in Gruppe 2, mit Dekor 2 in Gruppe 3
+   * (Seite nach der Normalen in Plattenkoordinaten: −Y L1, +Y L2, −X B1, +X B2).
    */
   function boardUV(T, g, edgeKind, bands) {
     if (!g.getAttribute('normal')) g.computeVertexNormals();
@@ -255,25 +256,28 @@
     const a = [];
     const b = [];
     const c = [];
+    const c2 = [];
     const side = (k) => {
-      if (!bands) return false;
+      if (!bands) return 0;
       let nx = 0, ny = 0, nz = 0;
       for (let j = 0; j < 3; j++) { const i = idx[k + j] * 3; nx += nrm[i]; ny += nrm[i + 1]; nz += nrm[i + 2]; }
       const m = bands.m;
       const px = m[0][0] * nx + m[0][1] * ny + m[0][2] * nz;
       const py = m[1][0] * nx + m[1][1] * ny + m[1][2] * nz;
       const sd = Math.abs(py) >= Math.abs(px) ? (py < 0 ? 'l1' : 'l2') : (px < 0 ? 'b1' : 'b2');
-      return !!bands.e[sd];
+      return bands.e[sd] | 0;
     };
     for (let k = 0; k < idx.length; k += 3) {
       const f = face[idx[k]] + face[idx[k + 1]] + face[idx[k + 2]];
-      (f >= 2 ? a : side(k) ? c : b).push(idx[k], idx[k + 1], idx[k + 2]);
+      const sd = f >= 2 ? -1 : side(k);
+      (sd < 0 ? a : sd === 2 ? c2 : sd === 1 ? c : b).push(idx[k], idx[k + 1], idx[k + 2]);
     }
-    g.setIndex(new T.BufferAttribute(new Uint32Array(a.concat(b, c)), 1));
+    g.setIndex(new T.BufferAttribute(new Uint32Array(a.concat(b, c, c2)), 1));
     g.clearGroups();
     g.addGroup(0, a.length, 0);
     g.addGroup(a.length, b.length, 1);
     if (c.length) g.addGroup(a.length + b.length, c.length, 2);
+    if (c2.length) g.addGroup(a.length + b.length + c.length, c2.length, 3);
   }
 
   const texCache = new Map();
@@ -315,12 +319,19 @@
       boardUV(T, g, raw, bands);
       const surf = woodMaterial(T, base, bd.grain);
       const rawMat = new T.MeshStandardMaterial(Object.assign({ map: cachedTex(T, 'e' + raw + rawColor, () => edgeCanvas(raw, rawColor)), roughness: 0.85 }, matOpts));
-      const bandColor = own ? bd.edgeColor : base;
-      // hervorheben (bands.hl = Farbe): Kantenband in der Signalfarbe, ohne Spiegelung/Tonwert, leicht leuchtend – auch im Schatten gut zu sehen
-      const band = bands.hl ? new T.MeshStandardMaterial(Object.assign({ color: bands.hl, emissive: bands.hl, emissiveIntensity: 0.12, roughness: 1 }, matOpts, { envMapIntensity: 0, toneMapped: false }))
-        : new T.MeshStandardMaterial(Object.assign({ map: cachedTex(T, 'eband' + bandColor, () => edgeCanvas('band', bandColor)), roughness: 0.4 }, matOpts));
-      if (bands.hl) band.userData = { tint: new T.Color(bands.hl), glow: new T.Color(bands.hl) };
-      return [surf, rawMat, band];
+      // Dekor 1: wie die Platte (bzw. eingestellte Kantenfarbe), Dekor 2: eigene Farbe; hervorheben (hl/hl2): Signalfarbe ohne
+      // Spiegelung/Tonwert, leicht leuchtend – auch im Schatten gut zu sehen (Farbe in userData, applyLook lässt sie stehen)
+      const bandMat = (color, hl) => {
+        if (hl) {
+          const m = new T.MeshStandardMaterial(Object.assign({ color: hl, emissive: hl, emissiveIntensity: 0.12, roughness: 1 }, matOpts, { envMapIntensity: 0, toneMapped: false }));
+          m.userData = { tint: new T.Color(hl), glow: new T.Color(hl) };
+          return m;
+        }
+        return new T.MeshStandardMaterial(Object.assign({ map: cachedTex(T, 'eband' + color, () => edgeCanvas('band', color)), roughness: 0.4 }, matOpts));
+      };
+      const band = bandMat(own ? bd.edgeColor : base, bands.hl);
+      const band2 = bandMat(bands.c2 || '#5b4a3a', bands.hl2 || null);
+      return [surf, rawMat, band, band2];
     }
     boardUV(T, g, bd.edge);
     const surf = woodMaterial(T, base, bd.grain);

@@ -4,6 +4,9 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { convert } = require('../web/js/convert.js');
+// Die meisten Tests prüfen Bearbeitungen in fester Lage (lange Seite in X); die Werkstatt-Lage nach dem Korpus-Modell
+// wird in eigenen Tests geprüft (orientRule: 'model')
+require('../web/js/xcs.js').DEFAULTS.orientRule = 'long';
 
 const root = path.join(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
@@ -1305,10 +1308,9 @@ test('Clamex-Korpus aus der Werkstatt (P-14 aus Bauteil-Bibliothek): Programme w
   const shop = ['5_Seitenwand_L', '6_Seitenwand_R', '7_Aufkantung', '8_Unterboden', '9_Zwischenboden'];
   const norm = (t) => t.split(/\r?\n/).filter((l) => /CreateMacro|CreateBladeCut|CreateSegment|Sectioning|FinishedWorkpieceBox/.test(l))
     .map((l) => l.replace(/^Create(Macro|BladeCut|Segment)\("[^"]*", /, '$1(').replace(/"Saw Cut"|"Saegeschnitt [^"]*"/, '"S"').trim()).sort();
-  // Drehlage wie in der Werkstatt (unser Standard legt die Teile um 90° gedreht)
-  const orient = [{ rot: 1, flip: true }, { rot: 1, flip: true }, { rot: 1, flip: false }, { rot: 1, flip: true }, { rot: 1, flip: true }];
+  // Drehlage wie in der Werkstatt: automatisch nach dem Korpus-Modell (orientRule 'model', Standard in der Oberfläche)
   shop.forEach((f, i) => {
-    const r = convertSolid(parts[i], {}, { orientation: orient[i] });
+    const r = convertSolid(parts[i], { orientRule: 'model' });
     assert.deepStrictEqual(norm(r.xcs), norm(read('maestro/beispiele/' + f + '.xcs')), f);
     assert.deepStrictEqual(r.warnings, [], f);
   });
@@ -1319,7 +1321,8 @@ test('Clamex-Korpus aus der Werkstatt (P-14 aus Bauteil-Bibliothek): Programme w
     assert.ok(r.panel.clamex.length >= 2, s.name);
   }
   // SW-Schräg: beide Gehrungen voll gesägt, Höhe je Seite 8,54 / 18,33
-  const sw = convertSolid(parts[5], {}, { orientation: { rot: 2, flip: true } });
+  const sw = convertSolid(parts[5], { orientRule: 'model' });
+  assert.deepStrictEqual(sw.panel.orientation, { rot: 2, flip: true });
   assert.match(sw.xcs, /CreateSegment\("Saegeschnitt_Linie_\d", 0, 19, 500, 19\);/);
   assert.match(sw.xcs, /"SawCut_Lamello", 70, 0, 430, 0, 45,[^;]*, 2, 8\.54, 1\.4, "14", 0, "-1", "E030", 0, null\);/);
   assert.match(sw.xcs, /"SawCut_Lamello", 430, 250\.839, 70, 250\.839, 45,[^;]*, 2, 18\.33, 1\.4, "14", 0, "-1", "E030", 180, null\);/);
@@ -1484,4 +1487,17 @@ test('Haltestege je Durchbruch an/aus (overrides.tabs), Lage für die Ansichten'
   // Vorgabe „alle“, aber je Teil ausgeschaltet
   const off = convertSolid(s, { tabsMode: 'all' }, { overrides: { tabs: { [cut.key]: false } } });
   assert.ok(!off.ops.find((o) => o.key === cut.key).tabs);
+});
+
+test('Drehlage nach dem Korpus-Modell: X = Breite, sonst Höhe; nicht, wenn Y dadurch über die Feldgrenze geht', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const parts = readParts(read('test/fixtures/clamex_korpus.step'), 'k.step');
+  const o = (s, rule) => convertSolid(s, { orientRule: rule }).panel;
+  // Böden/Aufkantung: X = Korpusbreite (462), Seitenwände: X = Höhe
+  assert.deepStrictEqual([Math.round(o(parts[2], 'model').L), Math.round(o(parts[2], 'model').W)], [462, 500]);
+  assert.deepStrictEqual([Math.round(o(parts[2], 'long').L), Math.round(o(parts[2], 'long').W)], [500, 462]);
+  // Testplatte (900 × 400, Modell-X = kurze Seite): Modell-Lage gäbe Y = 900 > 620 → bleibt bei der langen Seite in X
+  const [tp] = readParts(read('test/fixtures/testplatte.step'), 'tp.step');
+  const p = o(tp, 'model');
+  assert.deepStrictEqual([Math.round(p.L), Math.round(p.W)], [900, 400]);
 });

@@ -102,7 +102,8 @@
     // Werkstück-Profil (Werkzeuge/Strategie je Material) über die Einstellungen legen
     if (options.profile !== undefined && options.profile !== null) settings = XcsWriter.applyProfile(settings, options.profile);
     try {
-      const panel = PanelAnalyzer.analyze(solid, options.orientation);
+      const cfgO = Object.assign({}, XcsWriter.DEFAULTS, settings || {});
+      const panel = PanelAnalyzer.analyze(solid, options.orientation, { orientRule: cfgO.orientRule, fieldWidth: cfgO.fieldWidth });
       const ov = options.overrides || {};
       let other = null;
       if (panel.bottom.length) other = PanelAnalyzer.analyze(solid, PanelAnalyzer.turnOverY(solid, panel.orientation));

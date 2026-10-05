@@ -1550,7 +1550,28 @@
    * Analysiert einen Volumenkörper.
    * orientation: { rot: 0..3, flip: bool } – fehlt sie, wird sie automatisch gewählt.
    */
-  function analyze(solid, orientation) {
+  /*
+   * Drehlage wie im Korpus-Modell (Baugruppe in Korpus-Achsen: X = Breite, Y = Tiefe, Z = Höhe), wie in der Werkstatt:
+   * X der Platte = erste Modellachse in der Plattenebene in der Reihenfolge Breite (X), Höhe (Z), Tiefe (Y); Vorzeichen so,
+   * dass Y der Platte in positive Modellrichtung zeigt. Gibt es keine solche Achse (Teil schräg im Raum), null.
+   */
+  function modelRot(prep, flip) {
+    const fr0 = frame(prep, 0, flip);
+    const Z = fr0.tf.m[2]; // Plattennormale (oben) in Modellkoordinaten
+    const axes = [[1, 0, 0], [0, 0, 1], [0, 1, 0]];
+    const A = axes.find((a) => Math.abs(dot(a, Z)) < 1e-3);
+    if (!A) return null;
+    const sum = (v) => v[0] + v[1] + v[2];
+    const yp = cross(Z, A);
+    const X = sum(yp) >= -1e-9 ? A : mul(A, -1);
+    for (let r = 0; r < 4; r++) {
+      const fr = frame(prep, r, flip);
+      if (dot(fr.tf.m[0], X) > 1 - 1e-6) return r;
+    }
+    return null;
+  }
+
+  function analyze(solid, orientation, opts) {
     const prep = prepare(solid);
     let rot;
     let flip;
@@ -1562,6 +1583,12 @@
       const a = extract(prep, frame(prep, rot, false));
       const b = extract(prep, frame(prep, rot, true));
       flip = b.bottom.length < a.bottom.length || (b.bottom.length === a.bottom.length && topScore(b) > topScore(a));
+      if (opts && opts.orientRule === 'model') {
+        // nur, wenn die Breite Y dadurch nicht über die Feldgrenze rutscht (sonst breites Feld AB/AD)
+        const mr = modelRot(prep, flip);
+        const lim = opts.fieldWidth || 620;
+        if (mr !== null && !(frame(prep, mr, flip).W > lim + TOL && frame(prep, rot, flip).W <= lim + TOL)) rot = mr;
+      }
     }
     const fr = frame(prep, rot, flip);
     const res = extract(prep, fr);

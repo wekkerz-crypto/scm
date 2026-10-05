@@ -26,4 +26,4 @@ Gemeinsam: 1–4 Start → Ende über alle Verbinder einer Kante (Laufrichtung =
 links −90; Fläche längs der Nut, z. B. 90), 28 = Anzahl Verbinder (gleichmäßig zwischen Start und Ende), 41 = Höhe
 Oberkante → Nutmitte entlang der Schnittfläche (8,54 bei 19 mm, Gehrung je nach Seite 8,54 / 18,33), 43 = Nuttyp „14“ (P-14).
 Sägeschnitt dazu: Linie auf der Oberkante der Gehrung von Kante zu Kante, `CreateSectioningMillingStrategy(2, 50, 0)`,
-Winkel 45, Korrektur 2, Extra-Tiefe 20. Das Tool erzeugt diese Programme bis auf die Drehlage gleich (Test).
+Winkel 45, Korrektur 2, Extra-Tiefe 20. Das Tool erzeugt diese Programme gleich (Test, Drehlage nach dem Korpus-Modell).

@@ -92,8 +92,10 @@ Drei Vorlagen (*Werkzeuge & Regeln → Clamex*, Platzhalter `{sx} {sy} {ex} {ey}
 - *Winkel um Z* = Laufrichtung: vorne 0, rechts 90, hinten 180, links −90. *Höhe* (Pos. 41) = Oberkante → Nutmitte entlang der
   Schnittfläche (z. B. 8,54 bei 19 mm), *Nuttyp* (Pos. 43) aus der Nuttiefe („14“ = P-14).
 
-Hinweis Drehlage: Das Tool legt die lange Seite in X; die Werkstatt hat die Korpusteile teils 90° gedreht – mit *Drehen 90°*
-angleichen (Programm sonst gleich).
+**Drehlage wie in der Werkstatt** (*Arbeitsfeld & Rohteil → Lage auf der Maschine*, Standard *wie im Korpus-Modell*): X der
+Platte = Korpusbreite (Modell-X), liegt sie nicht in der Platte die Höhe (Modell-Z, Seitenwände), sonst die Tiefe (Modell-Y);
+Y zeigt in positive Modellrichtung. So kommen die Korpusteile genau wie in `5_`–`10_`. Würde die Breite Y dadurch über die
+Feldgrenze (620 mm) gehen, bleibt die lange Seite in X. Für Einzelteile ohne Korpus-Lage: *lange Seite in X*.
 
 **Alternativ direkt** (*Clamex-Nuten: direkt mit dem Scheibenfräser*): Scheibenfräser `E030` (auf Blattmitte vermessen),
 Werkzeugachse = Nutachse:

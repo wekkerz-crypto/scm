@@ -73,6 +73,7 @@
     bladeOverrun: 0,           // Sägeschnitt: Überlauf an beiden Enden (Werkstatt: Linie genau von Kante zu Kante)
     maxGrooveWidth: 12,        // breitere Nuten → Warnung
     rebateTool: 'E016',        // Falz
+    orientRule: 'model',       // Drehlage: 'model' = wie im Korpus-Modell (X = Breite, sonst Höhe; Werkstatt), 'long' = lange Seite in X
     rebateToolDia: 12,         // nur falls der Fräser nicht in der Werkzeugliste steht
     rebateStopReturn: true,    // abgesetzter Falz: true = nochmal zurück (Mitte auf der Kante), false = einfach ein-, durch-, austauchen
     pocketTool: 'E016',        // Taschen (CreateContourPocket)

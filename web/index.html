@@ -282,6 +282,9 @@ svg.sheet .cp text { pointer-events: none; user-select: none; }
 svg.sheet .cp:hover .pt { stroke: var(--accent); }
 svg.sheet .cp.drag { cursor: grabbing; opacity: 0.85; }
 svg.sheet .cp.drag .pt { stroke: var(--accent); stroke-width: 8; }
+svg.sheet .cp.sel .pt { stroke: var(--accent); stroke-width: 10; fill: color-mix(in srgb, var(--accent) 22%, var(--board)); }
+.cutsel { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 8px; padding: 6px 10px; border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface)); font-size: 0.88rem; }
 svg.sheet .cp.bad .pt { fill: color-mix(in srgb, var(--err) 35%, var(--board)); stroke: var(--err); }
 .cutact { display: inline-flex; gap: 6px; margin-left: auto; }
 #printarea .a4 { font: 10pt/1.35 var(--font-body); color: #000; }
@@ -685,12 +688,12 @@ table.fmt.one .onet { display: inline; }
       </span>
       <span class="sp"></span>
       <button type="button" class="btn small" id="lcsv">CSV / Excel</button>
-      <button type="button" class="btn small" id="lpdf" hidden title="Zuschnittplan als PDF-Datei speichern (eine Platte je Seite)">PDF speichern</button>
+      <button type="button" class="btn small" id="lpdf" title="Als PDF-Datei speichern (ohne Druckdialog)">PDF speichern</button>
       <button type="button" class="btn small" id="lprintbtn">Drucken</button>
     </div>
     <div id="bomview"></div>
     <div id="cutview" hidden><div id="cutsheets"></div>
-      <p class="note">Teile mit der Maus verschieben (rasten an Rand und Nachbarteilen mit Schnittfuge ein, auch auf eine andere Platte), Doppelklick dreht. Durchgehende Schnitte wie an der Plattensäge; Teile mit Maserung bleiben mit der langen Seite längs der Plattenlänge, Dekore ohne Maserung werden bei Bedarf gedreht. Material und Kanten wie in „Möbel 3D“ (Plattenfarbe).</p></div>
+      <p class="note">Teile mit der Maus verschieben (rasten an Rand und Nachbarteilen mit Schnittfuge ein, auch auf eine andere Platte); Klick wählt ein Teil – „↻ Drehen“ oder Doppelklick dreht es. Faserrichtung je Position (längs / quer / frei) in der Stückliste. Durchgehende Schnitte wie an der Plattensäge; Teile mit Maserung bleiben mit der langen Seite längs der Plattenlänge, Dekore ohne Maserung werden bei Bedarf gedreht. Material und Kanten wie in „Möbel 3D“ (Plattenfarbe).</p></div>
   </section>
 
   <section class="modelpage" id="modelpage" hidden>
@@ -712,7 +715,8 @@ table.fmt.one .onet { display: inline; }
           <span class="v3bar static" id="mdimaxis" role="group" aria-label="Maßrichtung" hidden><button type="button" data-dimaxis="aligned" aria-pressed="true" title="Direkter Abstand der Punkte">Direkt</button><button type="button" data-dimaxis="x" aria-pressed="false" title="Abstand in X">X</button><button type="button" data-dimaxis="y" aria-pressed="false" title="Abstand in Y">Y</button><button type="button" data-dimaxis="z" aria-pressed="false" title="Abstand in Z (Höhe)">Z</button></span>
           <span class="sp"></span>
           <button type="button" class="btn small" id="msnap" title="Bild der Ansicht mit Nummern und Maßen als PNG speichern">Bild</button>
-          <button type="button" class="btn small" id="mprint" title="Ansicht mit Stückliste und Maßen drucken bzw. als PDF speichern">Drucken / PDF</button>
+          <button type="button" class="btn small" id="mpdf" title="Ansicht, Maße und Stückliste als PDF-Datei speichern (ohne Druckdialog)">PDF</button>
+        <button type="button" class="btn small" id="mprint" title="Ansicht mit Stückliste und Maßen drucken">Drucken</button>
         </div>
       </div>
       <div class="mhost" id="mhost"><div class="mlabelwrap" id="mlabelwrap"></div><div class="v3msg" id="mmsg">3D-Ansicht wird geladen …</div></div>
@@ -1285,7 +1289,7 @@ table.fmt.one .onet { display: inline; }
       sel: state.sel,
       files: Array.from(srcFiles).filter(([id]) => used.has(id)).map(([id, f]) => ({ id: id, label: f.label, kind: f.kind, text: f.text })),
       parts: parts.map((p) => ({ file: p.src.file, idx: p.src.idx, label: p.label, name: p.solid.name, orientation: p.orientation, field: p.field,
-        fileName: p.fileName, side: p.side, profile: p.profile, board: p.board || null, qty: p.qty === undefined ? 1 : p.qty, overrides: p.overrides, overrides2: p.overrides2 })),
+        fileName: p.fileName, side: p.side, profile: p.profile, board: p.board || null, qty: p.qty === undefined ? 1 : p.qty, grain: p.grain || null, overrides: p.overrides, overrides2: p.overrides2 })),
       // Maße aus „Möbel 3D“ (Bemaßen)
       dims: typeof mdl !== 'undefined' ? (mdl.viewer ? mdl.viewer.exportDims() : mdl.dimsSaved || []) : [],
     };
@@ -1331,7 +1335,7 @@ table.fmt.one .onet { display: inline; }
         solid.name = sp.name;
       }
       const part = { label: sp.label || f.label, src: { file: fileId, idx: sp.idx }, solid: solid, orientation: sp.orientation || null,
-        field: sp.field || null, fileName: sp.fileName || null, result: null, side: sp.side || 1, profile: sp.profile === undefined ? null : sp.profile, board: sp.board || null, qty: sp.qty === undefined ? 1 : sp.qty,
+        field: sp.field || null, fileName: sp.fileName || null, result: null, side: sp.side || 1, profile: sp.profile === undefined ? null : sp.profile, board: sp.board || null, qty: sp.qty === undefined ? 1 : sp.qty, grain: sp.grain || undefined,
         overrides: sp.overrides || { tools: {}, steps: {}, depths: {} }, overrides2: sp.overrides2 || { tools: {}, steps: {}, depths: {} } };
       if (f.kind === 'dxf') part.dxfText = f.text; else part.stepText = f.text;
       try { compute(part); } catch (e) { continue; }
@@ -2535,6 +2539,14 @@ table.fmt.one .onet { display: inline; }
   }
   // Stückzahl eines Teils (Stückliste; ohne Angabe 1, 0 = nicht fertigen)
   const qtyOf = (p) => (p.qty === undefined || p.qty === null ? 1 : Math.max(0, Math.round(p.qty)));
+  // Faserrichtung je Teil für den Zuschnitt: auto (nach Material), long (längs), cross (quer), free (drehen erlaubt)
+  const GRAIN_NAMES = { auto: 'Auto', long: 'längs', cross: 'quer', free: 'frei' };
+  const grainOf = (p) => (p && GRAIN_NAMES[p.grain] ? p.grain : 'auto');
+  function orientOf(p, board) {
+    const g = grainOf(p);
+    if (g !== 'auto') return g;
+    return lst.grain && View3D.boardOf(board).grain > 0 ? 'long' : 'free';
+  }
   const LIST_KEY = 'step2xcs.lists.v1';
   const lst = Object.assign({ tab: 'bom', group: true, raw: true, sheetL: 2800, sheetW: 2070, kerf: 4.4, trim: 10, grain: true }, loadJson(LIST_KEY, {}) || {});
   const saveLst = () => storeJson(LIST_KEY, lst);
@@ -2589,7 +2601,7 @@ table.fmt.one .onet { display: inline; }
     const tot = bomTotals(rows);
     if (!rows.length) { $('bomview').innerHTML = '<p class="note">Keine Teile geladen.</p>'; return; }
     $('bomview').innerHTML = '<div class="tblwrap"><table class="bom"><thead><tr><th>Pos.</th><th class="r">Anzahl</th><th>Bezeichnung</th><th class="r">Länge</th><th class="r">Breite</th>' +
-      '<th class="r">Dicke</th><th>Material / Kanten</th><th class="r">Zuschnitt (roh)</th><th class="r">m²</th><th class="r">Zeit je Stück</th><th>Programm</th></tr></thead><tbody>' +
+      '<th class="r">Dicke</th><th>Material / Kanten</th><th class="r">Zuschnitt (roh)</th><th class="r">m²</th><th class="r">Zeit je Stück</th><th title="Faserrichtung im Zuschnitt: Auto = nach Material (Maserung längs), längs, quer (gedreht) oder frei">Faser</th><th>Programm</th></tr></thead><tbody>' +
       rows.map((r, k) => '<tr><td class="no">' + (k + 1) + '</td>' +
         '<td class="r"><input type="number" min="0" step="1" value="' + r.qty + '" data-bomqty="' + k + '" aria-label="Anzahl Position ' + (k + 1) + '"></td>' +
         '<td><b>' + r.names.map(esc).join(', ') + '</b><div class="sub">Bauteil ' + r.nums.join(', ') + '</div></td>' +
@@ -2598,11 +2610,17 @@ table.fmt.one .onet { display: inline; }
         '<td class="r">' + n1(r.raw.L) + ' × ' + n1(r.raw.W) + '</td>' +
         '<td class="r">' + fmt(Math.round((r.L * r.W * r.qty) / 1e4) / 100) + '</td>' +
         '<td class="r">' + (r.time ? '<span title="' + esc(timeTitle(r.time)) + '">' + Toolpath.fmtTime(r.time.total) + '</span>' : '–') + '</td>' +
+        '<td><select data-bomgrain="' + k + '" aria-label="Faserrichtung Position ' + (k + 1) + '">' + Object.entries(GRAIN_NAMES).map(([v, t]) => '<option value="' + v + '"' +
+          (grainOf(r.parts[0]) === v ? ' selected' : '') + '>' + t + (v === 'auto' ? ' (' + GRAIN_NAMES[orientOf(r.parts[0], r.board)] + ')' : '') + '</option>').join('') + '</select></td>' +
         '<td class="files">' + r.files.map(esc).join('<br>') + '</td></tr>').join('') +
       '</tbody></table></div>' +
       '<div class="bomsum"><span><b>' + tot.qty + '</b> Teile</span>' +
       Array.from(tot.byMat).map(([k, v]) => '<span>' + esc(k) + ': <b>' + fmt(Math.round(v * 100) / 100) + ' m²</b></span>').join('') +
       '<span>Bearbeitungszeit gesamt: <b>' + Toolpath.fmtTime(tot.time) + '</b> <small>(geschätzt, inkl. Auflegen)</small></span></div>';
+    $('bomview').querySelectorAll('[data-bomgrain]').forEach((sel) => sel.addEventListener('change', () => {
+      for (const p of rows[+sel.dataset.bomgrain].parts) p.grain = sel.value === 'auto' ? undefined : sel.value;
+      render();
+    }));
     $('bomview').querySelectorAll('[data-bomqty]').forEach((inp) => inp.addEventListener('change', () => {
       const r = rows[+inp.dataset.bomqty];
       const want = Math.max(0, Math.round(+inp.value || 0));
@@ -2638,6 +2656,7 @@ table.fmt.one .onet { display: inline; }
   }
 
   // Zuschnittplan je Material und Dicke; von Hand verschobene Pläne (lst.manual) gelten, solange Teile und Platte gleich bleiben
+  let cutSel = null; // ausgewähltes Teil im Zuschnittplan { grp, uid }
   const cutOpts = () => ({ sheetL: lst.sheetL, sheetW: lst.sheetW, kerf: lst.kerf, trim: lst.trim });
   function cutGroups() {
     const groups = new Map();
@@ -2646,11 +2665,11 @@ table.fmt.one .onet { display: inline; }
       const key = b.id + '|' + fmt(row.T);
       if (!groups.has(key)) groups.set(key, { key: key, name: b.name, T: row.T, board: row.board, grain: b.grain > 0, items: [] });
       const dims = lst.raw ? row.raw : { L: row.L, W: row.W };
-      groups.get(key).items.push({ id: row.nums[0], label: row.names[0], L: dims.L, W: dims.W, qty: row.qty, grain: lst.grain && b.grain > 0 });
+      groups.get(key).items.push({ id: row.nums[0], label: row.names[0], L: dims.L, W: dims.W, qty: row.qty, orient: orientOf(row.parts[0], row.board) });
     }
     return Array.from(groups.values()).map((g) => {
       const auto = CutPlan.plan(g.items, cutOpts());
-      g.sig = JSON.stringify([cutOpts(), g.items.map((i) => [i.id, Math.round(i.L * 10), Math.round(i.W * 10), i.qty, i.grain])]);
+      g.sig = JSON.stringify([cutOpts(), g.items.map((i) => [i.id, Math.round(i.L * 10), Math.round(i.W * 10), i.qty, i.orient])]);
       const man = lst.manual && lst.manual[g.key];
       if (man && man.sig === g.sig) {
         const sheets = man.sheets.map((s) => ({ L: lst.sheetL, W: lst.sheetW, parts: s.parts, used: s.parts.reduce((a, p) => a + p.l * p.w, 0) }));
@@ -2683,7 +2702,7 @@ table.fmt.one .onet { display: inline; }
       // Plattenkoordinaten: y nach oben → SVG y nach unten spiegeln
       const y = s.W - p.y - p.w;
       const fs = Math.max(24, Math.min(60, Math.min(p.l, p.w) / 5));
-      out += '<g class="cp" data-uid="' + esc(p.uid) + '"><rect x="' + p.x + '" y="' + y + '" width="' + p.l + '" height="' + p.w + '" class="pt"/>' +
+      out += '<g class="cp' + (cutSel && cutSel.grp === g.key && cutSel.uid === p.uid ? ' sel' : '') + '" data-uid="' + esc(p.uid) + '"><rect x="' + p.x + '" y="' + y + '" width="' + p.l + '" height="' + p.w + '" class="pt"/>' +
         (p.l > 3 * fs && p.w > 1.4 * fs ? '<text x="' + (p.x + p.l / 2) + '" y="' + (y + p.w / 2) + '" font-size="' + fs + '" class="pl">' + esc(p.id + ' · ' + n1(p.l) + ' × ' + n1(p.w)) + '</text>' : '') +
         (p.l > 3 * fs && p.w > 2.6 * fs ? '<text x="' + (p.x + p.l / 2) + '" y="' + (y + p.w / 2 + fs * 1.2) + '" font-size="' + (fs * 0.8) + '" class="pn">' + esc(p.label) + '</text>' : '') +
         '<title>' + esc(p.label + ' – ' + n1(p.l) + ' × ' + n1(p.w) + (p.rot ? ' (gedreht)' : '') + ' · ziehen = verschieben, Doppelklick = drehen') + '</title></g>';
@@ -2700,6 +2719,9 @@ table.fmt.one .onet { display: inline; }
         (pl.manual ? ' · von Hand angeordnet' : '') + '</small>' +
         (forPrint ? '' : '<span class="cutact"><button type="button" class="btn ghost small" data-cutadd="' + esc(g.key) + '" title="Leere Platte anhängen, um Teile darauf zu verschieben">+ Platte</button>' +
           (pl.manual ? '<button type="button" class="btn ghost small" data-cutreset="' + esc(g.key) + '" title="Eigene Anordnung verwerfen">Automatisch anordnen</button>' : '') + '</span>') + '</h3>' +
+        ((sp) => sp ? '<div class="cutsel"><span>Ausgewählt: <b>' + esc(sp.id + ' · ' + sp.label) + '</b> ' + n1(sp.l) + ' × ' + n1(sp.w) + (sp.rot ? ' (gedreht)' : '') + '</span>' +
+          '<button type="button" class="btn small" data-cutrot title="Um 90° drehen (auch Doppelklick)">↻ Drehen</button><button type="button" class="btn ghost small" data-cutunsel>Auswahl aufheben</button></div>' : '')(
+          !forPrint && cutSel && cutSel.grp === g.key ? pl.sheets.flatMap((x) => x.parts).find((q) => q.uid === cutSel.uid) : null) +
         (pl.unplaced.length ? '<p class="warn">Passt nicht auf die Platte: ' + pl.unplaced.map((x) => esc(x.label) + ' (' + n1(x.L) + ' × ' + n1(x.W) + ')').join(', ') + '</p>' : '') +
         pl.sheets.map((s, i) => '<figure class="sheetfig"><figcaption>Platte ' + (i + 1) + ' · ' + s.parts.length + ' Teile · genutzt ' + Math.round((s.used / (s.L * s.W)) * 100) + ' %</figcaption>' +
           sheetSvg(s, g, i, forPrint ? 0 : 620) + '</figure>').join('') + '</section>';
@@ -2794,7 +2816,7 @@ table.fmt.one .onet { display: inline; }
       const d = drag;
       drag = null;
       d.el.classList.remove('drag');
-      if (!d.moved) return;
+      if (!d.moved) { cutSel = cutSel && cutSel.uid === d.p.uid ? null : { grp: d.g.key, uid: d.p.uid }; renderLists(); return; } // Klick = auswählen
       // Ziel: Platte unter dem Mauszeiger (gleiche Gruppe), sonst die eigene
       const over = document.elementFromPoint(e.clientX, e.clientY);
       const tSvg = over && over.closest && over.closest('svg.sheet');
@@ -2821,26 +2843,40 @@ table.fmt.one .onet { display: inline; }
     host.addEventListener('dblclick', (e) => {
       const gEl = e.target.closest('g.cp');
       const svg = gEl && gEl.closest('svg.sheet');
-      if (!gEl || !svg) return;
-      const g = groupOf(svg.dataset.grp);
-      const si = +svg.dataset.sheet;
-      const p = g.plan.sheets[si].parts.find((q) => q.uid === gEl.dataset.uid);
-      const cand = Object.assign({}, p, { l: p.w, w: p.l });
-      if (!CutPlan.fits(g.plan.sheets[si], cand, cutOpts(), p.uid)) { toast('Gedreht passt es hier nicht – erst verschieben.'); return; }
+      if (gEl && svg) rotatePart(svg.dataset.grp, gEl.dataset.uid);
+    });
+    // Teil um 90° drehen (am Platz; passt es nicht, Hinweis)
+    function rotatePart(key, uid) {
+      const g = groupOf(key);
+      const si = g ? g.plan.sheets.findIndex((s) => s.parts.some((q) => q.uid === uid)) : -1;
+      if (si < 0) return;
+      const p = g.plan.sheets[si].parts.find((q) => q.uid === uid);
+      // gedreht: erst am selben Eck, sonst um die Mitte, jeweils notfalls nach innen gerückt
+      const sh = g.plan.sheets[si];
+      const clampIn = (c) => Object.assign(c, { x: Math.max(lst.trim, Math.min(sh.L - lst.trim - c.l, c.x)), y: Math.max(lst.trim, Math.min(sh.W - lst.trim - c.w, c.y)) });
+      const base = { l: p.w, w: p.l };
+      const tries = [Object.assign({}, p, base), Object.assign({}, p, base, { x: p.x + (p.l - p.w) / 2, y: p.y + (p.w - p.l) / 2 })];
+      const cand = tries.concat(tries.map((c) => clampIn(Object.assign({}, c)))).find((c) => CutPlan.fits(sh, c, cutOpts(), p.uid));
+      if (!cand) { toast('Gedreht passt es hier nicht – erst Platz schaffen oder verschieben.'); return; }
       const man = manualOf(g);
       const q = man.sheets[si].parts.find((x) => x.uid === p.uid);
       q.l = cand.l;
       q.w = cand.w;
+      q.x = cand.x;
+      q.y = cand.y;
       q.rot = !q.rot;
-      if (q.grain) toast('Gedreht – Achtung: jetzt quer zur Maserung.');
+      if (q.grain) toast('Gedreht – Achtung: Maserung jetzt ' + (q.rot ? 'quer' : 'längs') + '.');
       saveLst();
       renderLists();
-    });
+    }
     host.addEventListener('click', (e) => {
       const add = e.target.closest('[data-cutadd]');
       const rst = e.target.closest('[data-cutreset]');
       if (add) { const g = groupOf(add.dataset.cutadd); manualOf(g).sheets.push({ parts: [] }); saveLst(); renderLists(); }
       if (rst) { delete lst.manual[rst.dataset.cutreset]; saveLst(); renderLists(); }
+      const rot = e.target.closest('[data-cutrot]');
+      if (rot && cutSel) rotatePart(cutSel.grp, cutSel.uid);
+      if (e.target.closest('[data-cutunsel]')) { cutSel = null; renderLists(); }
     });
   })();
   function renderLists() {
@@ -2851,7 +2887,6 @@ table.fmt.one .onet { display: inline; }
     $('bomopts').hidden = lst.tab !== 'bom';
     $('cutopts').hidden = lst.tab !== 'cut';
     $('lcsv').hidden = lst.tab !== 'bom';
-    $('lpdf').hidden = lst.tab !== 'cut';
     $('lgroup').checked = lst.group;
     if (lst.tab === 'bom') renderBom();
     else $('cutsheets').innerHTML = renderCut(false);
@@ -2866,13 +2901,77 @@ table.fmt.one .onet { display: inline; }
     $(id).checked = lst[k];
     $(id).addEventListener('change', (e) => { lst[k] = e.target.checked; saveLst(); renderLists(); });
   }
-  $('lpdf').addEventListener('click', cutPdf);
+  $('lpdf').addEventListener('click', () => (lst.tab === 'bom' ? bomPdf() : cutPdf()));
   $('lcsv').addEventListener('click', () => saveOne('stueckliste.csv', bomCsv(), 'text/csv;charset=utf-8'));
   $('lprintbtn').addEventListener('click', () => {
-    if (lst.tab === 'bom') printA4(bomPrintHtml(), true);
-    else printA4('<h1>Zuschnittplan</h1><p class="meta">' + new Date().toLocaleDateString('de-DE') + ' · Schnittfuge ' + fmt(lst.kerf) + ' mm · Besäumen ' + fmt(lst.trim) +
-      ' mm · ' + (lst.raw ? 'Rohmaß (mit Aufmaß)' : 'Fertigmaß') + '</p>' + renderCut(true), true);
+    if (lst.tab === 'bom') printOr(bomPdf, () => printA4(bomPrintHtml(), true));
+    else printOr(cutPdf, () => printA4('<h1>Zuschnittplan</h1><p class="meta">' + new Date().toLocaleDateString('de-DE') + ' · Schnittfuge ' + fmt(lst.kerf) + ' mm · Besäumen ' + fmt(lst.trim) +
+      ' mm · ' + (lst.raw ? 'Rohmaß (mit Aufmaß)' : 'Fertigmaß') + '</p>' + renderCut(true), true));
   });
+
+  // ------------------------------------------------ PDF-Dateien (ohne Druckdialog – geht auch, wo der Browser „Drucken“ sperrt)
+  const pdfDate = () => new Date().toLocaleDateString('de-DE');
+  const BOM_COLS = [{ t: 'Pos.', w: 12 }, { t: 'Anz.', w: 12, align: 'right' }, { t: 'Bezeichnung', w: 70 }, { t: 'L', w: 18, align: 'right' }, { t: 'B', w: 18, align: 'right' },
+    { t: 'D', w: 12, align: 'right' }, { t: 'Material / Kanten', w: 58 }, { t: 'Faser', w: 18 }, { t: 'Zuschnitt', w: 32, align: 'right' }, { t: 'Zeit', w: 23, align: 'right' }];
+  function bomPdfRows(rows) {
+    return rows.map((r, k) => [String(k + 1), String(r.qty), r.names.join(', ') + ' (' + r.nums.join(', ') + ')', n1(r.L), n1(r.W), n1(r.T), boardName(r.board),
+      GRAIN_NAMES[grainOf(r.parts[0])], n1(r.raw.L) + ' × ' + n1(r.raw.W), r.time ? Toolpath.fmtTime(r.time.total) : '–']);
+  }
+  function addBomPdf(d) {
+    const rows = bomRows();
+    const tot = bomTotals(rows);
+    d.page();
+    d.text(12, 16, 'Stückliste', { size: 15, bold: true });
+    d.text(12, 23, pdfDate() + ' · ' + tot.qty + ' Teile · Bearbeitungszeit ' + Toolpath.fmtTime(tot.time) + ' (geschätzt, inkl. Auflegen)', { size: 9.5, color: [0.25, 0.25, 0.25] });
+    let y = d.table(12, 29, BOM_COLS, bomPdfRows(rows), { onPage: () => { d.text(12, 12, 'Stückliste (Fortsetzung)', { size: 10, bold: true }); return 16; } });
+    y += 6;
+    d.text(12, y, Array.from(tot.byMat).map(([k, v]) => k + ': ' + fmt(Math.round(v * 100) / 100) + ' m²').join(' · '), { size: 9.5 });
+  }
+  function bomPdf() {
+    if (!bomRows().length) { toast('Keine Teile vorhanden.'); return; }
+    const d = MiniPdf.doc(297, 210);
+    addBomPdf(d);
+    saveOne('stueckliste.pdf', d.save(), 'application/pdf');
+  }
+  // Möbel 3D: Ansicht als Bild, Maße, dahinter die Stückliste
+  function modelPdf() {
+    if (!mdl.viewer) return;
+    let cv;
+    try { cv = mdl.viewer.snapshot(); } catch (e) { toast('Bild nicht möglich: ' + (e.message || e)); return; }
+    // JPEG auf weißem Grund (PDF ohne Transparenz)
+    const c2 = document.createElement('canvas');
+    c2.width = cv.width;
+    c2.height = cv.height;
+    const g = c2.getContext('2d');
+    g.fillStyle = '#ffffff';
+    g.fillRect(0, 0, c2.width, c2.height);
+    g.drawImage(cv, 0, 0);
+    const b64 = c2.toDataURL('image/jpeg', 0.9).split(',')[1];
+    const bin = atob(b64);
+    const jpg = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) jpg[i] = bin.charCodeAt(i);
+    const d = MiniPdf.doc(297, 210);
+    d.page();
+    d.text(12, 16, 'Möbel 3D', { size: 15, bold: true });
+    d.text(12, 23, pdfDate(), { size: 9.5, color: [0.25, 0.25, 0.25] });
+    const dims = mdl.viewer.dims;
+    const maxH = dims.length ? 150 : 170;
+    const sc = Math.min(273 / c2.width, maxH / c2.height);
+    const w = c2.width * sc;
+    const h = c2.height * sc;
+    d.image(12 + (273 - w) / 2, 28, w, h, jpg, c2.width, c2.height);
+    if (dims.length) {
+      d.text(12, 28 + h + 7, 'Maße: ' + dims.map((m, i) => (i + 1) + '. ' + (m.axis === 'aligned' ? '' : m.axis.toUpperCase() + ' ') + fmt(Math.round(m.value * 10) / 10) +
+        ' mm (Bauteil ' + m.a.num + (m.b.num !== m.a.num ? ' > ' + m.b.num : '') + ')').join(' · '), { size: 9, maxW: 273 });
+    }
+    addBomPdf(d);
+    saveOne('moebel_3d.pdf', d.save(), 'application/pdf');
+  }
+  // Drucken: im claude.ai-Artifact sperrt der Browser den Druckdialog – dort gleich als PDF speichern
+  function printOr(pdfFn, printFn) {
+    if (claudeHost) { toast('Drucken ist hier gesperrt – PDF wird gespeichert, daraus drucken.'); pdfFn(); return; }
+    printFn();
+  }
 
   // ------------------------------------------------ Möbel 3D: alle STEP-Bauteile zusammengebaut
   const PAGE_KEY = 'step2xcs.page.v1';
@@ -3248,7 +3347,9 @@ table.fmt.one .onet { display: inline; }
     for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
     saveOne('moebel_3d.png', u8, 'image/png');
   });
+  $('mpdf').addEventListener('click', modelPdf);
   $('mprint').addEventListener('click', () => {
+    if (claudeHost) { printOr(modelPdf, () => {}); return; }
     const url = modelImage();
     if (!url) return;
     const dims = mdl.viewer.dims;

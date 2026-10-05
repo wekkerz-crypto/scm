@@ -13,7 +13,7 @@
   const PT = 72 / 25.4; // mm → pt
   // WinAnsi: Latin-1 passt direkt; einige Zeichen umsetzen, unbekannte durch '?' ersetzen
   const MAP = { '€': 0x80, '–': 0x96, '—': 0x97, '„': 0x84, '“': 0x93, '”': 0x94, '‚': 0x82, '‘': 0x91, '’': 0x92, '…': 0x85, '•': 0x95 };
-  const SUBST = { '≈': 'ca. ', '→': '->', '⇄': '<>', '²': '²', ' ': ' ', ' ': ' ' };
+  const SUBST = { '≈': 'ca.', '→': '->', '⇄': '<>', '²': '²', ' ': ' ', ' ': ' ' };
   function enc(s) {
     let out = '';
     for (const ch0 of String(s)) {
@@ -34,6 +34,7 @@
 
   function doc(wmm, hmm) {
     const pages = [];
+    const images = [];
     let cur = null;
     const H = hmm * PT;
     const api = {
@@ -68,7 +69,46 @@
         cur.push('BT /' + (o.bold ? 'F2' : 'F1') + ' ' + n(size) + ' Tf ' + col(o.color || [0, 0, 0]) + ' rg ' + n(x0 * PT) + ' ' + n(H - y * PT) + ' Td (' + enc(t) + ') Tj ET');
         return api;
       },
+      // JPEG-Bild (Bytes) in mm-Rechteck; pw/ph = Pixelmaße
+      image(x, y, w, h, jpeg, pw, ph) {
+        images.push({ data: jpeg, pw: pw, ph: ph });
+        const name = 'Im' + images.length;
+        cur.push('q ' + n(w * PT) + ' 0 0 ' + n(h * PT) + ' ' + n(x * PT) + ' ' + n(H - (y + h) * PT) + ' cm /' + name + ' Do Q');
+        cur.images = (cur.images || []).concat([name]);
+        return api;
+      },
       textWidth: width,
+      /*
+       * Tabelle ab y (mm); cols: [{ t: Kopf, w: Breite mm, align }], rows: [[Zellen]]; bricht auf neue Seiten um
+       * (onPage(y) zeichnet den Seitenkopf und gibt das neue y zurück). Ergebnis: y nach der Tabelle.
+       */
+      table(x, y, cols, rows, o) {
+        o = o || {};
+        const size = o.size || 8.5;
+        const lh = size * 0.36 + 2.6;
+        const bottom = hmm - (o.bottom || 14);
+        const head = (yy) => {
+          let cx = x;
+          for (const c of cols) {
+            api.text(c.align === 'right' ? cx + c.w - 1.5 : cx + 1.5, yy + lh - 1.6, c.t, { size: size, bold: true, align: c.align === 'right' ? 'right' : 'left', maxW: c.w - 2 });
+            cx += c.w;
+          }
+          api.line(x, yy + lh, x + cols.reduce((a, c) => a + c.w, 0), yy + lh, { lw: 0.35 });
+          return yy + lh;
+        };
+        y = head(y);
+        for (const r of rows) {
+          if (y + lh > bottom) { api.page(); y = head(o.onPage ? o.onPage() : 15); }
+          let cx = x;
+          cols.forEach((c, i) => {
+            api.text(c.align === 'right' ? cx + c.w - 1.5 : cx + 1.5, y + lh - 1.6, r[i] === undefined ? '' : r[i], { size: size, align: c.align === 'right' ? 'right' : 'left', maxW: c.w - 2 });
+            cx += c.w;
+          });
+          y += lh;
+          api.line(x, y, x + cols.reduce((a, c) => a + c.w, 0), y, { lw: 0.15, stroke: [0.6, 0.6, 0.6] });
+        }
+        return y;
+      },
       // fertige PDF-Datei als Uint8Array
       save() {
         const objs = [];
@@ -77,12 +117,16 @@
         const pagesId = add(null);
         const f1 = add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
         const f2 = add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+        const bin = (u8) => { let t = ''; for (let i = 0; i < u8.length; i += 8192) t += String.fromCharCode.apply(null, u8.subarray(i, i + 8192)); return t; };
+        const imgIds = images.map((im) => add('<< /Type /XObject /Subtype /Image /Width ' + im.pw + ' /Height ' + im.ph +
+          ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + im.data.length + ' >>\nstream\n' + bin(im.data) + '\nendstream'));
         const kids = [];
         for (const p of pages) {
           const body = p.join('\n');
           const cs = add('<< /Length ' + body.length + ' >>\nstream\n' + body + '\nendstream');
+          const xo = (p.images || []).map((nm) => '/' + nm + ' ' + imgIds[+nm.slice(2) - 1] + ' 0 R').join(' ');
           kids.push(add('<< /Type /Page /Parent ' + pagesId + ' 0 R /MediaBox [0 0 ' + n(wmm * PT) + ' ' + n(H) + '] /Resources << /Font << /F1 ' + f1 + ' 0 R /F2 ' + f2 +
-            ' 0 R >> >> /Contents ' + cs + ' 0 R >>'));
+            ' 0 R >>' + (xo ? ' /XObject << ' + xo + ' >>' : '') + ' >> /Contents ' + cs + ' 0 R >>'));
         }
         objs[catalog - 1] = '<< /Type /Catalog /Pages ' + pagesId + ' 0 R >>';
         objs[pagesId - 1] = '<< /Type /Pages /Kids [' + kids.map((k) => k + ' 0 R').join(' ') + '] /Count ' + kids.length + ' >>';

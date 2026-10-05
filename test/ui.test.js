@@ -761,6 +761,14 @@ test('Web-Tool: Zuschnittplan von Hand verschieben, als PDF speichern; eigene Fa
     await p.mouse.up();
     await p.waitForTimeout(100);
     assert.strictEqual(await p.$eval('svg.sheet', (s) => s.innerHTML), before);
+    // Klick wählt, ↻ dreht (Maße getauscht)
+    const sel = await p.$('svg.sheet g.cp[data-uid="' + uid + '"]');
+    const dims0 = await sel.$eval('rect', (r) => [+r.getAttribute('width'), +r.getAttribute('height')]);
+    await sel.click();
+    await p.waitForSelector('.cutsel [data-cutrot]');
+    await p.click('.cutsel [data-cutrot]');
+    const dims1 = await p.$eval('svg.sheet g.cp[data-uid="' + uid + '"] rect', (r) => [+r.getAttribute('width'), +r.getAttribute('height')]);
+    assert.deepStrictEqual(dims1, [dims0[1], dims0[0]]);
     // PDF als Datei
     const [pdf] = await Promise.all([p.waitForEvent('download'), p.click('#lpdf')]);
     assert.strictEqual(pdf.suggestedFilename(), 'zuschnittplan.pdf');
@@ -770,6 +778,15 @@ test('Web-Tool: Zuschnittplan von Hand verschieben, als PDF speichern; eigene Fa
     // automatisch anordnen
     await p.click('[data-cutreset]');
     assert.ok(!(await p.$('[data-cutreset]')));
+    // Faserrichtung je Position: quer → Teil im Plan gedreht; Stückliste als PDF
+    await p.click('[data-ltab="bom"]');
+    await p.selectOption('[data-bomgrain="0"]', 'cross');
+    const [bpdf] = await Promise.all([p.waitForEvent('download'), p.click('#lpdf')]);
+    assert.strictEqual(bpdf.suggestedFilename(), 'stueckliste.pdf');
+    assert.match(fs.readFileSync(await bpdf.path(), 'latin1'), /Stückliste|St\xfcckliste/);
+    await p.click('[data-ltab="cut"]');
+    const rot = await p.$eval('svg.sheet g.cp[data-uid^="1#"] title', (t) => t.textContent);
+    assert.match(rot, /gedreht/);
     // eigene Farbe mit Namen → in Stückliste und Auswahl
     await p.click('[data-page="model"]');
     await p.click('#mboard');
@@ -781,6 +798,41 @@ test('Web-Tool: Zuschnittplan von Hand verschieben, als PDF speichern; eigene Fa
     await p.click('[data-page="lists"]');
     await p.click('[data-ltab="bom"]');
     assert.match(await p.textContent('table.bom'), /Egger U999/);
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('Web-Tool: im claude.ai-Artifact (Drucken gesperrt) speichern die Druck-Knöpfe ein PDF', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1440, height: 950 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    // Fähigkeit „downloads“ wie im Artifact nachbilden; window.print darf nicht aufgerufen werden
+    await p.addInitScript(() => {
+      window.__saved = [];
+      window.claude = { use: async () => ({ save: async (o) => { window.__saved.push(o.filename + ':' + (o.data && o.data.size)); } }) };
+      window.print = () => { window.__printed = true; };
+    });
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    await p.click('[data-page="lists"]');
+    await p.click('#lprintbtn');
+    await p.click('[data-ltab="cut"]');
+    await p.click('#lprintbtn');
+    await p.waitForFunction(() => window.__saved.length === 2);
+    const saved = await p.evaluate(() => window.__saved);
+    assert.match(saved[0], /^stueckliste\.pdf:\d{3,}/);
+    assert.match(saved[1], /^zuschnittplan\.pdf:\d{3,}/);
+    assert.ok(!(await p.evaluate(() => window.__printed)));
+    // Möbel 3D: PDF mit Bild
+    await p.click('[data-page="model"]');
+    await p.waitForFunction(() => document.querySelectorAll('#mlabelwrap .mlab').length >= 3, null, { timeout: 60000 });
+    await p.click('#mpdf');
+    await p.waitForFunction(() => window.__saved.length === 3);
+    assert.match((await p.evaluate(() => window.__saved))[2], /^moebel_3d\.pdf:\d{4,}/);
     assert.deepStrictEqual(errors, []);
   } finally {
     await browser.close();

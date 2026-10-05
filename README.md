@@ -188,8 +188,8 @@ zusammengebaut, so wie sie im Modell stehen (OpenCascade, three.js – offline, 
 - **Schnittebene:** *Schnitt* X / Y / Z, Regler für die Lage, ⇄ zeigt die andere Seite – Falze, Nuten und Verbindungen von
   innen ansehen; der Rahmen zeigt die Ebene.
 - **Explosion abspielen** (▶): Teile fahren weich auseinander bzw. wieder zusammen.
-- **Bild** speichert die Ansicht als PNG (mit Nummern, Maßen, Messung); **Drucken / PDF**: Ansicht, Maße und Stückliste auf A4
-  quer (im Druckdialog „Als PDF speichern“).
+- **Bild** speichert die Ansicht als PNG (mit Nummern, Maßen, Messung); **PDF** schreibt Ansicht, Maße und Stückliste als
+  PDF-Datei (A4 quer); **Drucken** über den Browser.
 
 ### Listen: Stückliste, Zuschnittplan, Zeit
 
@@ -201,11 +201,14 @@ Dritte Seite oben (**Listen**):
 - **Zuschnittplan:** Teile auf Rohplatten (Format, Schnittfuge, Besäumrand einstellbar) je Material und Dicke, mit
   durchgehenden Schnitten wie an der Plattensäge; mit Maserung bleibt die lange Seite längs der Plattenlänge, Dekore werden
   bei Bedarf gedreht. Rohmaß oder Fertigmaß wählbar. Zeichnung je Platte mit Nummer und Maß, Ausnutzung.
+  **Faserrichtung je Position** (Spalte *Faser* in der Stückliste): *Auto* (nach Material: Maserung längs, Dekor frei),
+  *längs*, *quer* (gedreht) oder *frei* (drehen erlaubt).
   **Von Hand anordnen:** Teile mit der Maus ziehen – rasten an Plattenrand (Besäumen) und Nachbarteilen (mit Schnittfuge)
-  ein, auch auf eine andere Platte derselben Gruppe; *+ Platte* hängt eine leere Platte an; Doppelklick dreht (Hinweis bei
-  Maserung); überlappt es, bleibt das Teil liegen. *Automatisch anordnen* verwirft die eigene Anordnung (ändern sich Teile
-  oder Plattenformat, wird ohnehin neu angeordnet). **PDF speichern** schreibt den Plan direkt als PDF-Datei (eine Platte je
-  Seite, ohne Druckdialog); **Drucken** über den Browser.
+  ein, auch auf eine andere Platte derselben Gruppe; *+ Platte* hängt eine leere Platte an; Klick wählt ein Teil,
+  **↻ Drehen** (oder Doppelklick) dreht es – am Rand rückt es dabei nach innen (Hinweis bei Maserung); überlappt es, bleibt das Teil liegen. *Automatisch anordnen* verwirft die eigene Anordnung (ändern sich Teile
+  oder Plattenformat, wird ohnehin neu angeordnet). **PDF speichern** schreibt Stückliste bzw. Zuschnittplan direkt als
+  PDF-Datei (eine Platte je Seite, ohne Druckdialog); **Drucken** über den Browser. In der Online-Version (claude.ai) sperrt
+  der Browser den Druckdialog – dort speichern alle Druck-Knöpfe gleich ein PDF.
 - **Bearbeitungszeit** (geschätzt) steht auch an jeder Teilekarte und oben im Teil (Tooltip: Fräsen, Bohren, Eilgang,
   Werkzeugwechsel, Auflegen). Aus Bahnlänge ÷ Vorschub (Werkzeugdatei bzw. eigene Schnittwerte), Zustellungen, Bohrungen,
   Eilgang und Werkzeugwechsel; Werte unter Einstellungen → *Zeitschätzung*. Mit dem **Korrekturfaktor** an die echte

@@ -3,7 +3,7 @@
  * Schnittfuge und Besäumrand, Faserrichtung (Teil mit der langen Seite längs der Plattenlänge, nicht drehen).
  * plan(items, opts) → { sheets: [{ L, W, parts: [{ uid, id, label, x, y, l, w, rot, grain }], used }], unplaced: [items], waste }
  * fits(sheet, part, opts, skipUid) – passt das Teil dort (innerhalb Besäumen, Abstand Schnittfuge zu allen anderen)?
- *   items: [{ id, label, L, W, qty, grain }]  (grain: Maserung beachten → nicht drehen)
+ *   items: [{ id, label, L, W, qty, orient }]  (orient 'long' | 'cross' | 'free'; alt: grain = true → 'long')
  *   opts:  { sheetL, sheetW, kerf, trim }
  */
 (function (root, factory) {
@@ -33,7 +33,10 @@
     const orients = (it) => {
       const a = { l: Math.max(it.L, it.W), w: Math.min(it.L, it.W), rot: it.L < it.W };
       const b = { l: a.w, w: a.l, rot: !a.rot };
-      return it.grain || Math.abs(a.l - a.w) < 1e-6 ? [a] : [a, b];
+      // Faserrichtung je Teil: 'long' = lange Seite längs der Platte, 'cross' = quer (gedreht), 'free' = beides erlaubt
+      const or = it.orient || (it.grain ? 'long' : 'free');
+      if (Math.abs(a.l - a.w) < 1e-6 || or === 'long') return [a];
+      return or === 'cross' ? [b] : [a, b];
     };
     // bester freier Platz (kürzester Rest an der kürzeren Seite) in einer Platte
     const best = (s, it) => {
@@ -62,7 +65,7 @@
       }
       const f = s.free.splice(pick.i, 1)[0];
       const { l, w, rot } = pick.or;
-      s.parts.push({ uid: it.uid, id: it.id, label: it.label, x: f.x, y: f.y, l: l, w: w, rot: rot, grain: !!it.grain });
+      s.parts.push({ uid: it.uid, id: it.id, label: it.label, x: f.x, y: f.y, l: l, w: w, rot: rot, grain: (it.orient || (it.grain ? 'long' : 'free')) !== 'free' });
       s.used += l * w;
       // Guillotine-Teilung des Rests (Schnittfuge abziehen): entlang der kürzeren Restseite schneiden
       const rl = f.l - l - k;

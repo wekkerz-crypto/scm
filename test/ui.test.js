@@ -195,13 +195,18 @@ test('Web-Tool: Möbel 3D – Baugruppe mit Nummern, Ein-/Ausblenden, Wählen, M
     await p.click('#mboard');
     await p.click('.bpick [data-bkey="weiss"]');
     assert.match(await p.textContent('#mboard'), /Weiß/);
+    // Kanten: Oberfläche bleibt, nur die Schmalflächen als Spanplatte; Fenster bleibt offen bis „Fertig“
+    await p.click('.bpick [data-bedge="span"]');
+    assert.match(await p.textContent('#mboard'), /Weiß · Kante Spanplatte/);
+    await p.click('.bpick [data-bdone]');
+    assert.strictEqual(await p.$$eval('.bpick', (x) => x.length), 0);
     await p.click('#mtable [data-mboard="3"]');
     await p.click('.bpick [data-bkey="nuss"]');
     assert.match(await p.getAttribute('#mtable [data-mboard="3"]', 'title'), /Nussbaum/);
     assert.ok(await p.$eval('#mtable [data-mboard="3"]', (b) => b.classList.contains('own')));
     await p.click('#mtable [data-mboard="3"]');
     await p.click('.bpick [data-binh]');
-    assert.match(await p.getAttribute('#mtable [data-mboard="3"]', 'title'), /Weiß \(wie Einstellung\)/);
+    assert.match(await p.getAttribute('#mtable [data-mboard="3"]', 'title'), /Weiß · Kante Spanplatte \(wie Einstellung\)/);
     assert.strictEqual(await p.$$eval('.bpick', (x) => x.length), 0);
     // Fokus: nur ein Bauteil, nochmal = wieder alle
     await p.click('#mtable [data-monly="2"]');

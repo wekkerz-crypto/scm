@@ -12,6 +12,9 @@
   // Helligkeit je Bauteil leicht verschieden, damit Nachbarteile gleicher Farbe unterscheidbar sind
   const SHADE = [1, 0.95, 1.03, 0.93, 1.01, 0.97];
 
+  // Materialien eines Netzes immer als Liste (Oberfläche und Schmalflächen können verschieden sein)
+  const mats = (o) => [...new Set([].concat(o.material))];
+
   // Material eines Bauteils aus der Plattenfarbe (Schlüssel wie View3D.boardOf) – Holz wie in der Teil-Ansicht
   function boardLook(T, g, board, i) {
     const bd = window.View3D && View3D.boardOf ? View3D.boardOf(board) : { color: '#d4ae7b', grain: 1 };
@@ -20,9 +23,10 @@
     c.getHSL(hsl);
     c.setHSL(hsl.h, hsl.s, Math.min(0.97, hsl.l * SHADE[i % SHADE.length]));
     const hex = '#' + c.getHexString();
-    const mat = window.View3D && View3D.woodMaterial ? View3D.woodMaterial(T, g, hex, bd.grain)
-      : new T.MeshStandardMaterial({ color: hex, roughness: 0.6, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
-    mat.side = T.DoubleSide;
+    // [Oberfläche, Schmalflächen] – Maserung längs der langen Seite, Kanten je nach Einstellung (Spanplatte, Multiplex …)
+    const mat = window.View3D && View3D.boardMaterials ? View3D.boardMaterials(T, g, board, hex)
+      : [new T.MeshStandardMaterial({ color: hex, roughness: 0.6, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 })];
+    for (const m of mat) m.side = T.DoubleSide;
     // Kanten: deutlich dunkler als die Platte (auf Weiß grau, auf Nussbaum fast schwarz)
     const edge = new T.Color(bd.color).multiplyScalar(hsl.l > 0.5 ? 0.42 : 0.3);
     return { mat: mat, edge: edge };
@@ -136,7 +140,7 @@
   // parts: [{ num, name, mesh: { pos: Float32Array (Modell, mm), index: Uint32Array|Array, normals?: Float32Array } }]
   Viewer.prototype.setParts = function (parts) {
     const T = this.THREE;
-    for (const p of this.parts) { p.obj.geometry.dispose(); p.obj.material.dispose(); p.edges.geometry.dispose(); p.edges.material.dispose(); p.label.remove(); }
+    for (const p of this.parts) { p.obj.geometry.dispose(); mats(p.obj).forEach((m) => m.dispose()); p.edges.geometry.dispose(); p.edges.material.dispose(); p.label.remove(); }
     this.root.clear();
     this.parts = [];
     this.clearMeasure();
@@ -211,7 +215,7 @@
       const b = boards[p.num];
       if (b === undefined || b === p.board) continue;
       const look = boardLook(T, p.obj.geometry, b, p.index);
-      p.obj.material.dispose();
+      mats(p.obj).forEach((m) => m.dispose());
       p.obj.material = look.mat;
       p.edges.material.color.copy(look.edge);
       p.board = b;
@@ -276,14 +280,16 @@
     for (const p of this.parts) {
       const sel = p.num === this.selected;
       const a = sel ? 1 : this.opacity;
-      p.obj.material.color.copy(sel ? new T.Color(0x6f9fff) : p.color);
-      p.obj.material.emissive = new T.Color(sel ? 0x0b2a5a : 0x000000);
-      p.obj.material.transparent = a < 0.999;
-      p.obj.material.opacity = a;
-      p.obj.material.depthWrite = a >= 0.999;
+      for (const m of mats(p.obj)) {
+        m.color.copy(sel ? new T.Color(0x6f9fff) : p.color);
+        m.emissive = new T.Color(sel ? 0x0b2a5a : 0x000000);
+        m.transparent = a < 0.999;
+        m.opacity = a;
+        m.depthWrite = a >= 0.999;
+        m.needsUpdate = true;
+      }
       p.obj.renderOrder = a < 0.999 ? 1 : 0;
       p.edges.material.opacity = Math.max(0.15, 0.8 * a);
-      p.obj.material.needsUpdate = true;
     }
   };
 

@@ -290,7 +290,17 @@ body[data-page="model"] .profilebar, body[data-page="model"] .bench, body[data-p
 .bpick .own input[type=color] { width: 34px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer; }
 .bpick .own label { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); }
 .bpick .own .btn { margin-left: auto; }
-.bpick .inh { width: 100%; margin-top: 6px; color: var(--muted); }
+.bpick .inh { color: var(--muted); }
+.bpick h5.eh { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.bpick .edges { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
+.bpick .edges button { display: flex; align-items: center; gap: 8px; padding: 5px 7px; border-radius: 7px; border: 1px solid transparent;
+  background: none; color: inherit; font: inherit; cursor: pointer; text-align: left; }
+.bpick .edges button:hover { background: var(--hl); }
+.bpick .edges button[aria-pressed="true"], .bpick .own .btn[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+.bpick .edges .bsw { width: 20px; height: 20px; }
+.bpick .eband { display: flex; align-items: center; gap: 4px; padding-left: 4px; }
+.bpick .eband input[type=color] { width: 26px; height: 24px; padding: 0; border: 1px solid var(--line); border-radius: 5px; background: none; cursor: pointer; flex: none; }
+.bpick .foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
 .mdimsvg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; --dimc: #1f5fbf; }
 .mdimsvg .dim { stroke: var(--dimc); stroke-width: 1.6; fill: none; }
 .mdimsvg .ext { stroke: var(--dimc); stroke-width: 1; fill: none; opacity: 0.7; }
@@ -2330,23 +2340,33 @@ table.fmt.one .onet { display: inline; }
   function boardSwatch(key) {
     const b = View3D.boardOf(key);
     const bg = b.grain > 0 ? 'repeating-linear-gradient(172deg, ' + b.color + ' 0 3px, color-mix(in srgb, ' + b.color + ' 78%, #5a3410) 3px 4px, ' + b.color + ' 4px 7px)' : b.color;
-    return '<span class="bsw" style="background:' + bg + '" aria-hidden="true"></span>';
+    // andere Kanten: rechts ein Streifen in der Kantenfarbe
+    const edge = b.edge !== 'same' ? ';box-shadow:inset -5px 0 0 ' + b.edgeColor : '';
+    return '<span class="bsw" style="background:' + bg + edge + '" aria-hidden="true"></span>';
   }
-  const boardChip = (key) => boardSwatch(key) + '<span class="bn">' + esc(View3D.boardOf(key).name) + '</span>';
-  // Auswahlfenster: Holzarten/Dekore, eigene Farbe (mit/ohne Maserung); inherit = Schlüssel der Einstellung → Knopf „wie Einstellung“
+  const boardName = (key) => { const b = View3D.boardOf(key); return b.name + (b.edge !== 'same' ? ' · Kante ' + b.edgeName : ''); };
+  const boardChip = (key) => boardSwatch(key) + '<span class="bn">' + esc(boardName(key)) + '</span>';
+  // Auswahlfenster: Oberfläche (Holzarten/Dekore, eigene Farbe mit/ohne Maserung) und Kanten (wie Oberfläche, Spanplatte,
+  // Multiplex, MDF, Kantenband in Farbe). Jede Wahl gilt sofort; inherit = Schlüssel der Einstellung → „wie Einstellung“
   function boardPicker(anchor, value, inherit, onPick) {
     document.querySelectorAll('.bpick').forEach((x) => x.remove());
-    const cur = View3D.boardOf(value);
-    const own = /^#/.test(value || '');
+    const b0 = View3D.boardOf(value);
+    let surf = String(value || b0.id).split('|')[0];
+    let edge = b0.edge;
+    const own = /^#/.test(surf);
     const box = document.createElement('div');
     box.className = 'bpick';
     box.setAttribute('role', 'dialog');
     box.setAttribute('aria-label', 'Plattenfarbe');
-    box.innerHTML = '<h5>Plattenfarbe</h5><div class="grid">' + View3D.MATERIALS.map((m) => '<button type="button" data-bkey="' + m.id + '" aria-pressed="' + (!own && m.id === cur.id) + '">' +
+    box.innerHTML = '<h5>Oberfläche</h5><div class="grid">' + View3D.MATERIALS.map((m) => '<button type="button" data-bkey="' + m.id + '" aria-pressed="' + (!own && m.id === b0.id) + '">' +
       boardSwatch(m.id) + esc(m.name) + '</button>').join('') + '</div>' +
-      '<div class="own"><input type="color" value="' + cur.color + '" aria-label="Eigene Farbe"><label><input type="checkbox"' + (!own || cur.grain ? ' checked' : '') + '> Maserung</label>' +
-      '<button type="button" class="btn small" data-bown>Eigene Farbe</button></div>' +
-      (inherit ? '<button type="button" class="inh" data-binh>' + boardSwatch(inherit) + 'Wie Einstellung (' + esc(View3D.boardOf(inherit).name) + ')</button>' : '');
+      '<div class="own"><input type="color" value="' + b0.color + '" aria-label="Eigene Farbe"><label><input type="checkbox"' + (!own || b0.grain ? ' checked' : '') + '> Maserung</label>' +
+      '<button type="button" class="btn small" data-bown aria-pressed="' + own + '">Eigene Farbe</button></div>' +
+      '<h5 class="eh">Kanten (Schmalflächen)</h5><div class="edges">' + View3D.EDGES.map((e) => '<button type="button" data-bedge="' + e.id + '" aria-pressed="' + (edge === e.id) + '">' +
+      (e.color ? '<span class="bsw" style="background:' + e.color + '" aria-hidden="true"></span>' : boardSwatch(surf)) + esc(e.name) + '</button>').join('') +
+      '<label class="eband"><input type="color" value="' + (/^#/.test(edge) ? edge : '#3a3a3a') + '" aria-label="Farbe Kantenband"><button type="button" data-bband aria-pressed="' + /^#/.test(edge) + '">Kantenband</button></label></div>' +
+      '<div class="foot">' + (inherit ? '<button type="button" class="inh" data-binh>' + boardSwatch(inherit) + 'Wie Einstellung</button>' : '<span></span>') +
+      '<button type="button" class="btn small" data-bdone>Fertig</button></div>';
     document.body.appendChild(box);
     const r = anchor.getBoundingClientRect();
     const bw = box.offsetWidth;
@@ -2363,17 +2383,33 @@ table.fmt.one .onet { display: inline; }
     const outside = (e) => { if (!box.contains(e.target) && !anchor.contains(e.target)) close(); };
     const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); anchor.focus(); } };
     setTimeout(() => { document.addEventListener('pointerdown', outside, true); document.addEventListener('keydown', onKey, true); });
-    const ownKey = () => box.querySelector('input[type=color]').value.toLowerCase() + (box.querySelector('.own input[type=checkbox]').checked ? '' : '/u');
+    const colorIn = box.querySelector('.own input[type=color]');
+    const grainIn = box.querySelector('.own input[type=checkbox]');
+    const bandIn = box.querySelector('.eband input[type=color]');
+    const mark = () => {
+      box.querySelectorAll('[data-bkey]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.bkey === surf)));
+      box.querySelector('[data-bown]').setAttribute('aria-pressed', String(/^#/.test(surf)));
+      box.querySelectorAll('[data-bedge]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.bedge === edge)));
+      box.querySelector('[data-bband]').setAttribute('aria-pressed', String(/^#/.test(edge)));
+      const same = box.querySelector('[data-bedge="same"] .bsw');
+      if (same) same.outerHTML = boardSwatch(surf);
+    };
+    const apply = () => { mark(); onPick(View3D.boardKey(surf, edge)); };
+    const ownKey = () => colorIn.value.toLowerCase() + (grainIn.checked ? '' : '/u');
     box.addEventListener('click', (e) => {
-      const b = e.target.closest('[data-bkey]');
-      if (b) { onPick(b.dataset.bkey); close(); return; }
-      if (e.target.closest('[data-bown]')) { onPick(ownKey()); close(); return; }
-      if (e.target.closest('[data-binh]')) { onPick(null); close(); }
+      const k = e.target.closest('[data-bkey]');
+      if (k) { surf = k.dataset.bkey; apply(); return; }
+      if (e.target.closest('[data-bown]')) { surf = ownKey(); apply(); return; }
+      const ed = e.target.closest('[data-bedge]');
+      if (ed) { edge = ed.dataset.bedge; apply(); return; }
+      if (e.target.closest('[data-bband]')) { edge = bandIn.value.toLowerCase(); apply(); return; }
+      if (e.target.closest('[data-binh]')) { onPick(null); close(); return; }
+      if (e.target.closest('[data-bdone]')) { close(); anchor.focus(); }
     });
-    // eigene Farbe und Maserung gleich zeigen (Fenster bleibt offen)
-    box.querySelector('input[type=color]').addEventListener('input', () => onPick(ownKey()));
-    box.querySelector('.own input[type=checkbox]').addEventListener('change', () => onPick(ownKey()));
-    (box.querySelector('[aria-pressed="true"]') || box.querySelector('button')).focus();
+    colorIn.addEventListener('input', () => { surf = ownKey(); apply(); });
+    grainIn.addEventListener('change', () => { if (/^#/.test(surf)) { surf = ownKey(); apply(); } });
+    bandIn.addEventListener('input', () => { edge = bandIn.value.toLowerCase(); apply(); });
+    (box.querySelector('[data-bkey][aria-pressed="true"]') || box.querySelector('button')).focus();
     return box;
   }
   function setBoardDefault(key) {
@@ -2420,7 +2456,7 @@ table.fmt.one .onet { display: inline; }
       const nm = esc(p.solid.name);
       return '<tr data-num="' + num + '" class="' + (mdl.sel === num ? 'sel' : '') + (off ? ' off' : '') + '"><td class="no"><span>' + num + '</span></td>' +
         '<td><div class="nm">' + nm + '</div><div class="dm">' + dm + '</div></td>' +
-        '<td class="act"><button type="button" class="mbsw' + (p.board ? ' own' : '') + '" data-mboard="' + num + '" aria-pressed="false" title="Plattenfarbe: ' + esc(View3D.boardOf(boardKeyOf(p)).name) +
+        '<td class="act"><button type="button" class="mbsw' + (p.board ? ' own' : '') + '" data-mboard="' + num + '" aria-pressed="false" title="Plattenfarbe: ' + esc(boardName(boardKeyOf(p))) +
         (p.board ? '' : ' (wie Einstellung)') + '" aria-label="Plattenfarbe ' + nm + '">' + boardSwatch(boardKeyOf(p)) + '</button><button type="button" data-mvis="' + num + '" aria-pressed="false" title="' + (off ? 'Einblenden' : 'Ausblenden') + '" aria-label="' + nm + (off ? ' einblenden' : ' ausblenden') + '">' +
         (off ? ICON_EYE_OFF : ICON_EYE) + '</button><button type="button" data-monly="' + num + '" aria-pressed="' + solo + '" title="' + (solo ? 'Wieder alle Bauteile zeigen' : 'Nur dieses Bauteil zeigen (heranzoomen)') +
         '" aria-label="' + (solo ? 'Wieder alle zeigen' : 'Nur ' + nm + ' zeigen') + '">' + ICON_SOLO + '</button></td></tr>';

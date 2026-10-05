@@ -168,6 +168,9 @@ zusammengebaut, so wie sie im Modell stehen (OpenCascade, three.js – offline, 
   Kirschbaum, Nussbaum, MDF roh, Weiß, Lichtgrau, Anthrazit, Schwarz oder eine eigene Farbe (mit/ohne Maserung). Je Bauteil
   über das Farbfeld in der Liste (blau umrandet = eigene Farbe, *Wie Einstellung* nimmt sie zurück); gilt auch in der
   3D-Ansicht des Teils und wird mit der Teileliste gespeichert.
+  **Kanten (Schmalflächen)** getrennt von der Oberfläche: *Wie Oberfläche*, *Spanplatte* (Späne), *Multiplex* (Furnierlagen),
+  *MDF* oder *Kantenband* in einer Farbe – z. B. Oberfläche Weiß mit Spanplattenkante. Die Maserung läuft immer längs der
+  langen Seite des Teils (auch auf den Schmalflächen und bei schrägen Teilen).
 - **Explosionsansicht** (Regler 0–100 %): die Bauteile rücken von der Mitte der Baugruppe weg; Nummern und Messungen wandern mit.
 - **Messen mit Fang:** zwei Punkte anklicken, unter dem Mauszeiger zeigt eine Markierung, worauf eingerastet wird –
   □ Endpunkt/Ecke, ○ Kreismitte (mit Radius, auch Bögen und Bohrungen), △ Kantenmitte, ✕ Kante, sonst Fläche; Alt gedrückt

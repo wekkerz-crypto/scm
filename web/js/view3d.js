@@ -67,13 +67,27 @@
     { id: 'anthrazit', name: 'Anthrazit', color: '#4a4d50', grain: 0 },
     { id: 'schwarz', name: 'Schwarz', color: '#2a2b2d', grain: 0 },
   ];
-  // Schlüssel → { color, grain, name }; unbekannt → Eiche hell
+  // Schlüssel → { color, grain, name, edge, edgeName, edgeColor }; Oberfläche wie MATERIALS (unbekannt → Eiche hell),
+  // Kanten (Schmalflächen) nach '|': 'span' | 'multiplex' | 'mdf' | '#rrggbb' (Kantenband) – ohne = wie Oberfläche
+  const EDGES = [
+    { id: 'same', name: 'Wie Oberfläche' },
+    { id: 'span', name: 'Spanplatte', color: '#cbb289' },
+    { id: 'multiplex', name: 'Multiplex', color: '#e2c896' },
+    { id: 'mdf', name: 'MDF', color: '#a8865f' },
+  ];
   function boardOf(key) {
-    if (typeof key === 'string' && /^#[0-9a-f]{6}(\/u)?$/i.test(key)) {
-      return { color: key.slice(0, 7).toLowerCase(), grain: /\/u$/i.test(key) ? 0 : 1, name: 'Eigene Farbe' };
-    }
-    return MATERIALS.find((m) => m.id === key) || MATERIALS[0];
+    const parts = typeof key === 'string' ? key.split('|') : [key];
+    const sk = parts[0];
+    let surf;
+    if (typeof sk === 'string' && /^#[0-9a-f]{6}(\/u)?$/i.test(sk)) surf = { id: sk, color: sk.slice(0, 7).toLowerCase(), grain: /\/u$/i.test(sk) ? 0 : 1, name: 'Eigene Farbe' };
+    else surf = MATERIALS.find((m) => m.id === sk) || MATERIALS[0];
+    const ek = parts[1] && (EDGES.some((e) => e.id === parts[1]) || /^#[0-9a-f]{6}$/i.test(parts[1])) ? parts[1] : 'same';
+    const e = EDGES.find((x) => x.id === ek);
+    return { id: surf.id, color: surf.color, grain: surf.grain, name: surf.name, edge: ek,
+      edgeName: e ? e.name : 'Kantenband', edgeColor: ek === 'same' ? surf.color : e ? e.color : ek.toLowerCase() };
   }
+  // Schlüssel zusammensetzen (Oberfläche + Kanten)
+  const boardKey = (surface, edge) => surface + (edge && edge !== 'same' ? '|' + edge : '');
 
   // Holzmaserung als Textur (Fasern in X); grain 0 = einfarbig (Dekor), 1 = volle Maserung
   function woodCanvas(base, grain) {
@@ -103,37 +117,179 @@
     return cv;
   }
 
-  // Holz-UV: Projektion je Dreieck auf die Hauptebene seiner Normalen (Faser längs X)
-  function woodUV(T, g) {
-    const pos = g.getAttribute('position').array;
-    const nrm = g.getAttribute('normal').array;
-    const uv = new Float32Array((pos.length / 3) * 2);
-    const S = 1 / 700;
-    for (let i = 0, j = 0; i < pos.length; i += 3, j += 2) {
-      const ax = Math.abs(nrm[i]);
-      const ay = Math.abs(nrm[i + 1]);
-      const az = Math.abs(nrm[i + 2]);
-      if (az >= ax && az >= ay) { uv[j] = pos[i] * S; uv[j + 1] = pos[i + 1] * S * 2; } else if (ay >= ax) { uv[j] = pos[i] * S; uv[j + 1] = pos[i + 2] * S * 2; } else { uv[j] = pos[i + 1] * S; uv[j + 1] = pos[i + 2] * S * 2; }
+  // Schmalflächen-Texturen: Spanplatte (Späne), Multiplex (Furnierlagen quer zur Dicke), MDF (fein), Kantenband (einfarbig)
+  function edgeCanvas(kind, base) {
+    const cv = document.createElement('canvas');
+    cv.width = 512;
+    cv.height = 512;
+    const c = cv.getContext('2d');
+    c.fillStyle = base;
+    c.fillRect(0, 0, 512, 512);
+    let seed = 7;
+    const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    if (kind === 'span') {
+      for (let i = 0; i < 9000; i++) {
+        const l = rnd();
+        c.fillStyle = l < 0.45 ? 'rgba(92,64,30,' + (0.15 + rnd() * 0.35).toFixed(2) + ')' : 'rgba(255,240,205,' + (0.15 + rnd() * 0.35).toFixed(2) + ')';
+        const w = 1 + rnd() * (rnd() < 0.15 ? 9 : 4);
+        c.fillRect(rnd() * 512, rnd() * 512, w, 1 + rnd() * 3);
+      }
+    } else if (kind === 'mdf') {
+      for (let i = 0; i < 6000; i++) {
+        c.fillStyle = rnd() < 0.5 ? 'rgba(70,45,20,0.12)' : 'rgba(255,235,200,0.12)';
+        c.fillRect(rnd() * 512, rnd() * 512, 1.5, 1.5);
+      }
+    } else if (kind === 'multiplex') {
+      // 13 Lagen über die Texturhöhe (= 19,5 mm), abwechselnd heller/dunkler, Leimfugen dunkel
+      const n = 13;
+      const h = 512 / n;
+      for (let k = 0; k < n; k++) {
+        c.fillStyle = k % 2 ? '#d6b783' : '#ead2a4';
+        c.fillRect(0, k * h, 512, h);
+        for (let i = 0; i < 18; i++) {
+          c.fillStyle = 'rgba(120,80,35,' + (0.05 + rnd() * 0.12).toFixed(2) + ')';
+          c.fillRect(0, k * h + rnd() * h, 512, 0.6 + rnd());
+        }
+        c.fillStyle = 'rgba(80,52,22,0.55)';
+        c.fillRect(0, k * h, 512, 1.4);
+      }
     }
-    g.setAttribute('uv', new T.BufferAttribute(uv, 2));
+    return cv;
   }
 
-  // Holz-Material (Maserung als Textur) – gleich für die Teil-Ansicht und Möbel 3D
-  const woodTex = new Map();
-  function woodMaterial(T, g, base, grain) {
-    woodUV(T, g);
-    if (grain === undefined) grain = 1;
-    const key = base + '/' + grain;
-    let tex = woodTex.get(key);
+  /*
+   * Lage der Platte im Netz: Dickenrichtung t = Normale der größten Fläche (nach Fläche gewichtet), in der Plattenebene
+   * die lange Seite L und die kurze S. Damit läuft die Maserung immer längs der langen Seite (auch bei schrägen Teilen).
+   */
+  function boardFrame(g) {
+    const pos = g.getAttribute('position').array;
+    const idx = g.index ? g.index.array : null;
+    const nTri = idx ? idx.length / 3 : pos.length / 9;
+    const vi = (t, k) => (idx ? idx[t * 3 + k] : t * 3 + k) * 3;
+    const buckets = new Map();
+    for (let t = 0; t < nTri; t++) {
+      const a = vi(t, 0);
+      const b = vi(t, 1);
+      const c = vi(t, 2);
+      const ux = pos[b] - pos[a]; const uy = pos[b + 1] - pos[a + 1]; const uz = pos[b + 2] - pos[a + 2];
+      const wx = pos[c] - pos[a]; const wy = pos[c + 1] - pos[a + 1]; const wz = pos[c + 2] - pos[a + 2];
+      let nx = uy * wz - uz * wy; let ny = uz * wx - ux * wz; let nz = ux * wy - uy * wx;
+      const A = Math.hypot(nx, ny, nz);
+      if (A < 1e-9) continue;
+      nx /= A; ny /= A; nz /= A;
+      // Richtung ohne Vorzeichen (größte Komponente positiv)
+      const m = Math.abs(nx) >= Math.abs(ny) && Math.abs(nx) >= Math.abs(nz) ? nx : Math.abs(ny) >= Math.abs(nz) ? ny : nz;
+      if (m < 0) { nx = -nx; ny = -ny; nz = -nz; }
+      const k = Math.round(nx * 20) + ',' + Math.round(ny * 20) + ',' + Math.round(nz * 20);
+      const e = buckets.get(k) || { a: 0, x: 0, y: 0, z: 0 };
+      e.a += A; e.x += nx * A; e.y += ny * A; e.z += nz * A;
+      buckets.set(k, e);
+    }
+    let best = null;
+    for (const e of buckets.values()) if (!best || e.a > best.a) best = e;
+    let t = best ? [best.x, best.y, best.z] : [0, 0, 1];
+    const tl = Math.hypot(t[0], t[1], t[2]) || 1;
+    t = t.map((v) => v / tl);
+    // Achse der Plattenebene: die Modellachse mit der längsten Projektion, dann die Senkrechte dazu
+    let e1 = null;
+    for (const ax of [[1, 0, 0], [0, 1, 0], [0, 0, 1]]) {
+      const d = ax[0] * t[0] + ax[1] * t[1] + ax[2] * t[2];
+      const p = [ax[0] - d * t[0], ax[1] - d * t[1], ax[2] - d * t[2]];
+      const l = Math.hypot(p[0], p[1], p[2]);
+      if (!e1 || l > e1.l + 1e-6) e1 = { v: p.map((x) => x / l), l: l };
+    }
+    const a1 = e1.v;
+    const a2 = [t[1] * a1[2] - t[2] * a1[1], t[2] * a1[0] - t[0] * a1[2], t[0] * a1[1] - t[1] * a1[0]];
+    const ext = (ax) => {
+      let lo = Infinity;
+      let hi = -Infinity;
+      for (let i = 0; i < pos.length; i += 3) { const d = pos[i] * ax[0] + pos[i + 1] * ax[1] + pos[i + 2] * ax[2]; if (d < lo) lo = d; if (d > hi) hi = d; }
+      return [lo, hi];
+    };
+    const r1 = ext(a1);
+    const r2 = ext(a2);
+    const rt = ext(t);
+    const long1 = r1[1] - r1[0] >= r2[1] - r2[0];
+    return { t: t, L: long1 ? a1 : a2, S: long1 ? a2 : a1, t0: rt[0] };
+  }
+
+  /*
+   * UV und Gruppen: Gruppe 0 = Deck-/Unterseite (Normale ∥ Dicke), Gruppe 1 = Schmalflächen. Faser (Textur-X) längs der
+   * langen Seite; auf Schmalflächen quer dazu die Dicke (Multiplex: 1 Texturhöhe = 19,5 mm ab Unterseite).
+   */
+  function boardUV(T, g, edgeKind) {
+    if (!g.getAttribute('normal')) g.computeVertexNormals();
+    if (!g.index) { const n = g.getAttribute('position').count; const ix = new Uint32Array(n); for (let i = 0; i < n; i++) ix[i] = i; g.setIndex(new T.BufferAttribute(ix, 1)); }
+    const F = g.userData.boardFrame || (g.userData.boardFrame = boardFrame(g));
+    const pos = g.getAttribute('position').array;
+    const nrm = g.getAttribute('normal').array;
+    const S = 1 / 700;
+    const ev = edgeKind === 'multiplex' ? 1 / 19.5 : edgeKind === 'span' || edgeKind === 'mdf' ? 1 / 60 : S * 2;
+    const eu = edgeKind === 'span' || edgeKind === 'mdf' ? 1 / 60 : S;
+    const dot = (i, a) => pos[i] * a[0] + pos[i + 1] * a[1] + pos[i + 2] * a[2];
+    const nd = (i, a) => nrm[i] * a[0] + nrm[i + 1] * a[1] + nrm[i + 2] * a[2];
+    const n = pos.length / 3;
+    const uv = new Float32Array(n * 2);
+    const face = new Uint8Array(n);
+    for (let v = 0; v < n; v++) {
+      const i = v * 3;
+      if (Math.abs(nd(i, F.t)) > 0.9) { face[v] = 1; uv[v * 2] = dot(i, F.L) * S; uv[v * 2 + 1] = dot(i, F.S) * S * 2; continue; }
+      // Schmalfläche: Faser längs L, an der Stirnseite (Normale ∥ L) längs S
+      const along = Math.abs(nd(i, F.L)) > 0.7 ? F.S : F.L;
+      uv[v * 2] = dot(i, along) * eu;
+      uv[v * 2 + 1] = (dot(i, F.t) - F.t0) * ev;
+    }
+    g.setAttribute('uv', new T.BufferAttribute(uv, 2));
+    // Dreiecke sortieren: erst Flächen, dann Schmalflächen
+    const idx = g.index.array;
+    const a = [];
+    const b = [];
+    for (let k = 0; k < idx.length; k += 3) {
+      const f = face[idx[k]] + face[idx[k + 1]] + face[idx[k + 2]];
+      (f >= 2 ? a : b).push(idx[k], idx[k + 1], idx[k + 2]);
+    }
+    g.setIndex(new T.BufferAttribute(new Uint32Array(a.concat(b)), 1));
+    g.clearGroups();
+    g.addGroup(0, a.length, 0);
+    g.addGroup(a.length, b.length, 1);
+  }
+
+  const texCache = new Map();
+  function cachedTex(T, key, make) {
+    let tex = texCache.get(key);
     if (!tex) {
-      tex = new T.CanvasTexture(woodCanvas(base, grain));
+      tex = new T.CanvasTexture(make());
       tex.wrapS = tex.wrapT = T.RepeatWrapping;
       tex.encoding = T.sRGBEncoding;
       tex.anisotropy = 8;
-      woodTex.set(key, tex);
+      texCache.set(key, tex);
     }
-    return new T.MeshStandardMaterial({ map: tex, roughness: grain > 0 ? 0.58 : 0.5, metalness: 0, envMapIntensity: 0.4,
-      polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+    return tex;
+  }
+  const matOpts = { metalness: 0, envMapIntensity: 0.4, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 };
+
+  // Holz-Material (Maserung als Textur) – gleich für die Teil-Ansicht und Möbel 3D
+  function woodMaterial(T, g, base, grain) {
+    if (grain === undefined) grain = 1;
+    if (g) boardUV(T, g, 'same');
+    return new T.MeshStandardMaterial(Object.assign({ map: cachedTex(T, 'w' + base + '/' + grain, () => woodCanvas(base, grain)),
+      roughness: grain > 0 ? 0.58 : 0.5 }, matOpts));
+  }
+
+  /*
+   * Materialien einer Platte aus dem Schlüssel (boardOf): [Oberfläche, Schmalflächen]; setzt UV und Gruppen am Netz.
+   * color = Oberflächenfarbe (für leichte Helligkeitsunterschiede je Bauteil schon abgewandelt), sonst aus dem Schlüssel.
+   */
+  function boardMaterials(T, g, key, color) {
+    const bd = boardOf(key);
+    const base = color || bd.color;
+    boardUV(T, g, bd.edge);
+    const surf = woodMaterial(T, null, base, bd.grain);
+    if (bd.edge === 'same') return [surf, surf];
+    const kind = /^#/.test(bd.edge) ? 'band' : bd.edge;
+    const edge = new T.MeshStandardMaterial(Object.assign({ map: cachedTex(T, 'e' + kind + bd.edgeColor, () => edgeCanvas(kind, bd.edgeColor)),
+      roughness: kind === 'band' ? 0.45 : 0.85 }, matOpts));
+    return [surf, edge];
   }
 
   // Spannuten-Streifen für drehende Werkzeuge
@@ -232,10 +388,11 @@
       const o = g.children.pop();
       o.traverse((x) => {
         if (x.geometry) x.geometry.dispose();
-        if (x.material && !x.material.keep) {
-          const i = this.lineMats.indexOf(x.material);
+        for (const m of x.material ? [].concat(x.material) : []) {
+          if (m.keep) continue;
+          const i = this.lineMats.indexOf(m);
           if (i >= 0) this.lineMats.splice(i, 1);
-          x.material.dispose();
+          m.dispose();
         }
       });
     }
@@ -334,8 +491,7 @@
       if (placed.normals) g.setAttribute('normal', new T.BufferAttribute(placed.normals, 3));
       g.setIndex(new T.BufferAttribute(new Uint32Array(placed.index), 1));
       if (!placed.normals) g.computeVertexNormals();
-      const bd = boardOf(opts.board);
-      const mat = woodMaterial(T, g, bd.color, bd.grain);
+      const mat = boardMaterials(T, g, opts.board);
       const mesh = new T.Mesh(g, mat);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
@@ -611,5 +767,5 @@
   };
 
   return { load: load, stepMeshes: stepMeshes, Viewer: Viewer, placeMesh: placeMesh, woodMaterial: woodMaterial,
-    MATERIALS: MATERIALS, boardOf: boardOf };
+    MATERIALS: MATERIALS, EDGES: EDGES, boardOf: boardOf, boardKey: boardKey, boardMaterials: boardMaterials, boardFrame: boardFrame };
 });

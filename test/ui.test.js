@@ -191,6 +191,14 @@ test('Web-Tool: Möbel 3D – Baugruppe mit Nummern, Ein-/Ausblenden, Wählen, M
     assert.ok(await p.$eval('#mtable tr[data-num="5"]', (t) => t.classList.contains('off')));
     await p.click('#mall');
     assert.ok(!(await p.$eval('#mtable tr[data-num="5"]', (t) => t.classList.contains('off'))));
+    // Fokus: nur ein Bauteil, nochmal = wieder alle
+    await p.click('#mtable [data-monly="2"]');
+    assert.strictEqual(await p.$$eval('#mtable tr.off', (x) => x.length), 5);
+    assert.match(await p.textContent('#msolo'), /Nur Bauteil 2/);
+    assert.strictEqual(await p.getAttribute('#mtable [data-monly="2"]', 'aria-pressed'), 'true');
+    await p.click('#mtable [data-monly="2"]');
+    assert.strictEqual(await p.$$eval('#mtable tr.off', (x) => x.length), 0);
+    assert.ok(await p.$eval('#msolo', (m) => m.hidden));
     // Zeile wählen → Hinweis unten, Nummer hervorgehoben
     await p.click('#mtable tr[data-num="3"] .nm');
     assert.match(await p.textContent('#mhud'), /Bauteil 3 · Aufkantung_3 · 462 × 500 × 19/);

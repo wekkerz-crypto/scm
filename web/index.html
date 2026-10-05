@@ -301,8 +301,16 @@ body[data-page="model"] .profilebar, body[data-page="model"] .bench, body[data-p
 .mtable .nm { font-weight: 600; overflow-wrap: anywhere; }
 .mtable .dm { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); }
 .mtable .act { white-space: nowrap; text-align: right; }
-.mtable .act button { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 2px 6px; cursor: pointer; font-size: 0.8rem; color: var(--ink); }
-.mtable .act button:hover { border-color: var(--muted); }
+.mtable .act button { display: inline-grid; place-items: center; width: 30px; height: 28px; border: 1px solid transparent; background: none;
+  border-radius: 6px; padding: 0; cursor: pointer; color: var(--muted); vertical-align: middle; }
+.mtable .act button:hover { border-color: var(--line); background: var(--surface); color: var(--ink); }
+.mtable .act button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.mtable .act button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.mtable tr.off .act button[data-mvis] { color: var(--ink); }
+.mlisthead h2 small { font: 500 0.78rem var(--font-mono); color: var(--muted); margin-left: 4px; }
+.msolo { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 6px; padding: 6px 10px; border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface)); font-size: 0.85rem; }
+.msolo[hidden] { display: none; }
 .part .pnum { display: inline-grid; place-items: center; min-width: 20px; height: 20px; margin-right: 6px; border-radius: 99px; border: 1.5px solid currentColor;
   font: 600 0.72rem/1 var(--font-mono); vertical-align: 1px; }
 .view { touch-action: pan-y; }
@@ -572,9 +580,10 @@ table.fmt.one .onet { display: inline; }
       <div class="mhud" id="mhud">Linke Maustaste: drehen · rechte Maustaste/Shift: verschieben · Mausrad: zoomen · Klick: Bauteil wählen</div>
     </div>
     <aside class="card mlist">
-      <div class="mlisthead"><h2>Bauteile</h2><span class="mlact"><button type="button" class="btn ghost small" id="mall">Alle zeigen</button></span></div>
+      <div class="mlisthead"><h2>Bauteile <small id="mcount"></small></h2><span class="mlact"><button type="button" class="btn ghost small" id="mall" hidden>Alle zeigen</button></span></div>
+      <div class="msolo" id="msolo" hidden></div>
       <table class="mtable" id="mtable"></table>
-      <p class="note">Nummern wie in der Programmliste. Klick auf eine Zeile wählt das Bauteil, Doppelklick zoomt hin.</p>
+      <p class="note">Nummern wie in der Programmliste. Klick auf eine Zeile wählt das Bauteil, Doppelklick zoomt hin. Auge: ein-/ausblenden · Fokus: nur dieses Bauteil (nochmal: wieder alle).</p>
       <div class="mlisthead mdimhead"><h2>Maße</h2><span class="mlact"><button type="button" class="btn ghost small" id="mdimclear" hidden>Alle löschen</button></span></div>
       <ol class="mdimlist" id="mdimlist"></ol>
     </aside>
@@ -2266,6 +2275,23 @@ table.fmt.one .onet { display: inline; }
     }
     return { lo: lo, hi: hi };
   }
+  // Symbole der Bauteilliste (Strich in Textfarbe): Auge = sichtbar, Auge durchgestrichen = ausgeblendet, Fokus = nur dieses
+  const ICO = (d) => '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + d + '</svg>';
+  const ICON_EYE = ICO('<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>');
+  const ICON_EYE_OFF = ICO('<path d="M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-2.6 3.5M6.6 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7a9.6 9.6 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M3 3l18 18"/>');
+  const ICON_SOLO = ICO('<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/><circle cx="12" cy="12" r="3"/>');
+  // Nummer des einzigen sichtbaren Bauteils (nur dieses gezeigt), sonst null
+  function soloNum() {
+    const list = modelParts();
+    if (list.length < 2) return null;
+    const vis = list.filter((x) => !mdl.hidden.has(x.num));
+    return vis.length === 1 ? vis[0].num : null;
+  }
+  function showAllParts() {
+    mdl.hidden.clear();
+    if (mdl.viewer) { for (const q of modelParts()) mdl.viewer.setVisible(q.num, true); mdl.viewer.view('iso'); }
+    renderModelList();
+  }
   function renderModelList() {
     const t = $('mtable');
     const list = modelParts();
@@ -2274,11 +2300,21 @@ table.fmt.one .onet { display: inline; }
       const r = p.res || p.result;
       const dm = r && r.panel ? fmt(r.panel.L) + ' × ' + fmt(r.panel.W) + ' × ' + fmt(r.panel.T) : '';
       const off = mdl.hidden.has(num);
+      const solo = soloNum() === num;
+      const nm = esc(p.solid.name);
       return '<tr data-num="' + num + '" class="' + (mdl.sel === num ? 'sel' : '') + (off ? ' off' : '') + '"><td class="no"><span>' + num + '</span></td>' +
-        '<td><div class="nm">' + esc(p.solid.name) + '</div><div class="dm">' + dm + '</div></td>' +
-        '<td class="act"><button type="button" data-mvis="' + num + '" title="' + (off ? 'Einblenden' : 'Ausblenden') + '" aria-label="' + (off ? 'Einblenden' : 'Ausblenden') + '">' +
-        (off ? '◌' : '●') + '</button> <button type="button" data-monly="' + num + '" title="Nur dieses Bauteil zeigen">nur</button></td></tr>';
+        '<td><div class="nm">' + nm + '</div><div class="dm">' + dm + '</div></td>' +
+        '<td class="act"><button type="button" data-mvis="' + num + '" aria-pressed="false" title="' + (off ? 'Einblenden' : 'Ausblenden') + '" aria-label="' + nm + (off ? ' einblenden' : ' ausblenden') + '">' +
+        (off ? ICON_EYE_OFF : ICON_EYE) + '</button><button type="button" data-monly="' + num + '" aria-pressed="' + solo + '" title="' + (solo ? 'Wieder alle Bauteile zeigen' : 'Nur dieses Bauteil zeigen (heranzoomen)') +
+        '" aria-label="' + (solo ? 'Wieder alle zeigen' : 'Nur ' + nm + ' zeigen') + '">' + ICON_SOLO + '</button></td></tr>';
     }).join('');
+    const vis = list.filter((x) => !mdl.hidden.has(x.num));
+    $('mcount').textContent = mdl.hidden.size ? vis.length + ' von ' + list.length : list.length;
+    const sn = soloNum();
+    $('mall').hidden = !mdl.hidden.size || !!sn;
+    const sp = sn && list.find((x) => x.num === sn);
+    $('msolo').hidden = !sp;
+    if (sp) $('msolo').innerHTML = '<span>Nur Bauteil <b>' + sn + '</b> · ' + esc(sp.p.solid.name) + '</span><button type="button" class="btn ghost small" data-mshowall>Alle zeigen</button>';
   }
   async function renderModel() {
     renderModelList();
@@ -2363,6 +2399,7 @@ table.fmt.one .onet { display: inline; }
     }
     if (only) {
       const n = +only.dataset.monly;
+      if (soloNum() === n) { showAllParts(); return; }
       mdl.hidden = new Set(modelParts().map((q) => q.num).filter((q) => q !== n));
       if (mdl.viewer) { for (const q of modelParts()) mdl.viewer.setVisible(q.num, q.num === n); mdl.viewer.select(n); mdl.viewer.view('iso', n); }
       renderModelList();
@@ -2374,11 +2411,8 @@ table.fmt.one .onet { display: inline; }
     const tr = e.target.closest('tr[data-num]');
     if (tr && mdl.viewer) mdl.viewer.view('iso', +tr.dataset.num);
   });
-  $('mall').addEventListener('click', () => {
-    mdl.hidden.clear();
-    if (mdl.viewer) for (const q of modelParts()) mdl.viewer.setVisible(q.num, true);
-    renderModelList();
-  });
+  $('mall').addEventListener('click', showAllParts);
+  $('msolo').addEventListener('click', (e) => { if (e.target.closest('[data-mshowall]')) showAllParts(); });
   document.querySelectorAll('[data-mview]').forEach((b) => b.addEventListener('click', () => {
     if (!mdl.viewer) return;
     const v = b.dataset.mview;

@@ -163,7 +163,7 @@ zusammengebaut, so wie sie im Modell stehen (OpenCascade, three.js – offline, 
 - Drehen (linke Maustaste), verschieben (rechte Maustaste/Shift), zoomen (Mausrad); Ansichten Iso, Oben, Vorne, Rechts, Einpassen.
 - **Bauteil-Nummern** am Bauteil und in der Liste rechts (Name, Maße) – dieselben Nummern wie in der Programmliste.
   Klick auf Bauteil oder Zeile wählt es (blau, unten Name/Maße, *Im Programm öffnen*), Doppelklick auf die Zeile zoomt hin.
-- Je Bauteil **ein-/ausblenden** (●/◌), **nur** dieses zeigen, *Alle zeigen*; **Transparenz** für alle (das gewählte bleibt deckend).
+- Je Bauteil **ein-/ausblenden** (Auge) und **Fokus** (nur dieses Bauteil, heranzoomen; nochmal klicken = wieder alle), *Alle zeigen*; **Transparenz** für alle (das gewählte bleibt deckend).
 - **Explosionsansicht** (Regler 0–100 %): die Bauteile rücken von der Mitte der Baugruppe weg; Nummern und Messungen wandern mit.
 - **Messen mit Fang:** zwei Punkte anklicken, unter dem Mauszeiger zeigt eine Markierung, worauf eingerastet wird –
   □ Endpunkt/Ecke, ○ Kreismitte (mit Radius, auch Bögen und Bohrungen), △ Kantenmitte, ✕ Kante, sonst Fläche; Alt gedrückt

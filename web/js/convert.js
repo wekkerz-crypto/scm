@@ -26,6 +26,16 @@
     return !n || /^(part|teil|body|k(ö|oe)rper|solid|bauteil)[\s_-]*\d*$/i.test(String(n).trim()) || /open cascade/i.test(n);
   }
 
+  // Material/Dekor aus dem Bauteilnamen: Text in Klammern am Ende („KP_1_ OB (U708 ST9)“), sonst ein Dekor-Code
+  // wie U708_ST9 / H1145 ST10 im Namen; reine Zahlen in Klammern (Kopie „(2)“) zählen nicht
+  function materialOf(name) {
+    const n = String(name || '').trim();
+    const m = /\(([^()]+)\)\s*$/.exec(n);
+    if (m && !/^\s*\d+\s*$/.test(m[1])) return m[1].trim().replace(/\s+/g, ' ');
+    const d = /(?:^|[\s_-])([A-Z]\d{3,5})[\s_]+(ST\d{1,2})(?=$|[\s_-])/i.exec(n);
+    return d ? d[1].toUpperCase() + ' ' + d[2].toUpperCase() : '';
+  }
+
   // Liest alle Volumenkörper und gibt ihnen den Namen aus der STEP (Teilename, sonst Dateiname),
   // bereinigt und eindeutig. sourceName = Name der STEP-Datei.
   function readParts(stepText, sourceName) {
@@ -35,6 +45,7 @@
     const used = new Set();
     solids.forEach((s, i) => {
       s.stepName = s.name;
+      s.material = materialOf(s.name);
       let n = genericName(s.name) ? (base ? base + (solids.length > 1 ? '_' + (i + 1) : '') : s.name || 'Teil') : s.name;
       n = partName(n);
       let k = n;
@@ -219,6 +230,6 @@
     return lines.filter((l) => l !== null).join('\r\n');
   }
 
-  return { convert: convert, readParts: readParts, convertSolid: convertSolid, convertDxf: convertDxf, partName: partName,
+  return { convert: convert, readParts: readParts, convertSolid: convertSolid, convertDxf: convertDxf, partName: partName, materialOf: materialOf,
     makeBatch: makeBatch };
 });

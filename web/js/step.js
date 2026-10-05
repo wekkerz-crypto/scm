@@ -400,6 +400,7 @@
   Model.prototype.solids = function () {
     const out = [];
     const productNames = this.productNamesByBrep();
+    const colors = this.colorsByItem();
     for (const e of this.e.values()) {
       if (e.type !== 'MANIFOLD_SOLID_BREP' && e.type !== 'BREP_WITH_VOIDS') continue;
       let shell = this.get(e.args[1]);
@@ -407,9 +408,41 @@
       if (shell.type === 'ORIENTED_CLOSED_SHELL') shell = this.get(shell.args[2]);
       const faces = shell.args[1].map((r) => this.face(r));
       const name = (e.args[0] && String(e.args[0]).trim()) || productNames.get(e.id) || '';
-      out.push({ id: e.id, name: name, faces: faces });
+      const solid = { id: e.id, name: name, faces: faces };
+      // Farbe: am Körper, sonst die häufigste Flächenfarbe
+      let color = colors.get(e.id);
+      if (!color) {
+        const n = new Map();
+        for (const f of faces) { const c = colors.get(f.id); if (c) n.set(c, (n.get(c) || 0) + 1); }
+        let m = 0;
+        for (const [c, k] of n) if (k > m) { m = k; color = c; }
+      }
+      if (color) solid.color = color;
+      out.push(solid);
     }
     out.forEach((s, i) => { if (!s.name) s.name = 'Teil ' + (i + 1); });
+    return out;
+  };
+
+  // Farben (STYLED_ITEM → … → COLOUR_RGB) je Element (Körper oder Fläche) als '#rrggbb' (best effort)
+  Model.prototype.colorsByItem = function () {
+    const out = new Map();
+    const hex = (v) => Math.round(Math.max(0, Math.min(1, +v || 0)) * 255).toString(16).padStart(2, '0');
+    const find = (v, depth) => {
+      if (depth > 40 || v === null || v === undefined) return null;
+      if (Array.isArray(v)) { for (const x of v) { const c = find(x, depth + 1); if (c) return c; } return null; }
+      if (!(v instanceof Ref)) return null;
+      const e = this.e.get(v.id);
+      if (!e || !e.args) return null;
+      if (e.type === 'COLOUR_RGB') return '#' + hex(e.args[1]) + hex(e.args[2]) + hex(e.args[3]);
+      if (e.type === 'DRAUGHTING_PRE_DEFINED_COLOUR') return null;
+      return find(e.args, depth + 1);
+    };
+    for (const e of this.e.values()) {
+      if ((e.type !== 'STYLED_ITEM' && e.type !== 'OVER_RIDING_STYLED_ITEM') || !(e.args[2] instanceof Ref)) continue;
+      const c = find(e.args[1], 0);
+      if (c && (e.type === 'OVER_RIDING_STYLED_ITEM' || !out.has(e.args[2].id))) out.set(e.args[2].id, c);
+    }
     return out;
   };
 

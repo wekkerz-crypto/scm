@@ -19,6 +19,8 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   Plattenfarbe: `View3D.MATERIALS`/`boardOf` (id oder '#rrggbb', '/u' einfarbig; Kanten nach '|': `EDGES` span/multiplex/mdf
   oder '#rrggbb'; `boardMaterials` → [Oberfläche, Schmalflächen], `boardFrame` = Dicke/lange Seite → Maserung längs L), Einstellung `boardMaterial`, je Teil `part.board`
   (Sitzung), `boardPicker` in `index.html`, `Viewer.setBoards`.
+  Material aus dem Namen: `StepToXcs.materialOf` → `solid.material`, Farbe `solid.color` (`colorsByItem` in `step.js`)
+  → `nameBoard` in `index.html` (Einstellung `boardFromName`), Reihenfolge `part.board` < Name < Einstellung.
   Schnitt `setSection` (clippingPlanes in `applyLook`), Bild `snapshot()` (Leinwand + Schilder/Maße nachgezeichnet).
 - Listen (`state.page` 'lists'): Stückliste `bomRows` (gleiche Teile zusammengefasst, Anzahl `part.qty`), CSV, Druck A4 `printA4`;
   Zuschnittplan `web/js/cutplan.js` (`CutPlan.plan`, Guillotine, Schnittfuge/Besäumen/Maserung; `dir` auto/long/cross =

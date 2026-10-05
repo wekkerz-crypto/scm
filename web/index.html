@@ -965,7 +965,8 @@ table.fmt.one .onet { display: inline; }
       ['rawOversize', 'Rohteil-Aufmaß je Seite', 'number', 'mm'],
       ['parkOffset', 'Parkposition: Länge +', 'number', 'mm']] },
     { title: '3D-Ansicht', c: '--muted', fields: [
-      ['boardMaterial', 'Plattenfarbe', 'board', 'für alle Teile; je Bauteil änderbar in „Möbel 3D“']] },
+      ['boardMaterial', 'Plattenfarbe', 'board', 'für alle Teile; je Bauteil änderbar in „Möbel 3D“'],
+      ['boardFromName', 'Material aus dem Bauteilnamen (z. B. „Seite (U708 ST9)“) – Farbe aus der STEP', 'bool']] },
     { title: 'Etiketten (Druck über den Browser)', c: '--muted', fields: [
       ['labelWidth', 'Etikett: Breite', 'number', 'mm'],
       ['labelHeight', 'Etikett: Höhe', 'number', 'mm'],
@@ -3119,7 +3120,18 @@ table.fmt.one .onet { display: inline; }
     return { lo: lo, hi: hi };
   }
   // ------------------------------------------------ Plattenfarbe (3D-Ansichten)
-  const boardKeyOf = (part) => (part && part.board) || state.settings.boardMaterial || 'eiche';
+  const boardKeyOf = (part) => (part && part.board) || nameBoard(part) || state.settings.boardMaterial || 'eiche';
+  /*
+   * Platte aus dem Bauteilnamen: Material/Dekor (StepToXcs.materialOf, z. B. „U708 ST9“) als eigene Farbe mit Namen; Farbe aus
+   * der STEP, sonst nach dem Dekor-Code (W weiß, U uni grau, H Holz mit Maserung, F Stein). Holzdekore (H…) mit Maserung.
+   */
+  function nameBoard(part) {
+    const s = part && part.solid;
+    if (!s || !s.material || state.settings.boardFromName === false) return null;
+    const code = s.material.trim().charAt(0).toUpperCase();
+    const color = s.color || { W: '#f4f4f0', U: '#b9b9b5', H: '#c9a26b', F: '#9c9a95' }[code] || '#c8c8c4';
+    return color + (code === 'H' ? '' : '/u') + '~' + encodeURIComponent(s.material);
+  }
   function boardSwatch(key) {
     const b = View3D.boardOf(key);
     const bg = b.grain > 0 ? 'repeating-linear-gradient(172deg, ' + b.color + ' 0 3px, color-mix(in srgb, ' + b.color + ' 78%, #5a3410) 3px 4px, ' + b.color + ' 4px 7px)' : b.color;
@@ -3288,7 +3300,7 @@ table.fmt.one .onet { display: inline; }
       return '<tr data-num="' + num + '" class="' + (mdl.sel === num ? 'sel' : '') + (off ? ' off' : '') + '"><td class="no"><span>' + num + '</span></td>' +
         '<td><div class="nm">' + nm + '</div><div class="dm">' + dm + '</div></td>' +
         '<td class="act"><button type="button" class="mbsw' + (p.board ? ' own' : '') + '" data-mboard="' + num + '" aria-pressed="false" title="Plattenfarbe: ' + esc(boardName(boardKeyOf(p))) +
-        (p.board ? '' : ' (wie Einstellung)') + '" aria-label="Plattenfarbe ' + nm + '">' + boardSwatch(boardKeyOf(p)) + '</button><button type="button" data-mvis="' + num + '" aria-pressed="false" title="' + (off ? 'Einblenden' : 'Ausblenden') + '" aria-label="' + nm + (off ? ' einblenden' : ' ausblenden') + '">' +
+        (p.board ? '' : nameBoard(p) ? ' (aus dem Bauteilnamen)' : ' (wie Einstellung)') + '" aria-label="Plattenfarbe ' + nm + '">' + boardSwatch(boardKeyOf(p)) + '</button><button type="button" data-mvis="' + num + '" aria-pressed="false" title="' + (off ? 'Einblenden' : 'Ausblenden') + '" aria-label="' + nm + (off ? ' einblenden' : ' ausblenden') + '">' +
         (off ? ICON_EYE_OFF : ICON_EYE) + '</button><button type="button" data-monly="' + num + '" aria-pressed="' + solo + '" title="' + (solo ? 'Wieder alle Bauteile zeigen' : 'Nur dieses Bauteil zeigen (heranzoomen)') +
         '" aria-label="' + (solo ? 'Wieder alle zeigen' : 'Nur ' + nm + ' zeigen') + '">' + ICON_SOLO + '</button></td></tr>';
     }).join('');

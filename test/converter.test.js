@@ -1686,3 +1686,16 @@ test('Zuschnittplan: erster Schnitt längs/quer bevorzugt, Ziel Verschnitt oder 
   const auto = CP.plan(items, {});
   assert.ok(auto.sheets.length <= Math.min(...Object.values(res).map((r) => r.sheets.length)));
 });
+
+test('Material aus dem Bauteilnamen und Farbe aus der STEP (Stückliste/Zuschnitt je Dekor)', () => {
+  const { readParts, materialOf } = require('../web/js/convert.js');
+  const solids = readParts(read('test/fixtures/schrank3.step'), 'schrank3.step');
+  const by = new Map(solids.map((s) => [s.name, s]));
+  assert.strictEqual(by.get('KP_1_OB_U708_ST9').material, 'U708 ST9');
+  assert.strictEqual(by.get('KP_1_OB_U708_ST9').color, '#c8c8c5');
+  assert.strictEqual(by.get('KP_1_Tuer_1_W1000_ST9').material, 'W1000 ST9');
+  assert.strictEqual(by.get('KP_1_Tuer_1_W1000_ST9').color, '#f5f5f1');
+  assert.strictEqual(materialOf('Seite_H1145_ST10'), 'H1145 ST10');
+  assert.strictEqual(materialOf('Part 1 (2)'), '');
+  assert.strictEqual(materialOf('Boden'), '');
+});

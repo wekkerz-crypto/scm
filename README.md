@@ -198,6 +198,10 @@ Dritte Seite oben (**Listen**):
   Rohteil-Aufmaß), Fläche, geschätzter Zeit und Programmname. *Gleiche Teile zusammenfassen* (gleiche Maße, Farbe und
   gleiches Programm). **Anzahl** je Position änderbar (wird mit der Teileliste bzw. im Projekt gespeichert). Summen: Teile,
   m² je Material und Dicke, Bearbeitungszeit gesamt. **CSV / Excel** (Semikolon, deutsche Kommazahlen) und **Drucken / PDF**.
+- **Material aus dem Bauteilnamen:** Steht im Namen ein Dekor in Klammern (z. B. „KP_1_ OB (U708 ST9)“) oder ein Dekor-Code
+  wie `U708_ST9` / `H1145 ST10`, wird er die Platte des Teils – mit der Farbe aus der STEP (sonst nach dem Code: W weiß, U grau,
+  H Holz mit Maserung, F Stein). Stückliste, Zuschnitt und Möbel 3D gruppieren danach; je Teil von Hand änderbar, abschaltbar in
+  *Einstellungen › 3D-Ansicht* (Beispiel `test/fixtures/schrank3.step`).
 - **Zuschnittplan:** Teile auf Rohplatten (Format, Schnittfuge, Besäumrand einstellbar) je Material und Dicke, mit
   durchgehenden Schnitten wie an der Plattensäge; mit Maserung bleibt die lange Seite längs der Plattenlänge, Dekore werden
   bei Bedarf gedreht. Rohmaß oder Fertigmaß wählbar. Zeichnung je Platte mit Nummer und Maß, Ausnutzung.

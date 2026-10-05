@@ -206,8 +206,8 @@ Dritte Seite oben (**Listen**):
 
 ### Projektdatei (.s2m)
 
-**Projekt speichern** (links in der Teileliste) schreibt eine Datei mit allen STEP/DXF-Dateien, allen Änderungen je Teil
-(Drehung, Feld, Werkzeuge, Reihenfolge, Profil …), Plattenfarben, Anzahl und den Maßen aus Möbel 3D. **Projekt öffnen …**
+**Projekt speichern** (ganz oben neben Hell/Dunkel, auf jeder Seite) schreibt eine Datei mit allen STEP/DXF-Dateien, allen Änderungen je Teil
+(Drehung, Feld, Werkzeuge, Reihenfolge, Profil …), Plattenfarben, Anzahl und den Maßen aus Möbel 3D. **Projekt öffnen**
 (oder die .s2m auf die Seite ziehen) ersetzt die Teileliste – so geht ein Auftrag auf einem anderen PC weiter oder später
 wieder auf. Die Einstellungen (Werkzeuge, Sauger …) bleiben die des jeweiligen Rechners. Auch die Maße aus *Bemaßen* bleiben
 jetzt nach dem Neuladen erhalten.

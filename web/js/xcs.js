@@ -59,6 +59,7 @@
     sandAllowance: 0,          // Schleifzugabe: Formatfräsen bleibt um … mm größer, die Walze schleift auf Endmaß
     sandLead: 1,               // An- und Abfahrt im Bogen: Bogen = … × Walzenradius
     sandOverlap: 20,           // Überlappung am Ende des Umlaufs in mm
+    boardMaterial: 'eiche',    // Plattenfarbe in den 3D-Ansichten (View3D.MATERIALS id oder '#rrggbb', '/u' = einfarbig)
     labelWidth: 40,            // Etikett (Browser-Druck): Breite in mm
     labelHeight: 60,           // Etikett: Höhe in mm
     labelRotate: false,        // Inhalt um 90° drehen (Drucker zieht das Etikett quer ein)

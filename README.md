@@ -164,6 +164,10 @@ zusammengebaut, so wie sie im Modell stehen (OpenCascade, three.js – offline, 
 - **Bauteil-Nummern** am Bauteil und in der Liste rechts (Name, Maße) – dieselben Nummern wie in der Programmliste.
   Klick auf Bauteil oder Zeile wählt es (blau, unten Name/Maße, *Im Programm öffnen*), Doppelklick auf die Zeile zoomt hin.
 - Je Bauteil **ein-/ausblenden** (Auge) und **Fokus** (nur dieses Bauteil, heranzoomen; nochmal klicken = wieder alle), *Alle zeigen*; **Transparenz** für alle (das gewählte bleibt deckend).
+- **Plattenfarbe:** *Platten* oben (gilt für alle, auch Einstellungen → 3D-Ansicht) – Eiche hell, Buche, Ahorn/Birke,
+  Kirschbaum, Nussbaum, MDF roh, Weiß, Lichtgrau, Anthrazit, Schwarz oder eine eigene Farbe (mit/ohne Maserung). Je Bauteil
+  über das Farbfeld in der Liste (blau umrandet = eigene Farbe, *Wie Einstellung* nimmt sie zurück); gilt auch in der
+  3D-Ansicht des Teils und wird mit der Teileliste gespeichert.
 - **Explosionsansicht** (Regler 0–100 %): die Bauteile rücken von der Mitte der Baugruppe weg; Nummern und Messungen wandern mit.
 - **Messen mit Fang:** zwei Punkte anklicken, unter dem Mauszeiger zeigt eine Markierung, worauf eingerastet wird –
   □ Endpunkt/Ecke, ○ Kreismitte (mit Radius, auch Bögen und Bohrungen), △ Kantenmitte, ✕ Kante, sonst Fläche; Alt gedrückt

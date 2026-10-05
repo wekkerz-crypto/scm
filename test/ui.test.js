@@ -191,6 +191,18 @@ test('Web-Tool: Möbel 3D – Baugruppe mit Nummern, Ein-/Ausblenden, Wählen, M
     assert.ok(await p.$eval('#mtable tr[data-num="5"]', (t) => t.classList.contains('off')));
     await p.click('#mall');
     assert.ok(!(await p.$eval('#mtable tr[data-num="5"]', (t) => t.classList.contains('off'))));
+    // Plattenfarbe: für alle (Einstellung) und je Bauteil, „wie Einstellung“ nimmt sie wieder weg
+    await p.click('#mboard');
+    await p.click('.bpick [data-bkey="weiss"]');
+    assert.match(await p.textContent('#mboard'), /Weiß/);
+    await p.click('#mtable [data-mboard="3"]');
+    await p.click('.bpick [data-bkey="nuss"]');
+    assert.match(await p.getAttribute('#mtable [data-mboard="3"]', 'title'), /Nussbaum/);
+    assert.ok(await p.$eval('#mtable [data-mboard="3"]', (b) => b.classList.contains('own')));
+    await p.click('#mtable [data-mboard="3"]');
+    await p.click('.bpick [data-binh]');
+    assert.match(await p.getAttribute('#mtable [data-mboard="3"]', 'title'), /Weiß \(wie Einstellung\)/);
+    assert.strictEqual(await p.$$eval('.bpick', (x) => x.length), 0);
     // Fokus: nur ein Bauteil, nochmal = wieder alle
     await p.click('#mtable [data-monly="2"]');
     assert.strictEqual(await p.$$eval('#mtable tr.off', (x) => x.length), 5);

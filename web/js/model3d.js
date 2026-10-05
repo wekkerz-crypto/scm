@@ -9,8 +9,24 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  // Holztöne je Bauteil (leicht verschieden, damit Nachbarteile unterscheidbar sind)
-  const TONES = ['#d4ae7b', '#caa16c', '#dab886', '#c69c66', '#d0a874', '#c9a26f'];
+  // Helligkeit je Bauteil leicht verschieden, damit Nachbarteile gleicher Farbe unterscheidbar sind
+  const SHADE = [1, 0.95, 1.03, 0.93, 1.01, 0.97];
+
+  // Material eines Bauteils aus der Plattenfarbe (Schlüssel wie View3D.boardOf) – Holz wie in der Teil-Ansicht
+  function boardLook(T, g, board, i) {
+    const bd = window.View3D && View3D.boardOf ? View3D.boardOf(board) : { color: '#d4ae7b', grain: 1 };
+    const c = new T.Color(bd.color);
+    const hsl = {};
+    c.getHSL(hsl);
+    c.setHSL(hsl.h, hsl.s, Math.min(0.97, hsl.l * SHADE[i % SHADE.length]));
+    const hex = '#' + c.getHexString();
+    const mat = window.View3D && View3D.woodMaterial ? View3D.woodMaterial(T, g, hex, bd.grain)
+      : new T.MeshStandardMaterial({ color: hex, roughness: 0.6, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+    mat.side = T.DoubleSide;
+    // Kanten: deutlich dunkler als die Platte (auf Weiß grau, auf Nussbaum fast schwarz)
+    const edge = new T.Color(bd.color).multiplyScalar(hsl.l > 0.5 ? 0.42 : 0.3);
+    return { mat: mat, edge: edge };
+  }
 
   function Viewer(host, labels) {
     const THREE = window.THREE;
@@ -113,7 +129,6 @@
   Viewer.prototype.setTheme = function (dark) {
     this.dark = dark;
     this.scene.background = new this.THREE.Color(dark ? 0x1b2120 : 0xeef0ee);
-    for (const p of this.parts) p.edges.material.color.set(dark ? 0x1a120a : 0x4a3520);
     if (this.box) this.groundFor(this.worldBox ? this.worldBox() : this.box);
     if (this.dims && this.dims.length) this.drawDims();
   };
@@ -135,15 +150,14 @@
       if (!src.mesh.normals) g.computeVertexNormals();
       g.computeBoundingBox();
       // Holz wie in der Teil-Ansicht; je Bauteil ein leicht anderer Ton, damit Nachbarteile unterscheidbar sind
-      const mat = window.View3D && View3D.woodMaterial ? View3D.woodMaterial(T, g, TONES[i % TONES.length])
-        : new T.MeshStandardMaterial({ color: TONES[i % TONES.length], roughness: 0.6, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
-      mat.side = T.DoubleSide;
+      const look = boardLook(T, g, src.board, i);
+      const mat = look.mat;
       const color = new T.Color(0xffffff);
       const obj = new T.Mesh(g, mat);
       obj.castShadow = true;
       obj.receiveShadow = true;
       obj.userData.num = src.num;
-      const edges = new T.LineSegments(new T.EdgesGeometry(g, 24), new T.LineBasicMaterial({ color: this.dark ? 0x1a120a : 0x4a3520, transparent: true, opacity: 0.75 }));
+      const edges = new T.LineSegments(new T.EdgesGeometry(g, 24), new T.LineBasicMaterial({ color: look.edge, transparent: true, opacity: 0.75 }));
       this.root.add(obj, edges);
       const center = new T.Vector3();
       g.boundingBox.getCenter(center);
@@ -152,7 +166,7 @@
       lab.textContent = src.num;
       lab.title = src.num + ' – ' + src.name;
       this.labelEl.appendChild(lab);
-      this.parts.push({ num: src.num, name: src.name, obj: obj, edges: edges, color: color, center: center, label: lab, visible: true,
+      this.parts.push({ num: src.num, name: src.name, board: src.board, index: i, obj: obj, edges: edges, color: color, center: center, label: lab, visible: true,
         feat: snapFeatures(edges.geometry.getAttribute('position').array), offset: new T.Vector3() });
       box.union(g.boundingBox);
     });
@@ -188,6 +202,21 @@
     const sc = this.sun.shadow.camera;
     sc.left = -R; sc.right = R; sc.top = R; sc.bottom = -R; sc.near = 1; sc.far = R * 5;
     sc.updateProjectionMatrix();
+  };
+
+  // Plattenfarbe ändern (boards: num → Schlüssel), ohne neu zu laden
+  Viewer.prototype.setBoards = function (boards) {
+    const T = this.THREE;
+    for (const p of this.parts) {
+      const b = boards[p.num];
+      if (b === undefined || b === p.board) continue;
+      const look = boardLook(T, p.obj.geometry, b, p.index);
+      p.obj.material.dispose();
+      p.obj.material = look.mat;
+      p.edges.material.color.copy(look.edge);
+      p.board = b;
+    }
+    this.applyLook();
   };
 
   Viewer.prototype.part = function (num) { return this.parts.find((p) => p.num === num) || null; };

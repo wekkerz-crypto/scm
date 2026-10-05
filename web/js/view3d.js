@@ -51,8 +51,33 @@
   const stepMeshes = (occt, text) => OM.read(occt, text);
   const placeMesh = (meshes, tf, panel) => OM.place(meshes, tf, panel);
 
-  // Holzmaserung als Textur (Fasern in X)
-  function woodCanvas(base) {
+  /*
+   * Plattenfarben (Einstellung „Plattenfarbe“, je Bauteil änderbar): Holz mit Maserung (grain 0…1) oder Dekor einfarbig.
+   * Schlüssel = id; eigene Farbe als '#rrggbb' (mit Maserung) bzw. '#rrggbb/u' (einfarbig).
+   */
+  const MATERIALS = [
+    { id: 'eiche', name: 'Eiche hell', color: '#d4ae7b', grain: 1 },
+    { id: 'buche', name: 'Buche', color: '#dcae84', grain: 0.7 },
+    { id: 'ahorn', name: 'Ahorn / Birke', color: '#e8d3ad', grain: 0.55 },
+    { id: 'kirsche', name: 'Kirschbaum', color: '#b8764c', grain: 0.9 },
+    { id: 'nuss', name: 'Nussbaum', color: '#7b5539', grain: 1 },
+    { id: 'mdf', name: 'MDF roh', color: '#a8865f', grain: 0 },
+    { id: 'weiss', name: 'Weiß', color: '#eeede8', grain: 0 },
+    { id: 'grau', name: 'Lichtgrau', color: '#c8cac6', grain: 0 },
+    { id: 'anthrazit', name: 'Anthrazit', color: '#4a4d50', grain: 0 },
+    { id: 'schwarz', name: 'Schwarz', color: '#2a2b2d', grain: 0 },
+  ];
+  // Schlüssel → { color, grain, name }; unbekannt → Eiche hell
+  function boardOf(key) {
+    if (typeof key === 'string' && /^#[0-9a-f]{6}(\/u)?$/i.test(key)) {
+      return { color: key.slice(0, 7).toLowerCase(), grain: /\/u$/i.test(key) ? 0 : 1, name: 'Eigene Farbe' };
+    }
+    return MATERIALS.find((m) => m.id === key) || MATERIALS[0];
+  }
+
+  // Holzmaserung als Textur (Fasern in X); grain 0 = einfarbig (Dekor), 1 = volle Maserung
+  function woodCanvas(base, grain) {
+    if (grain === undefined) grain = 1;
     const cv = document.createElement('canvas');
     cv.width = 1024;
     cv.height = 512;
@@ -61,12 +86,12 @@
     c.fillRect(0, 0, cv.width, cv.height);
     let seed = 11;
     const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-    for (let i = 0; i < 150; i++) {
+    for (let i = 0; i < (grain > 0 ? 150 : 0); i++) {
       const y0 = rnd() * cv.height;
       const amp = 1 + rnd() * 5;
       const freq = 0.003 + rnd() * 0.008;
       const dark = rnd() < 0.62;
-      c.strokeStyle = dark ? 'rgba(110,62,18,' + (0.1 + rnd() * 0.2) + ')' : 'rgba(255,246,228,' + (0.06 + rnd() * 0.1) + ')';
+      c.strokeStyle = dark ? 'rgba(110,62,18,' + ((0.1 + rnd() * 0.2) * grain).toFixed(3) + ')' : 'rgba(255,246,228,' + ((0.06 + rnd() * 0.1) * grain).toFixed(3) + ')';
       c.lineWidth = 0.6 + rnd() * 2.2;
       c.beginPath();
       for (let x = 0; x <= cv.width; x += 4) {
@@ -95,17 +120,19 @@
 
   // Holz-Material (Maserung als Textur) – gleich für die Teil-Ansicht und Möbel 3D
   const woodTex = new Map();
-  function woodMaterial(T, g, base) {
+  function woodMaterial(T, g, base, grain) {
     woodUV(T, g);
-    let tex = woodTex.get(base);
+    if (grain === undefined) grain = 1;
+    const key = base + '/' + grain;
+    let tex = woodTex.get(key);
     if (!tex) {
-      tex = new T.CanvasTexture(woodCanvas(base));
+      tex = new T.CanvasTexture(woodCanvas(base, grain));
       tex.wrapS = tex.wrapT = T.RepeatWrapping;
       tex.encoding = T.sRGBEncoding;
       tex.anisotropy = 8;
-      woodTex.set(base, tex);
+      woodTex.set(key, tex);
     }
-    return new T.MeshStandardMaterial({ map: tex, roughness: 0.58, metalness: 0, envMapIntensity: 0.4,
+    return new T.MeshStandardMaterial({ map: tex, roughness: grain > 0 ? 0.58 : 0.5, metalness: 0, envMapIntensity: 0.4,
       polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
   }
 
@@ -307,7 +334,8 @@
       if (placed.normals) g.setAttribute('normal', new T.BufferAttribute(placed.normals, 3));
       g.setIndex(new T.BufferAttribute(new Uint32Array(placed.index), 1));
       if (!placed.normals) g.computeVertexNormals();
-      const mat = woodMaterial(T, g, opts.board || '#d4ae7b');
+      const bd = boardOf(opts.board);
+      const mat = woodMaterial(T, g, bd.color, bd.grain);
       const mesh = new T.Mesh(g, mat);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
@@ -582,5 +610,6 @@
     if (this.renderer.domElement.parentNode) this.renderer.domElement.parentNode.removeChild(this.renderer.domElement);
   };
 
-  return { load: load, stepMeshes: stepMeshes, Viewer: Viewer, placeMesh: placeMesh, woodMaterial: woodMaterial };
+  return { load: load, stepMeshes: stepMeshes, Viewer: Viewer, placeMesh: placeMesh, woodMaterial: woodMaterial,
+    MATERIALS: MATERIALS, boardOf: boardOf };
 });

@@ -271,6 +271,26 @@ body[data-page="model"] .profilebar, body[data-page="model"] .bench, body[data-p
 :root[data-theme="dark"] .mlab.dim { background: #8fb4ff; color: #0d1a2e; border-color: #8fb4ff; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mlab.dim { background: #8fb4ff; color: #0d1a2e; border-color: #8fb4ff; } }
 #mdimaxis button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+/* Plattenfarbe: Farbfeld (Holz gestreift, Dekor einfarbig) und Auswahlfenster */
+.bsw { display: inline-block; width: 16px; height: 16px; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--ink) 35%, transparent); flex: none; vertical-align: -3px; }
+.boardbtn { display: inline-flex; align-items: center; gap: 7px; }
+.boardbtn .bn { white-space: nowrap; font-family: var(--font-body); }
+.mtable .act button.mbsw .bsw { width: 18px; height: 18px; }
+.mtable .act button.mbsw.own .bsw { box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--accent); }
+.bpick { position: fixed; z-index: 60; width: 296px; padding: 12px; border-radius: 12px; background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,0.25); font-size: 0.86rem; }
+.bpick h5 { margin: 0 0 8px; font-size: 0.82rem; color: var(--muted); font-weight: 600; }
+.bpick .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
+.bpick .grid button, .bpick .inh { display: flex; align-items: center; gap: 8px; padding: 5px 7px; border-radius: 7px; border: 1px solid transparent;
+  background: none; color: inherit; font: inherit; cursor: pointer; text-align: left; }
+.bpick .grid button:hover, .bpick .inh:hover { background: var(--hl); }
+.bpick .grid button[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+.bpick .grid .bsw { width: 20px; height: 20px; }
+.bpick .own { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.bpick .own input[type=color] { width: 34px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer; }
+.bpick .own label { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); }
+.bpick .own .btn { margin-left: auto; }
+.bpick .inh { width: 100%; margin-top: 6px; color: var(--muted); }
 .mdimsvg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; --dimc: #1f5fbf; }
 .mdimsvg .dim { stroke: var(--dimc); stroke-width: 1.6; fill: none; }
 .mdimsvg .ext { stroke: var(--dimc); stroke-width: 1; fill: none; opacity: 0.7; }
@@ -584,6 +604,7 @@ table.fmt.one .onet { display: inline; }
         <label class="mopac" title="Transparenz der Bauteile (das gewählte bleibt deckend)">Transparenz <input type="range" id="mopac" min="0" max="85" step="5" value="0"> <span id="mopacv">0 %</span></label>
         <label class="mopac" title="Explosionsansicht: Bauteile auseinanderziehen (Maße bleiben wie zusammengebaut)">Explosion <input type="range" id="mexpl" min="0" max="100" step="5" value="0"> <span id="mexplv">0 %</span></label>
         <label class="mchk"><input type="checkbox" id="mlabels" checked> Nummern</label>
+        <span class="mopac">Platten <button type="button" class="btn small boardbtn" id="mboard" title="Plattenfarbe für alle Bauteile (je Bauteil: Farbfeld in der Liste)"></button></span>
         <button type="button" class="btn small" id="mmeasure" aria-pressed="false" title="Zwei Punkte anklicken – Fang auf Endpunkt, Mitte, Kreismitte, Kante, Fläche; Alt = ohne Fang; Esc beendet">📏 Messen</button>
         <button type="button" class="btn small" id="mdim" aria-pressed="false" title="Maße setzen, die stehen bleiben: zwei Punkte anklicken (mit Fang); Entf löscht das letzte; Esc beendet">📐 Bemaßen</button>
         <span class="v3bar static" id="mdimaxis" role="group" aria-label="Maßrichtung" hidden><button type="button" data-dimaxis="aligned" aria-pressed="true" title="Direkter Abstand der Punkte">Direkt</button><button type="button" data-dimaxis="x" aria-pressed="false" title="Abstand in X">X</button><button type="button" data-dimaxis="y" aria-pressed="false" title="Abstand in Y">Y</button><button type="button" data-dimaxis="z" aria-pressed="false" title="Abstand in Z (Höhe)">Z</button></span>
@@ -798,6 +819,8 @@ table.fmt.one .onet { display: inline; }
       ['fieldWidth', 'breit ab Breite Y über', 'number', 'mm'],
       ['rawOversize', 'Rohteil-Aufmaß je Seite', 'number', 'mm'],
       ['parkOffset', 'Parkposition: Länge +', 'number', 'mm']] },
+    { title: '3D-Ansicht', c: '--muted', fields: [
+      ['boardMaterial', 'Plattenfarbe', 'board', 'für alle Teile; je Bauteil änderbar in „Möbel 3D“']] },
     { title: 'Etiketten (Druck über den Browser)', c: '--muted', fields: [
       ['labelWidth', 'Etikett: Breite', 'number', 'mm'],
       ['labelHeight', 'Etikett: Höhe', 'number', 'mm'],
@@ -1033,6 +1056,15 @@ table.fmt.one .onet { display: inline; }
         });
         continue;
       }
+      if (type === 'board') {
+        l.innerHTML = cap + '<button type="button" class="btn small boardbtn" id="' + id + '">' + boardChip(v) + '</button>';
+        g.appendChild(l);
+        l.querySelector('button').addEventListener('click', (ev) => {
+          ev.preventDefault();
+          boardPicker(ev.currentTarget, state.settings.boardMaterial, null, (key) => setBoardDefault(key));
+        });
+        continue;
+      }
       if (type === 'mill' || type === 'saw' || type === 'sand') {
         l.innerHTML = cap + toolSelect('id="' + id + '"', type, v);
         g.appendChild(l);
@@ -1127,7 +1159,7 @@ table.fmt.one .onet { display: inline; }
       sel: state.sel,
       files: Array.from(srcFiles).filter(([id]) => used.has(id)).map(([id, f]) => ({ id: id, label: f.label, kind: f.kind, text: f.text })),
       parts: parts.map((p) => ({ file: p.src.file, idx: p.src.idx, label: p.label, name: p.solid.name, orientation: p.orientation, field: p.field,
-        fileName: p.fileName, side: p.side, profile: p.profile, overrides: p.overrides, overrides2: p.overrides2 })),
+        fileName: p.fileName, side: p.side, profile: p.profile, board: p.board || null, overrides: p.overrides, overrides2: p.overrides2 })),
     };
   }
   function writeSession() {
@@ -1165,7 +1197,7 @@ table.fmt.one .onet { display: inline; }
         solid.name = sp.name;
       }
       const part = { label: sp.label || f.label, src: { file: fileId, idx: sp.idx }, solid: solid, orientation: sp.orientation || null,
-        field: sp.field || null, fileName: sp.fileName || null, result: null, side: sp.side || 1, profile: sp.profile === undefined ? null : sp.profile,
+        field: sp.field || null, fileName: sp.fileName || null, result: null, side: sp.side || 1, profile: sp.profile === undefined ? null : sp.profile, board: sp.board || null,
         overrides: sp.overrides || { tools: {}, steps: {}, depths: {} }, overrides2: sp.overrides2 || { tools: {}, steps: {}, depths: {} } };
       if (f.kind === 'dxf') part.dxfText = f.text; else part.stepText = f.text;
       try { compute(part); } catch (e) { continue; }
@@ -2293,6 +2325,72 @@ table.fmt.one .onet { display: inline; }
     }
     return { lo: lo, hi: hi };
   }
+  // ------------------------------------------------ Plattenfarbe (3D-Ansichten)
+  const boardKeyOf = (part) => (part && part.board) || state.settings.boardMaterial || 'eiche';
+  function boardSwatch(key) {
+    const b = View3D.boardOf(key);
+    const bg = b.grain > 0 ? 'repeating-linear-gradient(172deg, ' + b.color + ' 0 3px, color-mix(in srgb, ' + b.color + ' 78%, #5a3410) 3px 4px, ' + b.color + ' 4px 7px)' : b.color;
+    return '<span class="bsw" style="background:' + bg + '" aria-hidden="true"></span>';
+  }
+  const boardChip = (key) => boardSwatch(key) + '<span class="bn">' + esc(View3D.boardOf(key).name) + '</span>';
+  // Auswahlfenster: Holzarten/Dekore, eigene Farbe (mit/ohne Maserung); inherit = Schlüssel der Einstellung → Knopf „wie Einstellung“
+  function boardPicker(anchor, value, inherit, onPick) {
+    document.querySelectorAll('.bpick').forEach((x) => x.remove());
+    const cur = View3D.boardOf(value);
+    const own = /^#/.test(value || '');
+    const box = document.createElement('div');
+    box.className = 'bpick';
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-label', 'Plattenfarbe');
+    box.innerHTML = '<h5>Plattenfarbe</h5><div class="grid">' + View3D.MATERIALS.map((m) => '<button type="button" data-bkey="' + m.id + '" aria-pressed="' + (!own && m.id === cur.id) + '">' +
+      boardSwatch(m.id) + esc(m.name) + '</button>').join('') + '</div>' +
+      '<div class="own"><input type="color" value="' + cur.color + '" aria-label="Eigene Farbe"><label><input type="checkbox"' + (!own || cur.grain ? ' checked' : '') + '> Maserung</label>' +
+      '<button type="button" class="btn small" data-bown>Eigene Farbe</button></div>' +
+      (inherit ? '<button type="button" class="inh" data-binh>' + boardSwatch(inherit) + 'Wie Einstellung (' + esc(View3D.boardOf(inherit).name) + ')</button>' : '');
+    document.body.appendChild(box);
+    const r = anchor.getBoundingClientRect();
+    const bw = box.offsetWidth;
+    const bh = box.offsetHeight;
+    box.style.left = Math.max(8, Math.min(window.innerWidth - bw - 8, r.right - bw)) + 'px';
+    box.style.top = (r.bottom + 6 + bh > window.innerHeight - 8 ? Math.max(8, r.top - 6 - bh) : r.bottom + 6) + 'px';
+    anchor.setAttribute('aria-expanded', 'true');
+    const close = () => {
+      box.remove();
+      anchor.setAttribute('aria-expanded', 'false');
+      document.removeEventListener('pointerdown', outside, true);
+      document.removeEventListener('keydown', onKey, true);
+    };
+    const outside = (e) => { if (!box.contains(e.target) && !anchor.contains(e.target)) close(); };
+    const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); anchor.focus(); } };
+    setTimeout(() => { document.addEventListener('pointerdown', outside, true); document.addEventListener('keydown', onKey, true); });
+    const ownKey = () => box.querySelector('input[type=color]').value.toLowerCase() + (box.querySelector('.own input[type=checkbox]').checked ? '' : '/u');
+    box.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-bkey]');
+      if (b) { onPick(b.dataset.bkey); close(); return; }
+      if (e.target.closest('[data-bown]')) { onPick(ownKey()); close(); return; }
+      if (e.target.closest('[data-binh]')) { onPick(null); close(); }
+    });
+    // eigene Farbe und Maserung gleich zeigen (Fenster bleibt offen)
+    box.querySelector('input[type=color]').addEventListener('input', () => onPick(ownKey()));
+    box.querySelector('.own input[type=checkbox]').addEventListener('change', () => onPick(ownKey()));
+    (box.querySelector('[aria-pressed="true"]') || box.querySelector('button')).focus();
+    return box;
+  }
+  function setBoardDefault(key) {
+    state.settings.boardMaterial = key || 'eiche';
+    saveSettings();
+    applyBoards();
+  }
+  // nach jeder Farbänderung: Knöpfe, Möbel 3D, Liste und Teil-Ansicht nachziehen
+  function applyBoards() {
+    const k = state.settings.boardMaterial;
+    for (const id of ['set-boardMaterial', 'mboard']) { const e = $(id); if (e) e.innerHTML = boardChip(k); }
+    if (mdl.viewer) { const m = {}; for (const q of modelParts()) m[q.num] = boardKeyOf(q.p); mdl.viewer.setBoards(m); }
+    render();
+  }
+  $('mboard').innerHTML = boardChip(state.settings.boardMaterial);
+  $('mboard').addEventListener('click', (e) => boardPicker(e.currentTarget, state.settings.boardMaterial, null, (key) => setBoardDefault(key)));
+
   // Symbole der Bauteilliste (Strich in Textfarbe): Auge = sichtbar, Auge durchgestrichen = ausgeblendet, Fokus = nur dieses
   const ICO = (d) => '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + d + '</svg>';
   const ICON_EYE = ICO('<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>');
@@ -2322,7 +2420,8 @@ table.fmt.one .onet { display: inline; }
       const nm = esc(p.solid.name);
       return '<tr data-num="' + num + '" class="' + (mdl.sel === num ? 'sel' : '') + (off ? ' off' : '') + '"><td class="no"><span>' + num + '</span></td>' +
         '<td><div class="nm">' + nm + '</div><div class="dm">' + dm + '</div></td>' +
-        '<td class="act"><button type="button" data-mvis="' + num + '" aria-pressed="false" title="' + (off ? 'Einblenden' : 'Ausblenden') + '" aria-label="' + nm + (off ? ' einblenden' : ' ausblenden') + '">' +
+        '<td class="act"><button type="button" class="mbsw' + (p.board ? ' own' : '') + '" data-mboard="' + num + '" aria-pressed="false" title="Plattenfarbe: ' + esc(View3D.boardOf(boardKeyOf(p)).name) +
+        (p.board ? '' : ' (wie Einstellung)') + '" aria-label="Plattenfarbe ' + nm + '">' + boardSwatch(boardKeyOf(p)) + '</button><button type="button" data-mvis="' + num + '" aria-pressed="false" title="' + (off ? 'Einblenden' : 'Ausblenden') + '" aria-label="' + nm + (off ? ' einblenden' : ' ausblenden') + '">' +
         (off ? ICON_EYE_OFF : ICON_EYE) + '</button><button type="button" data-monly="' + num + '" aria-pressed="' + solo + '" title="' + (solo ? 'Wieder alle Bauteile zeigen' : 'Nur dieses Bauteil zeigen (heranzoomen)') +
         '" aria-label="' + (solo ? 'Wieder alle zeigen' : 'Nur ' + nm + ' zeigen') + '">' + ICON_SOLO + '</button></td></tr>';
     }).join('');
@@ -2360,7 +2459,7 @@ table.fmt.one .onet { display: inline; }
       for (const [text, xs] of byText) {
         const meshes = View3D.stepMeshes(occt, text);
         const got = Model3D.assign(meshes, xs.map((x) => solidBox(x.p.solid)));
-        xs.forEach((x, k) => parts.push({ num: x.num, name: x.p.solid.name, mesh: got[k] }));
+        xs.forEach((x, k) => parts.push({ num: x.num, name: x.p.solid.name, mesh: got[k], board: boardKeyOf(x.p) }));
       }
       parts.sort((a, b) => a.num - b.num);
       mdl.viewer.setParts(parts);
@@ -2407,7 +2506,13 @@ table.fmt.one .onet { display: inline; }
   $('mtable').addEventListener('click', (e) => {
     const vis = e.target.closest('[data-mvis]');
     const only = e.target.closest('[data-monly]');
+    const bsw = e.target.closest('[data-mboard]');
     const tr = e.target.closest('tr[data-num]');
+    if (bsw) {
+      const x = modelParts().find((q) => q.num === +bsw.dataset.mboard);
+      if (x) boardPicker(bsw, boardKeyOf(x.p), state.settings.boardMaterial, (key) => { x.p.board = key || null; applyBoards(); });
+      return;
+    }
     if (vis) {
       const n = +vis.dataset.mvis;
       if (mdl.hidden.has(n)) mdl.hidden.delete(n); else mdl.hidden.add(n);
@@ -3130,12 +3235,13 @@ table.fmt.one .onet { display: inline; }
       const css = getComputedStyle(document.documentElement);
       const col = (n) => css.getPropertyValue(n).trim() || '#888888';
       v3.viewer.setTheme(isDarkTheme());
-      if (v3.result !== cur.result) {
+      if (v3.result !== cur.result || v3.board !== boardKeyOf(cur)) {
         v3.result = cur.result;
+        v3.board = boardKeyOf(cur);
         const ops = cur.result.ops;
         v3.viewer.setPart({
           meshes: View3D.stepMeshes(occt, cur.stepText), panel: cur.result.panel, tf: cur.result.panel.tf,
-          raw: cur.result.side === 2 ? 0 : (state.settings.rawOversize || 0), board: '#d4ae7b', // Seite 2: ohne Rohteil-Versatz
+          raw: cur.result.side === 2 ? 0 : (state.settings.rawOversize || 0), board: boardKeyOf(cur), // Seite 2: ohne Rohteil-Versatz
           colorOf: (m) => moveColor(m, ops[m.op], col),
           suction: cur.result.suction,
           // gelöscht: immer kräftiges Rot (das Holz ist in beiden Modi hell)

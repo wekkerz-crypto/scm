@@ -16,6 +16,8 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   Messen mit Fang `snapAt` – Fangpunkte je Teil `snapFeatures` aus den Kanten; Maße aus `local` = ohne Explosion; Bemaßen (`mode` 'dim', `dims`, `addDim`/`drawDims`, SVG `drawDimSvg`) –
   Maße bleiben stehen, Liste `#mdimlist`; `assign` ordnet OpenCascade-Netze über den
   Hüllquader den Bauteilen zu); Nummer = Platz in der Programmliste (`.pnum`).
+  Plattenfarbe: `View3D.MATERIALS`/`boardOf` (id oder '#rrggbb', '/u' einfarbig), Einstellung `boardMaterial`, je Teil `part.board`
+  (Sitzung), `boardPicker` in `index.html`, `Viewer.setBoards`.
 - Gekrümmte Flächen (je Teil `overrides.curved = {slant, surface}`, Schalter nur sichtbar, wenn erkannt):
   `panel.curvedSlants` (Schräge an Rundungen → `slantpath`, `offsetRun` in `xcs.js`) und `panel.curvedSurfaces`
   (→ `surface`: `surface.js` Drop-Cutter auf dem Netz aus `occtmesh.js`; Node: `OcctMesh.loadNode()`, Browser: `View3D.load()`).

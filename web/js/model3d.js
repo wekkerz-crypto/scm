@@ -55,6 +55,7 @@
     this.controls.screenSpacePanning = true;
     const pm = new THREE.PMREMGenerator(r);
     this.scene.environment = pm.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
+    pm.dispose();
     // Licht, Schatten und Tisch wie in der Teil-Ansicht (view3d.js)
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0x887766, 0.35));
     this.sun = new THREE.DirectionalLight(0xffffff, 1.6);
@@ -108,6 +109,7 @@
     const loop = () => {
       if (!this._alive) return;
       this._raf = requestAnimationFrame(loop);
+      if (!this.host.offsetParent) return; // Seite „Programme“ aktiv: nicht rechnen
       this.resize();
       this.controls.update();
       this.renderer.render(this.scene, this.camera);
@@ -143,6 +145,7 @@
     for (const p of this.parts) { p.obj.geometry.dispose(); mats(p.obj).forEach((m) => m.dispose()); p.edges.geometry.dispose(); p.edges.material.dispose(); p.label.remove(); }
     this.root.clear();
     this.parts = [];
+    this.selected = null;
     this.clearMeasure();
     const box = new T.Box3();
     parts.forEach((src, i) => {
@@ -467,7 +470,6 @@
       el.textContent = SNAP_NAMES[hv.kind] + (hv.kind === 'center' && hv.r ? ' R ' + (Math.round(hv.r * 10) / 10) : '');
     }
     if (this.measurePts.length === 1) this.drawMeasure();
-    if (this.onHover) this.onHover(hv ? { kind: hv.kind, name: SNAP_NAMES[hv.kind] } : null);
   };
 
   Viewer.prototype.click = function (cx, cy, free) {
@@ -499,7 +501,7 @@
 
   Viewer.prototype.clearMeasure = function () {
     this.measurePts = [];
-    this.measureGroup.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
+    this.measureGroup.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
     this.measureGroup.clear();
     for (const m of this.measureLabels || []) m.el.remove();
     this.measureLabels = [];
@@ -527,7 +529,7 @@
 
   Viewer.prototype.drawMeasure = function () {
     const T = this.THREE;
-    this.measureGroup.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
+    this.measureGroup.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
     this.measureGroup.clear();
     for (const m of this.measureLabels || []) m.el.remove();
     this.measureLabels = [];

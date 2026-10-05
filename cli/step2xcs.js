@@ -23,6 +23,7 @@ const fs = require('fs');
 const path = require('path');
 const { readParts, convertSolid, convertDxf, makeBatch } = require('../web/js/convert.js');
 const OcctMesh = require('../web/js/occtmesh.js');
+const XcsWriter = require('../web/js/xcs.js');
 const { parseTlgx, infoMap } = require('../web/js/tools.js');
 
 const args = process.argv.slice(2);
@@ -44,7 +45,10 @@ for (let i = 0; i < args.length; i++) {
   if (args[i] === '-o' || args[i] === '--out') outDir = args[++i];
   else if (args[i] === '--bat') bat = true;
   else if (args[i] === '--tools') toolsFile = args[++i];
-  else if (args[i] === '--step') stepDown = parseFloat(args[++i]);
+  else if (args[i] === '--step') {
+    stepDown = parseFloat(String(args[++i]).replace(',', '.'));
+    if (!(stepDown >= 0)) { console.error('--step: Zustelltiefe in mm (0 = aus)'); process.exit(1); }
+  }
   else if (args[i] === '--no-order-rule') orderRule = false;
   else if (args[i] === '--schraege-5achs') curvedSlant = true;
   else if (args[i] === '--kugelfraesen') curvedSurface = true;
@@ -117,7 +121,7 @@ async function main() {
         fs.writeFileSync(target, part.xcs);
         const p = part.panel;
         console.log('✓ ' + target + '  (' + [p.L, p.W, p.T].map((v) => Math.round(v * 100) / 100).join(' × ') + ' mm, ' +
-          part.ops.length + ' Bearbeitungen' + (part.side === 2 ? ', Seite 2' : '') + ')');
+          part.ops.filter(XcsWriter.writes).length + ' Bearbeitungen' + (part.side === 2 ? ', Seite 2' : '') + ')');
         for (const w of part.warnings) console.log('  ⚠ ' + w);
       }
     }

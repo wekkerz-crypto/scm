@@ -22,19 +22,14 @@
     formatRoughTool: 'E014',   // Werkzeug 1 (vorfräsen); Werkzeug 2 = contourTool
     formatAllowance: 1,        // Aufmaß beim Vorfräsen in mm (overMaterial)
     retractOverlap: 2,         // Umfräsen: Überlappung beim Verlassen in mm (SetRetractStrategy overlapLength)
-    // Oszillation: Tiefe pendelt entlang der Kontur zwischen min und max unter der Plattenunterseite (DEPTH-Attribut je Punkt)
+    // Oszillation: Tiefe pendelt entlang der Kontur zwischen min und max unter der Plattenunterseite (DEPTH am Elementende, Wendepunkte parametrisch)
     oscMill: false,            // Formatfräsen oszillierend (Schneide gleichmäßig nutzen)
     oscMillMin: 2,             // Fräser ragt mindestens … mm unter die Platte
     oscMillMax: 8,             // … höchstens (Schneidenlänge beachten: Dicke + max ≤ Schneidenlänge)
     oscWave: 300,              // Weg je Schwingung (einmal runter und wieder hoch) in mm
-    // SetAttribute (DEPTH/TAB): 'after' = nach dem Element (gilt für sein Ende, wie im Handbuch-Beispiel), 'before' = davor
-    // (Handbuch-Text spricht vom folgenden Element) – an der Maschine prüfen
-    attrPlacement: 'after',
     // Clamex P: über das SCM-Makro (nur Position übergeben) oder direkt mit dem Scheibenfräser
     clamexMode: 'macro',       // 'macro' = SCM-Makro SawCut_Lamello (Parameter nach Position), 'direct' = eigene Bahn mit clamexTool
     clamexMacro: 'SawCut_Lamello',
-    // Parameterliste wie in den Werkstatt-Programmen (33/38_SW-Schrag, 40_Mittelseite_st2), Platzhalter werden ersetzt:
-    // {sx} {sy} Start, {ex} {ey} Ende (je Nut gleich = ein Verbinder), {angle} Winkel der Schnittfläche, {T} Dicke, {angleZ} Richtung
     // Makro-Parameter nach Position (48 Werte) aus den Werkstatt-Programmen; {sx} {sy} {ex} {ey} Start/Ende, {angle} Winkel,
     // {T} Dicke, {n} Anzahl Verbinder, {h} Höhe Oberkante → Nutmitte, {type} Nuttyp (14 = P-14), {saw} Säge, {angleZ} Winkel um Z
     clamexTplEdge: '{sx}, {sy}, {ex}, {ey}, {angle}, 1, {T}, 5, null, 3, 0.05, null, null, null, null, 3, "-1", "E030", null, "-1", "E030", null, ' +
@@ -472,7 +467,6 @@
     return list.some((x) => Math.abs(x - d) < 0.05);
   }
 
-  // Wandelt eine Bohrung in lokale Koordinaten der Bearbeitungsebene um.
   /*
    * Clamex-Nut → Bearbeitungsebene und Bahn. Werkzeugachse = Nutachse; Spindel auf der Seite mit dem kürzeren Weg
    * (Achse senkrecht: von oben, Ebene Top; Achse in X: Left/Right; in Y: Front/Back). Der Scheibenfräser ist auf die
@@ -516,6 +510,7 @@
     return a / 2;
   }
 
+  // Wandelt eine Bohrung in lokale Koordinaten der Bearbeitungsebene um.
   function localDrill(p, d) {
     switch (d.face) {
       case 'Top': return { x: d.x, y: d.y };
@@ -625,19 +620,19 @@
       // Profil (Rahmenholz): Längsseiten sind fertig, die Stirnseiten werden gesägt (90°, Säge außen, Material links)
       const so = cfg.bladeOverrun;
       for (const [k, a, b] of [[0, [0, p.W + so], [0, -so]], [1, [p.L, -so], [p.L, p.W + so]]]) {
-        ops.push({ kind: 'blade', key: 'blade-end-' + k, toolKind: 'saw', toolDefault: 'bladeTool', a: a, b: b, a0: a, b0: b, tilt: 0, leanOut: true,
+        ops.push({ kind: 'blade', key: 'blade-end-' + k, toolKind: 'saw', a: a, b: b, a0: a, b0: b, tilt: 0, leanOut: true,
           depth: T, extra: cfg.bladeExtra, tool: cfg.bladeTool, score: cfg.scoreCut ? { depth: cfg.scoreDepth, out: cfg.scoreOut } : null,
           label: 'Stirnseite ' + (k ? 'rechts' : 'links') + ' sägen' });
       }
     } else if (whole) {
       const path = wholeContour(p.outline);
       ops.push({
-        kind: 'contour', key: 'format', toolKind: 'mill', toolDefault: 'contourTool', contour: ++nContour, milling: ++nMill, approach: true,
+        kind: 'contour', key: 'format', toolKind: 'mill', contour: ++nContour, milling: ++nMill, approach: true,
         start: path.start, segs: path.segs, depth: T + cfg.contourExtra, tool: cfg.contourTool, side: 2, label: 'Formatfräsen (Sonderkontur)',
       });
     } else {
       ops.push({
-        kind: 'contour', key: 'format', toolKind: 'mill', toolDefault: 'contourTool', contour: ++nContour, milling: ++nMill, approach: true,
+        kind: 'contour', key: 'format', toolKind: 'mill', contour: ++nContour, milling: ++nMill, approach: true,
         start: [0, p.W / 2],
         segs: [[0, 0], [p.L, 0], [p.L, p.W], [0, p.W], [0, p.W / 2]].map((q) => ({ type: 'line', to: q })),
         depth: T + cfg.contourExtra, tool: cfg.contourTool, side: 2, label: 'Formatfräsen',
@@ -661,7 +656,7 @@
       const allow = Math.max(0, +cfg.sandAllowance || 0);
       if (allow > 0) fmtOp.finishAllowance = allow; // Formatfräsen bleibt um die Schleifzugabe größer
       const osc = oscRange(cfg.sandMin, cfg.sandMax);
-      ops.push({ kind: 'contour', key: 'sand', toolKind: 'sand', toolDefault: 'sandTool', contour: ++nContour, milling: ++nMill, approach: true, sand: true,
+      ops.push({ kind: 'contour', key: 'sand', toolKind: 'sand', contour: ++nContour, milling: ++nMill, approach: true, sand: true,
         start: fmtOp.start, segs: fmtOp.segs, depth: osc.min, osc: osc, passes: Math.max(1, Math.min(9, Math.round(+cfg.sandPasses || 1))),
         tool: cfg.sandTool, side: 2, label: 'Schleifen oszillierend' + (allow > 0 ? ' (Zugabe ' + fmt(allow) + ')' : '') });
     }
@@ -673,19 +668,19 @@
       // Segment auf der Nutflanke, Nut links der Fahrtrichtung (wie im Beispiel 32_Seitenwand_R)
       const a = g.dir === 'X' ? [-cfg.sawOverrun, g.from] : [g.to, -cfg.sawOverrun];
       const b = g.dir === 'X' ? [p.L + cfg.sawOverrun, g.from] : [g.to, p.W + cfg.sawOverrun];
-      ops.push({ kind: 'slot', key: 'slot-' + p.grooves.indexOf(g), toolKind: 'saw', toolDefault: 'sawTool', a: a, b: b, depth: g.depth, width: width, tool: cfg.sawTool,
+      ops.push({ kind: 'slot', key: 'slot-' + p.grooves.indexOf(g), toolKind: 'saw', a: a, b: b, depth: g.depth, width: width, tool: cfg.sawTool,
         label: 'Nut ' + fmt(width) + '×' + fmt(g.depth) });
     }
 
     // 3) Abweichungen der Außenkontur vom Rechteck (Ausschnitte, Rundungen, Schrägen)
     for (const [i, path] of (whole || side2 ? [] : notchPaths(p, cfg)).entries()) {
-      ops.push({ kind: 'contour', key: 'notch-' + i, toolKind: 'mill', toolDefault: 'cutoutTool', contour: ++nContour, milling: ++nMill, approach: false,
+      ops.push({ kind: 'contour', key: 'notch-' + i, toolKind: 'mill', contour: ++nContour, milling: ++nMill, approach: false,
         start: path.start, segs: path.segs, depth: T + cfg.cutoutExtra, tool: cfg.cutoutTool, side: 1, label: 'Kontur-Ausschnitt' });
     }
 
     // 4) Durchbrüche (Innenkonturen)
     for (const [i, lp] of p.cutouts.entries()) {
-      ops.push({ kind: 'contour', key: 'cutout-' + i, toolKind: 'mill', toolDefault: 'cutoutTool', contour: ++nContour, milling: ++nMill, approach: false,
+      ops.push({ kind: 'contour', key: 'cutout-' + i, toolKind: 'mill', contour: ++nContour, milling: ++nMill, approach: false,
         // ganzer Kreis (z. B. schräges Rundloch): zwei Halbkreise, sonst wären Anfang und Ende gleich
         ...(lp.length === 1 && lp[0].full ? wholeContour(lp) : { start: lp[0].a, segs: lp.map(toPolySeg) }),
         depth: T + cfg.cutoutExtra, tool: cfg.cutoutTool, side: 2, label: 'Durchbruch' });
@@ -724,7 +719,7 @@
         if (len < 0) warnings.push('Abgesetzter Falz ' + fmt(r.width) + ' mm: zu kurz für Fräser Ø' + fmt(dia) + '.');
         warnings.push('Abgesetzter Falz ' + fmt(r.width) + '×' + fmt(r.depth) + ': Innenecken bleiben mit R' + fmt(rad) + ' rund (Fräser Ø' + fmt(dia) + ').');
         const label = 'Falz ' + fmt(r.width) + '×' + fmt(r.depth) + ' (abgesetzt)';
-        const push = (start, segs) => ops.push({ kind: 'contour', key: key, toolKind: 'mill', toolDefault: 'rebateTool', contour: ++nContour,
+        const push = (start, segs) => ops.push({ kind: 'contour', key: key, toolKind: 'mill', contour: ++nContour,
           milling: ++nMill, approach: false, start: start, segs: segs, depth: r.depth, tool: cfg.rebateTool, side: 0, label: label,
           rebateStop: true, rebateReturn: !!cfg.rebateStopReturn });
         if (cfg.rebateStopReturn) {
@@ -767,7 +762,7 @@
         if (r.edge === 'Back') { const y = r.flank + off; a = [p.L + ll, y]; b = [-ll, y]; }
         if (r.edge === 'Left') { const x = r.flank - off; a = [x, p.W + ll]; b = [x, -ll]; }
         if (r.edge === 'Right') { const x = r.flank + off; a = [x, -ll]; b = [x, p.W + ll]; }
-        ops.push({ kind: 'contour', key: key, toolKind: 'mill', toolDefault: 'rebateTool', contour: ++nContour, milling: ++nMill, approach: false,
+        ops.push({ kind: 'contour', key: key, toolKind: 'mill', contour: ++nContour, milling: ++nMill, approach: false,
           start: a, segs: [{ type: 'line', to: b }], depth: r.depth, tool: cfg.rebateTool, side: 2,
           label: 'Falz ' + fmt(r.width) + '×' + fmt(r.depth) });
       }
@@ -784,7 +779,7 @@
       if (dia && kw < dia) warnings.push('Tasche ' + size + ' ist schmaler als Fräser ' + tool + ' (Ø' + fmt(dia) + ').');
       if (dia && k.minRadius < dia / 2 - 0.01) warnings.push('Tasche ' + size + ': Eckenradius R' + fmt(k.minRadius) + ' kleiner als Fräserradius ' + fmt(dia / 2) + ' – Ecken bleiben runder.');
       if (k.open && k.open.length) warnings.push('Tasche ' + size + ' ist zur Kante offen (' + k.open.join(', ') + ') – Anfahrt in Maestro prüfen.');
-      ops.push({ kind: 'pocket', key: key, toolKind: 'mill', toolDefault: 'pocketTool', pocket: i + 1, segs: k.segs, islands: k.islands,
+      ops.push({ kind: 'pocket', key: key, toolKind: 'mill', pocket: i + 1, segs: k.segs, islands: k.islands,
         depth: k.depth, tool: auto, label: 'Tasche ' + size + '×' + fmt(k.depth) + (k.islands.length ? ' mit Insel' : '') });
     }
 
@@ -797,7 +792,7 @@
       const where = pl.face === 'Top' ? 'Kante ' + ({ '0,-1': 'vorne', '0,1': 'hinten', '-1,0': 'links', '1,0': 'rechts' }[Math.round(g.n[0]) + ',' + Math.round(g.n[1])] || 'schräg')
         : g.n[2] > 0.99 ? 'Fläche' : 'Schräge';
       if (pl.error) { warnings.push('Clamex-Nut ' + where + ' (' + fmt(g.c[0]) + ' / ' + fmt(g.c[1]) + '): ' + pl.error); continue; }
-      ops.push({ kind: 'clamex', key: 'clamex-' + i, toolKind: 'mill', toolDefault: 'clamexTool', face: pl.face, start: pl.start, end: pl.end, depth: pl.depth,
+      ops.push({ kind: 'clamex', key: 'clamex-' + i, toolKind: 'mill', face: pl.face, start: pl.start, end: pl.end, depth: pl.depth,
         reach: pl.reach, groove: g, tool: cfg.clamexTool, label: 'Clamex-Nut ' + where + ' ' + fmt(g.w) + '×' + fmt(g.depth) });
     }
 
@@ -821,19 +816,19 @@
       if (dia && w < dia) warnings.push(label + ' ist schmaler (' + fmt(w) + ') als Fräser ' + tool + ' (Ø' + fmt(dia) + ') – kleineren Fräser wählen.');
       else if (dia && k.minRadius < dia / 2 - 0.01) warnings.push(label + ': Eckenradius R' + fmt(k.minRadius) + ' kleiner als Fräserradius ' + fmt(dia / 2) + ' – Ecken bleiben runder.');
       if (k.holes) warnings.push(label + ': Bohrung im Taschenboden wird nicht ausgegeben.');
-      ops.push({ kind: 'pocket', face: k.face, key: key, toolKind: 'mill', toolDefault: 'pocketTool', pocket: 0, segs: k.segs, islands: k.islands,
-        depth: k.depth, tool: auto, autoTool: auto !== cfg.pocketTool, label: label + (k.islands.length ? ' mit Insel' : '') });
+      ops.push({ kind: 'pocket', face: k.face, key: key, toolKind: 'mill', pocket: 0, segs: k.segs, islands: k.islands,
+        depth: k.depth, tool: auto, label: label + (k.islands.length ? ' mit Insel' : '') });
     }
 
     // 7) Fasen: entlang der Kontur am Stück (auch über Rundungen), sonst einzelne Kanten
     for (const [i, c] of (p.chamferPaths || []).entries()) {
       const path = c.closed ? wholeContour(c.segs) : { start: c.segs[0].a, segs: c.segs.map(toPolySeg) };
-      ops.push({ kind: 'chamfer', key: 'chamferpath-' + i, toolKind: 'mill', toolDefault: 'chamferTool', start: path.start, segs: path.segs,
+      ops.push({ kind: 'chamfer', key: 'chamferpath-' + i, toolKind: 'mill', start: path.start, segs: path.segs,
         width: c.width, height: c.height, toolPos: c.side === 'top' ? 2 : 3, tool: cfg.chamferTool,
         label: 'Fase ' + fmt(c.width) + '×' + fmt(c.height) + (c.side === 'top' ? ' oben' : ' unten') + (c.closed ? ' umlaufend' : ' (Kontur)') });
     }
     for (const [i, c] of p.chamfers.entries()) {
-      ops.push({ kind: 'chamfer', key: 'chamfer-' + i, toolKind: 'mill', toolDefault: 'chamferTool', a: c.line.a, b: c.line.b,
+      ops.push({ kind: 'chamfer', key: 'chamfer-' + i, toolKind: 'mill', a: c.line.a, b: c.line.b,
         width: c.width, height: c.height, toolPos: c.side === 'top' ? 2 : 3, tool: cfg.chamferTool,
         label: 'Fase ' + fmt(c.width) + '×' + fmt(c.height) + (c.side === 'top' ? ' oben' : ' unten') });
     }
@@ -857,7 +852,7 @@
         const path = offsetRun(c.segs, c.closed, dt ? dt / 2 / Math.cos(c.tilt * Math.PI / 180) : 0, cfg.leadLength, nearEdge);
         if (path.error) { warnings.push(label + ': ' + path.error + ' – nicht bearbeitet.'); continue; }
         for (const id of c.faceIds) curvedFaces.add(id);
-        ops.push({ kind: 'slantpath', key: key, toolKind: 'mill', toolDefault: 'slantTool', tool: tool, start: path.start, segs: path.segs,
+        ops.push({ kind: 'slantpath', key: key, toolKind: 'mill', tool: tool, start: path.start, segs: path.segs,
           inner: !!c.inner, angle: c.tilt, approach: c.up ? 2 : 1, depth: T + cfg.slantExtra, label: label });
       }
     } else if (cSlants.length) {
@@ -877,16 +872,18 @@
           if (!D) { warnings.push(label + ': Durchmesser von ' + tool + ' unbekannt – nicht bearbeitet.'); continue; }
           if (info && info.body && info.body !== 'Endmill') warnings.push(label + ': ' + tool + ' ist kein Schaftfräser – bitte prüfen.');
           const plan4 = cyl4Plan(c.cyl, p, cfg, D);
-          const tiltMax = Math.max(...plan4.passes.map((q) => Math.abs(q.phi))) * 180 / Math.PI;
-          if (tiltMax > cfg.cyl4MaxTilt + 1e-6) {
+          const tiltMax = plan4.passes.reduce((m, q) => Math.max(m, Math.abs(q.phi)), 0) * 180 / Math.PI;
+          if (!plan4.passes.length) {
+            warnings.push(label + ': keine Zeile gefunden – stattdessen Kugelfräser.');
+          } else if (tiltMax > cfg.cyl4MaxTilt + 1e-6) {
             warnings.push(label + ': Neigung bis ' + fmt(Math.round(tiltMax * 10) / 10) + '° – mehr als ' + fmt(cfg.cyl4MaxTilt) + '° erlaubt, stattdessen Kugelfräser.');
           } else {
           // Schnitttiefe je Schicht: Schicht + Abstand Ebene–Fläche am Fräserrand (D² / 8R)
           const cut = (plan4.layers > 1 ? cfg.cyl4Layer : plan4.dmax) + (D * D) / (8 * c.cyl.r);
           if (info && info.len && cut > info.len + 1e-9) warnings.push(label + ': bis ' + fmt(cut) + ' mm Schnitttiefe, Schneidenlänge ' + tool + ' nur ' + fmt(info.len) + ' mm – Schichtdicke verringern.');
           const tilt = tiltMax;
-          ops.push({ kind: 'cyl4', key: key, toolKind: 'mill', toolDefault: 'cyl4Tool', tool: tool, passes: plan4.passes, depth: c.depth,
-            tilt: tilt, layers: plan4.layers, label: label + ' (' + plan4.passes.length + ' Zeilen, bis ' + fmt(Math.round(tilt * 10) / 10) + '°)' });
+          ops.push({ kind: 'cyl4', key: key, toolKind: 'mill', tool: tool, passes: plan4.passes, depth: c.depth,
+            tilt: tilt, label: label + ' (' + plan4.passes.length + ' Zeilen, bis ' + fmt(Math.round(tilt * 10) / 10) + '°)' });
           if (D && cfg.cyl4RoughStep >= D && plan4.layers > 1) warnings.push(label + ': Zeilenabstand Vorfräsen ' + fmt(cfg.cyl4RoughStep) + ' mm ist nicht kleiner als der Fräser – es bleiben Stege stehen.');
           continue;
           }
@@ -908,7 +905,7 @@
           passes = r.passes;
           if (!passes.length) warnings.push(label + ': keine Bahn gefunden – Fläche ist mit ' + tool + ' nicht erreichbar.');
         }
-        ops.push({ kind: 'surface', key: key, toolKind: 'mill', toolDefault: 'ballTool', tool: tool, rects: c.rects,
+        ops.push({ kind: 'surface', key: key, toolKind: 'mill', tool: tool,
           x0: c.x0, y0: c.y0, x1: c.x1, y1: c.y1, depth: c.depth, passes: passes, safe: cfg.surfSafe, label: label });
       }
     } else if (cSurf.length) {
@@ -953,7 +950,7 @@
             ' an einer Innenecke oder mitten in der Kante – dort ohne Auslauf, Ein-/Austritt in der Simulation prüfen.');
         }
       }
-      ops.push({ kind: 'contour', key: key, toolKind: 'mill', toolDefault: top ? 'roundTopTool' : 'roundBottomTool', contour: ++nContour, milling: ++nMill,
+      ops.push({ kind: 'contour', key: key, toolKind: 'mill', contour: ++nContour, milling: ++nMill,
         approach: e.closed, profile: true, start: path.start, segs: path.segs, depth: top ? cfg.roundTopDepth : T + cfg.roundBottomDz,
         tool: tool, side: 2, label: label });
     }
@@ -1006,7 +1003,7 @@
           label: where + (j + 1 < levels.length ? ': bis ' + fmt(levels[j + 1]) + ' mm' : ': ringsum ausräumen') }));
         steps.forEach((st, j) => {
           const keep = isl.filter((b) => b.height > st.to + 1e-6); // Zapfen, die über diese Stufe hinausragen
-          ops.push({ kind: 'pocket', plane: plane, key: 'tenon-' + i + '-' + j, toolKind: 'mill', toolDefault: 'tenonTool', pocket: 0, segs: rect,
+          ops.push({ kind: 'pocket', plane: plane, key: 'tenon-' + i + '-' + j, toolKind: 'mill', pocket: 0, segs: rect,
             islands: keep.flatMap((b) => b.loops), depth: hc - st.to, tool: tool, label: st.label });
         });
         if (w.boss.bottomZ < 0.05) {
@@ -1021,14 +1018,14 @@
       // Gerader Schnitt von Kante zu Kante: mit der Säge (Schnittfläche wird zur neuen schrägen Ebene)
       if (w.boss ? cfg.tenonPrecut !== 'mill' && atEdge(w.top.a) && atEdge(w.top.b) : cfg.slantCut === 'saw' && (w.sawable || (atEdge(ww.top.a) && atEdge(ww.top.b)))) {
         const so = cfg.bladeOverrun;
-        ops.push({ kind: 'blade', key: 'blade-' + i, toolKind: 'saw', toolDefault: 'bladeTool',
+        ops.push({ kind: 'blade', key: 'blade-' + i, toolKind: 'saw',
           a: [ww.top.a[0] - u[0] * so, ww.top.a[1] - u[1] * so], b: [ww.top.b[0] + u[0] * so, ww.top.b[1] + u[1] * so],
           a0: ww.top.a, b0: ww.top.b, tilt: w.angle, leanOut: w.leanOut, depth: T, extra: cfg.bladeExtra, tool: cfg.bladeTool,
           score: cfg.scoreCut ? { depth: cfg.scoreDepth, out: cfg.scoreOut } : null,
           label: (w.boss ? 'Vorschnitt (Zapfen) ' : 'Sägeschnitt ') + fmt(w.angle) + '°' + (cfg.scoreCut ? ' vorgeritzt' : '') });
         continue;
       }
-      ops.push({ kind: 'slant', key: 'slant-' + i, toolKind: 'mill', toolDefault: 'slantTool',
+      ops.push({ kind: 'slant', key: 'slant-' + i, toolKind: 'mill',
         a: [ww.top.a[0] - u[0] * ll, ww.top.a[1] - u[1] * ll], b: [ww.top.b[0] + u[0] * ll, ww.top.b[1] + u[1] * ll],
         angle: w.angle, approach: w.leanOut ? 2 : 1, depth: T + cfg.slantExtra, tool: cfg.slantTool,
         scrap: [u[1], -u[0]], // Abfallseite (rechts der Bahn)
@@ -1049,7 +1046,7 @@
         const label = 'Tasche ' + where + ' ' + r1(k.x1 - k.x0) + '×' + r1(k.y1 - k.y0);
         if (dia && w < dia) warnings.push(label + ' ist schmaler (' + fmt(w) + ') als Fräser ' + tool + ' (Ø' + fmt(dia) + ') – kleineren Fräser wählen.');
         else if (dia && k.minRadius < dia / 2 - 0.01) warnings.push(label + ': Eckenradius R' + fmt(k.minRadius) + ' kleiner als Fräserradius ' + fmt(dia / 2) + ' – Ecken bleiben runder.');
-        ops.push({ kind: 'pocket', plane: plane, key: key, toolKind: 'mill', toolDefault: 'pocketTool', pocket: 0, segs: k.segs, islands: k.islands,
+        ops.push({ kind: 'pocket', plane: plane, key: key, toolKind: 'mill', pocket: 0, segs: k.segs, islands: k.islands,
           depth: k.depth, tool: auto, label: label });
       }
       const byD = new Map();
@@ -1075,7 +1072,7 @@
       if (!hasDrill(list, d.d)) {
         if (vertical && d.through) {
           const r = d.d / 2;
-          ops.push({ kind: 'contour', key: 'round-' + (nRound++), toolKind: 'mill', toolDefault: 'cutoutTool', contour: ++nContour, milling: ++nMill, approach: false,
+          ops.push({ kind: 'contour', key: 'round-' + (nRound++), toolKind: 'mill', contour: ++nContour, milling: ++nMill, approach: false,
             start: [d.x + r, d.y],
             segs: [
               { type: 'arc', to: [d.x - r, d.y], c: [d.x, d.y], cw: false },
@@ -1088,7 +1085,7 @@
           // Runde Vertiefung ohne passenden Bohrer → als Kreistasche fräsen
           const key = 'rpocket-' + (nRPocket++);
           const r = d.d / 2;
-          ops.push({ kind: 'pocket', key: key, toolKind: 'mill', toolDefault: 'pocketTool', pocket: 0,
+          ops.push({ kind: 'pocket', key: key, toolKind: 'mill', pocket: 0,
             segs: [{ type: 'arc', a: [d.x + r, d.y], b: [d.x + r, d.y], c: [d.x, d.y], r: r, ccw: true, full: true }],
             islands: [], depth: d.depth, tool: cfg.pocketTool, round: true,
             label: 'Rundtasche Ø' + fmt(d.d) + '×' + fmt(d.depth) });
@@ -1275,7 +1272,16 @@
         let hi = [-Infinity, -Infinity];
         let prev = op.start;
         for (const q of op.segs) {
-          for (const c of q.type === 'arc' ? [q.to, [q.c[0] + Math.hypot(prev[0] - q.c[0], prev[1] - q.c[1]), q.c[1]], [q.c[0] - Math.hypot(prev[0] - q.c[0], prev[1] - q.c[1]), q.c[1]]] : [q.to]) {
+          // Bögen fein abgetastet (nur der überstrichene Teil zählt)
+          const pts = [q.to];
+          if (q.type === 'arc') {
+            const r = Math.hypot(prev[0] - q.c[0], prev[1] - q.c[1]);
+            const a0 = Math.atan2(prev[1] - q.c[1], prev[0] - q.c[0]);
+            let sw = Math.atan2(q.to[1] - q.c[1], q.to[0] - q.c[0]) - a0;
+            if (q.cw) { while (sw >= -1e-12) sw -= Math.PI * 2; } else { while (sw <= 1e-12) sw += Math.PI * 2; }
+            for (let i = 1; i < 72; i++) pts.push([q.c[0] + r * Math.cos(a0 + (sw * i) / 72), q.c[1] + r * Math.sin(a0 + (sw * i) / 72)]);
+          }
+          for (const c of pts) {
             lo = [Math.min(lo[0], c[0]), Math.min(lo[1], c[1])];
             hi = [Math.max(hi[0], c[0]), Math.max(hi[1], c[1])];
           }
@@ -1318,6 +1324,11 @@
         if (info && info.len && op.osc.max > info.len + 1e-9) {
           warnings.push(op.label + ': bis ' + fmt(op.osc.max) + ' mm tief (Dicke + ' + fmt(op.osc.max - T) + '), Schneidenlänge ' + op.tool + ' nur ' + fmt(info.len) + ' mm – ' +
             (info.len > T ? 'Höchstwert verringern (höchstens ' + fmt(info.len - T) + ' mm unter der Platte).' : 'kürzer als die Plattendicke, anderes Werkzeug wählen.'));
+        }
+        // zweistufig: der Vorfräser fährt dieselbe pendelnde Bahn bis zur größten Tiefe
+        const rinfo = op.rough && cfg.toolInfo && cfg.toolInfo[op.rough.tool];
+        if (rinfo && rinfo.len && op.rough.tool !== op.tool && op.osc.max > rinfo.len + 1e-9) {
+          warnings.push(op.label + ': bis ' + fmt(op.osc.max) + ' mm tief, Schneidenlänge Vorfräser ' + op.rough.tool + ' nur ' + fmt(rinfo.len) + ' mm – Höchstwert verringern oder anderen Vorfräser wählen.');
         }
         if (op.osc.max - op.osc.min < 1e-6) warnings.push(op.label + ': min = max – die Tiefe pendelt nicht.');
         if (op.sand && r) {
@@ -1817,6 +1828,9 @@
     }
   }
 
+  // Bearbeitung schreibt etwas? (Zeilenfräsen ohne gefundene Bahn bleibt in der Liste, erzeugt aber keinen Code)
+  const writes = (op) => !((op.kind === 'surface' || op.kind === 'cyl4') && !(op.passes && op.passes.length));
+
   function write(p, cfgIn, override) {
     const cfg = Object.assign({}, DEFAULTS, cfgIn || {});
     if (override && override.tools) cfg.toolOverrides = override.tools;
@@ -1858,7 +1872,7 @@
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '').replace(/["\\]/g, '');
     if (cfg.commentOn) {
       L.push('SetComment("' + ascii('STEP2XCS: ' + (p.name || 'Teil') + (cfg.profileName ? ' - ' + (/^profil\b/i.test(cfg.profileName) ? '' : 'Profil ') + cfg.profileName : '')) + '");');
-      L.push('SetDescription("' + ascii(fmt(p.L) + ' x ' + fmt(p.W) + ' x ' + fmt(p.T) + ' mm, ' + ops.length + ' Bearbeitungen') + '");');
+      L.push('SetDescription("' + ascii(fmt(p.L) + ' x ' + fmt(p.W) + ' x ' + fmt(p.T) + ' mm, ' + ops.filter(writes).length + ' Bearbeitungen') + '");');
     }
     if (cfg.optimizeOn) L.push('SetOptimization(true);');
     if (cfg.autoSetupOn) L.push('SetAutoSetup(true);');
@@ -1920,7 +1934,8 @@
       if (op.kind === 'contour') {
         // Haltestege in der Mitte der längsten Elemente (bei der Planung gewählt: op.tabSegs; Attribut gilt für das zuletzt angefügte Element)
         const tabAt = new Set(op.tabs ? op.tabSegs || [] : []);
-        // oszillierend: je Umlauf eigene Kontur (weitere Umläufe um eine halbe Schwingung versetzt), Tiefe je Punkt als DEPTH-Attribut
+        // oszillierend: je Umlauf eigene Kontur (weitere Umläufe um eine halbe Schwingung versetzt), Tiefe am Elementende als
+        // DEPTH-Attribut, Wendepunkte dazwischen als SetParametricAttribute
         const passes = op.osc ? op.passes || 1 : 1;
         for (let pi = 0; pi < passes; pi++) {
           const suffix = pi ? '_' + (pi + 1) : '';
@@ -1932,10 +1947,9 @@
             for (const m of s.marks || []) attrs.push('SetParametricAttribute("DEPTH", ' + fmt(m.depth) + ', ' + fmt(Math.round(m.u * 1e4) / 1e4) + ');');
             if (s.depth !== undefined) attrs.push('SetAttribute("DEPTH", ' + fmt(s.depth) + ');');
             if (!o && tabAt.has(i)) attrs.push('SetParametricAttribute2("TAB", ' + fmt(cfg.tabLength) + ', ' + fmt(cfg.tabHeight) + ', 0.5);');
-            if (cfg.attrPlacement === 'before') L.push(...attrs);
             if (s.type === 'line') L.push('AddSegmentToPolyline(' + pt(s.to) + ');');
             else L.push('AddArc2PointCenterToPolyline(' + pt(s.to) + ', ' + pt(s.c) + ', ' + (s.cw ? 'true' : 'false') + ');');
-            if (cfg.attrPlacement !== 'before') L.push(...attrs);
+            L.push(...attrs); // nach dem Element (gilt für sein Ende, wie im Handbuch-Beispiel; in Maestro bestätigt)
           });
           blank();
           // An- und Abfahrt im Bogen (Schleifwalze immer; Bogen = Faktor × Werkzeugradius)
@@ -2210,6 +2224,6 @@
     return cfg;
   }
 
-  return { write: write, plan: plan, planSuction: planSuction, DEFAULTS: DEFAULTS, CATEGORIES: CATEGORIES, ruleSequence: ruleSequence,
+  return { write: write, writes: writes, DEFAULTS: DEFAULTS, CATEGORIES: CATEGORIES, ruleSequence: ruleSequence,
     PROFILE_KEYS: PROFILE_KEYS, applyProfile: applyProfile };
 });

@@ -1398,14 +1398,11 @@ test('Zapfen auf Schräge: Sonderfälle (30°, bis an den Rand, Feder ganze Län
   assert.ok(yMin <= -(17.31 + 1 - 2) + 1e-6, String(yMin));
 });
 
-test('Tiefen-Attribut wahlweise vor dem Element (Handbuch uneindeutig)', () => {
+test('Tiefen-Attribut nach dem Element (in Maestro bestätigt)', () => {
   const { readParts, convertSolid } = require('../web/js/convert.js');
   const [s] = readParts(read('test/fixtures/testplatte.step'), 'tp.step');
   const after = convertSolid(s, { oscMill: true }).xcs;
-  const before = convertSolid(s, { oscMill: true, attrPlacement: 'before' }).xcs;
   assert.match(after, /CreatePolyline\("Contour_\d+", 0, 200\);\r?\nAddSegmentToPolyline\(0, 0\);\r?\nSetParametricAttribute\("DEPTH", 26, [\d.]+\);/);
-  assert.match(before, /CreatePolyline\("Contour_\d+", 0, 200\);\r?\nSetParametricAttribute\("DEPTH", 26, [\d.]+\);/);
-  assert.strictEqual((after.match(/Attribute\(/g) || []).length, (before.match(/Attribute\(/g) || []).length);
 });
 
 test('Oszillieren: Kontur bleibt wie ohne Oszillation, Wendepunkte als SetParametricAttribute', () => {
@@ -1527,4 +1524,66 @@ test('Profil (Rahmenholz Fenster): Stufen als einzelne Falze, Stirnseiten gesäg
   // ausgeschaltet: wie eine Platte (Formatfräsen)
   const off = convertSolid(s, { toolInfo, profileRule: 'off' });
   assert.ok(off.ops.some((o) => o.key === 'format'));
+});
+
+test('Plattenmaß: flacher Bogen an der Außenkontur zählt mit seinem äußersten Punkt (nicht nur die Abtastpunkte)', () => {
+  const PA = require('../web/js/panel.js');
+  function bowSolid(R, half) {
+    const T = 19, L = 800, Wb = 200;
+    const s = R * (1 - Math.cos(half));
+    const yc = -s + R;
+    const ax = (z) => ({ o: [400, yc, z], z: [0, 0, 1], x: [1, 0, 0], y: [0, 1, 0] });
+    const P = (x, y, z) => [x, y, z];
+    const line = { type: 'line' };
+    const arc = (z) => ({ type: 'circle', ax: ax(z), r: R });
+    const loop = (z, rev) => {
+      const e = [
+        { start: P(0, -0, z), end: P(L, 0, z), curve: arc(z), forward: true },
+        { start: P(L, 0, z), end: P(L, Wb, z), curve: line, forward: true },
+        { start: P(L, Wb, z), end: P(0, Wb, z), curve: line, forward: true },
+        { start: P(0, Wb, z), end: P(0, 0, z), curve: line, forward: true },
+      ];
+      return rev ? e.reverse().map((q) => ({ start: q.end, end: q.start, curve: q.curve, forward: !q.forward })) : e;
+    };
+    const pl = (o, z, x) => ({ type: 'plane', ax: { o, z, x, y: [z[1]*x[2]-z[2]*x[1], z[2]*x[0]-z[0]*x[2], z[0]*x[1]-z[1]*x[0]] } });
+    const side = (a, b, n) => ({ surface: pl(a, n, [0,0,1]), same: true, bounds: [{ outer: true, edges: [
+      { start: P(a[0],a[1],0), end: P(b[0],b[1],0), curve: line, forward: true },
+      { start: P(b[0],b[1],0), end: P(b[0],b[1],T), curve: line, forward: true },
+      { start: P(b[0],b[1],T), end: P(a[0],a[1],T), curve: line, forward: true },
+      { start: P(a[0],a[1],T), end: P(a[0],a[1],0), curve: line, forward: true }] }] });
+    const faces = [
+      { surface: pl([0,0,T],[0,0,1],[1,0,0]), same: true, bounds: [{ outer: true, edges: loop(T) }] },
+      { surface: pl([0,0,0],[0,0,1],[1,0,0]), same: false, bounds: [{ outer: true, edges: loop(0, true) }] },
+      side([L,0],[L,Wb],[1,0,0]), side([L,Wb],[0,Wb],[0,1,0]), side([0,Wb],[0,0],[-1,0,0]),
+      { surface: { type: 'cylinder', ax: ax(0), r: R }, same: true, bounds: [
+        { outer: true, edges: [{ start: P(0,0,0), end: P(L,0,0), curve: arc(0), forward: true }] },
+        { outer: false, edges: [{ start: P(L,0,T), end: P(0,0,T), curve: arc(T), forward: false }] }] },
+    ];
+    faces.forEach((f, i) => f.id = i + 1);
+    return { name: 'bow', faces, s };
+  }
+  // R ≈ 2096, halber Winkel 11°: ungerade Anzahl Abtastschritte trifft die Bogenmitte nicht
+  const R = 400 / Math.sin(11 * Math.PI / 180);
+  const so = bowSolid(R, 11 * Math.PI / 180);
+  const r = PA.analyze(so, { rot: 0, flip: false });
+  assert.ok(Math.abs(r.W - (200 + so.s)) < 0.01, r.W + ' statt ' + (200 + so.s));
+});
+
+test('Möbel 3D: Fangpunkte aus den Kanten (Ecken, Kantenmitten, Kreismitte)', () => {
+  const M = require('../web/js/model3d.js');
+  const s = [];
+  const b = [[0, 0], [100, 0], [100, 50], [0, 50]];
+  for (const z of [0, 20]) for (let i = 0; i < 4; i++) { const a = b[i]; const c = b[(i + 1) % 4]; s.push(a[0], a[1], z, c[0], c[1], z); }
+  for (let i = 0; i < 4; i++) s.push(b[i][0], b[i][1], 0, b[i][0], b[i][1], 20);
+  for (let i = 0; i < 32; i++) {
+    const t = (i / 32) * 2 * Math.PI;
+    const u = ((i + 1) / 32) * 2 * Math.PI;
+    s.push(50 + 10 * Math.cos(t), 25 + 10 * Math.sin(t), 20, 50 + 10 * Math.cos(u), 25 + 10 * Math.sin(u), 20);
+  }
+  const f = M.snapFeatures(new Float32Array(s));
+  const n = (k) => f.points.filter((p) => p.kind === k);
+  assert.strictEqual(n('end').length, 8);
+  assert.strictEqual(n('mid').length, 12);
+  assert.strictEqual(n('center').length, 1);
+  assert.ok(Math.abs(n('center')[0].r - 10) < 1e-3 && Math.abs(n('center')[0].p[0] - 50) < 1e-3);
 });

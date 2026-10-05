@@ -432,10 +432,9 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
 | `web/` | Web-Tool (`index.html`) und die JS-Module `step.js` (STEP-Leser), `panel.js` (Erkennung), `xcs.js` (Ausgabe), `surface.js` (Kugelfräser-Bahn), `occtmesh.js` (3D-Netz), `dxf.js` (DXF-Leser) |
 | `cli/` | Kommandozeilen-Aufruf |
 | `test/` | Tests (`npm test`) und Test-STEP/DXF-Dateien |
-| `tools/` | `make_fixtures.py` erzeugt die Test-STEP-Dateien (CadQuery), `make_dxf.js` die Test-DXF, `build_defaults.js` die eingebaute Werkzeugliste und Beispiele, `build_exe.sh`/`build_web.sh` die Pakete, `webserver/` Anleitung, `.htaccess` und Schriften für den Webserver |
+| `tools/` | `make_fixtures.py` erzeugt einen Teil der Test-STEP-Dateien (CadQuery; die übrigen stammen aus Onshape/Werkstatt), `make_dxf.js` die Test-DXF, `build_defaults.js` die eingebaute Werkzeugliste und Beispiele, `build_exe.sh`/`build_web.sh` die Pakete, `webserver/` Anleitung, `.htaccess` und Schriften für den Webserver |
 | `step/` | Original-STEP-Exporte aus Onshape |
 | `maestro/beispiele/` | Beispiel-Programme (.xcs) aus Maestro – Referenz für das Format |
 | `maestro/werkzeuge/` | Werkzeugdaten (`def.tlgx`) |
 | `maestro/makros/` | SCM-Makros |
 | `maestro/doku/` | Handbuch der Script-Sprache (MSL-Referenz, Rev. 17), Makrohilfe `SawCut_Lamello` (Clamex) |
-| `featurescript/` | ursprünglich geplanter Weg über Onshape-FeatureScript (derzeit nicht verfolgt) |

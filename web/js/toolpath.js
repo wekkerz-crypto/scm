@@ -314,7 +314,7 @@
         const goB = (pts2, z, w2, lab) => {
           meta.z = z;
           meta.disc = Object.assign({}, meta.disc, { reach: z === p.T * 0.3 ? p.T / Math.cos(ta) + (op.extra || 0) : z });
-          go(pts2, w2, lab, op.tool, i, pts2 === null ? null : [line3(pts2.src[0]), line3(pts2.src[1])]);
+          go(pts2, w2, lab, op.tool, i, [line3(pts2.src[0]), line3(pts2.src[1])]);
         };
         const pair = (x, y, src) => { const r = [x, y]; r.src = src; return r; };
         if (op.score) {

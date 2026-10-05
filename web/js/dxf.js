@@ -482,7 +482,7 @@
     // Vorgabetiefen (dünne Platten: durch)
     const drillDepth = (d) => (T > 4 ? Math.min(d >= 30 ? 13 : 12, T - 2) : T);
     const pocketDepth = () => (T > 4 ? Math.min(5, T - 2) : T / 2);
-    // Vorschläge (Kinder vor Eltern sortiert → Eltern zuerst entscheiden)
+    // Vorschläge (größte Kontur zuerst → Eltern vor Kindern entscheiden)
     const byArea = inner.slice().sort((a, b) => b.area - a.area);
     for (const s of byArea) {
       const ov = (opts.features || {})[s.id] || {};
@@ -507,7 +507,7 @@
       feats.push(s.f);
     }
     // Plattendaten
-    const res = { L: L, W: W, T: T, outline: orient(outer.segs, true), cutouts: [], drills: [], circles: [], grooves: [], rebates: [],
+    const res = { L: L, W: W, T: T, outline: orient(outer.segs, true), cutouts: [], drills: [], grooves: [], rebates: [],
       pockets: [], sidePockets: [], slantPlanes: [], chamfers: [], chamferPaths: [], slantWalls: [], slantDrills: [], bottom: [],
       curvedSlants: [], curvedSurfaces: [], edgeRounds: [], warnings: warnings, name: opts.name || 'DXF',
       tf: { m: [[1, 0, 0], [0, 1, 0], [0, 0, 1]], t: [0, 0, 0] }, orientation: { rot: rot, flip: false } };

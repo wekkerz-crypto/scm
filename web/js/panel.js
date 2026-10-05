@@ -49,10 +49,9 @@
     return [edge.start].concat(pts, [edge.end]);
   }
 
-  function sampleEdge(edge) {
+  // Kreis/Ellipse einer Kante: Mitte, Halbachsen, Startwinkel und überstrichener Winkel (Vorzeichen = Richtung)
+  function conicArc(edge) {
     const c = edge.curve;
-    if (c.type === 'bspline') return sampleSpline(edge);
-    if (c.type !== 'circle' && c.type !== 'ellipse') return [edge.start, edge.end];
     const r1 = c.type === 'ellipse' ? c.r1 : c.r;
     const r2 = c.type === 'ellipse' ? c.r2 : c.r;
     const ang = (p) => { const d = sub(p, c.ax.o); return Math.atan2(dot(d, c.ax.y) / r2, dot(d, c.ax.x) / r1); };
@@ -66,13 +65,37 @@
     } else {
       sweep = closed ? -TWO_PI : -(((a0 - a1) % TWO_PI + TWO_PI) % TWO_PI);
     }
-    const n = Math.max(2, Math.ceil(Math.abs(sweep) / (Math.PI / 36)));
+    const at = (a) => add(c.ax.o, add(mul(c.ax.x, r1 * Math.cos(a)), mul(c.ax.y, r2 * Math.sin(a))));
+    return { r1: r1, r2: r2, a0: a0, sweep: sweep, at: at, ax: c.ax };
+  }
+
+  function sampleEdge(edge) {
+    const c = edge.curve;
+    if (c.type === 'bspline') return sampleSpline(edge);
+    if (c.type !== 'circle' && c.type !== 'ellipse') return [edge.start, edge.end];
+    const k = conicArc(edge);
+    const n = Math.max(2, Math.ceil(Math.abs(k.sweep) / (Math.PI / 36)));
     const pts = [];
-    for (let i = 0; i <= n; i++) {
-      const a = a0 + (sweep * i) / n;
-      pts.push(add(c.ax.o, add(mul(c.ax.x, r1 * Math.cos(a)), mul(c.ax.y, r2 * Math.sin(a)))));
-    }
+    for (let i = 0; i <= n; i++) pts.push(k.at(k.a0 + (k.sweep * i) / n));
     return pts;
+  }
+
+  // Äußerste Punkte eines Kreis-/Ellipsenbogens in Richtung d (und −d), soweit der Bogen sie erreicht –
+  // die Abtastung trifft sie sonst nicht genau (Plattenmaß bei flachem Bogen sonst zu klein)
+  function conicExtremes(edge, d) {
+    const c = edge.curve;
+    if (c.type !== 'circle' && c.type !== 'ellipse') return [];
+    const k = conicArc(edge);
+    const th = Math.atan2(k.r2 * dot(d, k.ax.y), k.r1 * dot(d, k.ax.x));
+    const out = [];
+    for (const a of [th, th + Math.PI]) {
+      let rel = a - k.a0;
+      if (k.sweep >= 0) { rel = ((rel % TWO_PI) + TWO_PI) % TWO_PI; if (rel <= k.sweep + 1e-12) out.push(k.at(a)); } else {
+        rel = -((((-rel) % TWO_PI) + TWO_PI) % TWO_PI);
+        if (rel >= k.sweep - 1e-12) out.push(k.at(a));
+      }
+    }
+    return out;
   }
 
   // ---------------------------------------------------------------- Vorbereitung
@@ -153,7 +176,7 @@
     const m = [X, Y, Z];
     const lo = [Infinity, Infinity, Infinity];
     const hi = [-Infinity, -Infinity, -Infinity];
-    for (const f of solid.faces) for (const b of f.bounds) for (const e of b.edges) for (const p of e.samples) {
+    for (const f of solid.faces) for (const b of f.bounds) for (const e of b.edges) for (const p of e.samples.concat(conicExtremes(e, X), conicExtremes(e, Y), conicExtremes(e, Z))) {
       for (let i = 0; i < 3; i++) {
         const v = dot(m[i], p);
         if (v < lo[i]) lo[i] = v;
@@ -218,7 +241,8 @@
           return {
             start: P(tf, e.start),
             end: P(tf, e.end),
-            forward: e.forward,
+            // Richtung entlang der Kurve selbst (STEP: TRIMMED_CURVE mit .F. dreht die Kurve um → curve.reversed)
+            forward: e.forward !== !!c.reversed,
             curve: curve,
             samples: e.samples.map((p) => P(tf, p)),
           };
@@ -241,6 +265,20 @@
         full: near2(a, b, 1e-6) };
     }
     return { type: 'line', a: a, b: b };
+  }
+
+  // wie seg2DFromEdge, aber Ellipsen und Splines als Linienzug über ihre Abtastpunkte (statt nur der Sehne)
+  function segs2DFromEdge(e) {
+    if ((e.curve.type === 'ellipse' || e.curve.type === 'bspline') && e.samples && e.samples.length > 2) {
+      const out = [];
+      for (let i = 1; i < e.samples.length; i++) {
+        const a = [e.samples[i - 1][0], e.samples[i - 1][1]];
+        const b = [e.samples[i][0], e.samples[i][1]];
+        if (!near2(a, b, 1e-6)) out.push({ type: 'line', a: a, b: b });
+      }
+      if (out.length) return out;
+    }
+    return [seg2DFromEdge(e)];
   }
 
   function reverseSeg(s) {
@@ -277,10 +315,27 @@
     return polyArea2D(pts);
   }
 
+  // Achsen-Extrempunkte eines 2D-Bogens (0°, 90°, 180°, 270°), soweit der Bogen sie überstreicht
+  function arcExtremes2D(s) {
+    if (s.type !== 'arc') return [];
+    const a0 = Math.atan2(s.a[1] - s.c[1], s.a[0] - s.c[0]);
+    const sw = arcSweep(s);
+    const out = [];
+    for (let k = 0; k < 4; k++) {
+      const a = (k * Math.PI) / 2;
+      let rel = a - a0;
+      if (sw >= 0) { rel = ((rel % TWO_PI) + TWO_PI) % TWO_PI; if (rel <= sw + 1e-12) out.push([s.c[0] + s.r * Math.cos(a), s.c[1] + s.r * Math.sin(a)]); } else {
+        rel = -((((-rel) % TWO_PI) + TWO_PI) % TWO_PI);
+        if (rel >= sw - 1e-12) out.push([s.c[0] + s.r * Math.cos(a), s.c[1] + s.r * Math.sin(a)]);
+      }
+    }
+    return out;
+  }
+
   function loopBBox(segs) {
     const lo = [Infinity, Infinity];
     const hi = [-Infinity, -Infinity];
-    for (const s of segs) for (const p of segPoints(s).concat([s.b])) {
+    for (const s of segs) for (const p of segPoints(s).concat([s.b], arcExtremes2D(s))) {
       lo[0] = Math.min(lo[0], p[0]); lo[1] = Math.min(lo[1], p[1]);
       hi[0] = Math.max(hi[0], p[0]); hi[1] = Math.max(hi[1], p[1]);
     }
@@ -603,7 +658,7 @@
       return ta <= tb ? { a: seg.a, b: seg.b } : { a: seg.b, b: seg.a };
     };
     const angle = Math.atan2(Math.abs(offset), zmax - zmin) * 180 / Math.PI;
-    return { zmin: zmin, zmax: zmax, top: line(top), bottom: line(bottom), topLine: line(top), bottomLine: line(bottom),
+    return { zmin: zmin, zmax: zmax, top: line(top), bottom: line(bottom),
       offset: offset, angle: angle, path: dir };
   }
 
@@ -664,7 +719,7 @@
       const z = f.surf.p[2];
       if (z < TOL || z > sf.T - TOL) continue;
       const ob = f.bounds.find((b) => b.outer) || f.bounds[0];
-      const segs = ob.edges.map(seg2DFromEdge);
+      const segs = ob.edges.flatMap(segs2DFromEdge);
       if (segs.every((q) => q.type === 'arc')) continue; // Bohrungsgrund
       const bb = loopBBox(segs);
       // ringsum geschlossen: nicht an Ober-/Unterseite oder Nachbarkanten offen (sonst Falz, Nut o. Ä.)
@@ -674,7 +729,7 @@
       const walls = faces.filter((g) => g !== f && !claimed.has(g.id) && g.pts.length && g.pts.every(inBox) &&
         !(g.surf.type === 'plane' && Math.abs(g.surf.n[2]) > ATOL));
       if (!walls.length || !walls.some((g) => g.pts.some((q) => q[2] > sf.T - TOL))) continue;
-      const inner = f.bounds.filter((b) => b !== ob).map((b) => b.edges.map(seg2DFromEdge));
+      const inner = f.bounds.filter((b) => b !== ob).map((b) => b.edges.flatMap(segs2DFromEdge));
       const islands = inner.filter((lp) => !lp.every((q) => q.type === 'arc'));
       const outerLoop = orient(segs, true);
       out.push({ x0: bb.x0, y0: bb.y0, x1: bb.x1, y1: bb.y1, depth: sf.T - z, segs: outerLoop,
@@ -869,7 +924,7 @@
     const W = fr.W;
     const T = fr.T;
     const warnings = prep.warnings.slice();
-    const res = { L: L, W: W, T: T, outline: null, cutouts: [], drills: [], circles: [], grooves: [], rebates: [],
+    const res = { L: L, W: W, T: T, outline: null, cutouts: [], drills: [], grooves: [], rebates: [],
       pockets: [], sidePockets: side.pockets, slantPlanes: slant.filter((sp) => sp.up), chamfers: [], slantWalls: [], slantDrills: [], bottom: [], warnings: warnings };
 
     // Clamex: Öffnung oben, in einer Kante oder schräg; von unten nur als Hinweis (Seite 2 bzw. wenden)
@@ -884,7 +939,7 @@
       f.surf.p[2] > TOL && f.surf.p[2] < T - TOL).map((f) => {
       const ob = f.bounds.find((b) => b.outer) || f.bounds[0];
       const poly = [];
-      for (const q of ob.edges.map(seg2DFromEdge)) for (const pt of segPoints(q)) poly.push(pt);
+      for (const q of ob.edges.flatMap(segs2DFromEdge)) for (const pt of segPoints(q)) poly.push(pt);
       return { z: f.surf.p[2], poly: poly };
     });
     const onUpFloor = (x, y, z) => upFloors.some((fl) => near(fl.z, z) && pointInPoly([x, y], fl.poly));
@@ -906,7 +961,7 @@
         // oben offen? Öffnung kann auch in einer Fase liegen (dann keine waagerechte Fläche darüber)
         const openAbove = () => !faces.some((f) => {
           if (f.surf.type !== 'plane' || Math.abs(Math.abs(f.surf.n[2]) - 1) > ATOL || f.surf.p[2] < h.tmax + TOL) return false;
-          const poly = (b) => { const pts = []; for (const q of b.edges.map(seg2DFromEdge)) for (const t of segPoints(q)) pts.push(t); return pts; };
+          const poly = (b) => { const pts = []; for (const q of b.edges.flatMap(segs2DFromEdge)) for (const t of segPoints(q)) pts.push(t); return pts; };
           const ob = f.bounds.find((b) => b.outer) || f.bounds[0];
           return pointInPoly([x, y], poly(ob)) && !f.bounds.filter((b) => b !== ob).some((b) => pointInPoly([x, y], poly(b)));
         });
@@ -1034,7 +1089,7 @@
     // Durchbrüche: Innenkonturen auf mehreren Höhen (auch mit Fase oder Falz am Rand). Ein Durchbruch ist es nur,
     // wenn über und unter der Öffnung keine waagerechte Fläche liegt (sonst Tasche von oben oder unten).
     const flats = faces.filter((f) => f.surf.type === 'plane' && Math.abs(Math.abs(f.surf.n[2]) - 1) < ATOL).map((f) => {
-      const poly = (b) => { const pts = []; for (const q of b.edges.map(seg2DFromEdge)) for (const t of segPoints(q)) pts.push(t); return pts; };
+      const poly = (b) => { const pts = []; for (const q of b.edges.flatMap(segs2DFromEdge)) for (const t of segPoints(q)) pts.push(t); return pts; };
       const ob = f.bounds.find((b) => b.outer) || f.bounds[0];
       return { outer: poly(ob), inner: f.bounds.filter((b) => b !== ob).map(poly) };
     });
@@ -1129,9 +1184,9 @@
           for (const e of b.edges) for (const q of e.samples.slice(0, -1)) pts.push(loc(q));
           return pts.map((q, i) => ({ type: 'line', a: q, b: pts[(i + 1) % pts.length] }));
         });
-        bosses.push({ height: Math.max(...comp.flatMap((g) => g.pts.map(dist))), islands: islands, faceIds: comp.map((g) => g.id) });
+        bosses.push({ height: maxOf(comp.flatMap((g) => g.pts.map(dist))), islands: islands, faceIds: comp.map((g) => g.id) });
       }
-      bossOf.set(f.id, { height: bosses.length ? Math.max(...bosses.map((b) => b.height)) : 0, bosses: bosses, unsupported: unsupported,
+      bossOf.set(f.id, { height: bosses.length ? maxOf(bosses.map((b) => b.height)) : 0, bosses: bosses, unsupported: unsupported,
         islands: bosses.flatMap((b) => b.islands),
         plane: { o: o, X: X, Y: Y, n: n, zRot: az * 180 / Math.PI, xRot: Math.acos(Math.max(-1, Math.min(1, n[2]))) * 180 / Math.PI, L: Lf, W: Wf },
         bottomZ: minOf(outerPts.map((q) => q[2])) });
@@ -1157,9 +1212,9 @@
           warnings.push('Feder/Zapfen an einer schrägen Fläche bis an den Rand – nicht automatisch bearbeitbar, nichts ausgegeben (in Maestro von Hand).');
         }
       } else if (e.zmax > T - TOL) {
-        chamferFaces.push({ kind: 'line', side: 'top', line: e.bottomLine, width: Math.abs(e.offset), height: T - e.zmin, path: e.path });
+        chamferFaces.push({ kind: 'line', side: 'top', line: e.bottom, width: Math.abs(e.offset), height: T - e.zmin, path: e.path });
       } else if (e.zmin < TOL) {
-        chamferFaces.push({ kind: 'line', side: 'bottom', line: e.topLine, width: Math.abs(e.offset), height: e.zmax, path: e.path });
+        chamferFaces.push({ kind: 'line', side: 'bottom', line: e.top, width: Math.abs(e.offset), height: e.zmax, path: e.path });
       } else {
         // parallel vor einer anderen Schräge (z. B. Feder über die ganze Länge zwischen zwei Teilflächen der Gehrung)
         const n = f.surf.n;
@@ -1452,14 +1507,14 @@
       const z = f.surf.p[2];
       if (Math.abs(Math.abs(n[2]) - 1) > ATOL || z < TOL || z > T - TOL) continue;
       const ob = f.bounds.find((b) => b.outer) || f.bounds[0];
-      const segs = ob.edges.map(seg2DFromEdge);
+      const segs = ob.edges.flatMap(segs2DFromEdge);
       if (segs.every((s) => s.type === 'arc')) continue; // Bohrungsgrund
       const bb = loopBBox(segs);
       if (n[2] < 0) {
         res.bottom.push({ kind: 'Boden', text: 'Bearbeitung von unten (Boden auf Z=' + fmt(z) + ', ' + fmt(bb.x1 - bb.x0) + '×' + fmt(bb.y1 - bb.y0) + ')' });
         continue;
       }
-      const inner = f.bounds.filter((b) => b !== ob).map((b) => b.edges.map(seg2DFromEdge))
+      const inner = f.bounds.filter((b) => b !== ob).map((b) => b.edges.flatMap(segs2DFromEdge))
         .filter((lp) => !lp.every((q) => q.type === 'arc' && holes.some((h) => Math.abs(h.axis[2]) > 1 - ATOL &&
           near2([h.c[0], h.c[1]], q.c, 0.01) && near(h.d / 2, q.r))));
       floors.push({ z: z, segs: segs, bb: bb, rect: isRectLoop(segs, bb), inner: inner });
@@ -1557,10 +1612,6 @@
       (res.edgeRounds || []).filter((e) => e.side === 'top').length * 0.5; // bei Gleichstand: Rundungen lieber oben
   }
 
-  /**
-   * Analysiert einen Volumenkörper.
-   * orientation: { rot: 0..3, flip: bool } – fehlt sie, wird sie automatisch gewählt.
-   */
   /*
    * Drehlage wie im Korpus-Modell (Baugruppe in Korpus-Achsen: X = Breite, Y = Tiefe, Z = Höhe), wie in der Werkstatt:
    * X der Platte = erste Modellachse in der Plattenebene in der Reihenfolge Breite (X), Höhe (Z), Tiefe (Y); Vorzeichen so,
@@ -1582,6 +1633,10 @@
     return null;
   }
 
+  /**
+   * Analysiert einen Volumenkörper.
+   * orientation: { rot: 0..3, flip: bool } – fehlt sie, wird sie automatisch gewählt.
+   */
   function analyze(solid, orientation, opts) {
     const prep = prepare(solid);
     let rot;

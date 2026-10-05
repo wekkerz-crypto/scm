@@ -72,7 +72,7 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-wrap: bala
 h1 { font-size: 1.6rem; line-height: 1.15; }
 h2 { font-size: 1.25rem; }
 h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
-.mono, code, pre { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+pre { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 button, select, input { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -188,7 +188,7 @@ select, input[type="text"], input[type="number"] { border: 1px solid var(--line)
 .stagecard { min-width: 0; }
 .steps { min-width: 0; position: sticky; top: calc(12px + env(safe-area-inset-top, 0px)); max-height: calc(100vh - 24px); overflow: auto; }
 .steps .opshead { position: sticky; top: -14px; background: var(--surface); padding-block: 4px 6px; z-index: 1; }
-@media (max-width: 1100px) { .work { grid-template-columns: minmax(0, 1fr); } .steps { position: static; max-height: none; } }
+@media (max-width: 1100px) { .work { grid-template-columns: minmax(0, 1fr); } .steps { position: relative; max-height: none; } } /* relative: Bezug für .dropline */
 .stagecard:fullscreen { background: var(--bg); padding: 16px 20px; overflow: auto; }
 .stagecard:fullscreen .view svg { max-height: calc(100vh - 170px); }
 .hud { display: flex; flex-wrap: wrap; gap: 2px 14px; align-items: baseline; min-height: 1.6em; margin-top: 8px; font-size: 0.88rem; }
@@ -208,7 +208,6 @@ table.ops tbody.grp > tr.ctlrow > td { box-shadow: inset 3px 0 0 color-mix(in sr
 tbody.grp.lifted { opacity: 0.45; }
 tbody.grp.lifted td { background: var(--hl); }
 body.dragging-step, body.dragging-step * { cursor: grabbing !important; user-select: none; }
-.steps { position: sticky; }
 .dropline { position: absolute; left: 12px; right: 12px; height: 3px; border-radius: 2px; background: var(--accent); pointer-events: none;
   box-shadow: 0 0 0 3px var(--hl); z-index: 2; }
 .dragghost { position: fixed; z-index: 30; pointer-events: none; background: var(--surface); border: 1px solid var(--accent); border-radius: var(--r);
@@ -235,7 +234,6 @@ table.ops td.k .jump:hover { color: var(--accent); }
 .pagetabs button { display: flex; align-items: center; gap: 12px; text-align: left; border: 1px solid transparent; background: none; color: var(--muted);
   font: inherit; padding: 9px 14px; border-radius: 10px; cursor: pointer; min-width: 0; transition: background .15s, color .15s; }
 .pagetabs button:hover { background: var(--surface); color: var(--ink); border-color: var(--line); }
-.pagetabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .pagetabs .pti { flex: none; width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .pagetabs .ptt { display: grid; min-width: 0; line-height: 1.25; }
 .pagetabs .ptt b { font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: inherit; }
@@ -249,14 +247,13 @@ table.ops td.k .jump:hover { color: var(--accent); }
   .pagetabs .ptt small, .pagetabs .ptn { display: none; } .pagetabs .ptt b { font-size: 1rem; white-space: nowrap; } .pagetabs .pti { width: 22px; height: 22px; } }
 body[data-page="model"] .profilebar, body[data-page="model"] .bench, body[data-page="model"] details.settings { display: none; }
 .modelpage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); gap: 16px; align-items: start; }
-.modelpage[hidden] { display: none; }
 @media (max-width: 1000px) { .modelpage { grid-template-columns: minmax(0, 1fr); } }
 .mview { display: grid; gap: 8px; }
 .mbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
 .v3bar.static { position: static; }
 .mopac, .mchk { display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; color: var(--muted); }
 .mopac input { width: 120px; accent-color: var(--accent); }
-.mopac span { font-family: var(--font-mono); font-size: 0.78rem; min-width: 3em; }
+.mopac > span { font-family: var(--font-mono); font-size: 0.78rem; min-width: 3em; }
 #mmeasure[aria-pressed="true"], #mdim[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .mhost { position: relative; height: max(420px, calc(100vh - 260px)); border-radius: var(--r); overflow: hidden; background: var(--sunken); }
 .mhost canvas { display: block; }
@@ -352,7 +349,6 @@ body[data-page="model"] .profilebar, body[data-page="model"] .bench, body[data-p
 .mlisthead h2 small { font: 500 0.78rem var(--font-mono); color: var(--muted); margin-left: 4px; }
 .msolo { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 6px; padding: 6px 10px; border-radius: 8px;
   background: color-mix(in srgb, var(--accent) 12%, var(--surface)); font-size: 0.85rem; }
-.msolo[hidden] { display: none; }
 .part .pnum { display: inline-grid; place-items: center; min-width: 20px; height: 20px; margin-right: 6px; border-radius: 99px; border: 1.5px solid currentColor;
   font: 600 0.72rem/1 var(--font-mono); vertical-align: 1px; }
 .view { touch-action: pan-y; }
@@ -365,8 +361,6 @@ body[data-page="model"] .profilebar, body[data-page="model"] .bench, body[data-p
 .zoombar .zk { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); min-width: 3.6em; text-align: center; }
 .anim { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; }
 .anim input[type="range"] { flex: 1 1 200px; min-width: 0; accent-color: var(--accent); }
-.anim .now { flex: 1 1 100%; font-size: 0.85rem; color: var(--muted); min-height: 1.4em; }
-.anim .now b { color: var(--ink); font-weight: 600; }
 .anim select { font-size: 0.85rem; }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.8rem; color: var(--muted); margin-top: 8px; }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
@@ -611,9 +605,9 @@ table.fmt.one .onet { display: inline; }
     <div class="card mview">
       <div class="mbar">
         <span class="v3bar static" role="group" aria-label="Ansicht"><button type="button" data-mview="iso">Iso</button><button type="button" data-mview="top">Oben</button><button type="button" data-mview="front">Vorne</button><button type="button" data-mview="right">Rechts</button><button type="button" data-mview="fit" title="Alles einpassen (bzw. gewähltes Bauteil)">Einpassen</button></span>
-        <label class="mopac" title="Transparenz der Bauteile (das gewählte bleibt deckend)">Transparenz <input type="range" id="mopac" min="0" max="85" step="5" value="0"> <span id="mopacv">0 %</span></label>
-        <label class="mopac" title="Explosionsansicht: Bauteile auseinanderziehen (Maße bleiben wie zusammengebaut)">Explosion <input type="range" id="mexpl" min="0" max="100" step="5" value="0"> <span id="mexplv">0 %</span></label>
-        <label class="mchk"><input type="checkbox" id="mlabels" checked> Nummern</label>
+        <label class="mopac" title="Transparenz der Bauteile (das gewählte bleibt deckend)">Transparenz <input type="range" id="mopac" autocomplete="off" min="0" max="85" step="5" value="0"> <span id="mopacv">0 %</span></label>
+        <label class="mopac" title="Explosionsansicht: Bauteile auseinanderziehen (Maße bleiben wie zusammengebaut)">Explosion <input type="range" id="mexpl" autocomplete="off" min="0" max="100" step="5" value="0"> <span id="mexplv">0 %</span></label>
+        <label class="mchk"><input type="checkbox" id="mlabels" autocomplete="off" checked> Nummern</label>
         <span class="mopac">Platten <button type="button" class="btn small boardbtn" id="mboard" title="Plattenfarbe für alle Bauteile (je Bauteil: Farbfeld in der Liste)"></button></span>
         <button type="button" class="btn small" id="mmeasure" aria-pressed="false" title="Zwei Punkte anklicken – Fang auf Endpunkt, Mitte, Kreismitte, Kante, Fläche; Alt = ohne Fang; Esc beendet">📏 Messen</button>
         <button type="button" class="btn small" id="mdim" aria-pressed="false" title="Maße setzen, die stehen bleiben: zwei Punkte anklicken (mit Fang); Entf löscht das letzte; Esc beendet">📐 Bemaßen</button>
@@ -739,7 +733,6 @@ table.fmt.one .onet { display: inline; }
       ['oscMillMin', 'Fräser: mindestens unter der Platte', 'number', 'mm'],
       ['oscMillMax', 'Fräser: höchstens unter der Platte', 'number', 'mm'],
       ['oscWave', 'Weg je Schwingung (runter und hoch)', 'number', 'mm'],
-      ['attrPlacement', 'Tiefen-Attribut (SetAttribute) setzen', 'choice', [['after', 'nach dem Element (Handbuch-Beispiel)'], ['before', 'vor dem Element']]],
       ['sandOn', 'Nach dem Formatfräsen schleifen (Außenkontur)', 'bool'],
       ['sandTool', 'Schleifwalze', 'sand'],
       ['sandMin', 'Schleifwalze: mindestens unter der Platte', 'number', 'mm'],
@@ -849,6 +842,8 @@ table.fmt.one .onet { display: inline; }
     if (s.fieldThreshold === 1500) s.fieldThreshold = XcsWriter.DEFAULTS.fieldThreshold; // alte Voreinstellung
     delete s.formatLast; // ersetzt durch die Reihenfolge-Regel
     delete s.clamexTemplate; // ersetzt durch je eine Vorlage für Kante, Gehrung und Fläche (Werkstatt-Programme)
+    delete s.attrPlacement; // Tiefen-Attribut immer nach dem Element (in Maestro bestätigt)
+    delete s.oscSplit; // Oszillieren: Zerteilen der Kontur entfernt (brach die Korrektur)
     // früherer Vorgabe-Sauger 145×50 → in Maestro heißt er H75-M-145x55
     if (s.cupSmallCode === 'H75-M-145x50') { delete s.cupSmallCode; if (s.cupSmallY === 50) delete s.cupSmallY; }
     // frühere Standardpfade (aus dem Handbuch) auf den Pfad in der Werkstatt umstellen
@@ -917,13 +912,23 @@ table.fmt.one .onet { display: inline; }
     document.querySelectorAll('[data-theme-set]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.themeSet === theme)));
   }
   applyTheme(loadJson(THEME_KEY, null));
+  // 3D-Ansichten und Leinwand in den neuen Farben
+  function themeChanged() {
+    if (v3.viewer) v3.viewer.setTheme(isDarkTheme());
+    if (typeof mdl !== 'undefined' && mdl.viewer) mdl.viewer.setTheme(isDarkTheme());
+    if (typeof drawAnim === 'function') drawAnim();
+  }
   document.querySelectorAll('[data-theme-set]').forEach((b) => b.addEventListener('click', () => {
     storeJson(THEME_KEY, b.dataset.themeSet);
     applyTheme(b.dataset.themeSet);
-    if (v3.viewer) v3.viewer.setTheme(isDarkTheme());
-    if (typeof mdl !== 'undefined' && mdl.viewer) mdl.viewer.setTheme(isDarkTheme());
-    if (typeof drawAnim === 'function') drawAnim(); // Leinwand mit den neuen Farben neu zeichnen
+    themeChanged();
   }));
+  // System wechselt hell/dunkel (ohne eigene Wahl): mitziehen
+  if (window.matchMedia) {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const onSys = () => { applyTheme(null); themeChanged(); };
+    if (mq.addEventListener) mq.addEventListener('change', onSys); else if (mq.addListener) mq.addListener(onSys);
+  }
 
   const state = { parts: [], sel: 0, settings: loadSettings(),
     tools: customTools ? withTech(customTools.tools) : (window.DEFAULT_TOOLS || []),
@@ -1308,12 +1313,24 @@ table.fmt.one .onet { display: inline; }
     };
   }
 
+  // OpenCascade-Netze je STEP-Datei nur einmal berechnen (3D-Ansicht, Möbel 3D, Zeilenfräsen); höchstens 12 Dateien merken
+  const meshCache = new Map();
+  function meshesOf(occt, text) {
+    let m = meshCache.get(text);
+    if (!m) {
+      m = View3D.stepMeshes(occt, text);
+      if (meshCache.size >= 12) meshCache.delete(meshCache.keys().next().value);
+      meshCache.set(text, m);
+    }
+    return m;
+  }
+
   // Dreiecksnetz aus OpenCascade für das Zeilenfräsen (einmal je Teil, wie die 3D-Ansicht)
   function loadMesh(part) {
     if (part.meshState === 'loading' || part.meshState === 'error' || !part.stepText) return;
     part.meshState = 'loading';
     View3D.load().then((occt) => {
-      part.occtMeshes = View3D.stepMeshes(occt, part.stepText);
+      part.occtMeshes = meshesOf(occt, part.stepText);
       part.meshState = 'ok';
     }).catch((e) => {
       part.meshState = 'error';
@@ -2280,7 +2297,13 @@ table.fmt.one .onet { display: inline; }
       '<span class="sp"></span><button class="btn ghost" type="button" id="lclose">Schließen</button><button class="btn primary" type="button" id="lprint">' + ICON_PRINT + ' Drucken</button></div>';
     if (!dlg.open) dlg.showModal();
     $('lclose').addEventListener('click', () => dlg.close());
-    $('lrot').addEventListener('click', () => { state.settings.labelRotate = !state.settings.labelRotate; persistLabelRotate(); openLabels(parts); });
+    $('lrot').addEventListener('click', () => {
+      state.settings.labelRotate = !state.settings.labelRotate;
+      saveSettings();
+      const cb = $('set-labelRotate');
+      if (cb) cb.checked = state.settings.labelRotate;
+      openLabels(parts);
+    });
     $('lprint').addEventListener('click', () => {
       let area = $('printarea');
       if (!area) { area = document.createElement('div'); area.id = 'printarea'; document.body.appendChild(area); }
@@ -2293,14 +2316,6 @@ table.fmt.one .onet { display: inline; }
     });
   }
   // Drehung gleich merken (wie eine Einstellung, ohne die übrigen ungespeicherten Änderungen mitzuspeichern)
-  function persistLabelRotate() {
-    try {
-      const s = JSON.parse(localStorage.getItem(KEY) || '{}') || {};
-      s.labelRotate = state.settings.labelRotate;
-      localStorage.setItem(KEY, JSON.stringify(s));
-    } catch (e) { /* ohne Speicher: nur für diese Sitzung */ }
-  }
-
   function render() { renderProfileBar(); renderParts(); renderDetail(); renderPageTabs(); if (state.page === 'model') renderModel(); saveSession(); }
   // Anzahl auf den Seiten-Schaltern: Programme = alle Teile, Möbel 3D = Teile mit STEP-Modell
   function renderPageTabs() {
@@ -2318,7 +2333,7 @@ table.fmt.one .onet { display: inline; }
     storeJson(PAGE_KEY, pg);
     document.body.dataset.page = pg;
     $('modelpage').hidden = pg !== 'model';
-    document.querySelectorAll('[data-page]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.page === pg)));
+    document.querySelectorAll('.pagetabs [data-page]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.page === pg)));
     if (pg === 'model') renderModel();
   }
   document.querySelectorAll('.pagetabs [data-page]').forEach((b) => b.addEventListener('click', () => setPage(b.dataset.page)));
@@ -2348,8 +2363,12 @@ table.fmt.one .onet { display: inline; }
   const boardChip = (key) => boardSwatch(key) + '<span class="bn">' + esc(boardName(key)) + '</span>';
   // Auswahlfenster: Oberfläche (Holzarten/Dekore, eigene Farbe mit/ohne Maserung) und Kanten (wie Oberfläche, Spanplatte,
   // Multiplex, MDF, Kantenband in Farbe). Jede Wahl gilt sofort; inherit = Schlüssel der Einstellung → „wie Einstellung“
+  let pickerClose = null;
   function boardPicker(anchor, value, inherit, onPick) {
-    document.querySelectorAll('.bpick').forEach((x) => x.remove());
+    if (pickerClose) pickerClose();
+    // Knopf kann beim Neuzeichnen der Liste ersetzt werden: über den Selektor wiederfinden
+    const anchorSel = anchor.id ? '#' + anchor.id : anchor.dataset.mboard ? '[data-mboard="' + anchor.dataset.mboard + '"]' : null;
+    const anchorNow = () => (anchorSel && document.querySelector(anchorSel)) || anchor;
     const b0 = View3D.boardOf(value);
     let surf = String(value || b0.id).split('|')[0];
     let edge = b0.edge;
@@ -2376,12 +2395,16 @@ table.fmt.one .onet { display: inline; }
     anchor.setAttribute('aria-expanded', 'true');
     const close = () => {
       box.remove();
-      anchor.setAttribute('aria-expanded', 'false');
+      anchorNow().setAttribute('aria-expanded', 'false');
       document.removeEventListener('pointerdown', outside, true);
       document.removeEventListener('keydown', onKey, true);
+      clearTimeout(dragTimer);
+      pickerClose = null;
     };
-    const outside = (e) => { if (!box.contains(e.target) && !anchor.contains(e.target)) close(); };
-    const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); anchor.focus(); } };
+    pickerClose = close;
+    let dragTimer;
+    const outside = (e) => { if (!box.contains(e.target) && !anchorNow().contains(e.target)) close(); };
+    const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); anchorNow().focus(); } };
     setTimeout(() => { document.addEventListener('pointerdown', outside, true); document.addEventListener('keydown', onKey, true); });
     const colorIn = box.querySelector('.own input[type=color]');
     const grainIn = box.querySelector('.own input[type=checkbox]');
@@ -2404,11 +2427,13 @@ table.fmt.one .onet { display: inline; }
       if (ed) { edge = ed.dataset.bedge; apply(); return; }
       if (e.target.closest('[data-bband]')) { edge = bandIn.value.toLowerCase(); apply(); return; }
       if (e.target.closest('[data-binh]')) { onPick(null); close(); return; }
-      if (e.target.closest('[data-bdone]')) { close(); anchor.focus(); }
+      if (e.target.closest('[data-bdone]')) { close(); anchorNow().focus(); }
     });
-    colorIn.addEventListener('input', () => { surf = ownKey(); apply(); });
+    // Farbe ziehen: erst nach kurzer Pause neu zeichnen (nicht bei jedem Zwischenwert)
+    const soon = () => { clearTimeout(dragTimer); dragTimer = setTimeout(apply, 120); };
+    colorIn.addEventListener('input', () => { surf = ownKey(); soon(); });
     grainIn.addEventListener('change', () => { if (/^#/.test(surf)) { surf = ownKey(); apply(); } });
-    bandIn.addEventListener('input', () => { edge = bandIn.value.toLowerCase(); apply(); });
+    bandIn.addEventListener('input', () => { edge = bandIn.value.toLowerCase(); soon(); });
     (box.querySelector('[data-bkey][aria-pressed="true"]') || box.querySelector('button')).focus();
     return box;
   }
@@ -2474,7 +2499,9 @@ table.fmt.one .onet { display: inline; }
     const list = modelParts();
     const key = list.map(({ p, num }) => num + ':' + p.solid.name + ':' + p.stepText.length).join('|');
     if (mdl.viewer && mdl.key === key) return;
-    if (mdl.loading) return;
+    if (mdl.loading) { mdl.again = true; return; } // nach dem Laden noch einmal (z. B. Dateien während des ersten Ladens)
+    // andere Teile: Ausblenden/Auswahl gelten nicht mehr (Nummern verschoben)
+    if (mdl.key !== null && mdl.key !== key) { mdl.hidden.clear(); mdl.sel = null; }
     $('mmsg').hidden = false;
     $('mmsg').textContent = list.length ? '3D-Ansicht wird geladen …' : 'Keine STEP-Bauteile – unter „Programme“ STEP-Dateien laden.';
     if (!list.length) { if (mdl.viewer) mdl.viewer.setParts([]); mdl.key = key; return; }
@@ -2493,7 +2520,7 @@ table.fmt.one .onet { display: inline; }
       for (const x of list) { if (!byText.has(x.p.stepText)) byText.set(x.p.stepText, []); byText.get(x.p.stepText).push(x); }
       const parts = [];
       for (const [text, xs] of byText) {
-        const meshes = View3D.stepMeshes(occt, text);
+        const meshes = meshesOf(occt, text);
         const got = Model3D.assign(meshes, xs.map((x) => solidBox(x.p.solid)));
         xs.forEach((x, k) => parts.push({ num: x.num, name: x.p.solid.name, mesh: got[k], board: boardKeyOf(x.p) }));
       }
@@ -2512,6 +2539,7 @@ table.fmt.one .onet { display: inline; }
       $('mmsg').textContent = '3D-Ansicht nicht verfügbar: ' + (e.message || e);
     } finally {
       mdl.loading = false;
+      if (mdl.again) { mdl.again = false; if (state.page === 'model') renderModel(); }
     }
   }
   function updateModelHud() {
@@ -3233,7 +3261,7 @@ table.fmt.one .onet { display: inline; }
     const t = document.documentElement.getAttribute('data-theme');
     return t ? t === 'dark' : !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
   }
-  const v3 = { viewer: null, host: null, result: null, showRaw: true, loading: false, error: null };
+  const v3 = { viewer: null, host: null, result: null, showRaw: true, error: null };
 
   function v3message(text) {
     const m = $('v3msg');
@@ -3276,7 +3304,7 @@ table.fmt.one .onet { display: inline; }
         v3.board = boardKeyOf(cur);
         const ops = cur.result.ops;
         v3.viewer.setPart({
-          meshes: View3D.stepMeshes(occt, cur.stepText), panel: cur.result.panel, tf: cur.result.panel.tf,
+          meshes: meshesOf(occt, cur.stepText), panel: cur.result.panel, tf: cur.result.panel.tf,
           raw: cur.result.side === 2 ? 0 : (state.settings.rawOversize || 0), board: boardKeyOf(cur), // Seite 2: ohne Rohteil-Versatz
           colorOf: (m) => moveColor(m, ops[m.op], col),
           suction: cur.result.suction,
@@ -3300,10 +3328,12 @@ table.fmt.one .onet { display: inline; }
     }
     if (anim.t >= anim.total) i = -1;
     const m = i >= 0 ? anim.moves[i] : null;
-    const cur = m ? { m: m, f: f, i: i, at: along(m.pts, f).at } : null;
+    // Werkzeugwechsel: erst zur Parkposition fahren (Anteil travel), dann wechseln – wie in 2D
+    const fm = m && m.change ? Math.min(1, f / (m.travel || 1)) : f;
+    const cur = m ? { m: m, f: f, i: i, at: along(m.pts, fm).at } : null;
     if (v3.viewer && v3.result === anim.result) {
       const spin = reduceMotion ? 0 : ((now || performance.now()) / 1000) * 14;
-      v3.viewer.setTime(anim.moves, i, f, active, spin, ToolLibrary.infoMap(state.tools));
+      v3.viewer.setTime(anim.moves, i, fm, active, spin, ToolLibrary.infoMap(state.tools));
     }
     updateHud(cur);
     updateControls(cur);
@@ -3593,7 +3623,7 @@ table.fmt.one .onet { display: inline; }
   $('reset').addEventListener('click', () => {
     state.settings = Object.assign({}, XcsWriter.DEFAULTS, { orderRule: { on: true, seq: XcsWriter.DEFAULTS.orderRule.seq.slice() },
       profiles: JSON.parse(JSON.stringify(XcsWriter.DEFAULTS.profiles)) });
-    saveSettings(); renderSettings(); renderRule(); renderProfileEditor(); state.parts.forEach(compute); render();
+    saveSettings(); renderSettings(); renderRule(); renderProfileEditor(); state.parts.forEach(compute); applyBoards();
   });
 
   $('ruleon').addEventListener('change', (e) => {

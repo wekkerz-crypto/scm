@@ -44,7 +44,7 @@ put(10, 490, 20, 210);
 put(10, 410, 20, 210, 42, 1);
 // Block-Bohrung Ø5
 put(0, 'INSERT', 8, 'Bohr', 2, 'BOHR5', 10, 520, 20, 320, 30, 0);
-// Ellipse 60 × 30 (Mittelpunkt 450/320)
+// Ellipse 60 × 30 (Mittelpunkt 400/320)
 put(0, 'ELLIPSE', 8, 'Loch', 10, 400, 20, 320, 30, 0, 11, 30, 21, 0, 31, 0, 40, 0.5, 41, 0, 42, 2 * Math.PI);
 // Text, Maß, offene Linie
 put(0, 'TEXT', 8, 'Text', 10, 10, 20, 10, 30, 0, 40, 5, 1, 'Platte');

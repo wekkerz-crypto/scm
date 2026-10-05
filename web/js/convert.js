@@ -20,7 +20,6 @@
     if (/^(con|prn|aux|nul|com\d|lpt\d)(\..*)?$/i.test(n)) n = n.replace(/^[^.]+/, (m) => m + '_');
     return n || 'Teil';
   }
-  const safeFileName = partName;
 
   // Nichtssagende Namen aus dem CAD (Onshape „Part 1“, „Body“ …) → Dateiname der STEP verwenden
   function genericName(n) {
@@ -111,7 +110,7 @@
       const out = XcsWriter.write(panel, settings, { field: options.field, tools: ov.tools, steps: ov.steps, order: ov.order, depths: ov.depths, tech: ov.tech,
         twoStep: ov.twoStep, rebateReturn: ov.rebateReturn, tabs: ov.tabs, curved: ov.curved, mesh: placeMesh(options, panel), suppress: ov.suppress,
         avoid: other ? openZones(other) : null, twoSided: two });
-      const base = safeFileName(solid.name);
+      const base = partName(solid.name);
       const res = result(solid, base + (two ? '_S1' : '') + '.xcs', panel, out);
       res.canTwoSided = !!other;
       if (two) {
@@ -123,7 +122,7 @@
       }
       return res;
     } catch (err) {
-      return { name: solid.name, fileName: safeFileName(solid.name) + '.xcs', panel: null, xcs: '',
+      return { name: solid.name, fileName: partName(solid.name) + '.xcs', panel: null, xcs: '',
         ops: [], warnings: [], error: err.message || String(err) };
     }
   }
@@ -142,14 +141,14 @@
       const ov = options.overrides || {};
       const dx = ov.dxf || {};
       const cfg = Object.assign({}, XcsWriter.DEFAULTS, settings || {});
-      const panel = DR.analyze(text, { name: name, T: dx.T, rot: dx.rot, features: dx.features, drills: cfg.drillsVertical });
+      const panel = DR.analyze(text, { name: name, T: dx.T > 0 ? dx.T : cfg.dxfThickness, rot: dx.rot, features: dx.features, drills: cfg.drillsVertical });
       const out = XcsWriter.write(panel, settings, { field: options.field, tools: ov.tools, steps: ov.steps, order: ov.order, depths: ov.depths, tech: ov.tech,
         twoStep: ov.twoStep, rebateReturn: ov.rebateReturn, tabs: ov.tabs, suppress: ov.suppress });
-      const res = result(solid, safeFileName(name) + '.xcs', panel, out);
+      const res = result(solid, partName(name) + '.xcs', panel, out);
       res.dxf = panel.dxf;
       return res;
     } catch (err) {
-      return { name: name, fileName: safeFileName(name) + '.xcs', panel: null, xcs: '', ops: [], warnings: [], error: err.message || String(err) };
+      return { name: name, fileName: partName(name) + '.xcs', panel: null, xcs: '', ops: [], warnings: [], error: err.message || String(err) };
     }
   }
 
@@ -220,6 +219,6 @@
     return lines.filter((l) => l !== null).join('\r\n');
   }
 
-  return { convert: convert, readParts: readParts, convertSolid: convertSolid, convertDxf: convertDxf, safeFileName: safeFileName, partName: partName,
+  return { convert: convert, readParts: readParts, convertSolid: convertSolid, convertDxf: convertDxf, partName: partName,
     makeBatch: makeBatch };
 });

@@ -257,7 +257,10 @@
   const texCache = new Map();
   function cachedTex(T, key, make) {
     let tex = texCache.get(key);
+    if (tex) { texCache.delete(key); texCache.set(key, tex); } // zuletzt benutzt ans Ende
     if (!tex) {
+      // begrenzt (eigene Farben beim Ziehen): älteste freigeben – noch benutzte lädt three.js bei Bedarf neu hoch
+      while (texCache.size >= 48) { const [k0, t0] = texCache.entries().next().value; t0.dispose(); texCache.delete(k0); }
       tex = new T.CanvasTexture(make());
       tex.wrapS = tex.wrapT = T.RepeatWrapping;
       tex.encoding = T.sRGBEncoding;
@@ -269,9 +272,8 @@
   const matOpts = { metalness: 0, envMapIntensity: 0.4, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 };
 
   // Holz-Material (Maserung als Textur) – gleich für die Teil-Ansicht und Möbel 3D
-  function woodMaterial(T, g, base, grain) {
+  function woodMaterial(T, base, grain) {
     if (grain === undefined) grain = 1;
-    if (g) boardUV(T, g, 'same');
     return new T.MeshStandardMaterial(Object.assign({ map: cachedTex(T, 'w' + base + '/' + grain, () => woodCanvas(base, grain)),
       roughness: grain > 0 ? 0.58 : 0.5 }, matOpts));
   }
@@ -284,7 +286,7 @@
     const bd = boardOf(key);
     const base = color || bd.color;
     boardUV(T, g, bd.edge);
-    const surf = woodMaterial(T, null, base, bd.grain);
+    const surf = woodMaterial(T, base, bd.grain);
     if (bd.edge === 'same') return [surf, surf];
     const kind = /^#/.test(bd.edge) ? 'band' : bd.edge;
     const edge = new T.MeshStandardMaterial(Object.assign({ map: cachedTex(T, 'e' + kind + bd.edgeColor, () => edgeCanvas(kind, bd.edgeColor)),
@@ -329,8 +331,8 @@
     this.controls.dampingFactor = 0.12;
     const pm = new THREE.PMREMGenerator(r);
     this.scene.environment = pm.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
-    this.hemi = new THREE.HemisphereLight(0xffffff, 0x887766, 0.35);
-    this.scene.add(this.hemi);
+    pm.dispose();
+    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x887766, 0.35));
     this.sun = new THREE.DirectionalLight(0xffffff, 1.6);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(2048, 2048);
@@ -353,9 +355,9 @@
     const loop = () => {
       if (!this._alive) return;
       this._raf = requestAnimationFrame(loop);
+      if (!this.el.offsetParent) return; // ausgeblendet (2D, andere Seite): nicht rechnen
       this.resize();
       this.controls.update();
-      if (this.onFrame) this.onFrame();
       this.renderer.render(this.scene, this.camera);
     };
     loop();
@@ -398,13 +400,12 @@
     }
   };
 
-  Viewer.prototype.setTheme = function (dark, colors) {
+  Viewer.prototype.setTheme = function (dark) {
     const changed = this.dark !== dark;
     this.dark = dark;
     if (changed && this.opts) { this.setPart(this.opts); } // Tisch/Raster in den neuen Farben
     const T = this.THREE;
     this.scene.background = new T.Color(dark ? 0x141a19 : 0xe6e9e3);
-    this.colors = colors || this.colors;
     if (this.edgeMat) this.edgeMat.color.set(dark ? 0x1a120a : 0x4a3520);
   };
 
@@ -700,7 +701,7 @@
   Viewer.prototype.setTime = function (moves, i, f, active, spinAngle, toolInfo) {
     const T = this.THREE;
     if (!active) {
-      if (this.trailObjs.length) this.clearTrails();
+      if (this.trailObjs.length || this.live || this.trailUpTo) this.clearTrails();
       this.groups.tool.visible = false;
       return;
     }
@@ -711,7 +712,14 @@
       if (m.type !== 'rapid' && m.pts3) this.trailObjs.push(this.trail(m, m.pts3));
     }
     this.trailUpTo = Math.max(this.trailUpTo, done);
-    if (this.live) { this.groups.trails.remove(this.live); this.live.geometry.dispose(); this.live.material.dispose(); this.live = null; }
+    if (this.live) {
+      this.groups.trails.remove(this.live);
+      this.live.geometry.dispose();
+      const li = this.lineMats.indexOf(this.live.material);
+      if (li >= 0) this.lineMats.splice(li, 1);
+      this.live.material.dispose();
+      this.live = null;
+    }
     this.groups.tool.visible = false;
     if (i < 0 || i >= moves.length) return;
     const m = moves[i];
@@ -747,7 +755,7 @@
       const info = (toolInfo && toolInfo[m.tool]) || {};
       const d = info.d || m.d || 8;
       const len = m.len3 || Math.max(12, Math.min(info.len || 30, (m.z || 10) + 12));
-      const drill = m.kind === 'drill' || /^Bohr/.test(m.tool || '') || (this.opts.isDrill && this.opts.isDrill(m));
+      const drill = m.kind === 'drill' || /^Bohr/.test(m.tool || '');
       const tool = this.toolModel(d, len, drill, !!m.ball);
       tool.grp.quaternion.setFromUnitVectors(new T.Vector3(0, 0, 1), ax);
       tool.grp.position.set(...pos.at);
@@ -766,6 +774,6 @@
     if (this.renderer.domElement.parentNode) this.renderer.domElement.parentNode.removeChild(this.renderer.domElement);
   };
 
-  return { load: load, stepMeshes: stepMeshes, Viewer: Viewer, placeMesh: placeMesh, woodMaterial: woodMaterial,
-    MATERIALS: MATERIALS, EDGES: EDGES, boardOf: boardOf, boardKey: boardKey, boardMaterials: boardMaterials, boardFrame: boardFrame };
+  return { load: load, stepMeshes: stepMeshes, Viewer: Viewer,
+    MATERIALS: MATERIALS, EDGES: EDGES, boardOf: boardOf, boardKey: boardKey, boardMaterials: boardMaterials };
 });

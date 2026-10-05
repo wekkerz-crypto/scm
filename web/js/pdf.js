@@ -13,7 +13,7 @@
   const PT = 72 / 25.4; // mm → pt
   // WinAnsi: Latin-1 passt direkt; einige Zeichen umsetzen, unbekannte durch '?' ersetzen
   const MAP = { '€': 0x80, '–': 0x96, '—': 0x97, '„': 0x84, '“': 0x93, '”': 0x94, '‚': 0x82, '‘': 0x91, '’': 0x92, '…': 0x85, '•': 0x95 };
-  const SUBST = { '≈': 'ca.', '→': '->', '⇄': '<>', '²': '²', ' ': ' ', ' ': ' ' };
+  const SUBST = { '\u25a1': '[  ]', '☐': '[  ]', '≈': 'ca.', '→': '->', '⇄': '<>', '²': '²', ' ': ' ', ' ': ' ' };
   function enc(s) {
     let out = '';
     for (const ch0 of String(s)) {

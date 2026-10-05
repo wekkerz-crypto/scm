@@ -748,6 +748,9 @@ test('Web-Tool: Zuschnittplan von Hand verschieben, als PDF speichern; eigene Fa
     await p.mouse.up();
     await p.waitForSelector('[data-cutreset]');
     assert.match(await p.textContent('.cutgrp h3'), /von Hand angeordnet/);
+    // Schnittfolge (nummerierte Linien) und Teileliste je Platte
+    assert.ok(await p.$$eval('svg.sheet .cuts line', (x) => x.length) > 3);
+    assert.match(await p.textContent('table.sheetlist'), /Nr\..*Bezeichnung.*Stk\./);
     const moved = await p.$eval('svg.sheet g.cp[data-uid="' + uid + '"] rect', (r) => +r.getAttribute('x'));
     assert.ok(moved > 1500, 'nach rechts verschoben: ' + moved);
     // auf ein anderes Teil ziehen geht nicht (bleibt liegen)

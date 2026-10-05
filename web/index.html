@@ -292,6 +292,18 @@ svg.sheet .cp.sel .pt { stroke: var(--accent); stroke-width: 10; fill: color-mix
   background: color-mix(in srgb, var(--accent) 10%, var(--surface)); font-size: 0.88rem; }
 svg.sheet .cp.bad .pt { fill: color-mix(in srgb, var(--err) 35%, var(--board)); stroke: var(--err); }
 .cutact { display: inline-flex; gap: 6px; margin-left: auto; }
+.sheetrow { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+table.sheetlist { border-collapse: collapse; font-size: 0.82rem; min-width: 260px; }
+table.sheetlist th { text-align: left; font-size: 0.75rem; color: var(--muted); font-weight: 600; padding: 3px 6px; border-bottom: 1.5px solid var(--line); }
+table.sheetlist td { padding: 3px 6px; border-bottom: 1px solid var(--line); }
+table.sheetlist .r { text-align: right; font-family: var(--font-mono); white-space: nowrap; }
+table.sheetlist .ck { color: var(--muted); font-size: 1rem; line-height: 1; }
+svg.sheet .cuts { pointer-events: none; }
+svg.sheet .cl { stroke: var(--cutc, #d2451e); stroke-width: 4; stroke-dasharray: 28 14; }
+svg.sheet .cn { fill: var(--surface); stroke: var(--cutc, #d2451e); stroke-width: 4; }
+svg.sheet .ct { fill: var(--cutc, #d2451e); font: 700 46px var(--font-mono); text-anchor: middle; dominant-baseline: central; }
+:root[data-theme="dark"] svg.sheet { --cutc: #ff9a6b; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) svg.sheet { --cutc: #ff9a6b; } }
 #printarea .a4 { font: 10pt/1.35 var(--font-body); color: #000; }
 #printarea .a4 h1 { font-size: 16pt; margin: 0 0 2mm; }
 #printarea .a4 .meta { color: #333; margin: 0 0 4mm; }
@@ -305,6 +317,11 @@ svg.sheet .cp.bad .pt { fill: color-mix(in srgb, var(--err) 35%, var(--board)); 
 #printarea .a4 svg.sheet .sh { fill: #fff; stroke: #000; }
 #printarea .a4 svg.sheet .pt { fill: #eee; stroke: #000; }
 #printarea .a4 svg.sheet .lb { fill: #eee; }
+#printarea .a4 svg.sheet { --cutc: #c0391b; }
+#printarea .a4 svg.sheet .cn { fill: #fff; }
+#printarea .a4 .sheetrow { display: flex; gap: 5mm; align-items: flex-start; }
+#printarea .a4 table.sheetlist { width: auto; font-size: 8.5pt; }
+#printarea .a4 table.sheetlist th, #printarea .a4 table.sheetlist td { padding: 0.8mm 1.5mm; }
 #printarea .a4 svg.sheet .hl { stroke: #aaa; opacity: 1; stroke-width: 1.2; }
 #printarea .a4 svg.sheet .pl, #printarea .a4 svg.sheet .pn { fill: #000; }
 #printarea .a4 img { max-width: 100%; max-height: 150mm; display: block; margin: 0 auto 4mm; }
@@ -692,6 +709,7 @@ table.fmt.one .onet { display: inline; }
         <label>Besäumen <input type="number" id="ctrim" min="0" step="1"> mm</label>
         <label><input type="checkbox" id="craw"> Rohmaß (mit Aufmaß)</label>
         <label><input type="checkbox" id="cgrain"> Maserung beachten</label>
+        <label><input type="checkbox" id="ccuts"> Schnittfolge</label>
       </span>
       <span class="sp"></span>
       <button type="button" class="btn small" id="lcsv">CSV / Excel</button>
@@ -2555,7 +2573,7 @@ table.fmt.one .onet { display: inline; }
     return lst.grain && View3D.boardOf(board).grain > 0 ? 'long' : 'free';
   }
   const LIST_KEY = 'step2xcs.lists.v1';
-  const lst = Object.assign({ tab: 'bom', group: true, raw: true, sheetL: 2800, sheetW: 2070, kerf: 4.4, trim: 10, grain: true }, loadJson(LIST_KEY, {}) || {});
+  const lst = Object.assign({ tab: 'bom', group: true, raw: true, sheetL: 2800, sheetW: 2070, kerf: 4.4, trim: 10, grain: true, cuts: true }, loadJson(LIST_KEY, {}) || {});
   const saveLst = () => storeJson(LIST_KEY, lst);
 
   // Rohmaß (Zuschnitt) eines Teils: Fertigmaß + Rohteil-Aufmaß (Profil mit gesägten Stirnseiten: nur in der Länge)
@@ -2702,7 +2720,7 @@ table.fmt.one .onet { display: inline; }
   function sheetSvg(s, g, si, w) {
     const hid = 'ht' + si + '-' + g.key.replace(/[^A-Za-z0-9]/g, '');
     // Bildschirm: Breite in px; Druck (w = 0): feste Größe in mm, passt mit Überschrift auf A4 quer
-    const mm = Math.min(265 / s.L, 140 / s.W);
+    const mm = Math.min(185 / s.L, 140 / s.W); // daneben die Teileliste
     let out = '<svg class="sheet" viewBox="0 0 ' + s.L + ' ' + s.W + '"' + (w ? ' width="' + w + '" height="' + Math.round((s.W * w) / s.L) + '"'
       : ' width="' + (s.L * mm).toFixed(1) + 'mm" height="' + (s.W * mm).toFixed(1) + 'mm"') +
       ' data-grp="' + esc(g.key) + '" data-sheet="' + si + '" role="img" aria-label="Platte ' + (si + 1) + ' ' + fmt(s.L) + ' × ' + fmt(s.W) + '">' +
@@ -2727,7 +2745,39 @@ table.fmt.one .onet { display: inline; }
         (p.l > 3 * fs && p.w > 2.6 * fs ? '<text x="' + (p.x + p.l / 2) + '" y="' + (y + p.w / 2 + fs * 1.2) + '" font-size="' + (fs * 0.8) + '" class="pn">' + esc(p.label) + '</text>' : '') +
         '<title>' + esc(p.label + ' – ' + n1(p.l) + ' × ' + n1(p.w) + (p.rot ? ' (gedreht)' : '') + ' · ziehen = verschieben, Doppelklick = drehen') + '</title></g>';
     }
+    // Schnittfolge: Linien in der Mitte der Schnittfuge, Nummer am Anfang des Schnitts
+    if (lst.cuts) {
+      const k2 = lst.kerf / 2;
+      out += '<g class="cuts">';
+      for (const c of CutPlan.cutSequence(s, cutOpts()).cuts) {
+        const x1 = c.dir === 'h' ? c.from : c.c + k2;
+        const x2 = c.dir === 'h' ? c.to : c.c + k2;
+        const y1 = s.W - (c.dir === 'h' ? c.c + k2 : c.from);
+        const y2 = s.W - (c.dir === 'h' ? c.c + k2 : c.to);
+        const lx = c.dir === 'h' ? x1 + 50 : x1;
+        const ly = c.dir === 'h' ? y1 : y1 - 50;
+        out += '<line class="cl" x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '"/><circle class="cn" cx="' + lx + '" cy="' + ly + '" r="40"/>' +
+          '<text class="ct" x="' + lx + '" y="' + ly + '">' + c.n + '</text>';
+      }
+      out += '</g>';
+    }
     return out + '</svg>';
+  }
+  // Teileliste einer Platte (Nr., Name, Maß, Stück) zum Abhaken
+  function sheetRows(s) {
+    const m = new Map();
+    for (const p of s.parts) {
+      const key = p.id + '|' + Math.round(Math.max(p.l, p.w) * 10) + '|' + Math.round(Math.min(p.l, p.w) * 10);
+      const r = m.get(key) || { id: p.id, label: p.label, l: Math.max(p.l, p.w), w: Math.min(p.l, p.w), n: 0 };
+      r.n++;
+      m.set(key, r);
+    }
+    return Array.from(m.values()).sort((a, b) => a.id - b.id);
+  }
+  function sheetListHtml(s) {
+    return '<table class="sheetlist"><thead><tr><th></th><th>Nr.</th><th>Bezeichnung</th><th class="r">Maß</th><th class="r">Stk.</th></tr></thead><tbody>' +
+      sheetRows(s).map((r) => '<tr><td class="ck">☐</td><td>' + r.id + '</td><td>' + esc(r.label) + '</td><td class="r">' + n1(r.l) + ' × ' + n1(r.w) + '</td><td class="r">' + r.n + '</td></tr>').join('') +
+      '</tbody></table>';
   }
   function renderCut(forPrint) {
     const groups = cutGroups();
@@ -2743,8 +2793,13 @@ table.fmt.one .onet { display: inline; }
           '<button type="button" class="btn small" data-cutrot title="Um 90° drehen (auch Doppelklick)">↻ Drehen</button><button type="button" class="btn ghost small" data-cutunsel>Auswahl aufheben</button></div>' : '')(
           !forPrint && cutSel && cutSel.grp === g.key ? pl.sheets.flatMap((x) => x.parts).find((q) => q.uid === cutSel.uid) : null) +
         (pl.unplaced.length ? '<p class="warn">Passt nicht auf die Platte: ' + pl.unplaced.map((x) => esc(x.label) + ' (' + n1(x.L) + ' × ' + n1(x.W) + ')').join(', ') + '</p>' : '') +
-        pl.sheets.map((s, i) => '<figure class="sheetfig"><figcaption>Platte ' + (i + 1) + ' · ' + s.parts.length + ' Teile · genutzt ' + Math.round((s.used / (s.L * s.W)) * 100) + ' %</figcaption>' +
-          sheetSvg(s, g, i, forPrint ? 0 : 620) + '</figure>').join('') + '</section>';
+        pl.sheets.map((s, i) => {
+          const seq = lst.cuts ? CutPlan.cutSequence(s, cutOpts()) : null;
+          return '<figure class="sheetfig"><figcaption>Platte ' + (i + 1) + ' · ' + s.parts.length + ' Teile · genutzt ' + Math.round((s.used / (s.L * s.W)) * 100) + ' %' +
+            (seq ? ' · ' + seq.cuts.length + ' Schnitte' : '') + '</figcaption>' +
+            (seq && !seq.ok ? '<p class="warn">Nicht alle Teile sind mit durchgehenden Schnitten trennbar – Anordnung prüfen.</p>' : '') +
+            '<div class="sheetrow">' + sheetSvg(s, g, i, forPrint ? 0 : 620) + (s.parts.length ? sheetListHtml(s) : '') + '</div></figure>';
+        }).join('') + '</section>';
     }).join('');
   }
 
@@ -2765,8 +2820,9 @@ table.fmt.one .onet { display: inline; }
         d.text(12, 23, 'Platte ' + (i + 1) + ' von ' + g.plan.sheets.length + ' · ' + fmt(s.L) + ' × ' + fmt(s.W) + ' mm · ' + s.parts.length + ' Teile · genutzt ' +
           Math.round((s.used / (s.L * s.W)) * 100) + ' %' + (g.grain && lst.grain ? ' · Maserung längs' : ''), { size: 9.5, color: [0.25, 0.25, 0.25] });
         d.text(285, 203, info + ' · Seite ' + page + '/' + total, { size: 7.5, align: 'right', color: [0.35, 0.35, 0.35] });
-        const sc = Math.min(273 / s.L, 168 / s.W);
-        const ox = 12 + (273 - s.L * sc) / 2;
+        // links die Platte, rechts die Teileliste zum Abhaken
+        const sc = Math.min(190 / s.L, 168 / s.W);
+        const ox = 12;
         const oy = 30;
         const X = (x) => ox + x * sc;
         const Y = (y) => oy + (s.W - y) * sc; // Plattenkoordinaten (y nach oben) → Seite (y nach unten)
@@ -2792,6 +2848,28 @@ table.fmt.one .onet { display: inline; }
           if (ph > 4) d.text(cx, cy + (ph > 10 ? -0.5 : size * 0.12), l1, { size: size, bold: true, align: 'center', maxW: pw - 1.5 });
           if (ph > 10) d.text(cx, cy + size * 0.42, l2, { size: size * 0.78, align: 'center', maxW: pw - 1.5, color: [0.2, 0.2, 0.2] });
         }
+        // Schnittfolge
+        if (lst.cuts) {
+          const seq = CutPlan.cutSequence(s, cutOpts());
+          const red = [0.78, 0.22, 0.1];
+          const k2 = lst.kerf / 2;
+          for (const c of seq.cuts) {
+            const x1 = X(c.dir === 'h' ? c.from : c.c + k2);
+            const x2 = X(c.dir === 'h' ? c.to : c.c + k2);
+            const y1 = Y(c.dir === 'h' ? c.c + k2 : c.from);
+            const y2 = Y(c.dir === 'h' ? c.c + k2 : c.to);
+            d.line(x1, y1, x2, y2, { lw: 0.35, stroke: red });
+            const lx = c.dir === 'h' ? x1 + 3.2 : x1;
+            const ly = c.dir === 'h' ? y1 : y1 - 3.2;
+            const bw = String(c.n).length * 1.6 + 2;
+            d.rect(lx - bw / 2, ly - 1.8, bw, 3.6, { fill: [1, 1, 1], stroke: red, lw: 0.25 });
+            d.text(lx, ly + 1.05, String(c.n), { size: 7.5, bold: true, align: 'center', color: red });
+          }
+          if (!seq.ok) d.text(12, 30 + s.W * sc + 5, 'Achtung: nicht alle Teile sind mit durchgehenden Schnitten trennbar – Anordnung prüfen.', { size: 8.5, color: red });
+        }
+        // Teileliste
+        d.table(208, 30, [{ t: '', w: 5 }, { t: 'Nr.', w: 8 }, { t: 'Bezeichnung', w: 34 }, { t: 'Maß', w: 20, align: 'right' }, { t: 'Stk.', w: 10, align: 'right' }],
+          sheetRows(s).map((r) => ['\u25a1', String(r.id), r.label, n1(r.l) + ' × ' + n1(r.w), String(r.n)]), { size: 7.5 });
       });
     }
     if (!page) { toast('Keine Teile für den Zuschnitt.'); return; }
@@ -2927,7 +3005,7 @@ table.fmt.one .onet { display: inline; }
     $(id).value = lst[k];
     $(id).addEventListener('change', (e) => { const v = parseFloat(String(e.target.value).replace(',', '.')); if (v >= 0) { lst[k] = v; saveLst(); renderLists(); } });
   }
-  for (const [id, k] of [['craw', 'raw'], ['cgrain', 'grain']]) {
+  for (const [id, k] of [['craw', 'raw'], ['cgrain', 'grain'], ['ccuts', 'cuts']]) {
     $(id).checked = lst[k];
     $(id).addEventListener('change', (e) => { lst[k] = e.target.checked; saveLst(); renderLists(); });
   }

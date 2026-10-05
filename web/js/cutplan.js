@@ -94,5 +94,55 @@
     return true;
   }
 
-  return { plan: plan, fits: fits };
+  /*
+   * Schnittfolge einer Platte wie an der Plattensäge: durchgehende Schnitte (Guillotine), zuerst längs (waagerecht in der
+   * Zeichnung = parallel zur Plattenlänge), den abgetrennten Streifen dann quer, darin wieder längs …; Abfall wird mit
+   * abgeschnitten, wo ein Teil kleiner als sein Feld ist. Reihenfolge = Abarbeitung (erst den abgetrennten Streifen fertig,
+   * dann weiter am Rest). Ein Schnitt liegt bei c, die Schnittfuge belegt c … c + kerf.
+   * → { cuts: [{ n, dir: 'h'|'v', c, from, to }], ok } (ok = false: von Hand so gelegt, dass nicht alles durchgehend trennbar ist)
+   */
+  function cutSequence(sheet, opts) {
+    const o = Object.assign({ kerf: 4.4, trim: 10 }, opts || {});
+    const k = Math.max(0, o.kerf);
+    const e = 0.5;
+    const cuts = [];
+    let ok = true;
+    const inside = (p, r) => p.x >= r.x0 - e && p.y >= r.y0 - e && p.x + p.l <= r.x1 + e && p.y + p.w <= r.y1 + e;
+    // gültige Schnittlagen in Richtung dir ('h' = Linie y = c)
+    const candidates = (r, parts, dir) => {
+      const lo = dir === 'h' ? r.y0 : r.x0;
+      const hi = dir === 'h' ? r.y1 : r.x1;
+      const a = (p) => (dir === 'h' ? p.y : p.x);
+      const s2 = (p) => (dir === 'h' ? p.w : p.l);
+      const cs = [];
+      for (const p of parts) cs.push(a(p) + s2(p), a(p) - k);
+      return cs.filter((c) => c > lo + e && c + k < hi - e + k && c < hi - e &&
+        parts.every((p) => a(p) + s2(p) <= c + e || a(p) >= c + k - e)).sort((x, y) => x - y);
+    };
+    function run(r, dir, depth) {
+      if (depth > 200) { ok = false; return; }
+      const parts = sheet.parts.filter((p) => inside(p, r));
+      if (!parts.length) return; // Abfall
+      if (parts.length === 1) {
+        const p = parts[0];
+        if (Math.abs(p.x - r.x0) < e && Math.abs(p.y - r.y0) < e && Math.abs(p.x + p.l - r.x1) < e && Math.abs(p.y + p.w - r.y1) < e) return;
+      }
+      for (const d of [dir, dir === 'h' ? 'v' : 'h']) {
+        const cs = candidates(r, parts, d);
+        if (!cs.length) continue;
+        const c = cs[0];
+        cuts.push({ n: cuts.length + 1, dir: d, c: c, from: d === 'h' ? r.x0 : r.y0, to: d === 'h' ? r.x1 : r.y1 });
+        const first = d === 'h' ? { x0: r.x0, y0: r.y0, x1: r.x1, y1: c } : { x0: r.x0, y0: r.y0, x1: c, y1: r.y1 };
+        const rest = d === 'h' ? { x0: r.x0, y0: c + k, x1: r.x1, y1: r.y1 } : { x0: c + k, y0: r.y0, x1: r.x1, y1: r.y1 };
+        run(first, d === 'h' ? 'v' : 'h', depth + 1); // abgetrennten Streifen fertig schneiden (quer dazu)
+        run(rest, d, depth + 1); // dann am Rest weiter in derselben Richtung
+        return;
+      }
+      if (parts.length > 1) ok = false; // nicht durchgehend trennbar
+    }
+    run({ x0: o.trim, y0: o.trim, x1: sheet.L - o.trim, y1: sheet.W - o.trim }, 'h', 0);
+    return { cuts: cuts, ok: ok };
+  }
+
+  return { plan: plan, fits: fits, cutSequence: cutSequence };
 });

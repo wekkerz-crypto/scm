@@ -1620,3 +1620,30 @@ test('Zeitschätzung: mehr Zustellungen und langsamerer Vorschub dauern länger'
   assert.strictEqual(TP.fmtTime(125), '2:05 min');
   assert.strictEqual(TP.fmtTime(3725), '1:02 h');
 });
+
+test('Schnittfolge: durchgehende Schnitte trennen jedes Teil frei, von Hand verbaute Lage wird gemeldet', () => {
+  const CP = require('../web/js/cutplan.js');
+  const opts = { sheetL: 2800, sheetW: 2070, kerf: 4, trim: 10 };
+  const r = CP.plan([{ id: 1, label: 'a', L: 1004, W: 534, qty: 2, orient: 'long' }, { id: 2, label: 'b', L: 504, W: 466, qty: 5, orient: 'free' },
+    { id: 3, label: 'c', L: 300, W: 250, qty: 4, orient: 'long' }], opts);
+  for (const s of r.sheets) {
+    const seq = CP.cutSequence(s, opts);
+    assert.ok(seq.ok);
+    // jedes Teil liegt nach allen Schnitten allein in seinem Feld: kein Schnitt durch ein Teil, und Teile sind getrennt
+    for (const c of seq.cuts) {
+      for (const p of s.parts) {
+        const a = c.dir === 'h' ? p.y : p.x;
+        const b = a + (c.dir === 'h' ? p.w : p.l);
+        const lo = c.dir === 'h' ? p.x : p.y;
+        const hi = lo + (c.dir === 'h' ? p.l : p.w);
+        const crosses = a < c.c - 0.5 && b > c.c + 0.5 && hi > c.from + 0.5 && lo < c.to - 0.5;
+        assert.ok(!crosses, 'Schnitt ' + c.n + ' geht durch Teil ' + p.uid);
+      }
+    }
+    assert.deepStrictEqual(seq.cuts.map((c) => c.n), seq.cuts.map((c, i) => i + 1));
+  }
+  // nicht guillotinierbar: vier Teile im Windrad
+  const wind = { L: 1000, W: 1000, parts: [{ uid: 'a', x: 10, y: 10, l: 600, w: 300 }, { uid: 'b', x: 614, y: 10, l: 300, w: 600 },
+    { uid: 'c', x: 314, y: 624, l: 600, w: 300 }, { uid: 'd', x: 10, y: 314, l: 300, w: 600 }] };
+  assert.strictEqual(CP.cutSequence(wind, { kerf: 4, trim: 10 }).ok, false);
+});

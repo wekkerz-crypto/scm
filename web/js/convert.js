@@ -103,7 +103,7 @@
     if (options.profile !== undefined && options.profile !== null) settings = XcsWriter.applyProfile(settings, options.profile);
     try {
       const cfgO = Object.assign({}, XcsWriter.DEFAULTS, settings || {});
-      const panel = PanelAnalyzer.analyze(solid, options.orientation, { orientRule: cfgO.orientRule, fieldWidth: cfgO.fieldWidth });
+      const panel = PanelAnalyzer.analyze(solid, options.orientation, { orientRule: cfgO.orientRule, fieldWidth: cfgO.fieldWidth, profileRule: cfgO.profileRule });
       const ov = options.overrides || {};
       let other = null;
       if (panel.bottom.length) other = PanelAnalyzer.analyze(solid, PanelAnalyzer.turnOverY(solid, panel.orientation));

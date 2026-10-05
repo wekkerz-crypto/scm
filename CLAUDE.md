@@ -17,6 +17,8 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   Zylinder (liegend, konvex) zusätzlich `cyl` → `cyl4` (4-Achs, eine geneigte Ebene je Zeile, `cyl4Plan` in `xcs.js`).
 - Abgesetzter Falz (`panel.rebates` mit `from`/`to`, zu einer Kante offen): Bahn in Werkzeugmitte, `rebateStopReturn`
   (je Teil `overrides.rebateReturn`): mit Rückweg (Mitte auf der Kante) oder einfach ein-, durch-, austauchen.
+- Profil (Rahmenholz/Leiste, `panel.profile`: L ≥ 6 W, Rechteck, nur Falze/Nuten längs X + Bohrungen), `profileRule` 'saw':
+  Stufen als Falze (`stepped`), Stirnseiten `blade-end-…` statt Formatfräsen, Rohteil nur in X, Falze hinten (`analyze` dreht 180°).
 - Kantenrundungen bis R 5,5 an Kontur/Durchbruch: `panel.edgeRounds` → Kontur-Ops `edge-…` (`profile: true`, Radiusfräser
   E061 oben / E060 unten, keine Zustellung).
 - Zweiseitig (je Teil `overrides.twoSided`, nur wenn `panel.bottom`): `convertSolid` rechnet die Gegenseite

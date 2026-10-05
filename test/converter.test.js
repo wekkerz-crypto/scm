@@ -1501,3 +1501,30 @@ test('Drehlage nach dem Korpus-Modell: X = Breite, sonst Höhe; nicht, wenn Y da
   const p = o(tp, 'model');
   assert.deepStrictEqual([Math.round(p.L), Math.round(p.W)], [900, 400]);
 });
+
+test('Profil (Rahmenholz Fenster): Stufen als einzelne Falze, Stirnseiten gesägt, Bohrungen, volle Kante vorne', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const Tl = require('../web/js/tools.js');
+  const toolInfo = Tl.infoMap(Tl.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
+  const [s] = readParts(read('test/fixtures/rahmenholz.step'), 'rahmenholz.step'); // 1200 × 48,2 × 44,4, Onshape in Metern
+  const r = convertSolid(s, { toolInfo });
+  const p = r.panel;
+  assert.ok(p.profile);
+  assert.deepStrictEqual([Math.round(p.L), Math.round(p.W), Math.round(p.T)], [1200, 48, 44]);
+  // jede Stufe ein Falz, beide hinten (volle Kante vorne an den Anschlägen), flach vor tief; keine Nut
+  assert.deepStrictEqual(p.rebates.map((x) => [x.edge, Math.round(x.depth * 10) / 10, Math.round(x.width * 10) / 10]),
+    [['Back', 16.9, 30.5], ['Back', 28.1, 17.6]]);
+  assert.strictEqual(p.grooves.length, 0);
+  // gerade An-/Auslauf längs X über die ganze Länge
+  assert.match(r.xcs, /CreatePolyline\("Contour_1", 1220, 17\.721\);\r?\nAddSegmentToPolyline\(-20, 17\.721\);/);
+  // kein Formatfräsen, Stirnseiten gesägt (90°, Säge außen), Rohteil nur in X größer
+  assert.ok(!r.ops.some((o) => o.key === 'format'));
+  assert.match(r.xcs, /CreateSegment\("Saegeschnitt_Linie_1", 0, 48\.225, 0, 0\);[\s\S]*?CreateBladeCut\("Saegeschnitt_1", "Saegeschnitt gerade", [^)]*, 90, 2,/);
+  assert.match(r.xcs, /CreateSegment\("Saegeschnitt_Linie_2", 1200, 0, 1200, 48\.225\);/);
+  assert.match(r.xcs, /CreateRawWorkpiece\("Workpiece", 2, 2, 0, 0, 0, 0\);/);
+  assert.strictEqual((r.xcs.match(/CreateDrill /g) || []).length, 4);
+  assert.ok(!r.warnings.some((w) => /sehr dick/.test(w)));
+  // ausgeschaltet: wie eine Platte (Formatfräsen)
+  const off = convertSolid(s, { toolInfo, profileRule: 'off' });
+  assert.ok(off.ops.some((o) => o.key === 'format'));
+});

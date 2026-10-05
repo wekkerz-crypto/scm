@@ -1502,13 +1502,18 @@
       const depth = T - fl.z;
       const fullX = reaches(fl, 0, bb.x0) && reaches(fl, 0, bb.x1);
       const fullY = reaches(fl, 1, bb.y0) && reaches(fl, 1, bb.y1);
+      // Stufe neben einem tieferen Falz (Stufenfalz, z. B. Fensterprofil): eigener Falz bis zur Kante
       if (fl.rect && fullX && !fullY) {
         if (bb.y0 < TOL) res.rebates.push({ edge: 'Front', depth: depth, width: bb.y1, flank: bb.y1 });
         else if (bb.y1 > W - TOL) res.rebates.push({ edge: 'Back', depth: depth, width: W - bb.y0, flank: bb.y0 });
+        else if (reaches(fl, 1, bb.y0)) res.rebates.push({ edge: 'Front', depth: depth, width: bb.y1, flank: bb.y1, stepped: true });
+        else if (reaches(fl, 1, bb.y1)) res.rebates.push({ edge: 'Back', depth: depth, width: W - bb.y0, flank: bb.y0, stepped: true });
         else res.grooves.push({ dir: 'X', from: bb.y0, to: bb.y1, depth: depth });
       } else if (fl.rect && fullY && !fullX) {
         if (bb.x0 < TOL) res.rebates.push({ edge: 'Left', depth: depth, width: bb.x1, flank: bb.x1 });
         else if (bb.x1 > L - TOL) res.rebates.push({ edge: 'Right', depth: depth, width: L - bb.x0, flank: bb.x0 });
+        else if (reaches(fl, 0, bb.x0)) res.rebates.push({ edge: 'Left', depth: depth, width: bb.x1, flank: bb.x1, stepped: true });
+        else if (reaches(fl, 0, bb.x1)) res.rebates.push({ edge: 'Right', depth: depth, width: L - bb.x0, flank: bb.x0, stepped: true });
         else res.grooves.push({ dir: 'Y', from: bb.x0, to: bb.x1, depth: depth });
       } else if (fl.rect && !fl.inner.length && stoppedRebate(fl, bb, depth)) {
         // abgesetzter Falz: lang und schmal, zu genau einer Kante hin offen, endet vor der Plattenkante (from/to = Enden)
@@ -1521,7 +1526,13 @@
     }
 
     res.pockets.sort((a, b) => a.depth - b.depth);
-    if (T > Math.min(L, W) / 3) warnings.push('Teil ist sehr dick (' + fmt(T) + ' mm) – wirklich eine Platte?');
+    // Stufen von flach nach tief (erst die flache Stufe über die ganze Breite, dann die tiefere)
+    res.rebates.sort((a, b) => a.depth - b.depth);
+    // Profil (Rahmenholz, Leiste): lang und schmal, rechteckiger Umriss, nur Falze/Nuten über die ganze Länge und Bohrungen
+    res.profile = L >= 6 * W && res.outlineIsRect !== false && !res.cutouts.length && !res.pockets.length && !res.slantWalls.length &&
+      !res.chamfers.length && !(res.sidePockets || []).length && res.rebates.every((r) => r.edge === 'Front' || r.edge === 'Back') &&
+      res.grooves.every((g) => g.dir === 'X') && (res.rebates.length + res.grooves.length) > 0;
+    if (T > Math.min(L, W) / 3 && !res.profile) warnings.push('Teil ist sehr dick (' + fmt(T) + ' mm) – wirklich eine Platte?');
     return res;
   }
 
@@ -1590,8 +1601,18 @@
         if (mr !== null && !(frame(prep, mr, flip).W > lim + TOL && frame(prep, rot, flip).W <= lim + TOL)) rot = mr;
       }
     }
-    const fr = frame(prep, rot, flip);
-    const res = extract(prep, fr);
+    let fr = frame(prep, rot, flip);
+    let res = extract(prep, fr);
+    // Profil: volle Kante vorne an den Anschlägen, Stufen hinten
+    if (!orientation && res.profile && !(opts && opts.profileRule === 'off')) {
+      const front = res.rebates.filter((r) => r.edge === 'Front').length;
+      const back = res.rebates.filter((r) => r.edge === 'Back').length;
+      if (front > back) {
+        rot = (rot + 2) % 4;
+        fr = frame(prep, rot, flip);
+        res = extract(prep, fr);
+      }
+    }
     res.tf = fr.tf; // Modell (mm) → Plattenkoordinaten, für die 3D-Ansicht
     res.name = solid.name;
     res.orientation = { rot: rot, flip: flip };

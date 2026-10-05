@@ -73,6 +73,7 @@
     bladeOverrun: 0,           // Sägeschnitt: Überlauf an beiden Enden (Werkstatt: Linie genau von Kante zu Kante)
     maxGrooveWidth: 12,        // breitere Nuten → Warnung
     rebateTool: 'E016',        // Falz
+    profileRule: 'saw',        // Profil (Rahmenholz, Leiste): 'saw' = Stufen als Falze, Stirnseiten sägen, volle Kante vorne; 'off' = wie Platte
     orientRule: 'model',       // Drehlage: 'model' = wie im Korpus-Modell (X = Breite, sonst Höhe; Werkstatt), 'long' = lange Seite in X
     rebateToolDia: 12,         // nur falls der Fräser nicht in der Werkzeugliste steht
     rebateStopReturn: true,    // abgesetzter Falz: true = nochmal zurück (Mitte auf der Kante), false = einfach ein-, durch-, austauchen
@@ -616,8 +617,17 @@
     // (Seite 2: Teil ist schon formatiert – kein Formatfräsen, keine Konturausschnitte)
     const side2 = cfg.side === 2;
     const whole = !p.outlineIsRect && cfg.contourMode !== 'rect';
+    const profileSaw = !side2 && p.profile && cfg.profileRule !== 'off';
     if (side2) {
       // nichts – Kontur entstand auf Seite 1
+    } else if (profileSaw) {
+      // Profil (Rahmenholz): Längsseiten sind fertig, die Stirnseiten werden gesägt (90°, Säge außen, Material links)
+      const so = cfg.bladeOverrun;
+      for (const [k, a, b] of [[0, [0, p.W + so], [0, -so]], [1, [p.L, -so], [p.L, p.W + so]]]) {
+        ops.push({ kind: 'blade', key: 'blade-end-' + k, toolKind: 'saw', toolDefault: 'bladeTool', a: a, b: b, a0: a, b0: b, tilt: 0, leanOut: true,
+          depth: T, extra: cfg.bladeExtra, tool: cfg.bladeTool, score: cfg.scoreCut ? { depth: cfg.scoreDepth, out: cfg.scoreOut } : null,
+          label: 'Stirnseite ' + (k ? 'rechts' : 'links') + ' sägen' });
+      }
     } else if (whole) {
       const path = wholeContour(p.outline);
       ops.push({
@@ -632,7 +642,7 @@
         depth: T + cfg.contourExtra, tool: cfg.contourTool, side: 2, label: 'Formatfräsen',
       });
     }
-    const fmtOp = side2 ? null : ops[ops.length - 1];
+    const fmtOp = side2 || profileSaw ? null : ops[ops.length - 1];
     if (cfg.formatTwoStep && fmtOp) {
       // Vorfräsen mit Werkzeug 1 und Aufmaß, danach Werkzeug 2 auf Endmaß (gleiche Geometrie)
       fmtOp.rough = { tool: cfg.formatRoughTool || cfg.contourTool, allowance: Math.max(0, cfg.formatAllowance || 0) + Math.max(0, cfg.sandOn ? +cfg.sandAllowance || 0 : 0) };
@@ -1860,8 +1870,10 @@
       L.push('CreateFinishedWorkpieceBox("Workpiece", ' + fmt(p.L) + ', ' + fmt(p.W) + ', ' + fmt(p.T) + ');'); blank();
     }
     const o = fmt(cfg.side === 2 ? 0 : cfg.rawOversize); // Seite 2: Teil liegt formatiert an den Anschlägen
-    L.push('CreateRawWorkpiece("Workpiece", ' + [o, o, o, o].join(', ') + ', 0, 0);'); blank();
-    L.push('SetWorkpieceSetupPosition(' + o + ', ' + o + ', 0, 0);'); blank();
+    // Profil mit gesägten Stirnseiten: Rohteil nur in der Länge größer (Querschnitt ist fertig)
+    const oy = p.profile && cfg.profileRule !== 'off' && cfg.side !== 2 ? '0' : o;
+    L.push('CreateRawWorkpiece("Workpiece", ' + [o, o, oy, oy].join(', ') + ', 0, 0);'); blank();
+    L.push('SetWorkpieceSetupPosition(' + o + ', ' + oy + ', 0, 0);'); blank();
     // Sauger-Vorschlag: Konsolen und Drehsauger (Koordinaten zum Werkstück-Nullpunkt)
     const suction = cfg.suctionOn ? planSuction(pFull, cfg) : { bars: [], warnings: [] };
     warnings.push(...suction.warnings);
@@ -2093,7 +2105,7 @@
         L.push('ResetRetractStrategy();');
         // Vorritzen: erster Schnitt in Ritztiefe, Rückweg auf volle Tiefe
         if (op.score) L.push('CreateSectioningMillingStrategy(' + fmt(op.score.depth) + ', ' + fmt(op.score.out) + ', 0);');
-        L.push('CreateBladeCut("Saegeschnitt_' + n + '", "Saegeschnitt ' + fmt(op.tilt) + ' Grad", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", ' + fmt(ang) +
+        L.push('CreateBladeCut("Saegeschnitt_' + n + '", "' + (op.tilt ? 'Saegeschnitt ' + fmt(op.tilt) + ' Grad' : 'Saegeschnitt gerade') + '", TypeOfProcess.GeneralRouting, "' + op.tool + '", "-1", ' + fmt(ang) +
           ', 2, ' + S3(op) + ', 0, true, true, 0, ' + fmt(op.extra) + ');');
         blank();
       } else if (op.kind === 'sdrill') {

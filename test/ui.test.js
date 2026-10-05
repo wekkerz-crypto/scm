@@ -698,11 +698,25 @@ test('Web-Tool: Listen (Stückliste, Zuschnitt, Zeit) und Projektdatei speichern
     await p.press('[data-bomqty="1"]', 'Tab');
     await p.waitForFunction(() => /\b6\b Teile/.test(document.querySelector('.bomsum').textContent));
     assert.strictEqual(await p.textContent('#ptn-lists'), '6');
+    // Kantenband: L1 dick (2 × klicken), B2 dünn → Text, Laufmeter, Zuschnitt mit Abzug
+    await p.click('[data-bomedge="0"][data-side="l1"]');
+    await p.click('[data-bomedge="0"][data-side="l1"]');
+    await p.click('[data-bomedge="0"][data-side="b2"]');
+    assert.strictEqual(await p.textContent('table.bom tbody tr:first-child .et'), 'L1 2 · B2 1');
+    assert.match(await p.textContent('.bomsum'), /Kante .+ · 2 mm: [\d,]+ m/);
+    const before = await p.textContent('table.bom tbody tr:first-child td:nth-child(9)');
+    await p.check('#ededuct');
+    const after = await p.textContent('table.bom tbody tr:first-child td:nth-child(9)');
+    const nums = (t) => t.split('×').map((x) => parseFloat(x.trim().replace(',', '.')));
+    assert.deepStrictEqual(nums(after), [nums(before)[0] - 1, nums(before)[1] - 2]);
+    await p.uncheck('#ededuct');
     // CSV
     const [csv] = await Promise.all([p.waitForEvent('download'), p.click('#lcsv')]);
     const text = fs.readFileSync(await csv.path(), 'utf8');
     assert.match(text, /^﻿"Pos";"Anzahl";"Bezeichnung"/);
     assert.match(text, /\n2;4;"kp1_-_Oberboden"/);
+    assert.match(text, /"Kante L1 mm";"Kante L2 mm";"Kante B1 mm";"Kante B2 mm";"Kantenband m"/);
+    assert.match(text, /\n1;1;[^\n]*;2;;;1;/);
     // Zuschnittplan
     await p.click('[data-ltab="cut"]');
     await p.waitForSelector('svg.sheet');
@@ -718,6 +732,9 @@ test('Web-Tool: Listen (Stückliste, Zuschnitt, Zeit) und Projektdatei speichern
     await chooser.setFiles({ name: 'projekt.s2m', mimeType: 'application/json', buffer: fs.readFileSync(file) });
     await p.waitForFunction(() => document.querySelectorAll('.part').length === 3);
     assert.strictEqual(await p.textContent('#ptn-lists'), '6');
+    await p.click('[data-page="lists"]');
+    await p.click('[data-ltab="bom"]');
+    assert.strictEqual(await p.textContent('table.bom tbody tr:first-child .et'), 'L1 2 · B2 1');
     assert.deepStrictEqual(errors, []);
   } finally {
     await browser.close();

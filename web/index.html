@@ -263,6 +263,16 @@ table.bom .no { font-family: var(--font-mono); color: var(--muted); }
 table.bom .sub { font-size: 0.75rem; color: var(--muted); }
 table.bom .files { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); }
 table.bom input[type=number] { width: 4.2em; text-align: right; }
+.edgew { display: inline-grid; grid-template-columns: 10px 44px 10px; grid-template-rows: 10px 20px 10px; gap: 2px; vertical-align: middle; flex: none; }
+.edgew button { padding: 0; border: 1.5px dashed color-mix(in srgb, var(--muted) 60%, transparent); background: transparent; border-radius: 3px; cursor: pointer; min-width: 0; min-height: 0; }
+.edgew button:hover, .edgew button:focus-visible { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+.edgew button.e1 { border: 0; background: linear-gradient(var(--muted), var(--muted)) center / 100% 45% no-repeat; }
+.edgew button.b1.e1, .edgew button.b2.e1 { background-size: 45% 100%; }
+.edgew button.e2 { border: 0; background: var(--ink); }
+.edgew .l2 { grid-column: 2; grid-row: 1; } .edgew .b1 { grid-column: 1; grid-row: 2; } .edgew .b2 { grid-column: 3; grid-row: 2; } .edgew .l1 { grid-column: 2; grid-row: 3; }
+.edgew .pc { grid-column: 2; grid-row: 2; border: 1px solid var(--line); border-radius: 2px; font-size: 0.6rem; color: var(--muted); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); }
+.edgecell { white-space: nowrap; display: flex; gap: 6px; align-items: center; }
+.edgecell .et { font-size: 0.72rem; color: var(--muted); font-family: var(--font-mono); }
 .bomsum { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-top: 12px; font-size: 0.9rem; }
 .bomsum small { color: var(--muted); }
 .cutgrp { margin-bottom: 18px; }
@@ -702,7 +712,10 @@ table.fmt.one .onet { display: inline; }
   <section class="card listpage" id="listpage" hidden>
     <div class="lbar">
       <span class="seg" role="group" aria-label="Liste"><button type="button" data-ltab="bom" aria-pressed="true">Stückliste</button><button type="button" data-ltab="cut" aria-pressed="false">Zuschnittplan</button></span>
-      <span id="bomopts"><label><input type="checkbox" id="lgroup"> Gleiche Teile zusammenfassen</label></span>
+      <span id="bomopts"><label><input type="checkbox" id="lgroup"> Gleiche Teile zusammenfassen</label>
+        <label title="Kantenband: Klick auf eine Seite in der Spalte „Kanten“ wechselt keine → dünn → dick">Kante dünn <input type="number" id="ethin" min="0" step="0.1" aria-label="Dicke dünne Kante"> dick <input type="number" id="ethick" min="0" step="0.1" aria-label="Dicke dicke Kante"> mm</label>
+        <label title="Zugabe je Kante für die Laufmeter (Überstand zum Kappen)">Zugabe <input type="number" id="eextra" min="0" step="1" aria-label="Zugabe je Kante"> mm</label>
+        <label><input type="checkbox" id="ededuct"> Kantendicke vom Zuschnitt abziehen</label></span>
       <span id="cutopts" hidden>
         <label>Platte <input type="number" id="csheetL" min="100" step="1" aria-label="Plattenlänge"> × <input type="number" id="csheetW" min="100" step="1" aria-label="Plattenbreite"> mm</label>
         <label>Schnittfuge <input type="number" id="ckerf" min="0" step="0.1"> mm</label>
@@ -1317,7 +1330,7 @@ table.fmt.one .onet { display: inline; }
       sel: state.sel,
       files: Array.from(srcFiles).filter(([id]) => used.has(id)).map(([id, f]) => ({ id: id, label: f.label, kind: f.kind, text: f.text })),
       parts: parts.map((p) => ({ file: p.src.file, idx: p.src.idx, label: p.label, name: p.solid.name, orientation: p.orientation, field: p.field,
-        fileName: p.fileName, side: p.side, profile: p.profile, board: p.board || null, qty: p.qty === undefined ? 1 : p.qty, grain: p.grain || null, overrides: p.overrides, overrides2: p.overrides2 })),
+        fileName: p.fileName, side: p.side, profile: p.profile, board: p.board || null, qty: p.qty === undefined ? 1 : p.qty, grain: p.grain || null, edges: p.edges || null, overrides: p.overrides, overrides2: p.overrides2 })),
       // Maße aus „Möbel 3D“ (Bemaßen)
       dims: typeof mdl !== 'undefined' ? (mdl.viewer ? mdl.viewer.exportDims() : mdl.dimsSaved || []) : [],
     };
@@ -1363,7 +1376,7 @@ table.fmt.one .onet { display: inline; }
         solid.name = sp.name;
       }
       const part = { label: sp.label || f.label, src: { file: fileId, idx: sp.idx }, solid: solid, orientation: sp.orientation || null,
-        field: sp.field || null, fileName: sp.fileName || null, result: null, side: sp.side || 1, profile: sp.profile === undefined ? null : sp.profile, board: sp.board || null, qty: sp.qty === undefined ? 1 : sp.qty, grain: sp.grain || undefined,
+        field: sp.field || null, fileName: sp.fileName || null, result: null, side: sp.side || 1, profile: sp.profile === undefined ? null : sp.profile, board: sp.board || null, qty: sp.qty === undefined ? 1 : sp.qty, grain: sp.grain || undefined, edges: sp.edges || undefined,
         overrides: sp.overrides || { tools: {}, steps: {}, depths: {} }, overrides2: sp.overrides2 || { tools: {}, steps: {}, depths: {} } };
       if (f.kind === 'dxf') part.dxfText = f.text; else part.stepText = f.text;
       try { compute(part); } catch (e) { continue; }
@@ -2371,7 +2384,7 @@ table.fmt.one .onet { display: inline; }
     'fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><rect x="4" y="9.5" width="8" height="5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>';
   const n1 = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
   // Draufsicht in mm (w × h), schwarz-weiß für Thermodrucker: Kontur, Durchbrüche, Taschen, Bohrungen, Nullpunkt, Länge und Breite
-  function labelSketch(p, w, h) {
+  function labelSketch(p, w, h, edges) {
     const fs = 2.3;
     const ml = 4;
     const mb = 4;
@@ -2406,6 +2419,17 @@ table.fmt.one .onet { display: inline; }
       }
       s += '<circle cx="' + X(d.x) + '" cy="' + Y(d.y) + '" r="' + Math.max(0.3, (d.d / 2) * k).toFixed(3) + '" fill="#000"' + (d.through ? '' : ' fill-opacity="0.6"') + '/>';
     }
+    // Kantenband: dicker Strich außen an der Seite (dünn / dick)
+    if (edges) {
+      const o2 = 0.55;
+      const side = { l1: [0, 0, p.L, 0, 0, o2], l2: [0, p.W, p.L, p.W, 0, -o2], b1: [0, 0, 0, p.W, -o2, 0], b2: [p.L, 0, p.L, p.W, o2, 0] };
+      for (const [k] of EDGE_SIDES) {
+        if (!edges[k]) continue;
+        const q = side[k];
+        s += '<path d="M' + (X(q[0]) + q[4]).toFixed(3) + ' ' + (Y(q[1]) + q[5]).toFixed(3) + ' L' + (X(q[2]) + q[4]).toFixed(3) + ' ' + (Y(q[3]) + q[5]).toFixed(3) +
+          '" stroke="#000" stroke-width="' + (edges[k] === 2 ? 0.9 : 0.45) + '" stroke-linecap="butt"/>';
+      }
+    }
     // Nullpunkt vorne links
     s += '<circle cx="' + X(0) + '" cy="' + Y(0) + '" r="0.7" fill="#fff" stroke="#000" stroke-width="0.3"/>';
     // Bemaßung: Länge unten, Breite links
@@ -2438,6 +2462,7 @@ table.fmt.one .onet { display: inline; }
       .filter((x) => x[0]).map((x) => x[0] + ' ' + (x[0] === 1 ? x[1] : x[2])).join(' · ');
     const d = new Date();
     const date = String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getFullYear()).slice(2);
+    const et = edgeText(edgesOf(part));
     const info = [part.profile !== null && part.profile !== undefined ? profName(part.profile) : '', r.side2 ? 'Seite 1 + 2' : '', date].filter(Boolean).join(' · ');
     const wide = cw >= ch * 1.25; // quer: Text links, Draufsicht rechts
     const tw = wide ? cw * 0.42 : cw - 2 * pad; // Breite der Textspalte
@@ -2448,14 +2473,15 @@ table.fmt.one .onet { display: inline; }
     let text = '<div class="ln nm' + (nameSize <= 2.2 ? ' wrap' : '') + '" style="font-size:' + nameSize.toFixed(2) + 'mm">' + esc(name) + '</div>' +
       '<div class="ln dm" style="font-size:' + dimSize.toFixed(2) + 'mm">' + dims + '</div>' +
       '<div class="ln in">' + esc(info) + '</div>' +
+      (et ? '<div class="ln in">Kante ' + esc(et) + '</div>' : '') +
       (cfg.labelExtra ? '<div class="ln in">' + esc(cfg.labelExtra) + '</div>' : '') +
       (cnt ? '<div class="ln ct">' + esc(cnt) + '</div>' : '');
-    const lines = 4.6 + 4.4 + 3 + (cfg.labelExtra ? 3 : 0) + (cnt ? 2.8 : 0);
+    const lines = 4.6 + 4.4 + 3 + (et ? 3 : 0) + (cfg.labelExtra ? 3 : 0) + (cnt ? 2.8 : 0);
     let sketch = '';
     if (cfg.labelSketch !== false) {
       const sw = wide ? cw - tw - 3 * pad : cw - 2 * pad;
       const sh = wide ? ch - 2 * pad : ch - 2 * pad - lines - 0.8;
-      if (sw > 8 && sh > 8) sketch = '<div class="sk">' + labelSketch(p, +sw.toFixed(2), +sh.toFixed(2)) + '</div>';
+      if (sw > 8 && sh > 8) sketch = '<div class="sk">' + labelSketch(p, +sw.toFixed(2), +sh.toFixed(2), edgesOf(part)) + '</div>';
     }
     return '<div class="lbl" style="width:' + LW + 'mm;height:' + LH + 'mm"><div class="lin' + (wide ? ' wide' : '') + '" style="width:' + cw + 'mm;height:' + ch + 'mm;padding:' + pad + 'mm;' +
       (rot ? 'transform:translate(' + LW + 'mm,0) rotate(90deg);' : '') + '">' +
@@ -2576,14 +2602,50 @@ table.fmt.one .onet { display: inline; }
     return lst.grain && View3D.boardOf(board).grain > 0 ? 'long' : 'free';
   }
   const LIST_KEY = 'step2xcs.lists.v1';
-  const lst = Object.assign({ tab: 'bom', group: true, raw: true, sheetL: 2800, sheetW: 2070, kerf: 4.4, trim: 10, grain: true, cuts: true, dir: 'auto', goal: 'waste' }, loadJson(LIST_KEY, {}) || {});
+  const lst = Object.assign({ tab: 'bom', group: true, raw: true, sheetL: 2800, sheetW: 2070, kerf: 4.4, trim: 10, grain: true, cuts: true, dir: 'auto', goal: 'waste', edgeThin: 1, edgeThick: 2, edgeExtra: 50, edgeDeduct: false }, loadJson(LIST_KEY, {}) || {});
   const saveLst = () => storeJson(LIST_KEY, lst);
 
-  // Rohmaß (Zuschnitt) eines Teils: Fertigmaß + Rohteil-Aufmaß (Profil mit gesägten Stirnseiten: nur in der Länge)
-  function rawDims(r) {
+  /*
+   * Kantenband je Teil: part.edges = { l1, l2, b1, b2 } mit 0 = keine, 1 = dünn, 2 = dick (Dicken lst.edgeThin/edgeThick).
+   * L1 = vorne (Y = 0), L2 = hinten (Y = B) – die langen Seiten der Länge L; B1 = links (X = 0), B2 = rechts (X = L).
+   */
+  const EDGE_SIDES = [['l1', 'L1', 'vorne'], ['l2', 'L2', 'hinten'], ['b1', 'B1', 'links'], ['b2', 'B2', 'rechts']];
+  const edgesOf = (p) => { const e = (p && p.edges) || {}; return { l1: e.l1 | 0, l2: e.l2 | 0, b1: e.b1 | 0, b2: e.b2 | 0 }; };
+  const edgeMm = (v) => (v === 2 ? +lst.edgeThick || 0 : v === 1 ? +lst.edgeThin || 0 : 0);
+  const edgeSig = (e) => EDGE_SIDES.map(([k]) => e[k]).join('');
+  // kurz für Listen: „L1 2 · L2 1 · B1 2“ – Dicke in mm hinter der Seite
+  function edgeText(e) {
+    const on = EDGE_SIDES.filter(([k]) => e[k]);
+    if (!on.length) return '';
+    return on.map(([k, t]) => t + ' ' + fmt(edgeMm(e[k]))).join(' · ');
+  }
+  // Abzug der Kantendicke vom Zuschnitt (Einstellung): Länge um B1 + B2, Breite um L1 + L2
+  const edgeDeduct = (e) => (lst.edgeDeduct ? { L: edgeMm(e.b1) + edgeMm(e.b2), W: edgeMm(e.l1) + edgeMm(e.l2) } : { L: 0, W: 0 });
+  // Rohmaß (Zuschnitt) eines Teils: Fertigmaß + Rohteil-Aufmaß (Profil mit gesägten Stirnseiten: nur in der Länge), ggf. ohne Kantendicke
+  function rawDims(r, p) {
     const o = state.settings.rawOversize || 0;
     const prof = r.panel.profile && state.settings.profileRule !== 'off';
-    return { L: r.panel.L + 2 * o, W: r.panel.W + (prof ? 0 : 2 * o) };
+    const d = edgeDeduct(edgesOf(p));
+    return { L: r.panel.L + 2 * o - d.L, W: r.panel.W + (prof ? 0 : 2 * o) - d.W };
+  }
+  // Kantenband-Laufmeter einer Position nach Band (Material + Dicke): Seitenlänge + Zugabe je Kante, mal Anzahl
+  function edgeMeters(r) {
+    const e = edgesOf(r.parts[0]);
+    const out = new Map();
+    for (const [k] of EDGE_SIDES) {
+      if (!e[k]) continue;
+      const key = View3D.boardOf(r.board).name + ' · ' + fmt(edgeMm(e[k])) + ' mm';
+      const len = (k.charAt(0) === 'l' ? r.L : r.W) + (+lst.edgeExtra || 0);
+      out.set(key, (out.get(key) || 0) + (len * r.qty) / 1000);
+    }
+    return out;
+  }
+  // Schaltfläche je Seite (Klick: keine → dünn → dick)
+  function edgeWidget(e, k) {
+    const st = (v) => (v === 2 ? 'dick ' + fmt(edgeMm(2)) + ' mm' : v === 1 ? 'dünn ' + fmt(edgeMm(1)) + ' mm' : 'keine');
+    return '<span class="edgecell"><span class="edgew">' + EDGE_SIDES.map(([s2, t, w]) => '<button type="button" class="' + s2 + ' e' + e[s2] + '" data-bomedge="' + k + '" data-side="' + s2 +
+      '" title="Kante ' + t + ' (' + w + '): ' + st(e[s2]) + ' – Klick wechselt" aria-label="Position ' + (k + 1) + ' Kante ' + t + ' ' + w + ': ' + st(e[s2]) + '"></button>').join('') +
+      '<span class="pc" aria-hidden="true">L ↔</span></span><span class="et">' + esc(edgeText(e)) + '</span></span>';
   }
   // Positionen der Stückliste: gleiche Teile (Maße, Plattenfarbe, gleiches Programm) zusammengefasst
   function bomRows() {
@@ -2595,11 +2657,11 @@ table.fmt.one .onet { display: inline; }
       const name = p.solid ? p.solid.name : p.label;
       const board = boardKeyOf(p);
       const prog = (r.xcs || '').split(name).join('§') + (r.side2 ? r.side2.xcs.split(name).join('§') : '');
-      const key = lst.group ? [Math.round(r.panel.L * 10), Math.round(r.panel.W * 10), Math.round(r.panel.T * 10), board, prog].join('|') : 'p' + i;
+      const key = lst.group ? [Math.round(r.panel.L * 10), Math.round(r.panel.W * 10), Math.round(r.panel.T * 10), board, edgeSig(edgesOf(p)), prog].join('|') : 'p' + i;
       let row = byKey.get(key);
       if (!row) {
-        row = { parts: [], nums: [], names: [], qty: 0, L: r.panel.L, W: r.panel.W, T: r.panel.T, raw: rawDims(r), board: board, time: partTime(p),
-          files: [] };
+        row = { parts: [], nums: [], names: [], qty: 0, L: r.panel.L, W: r.panel.W, T: r.panel.T, raw: rawDims(r, p), board: board, time: partTime(p),
+          edges: edgesOf(p), files: [] };
         byKey.set(key, row);
         rows.push(row);
       }
@@ -2614,27 +2676,30 @@ table.fmt.one .onet { display: inline; }
   }
   function bomTotals(rows) {
     const byMat = new Map();
+    const bands = new Map();
     let qty = 0;
     let time = 0;
     for (const r of rows) {
+      for (const [k, v] of edgeMeters(r)) bands.set(k, (bands.get(k) || 0) + v);
       qty += r.qty;
       if (r.time) time += r.time.total * r.qty;
       const k = View3D.boardOf(r.board).name + ' ' + fmt(r.T) + ' mm';
       byMat.set(k, (byMat.get(k) || 0) + (r.L * r.W * r.qty) / 1e6);
     }
-    return { qty: qty, time: time, byMat: byMat };
+    return { qty: qty, time: time, byMat: byMat, bands: bands };
   }
   function renderBom() {
     const rows = bomRows();
     const tot = bomTotals(rows);
     if (!rows.length) { $('bomview').innerHTML = '<p class="note">Keine Teile geladen.</p>'; return; }
     $('bomview').innerHTML = '<div class="tblwrap"><table class="bom"><thead><tr><th>Pos.</th><th class="r">Anzahl</th><th>Bezeichnung</th><th class="r">Länge</th><th class="r">Breite</th>' +
-      '<th class="r">Dicke</th><th>Material / Kanten</th><th class="r">Zuschnitt (roh)</th><th class="r">m²</th><th class="r">Zeit je Stück</th><th title="Faserrichtung im Zuschnitt: Auto = nach Material (Maserung längs), längs, quer (gedreht) oder frei">Faser</th><th>Programm</th></tr></thead><tbody>' +
+      '<th class="r">Dicke</th><th>Material / Kanten</th><th title="Kantenband je Seite: L1 vorne, L2 hinten (lange Seiten), B1 links, B2 rechts – Klick: keine → dünn → dick">Kantenband</th><th class="r">Zuschnitt (roh)</th><th class="r">m²</th><th class="r">Zeit je Stück</th><th title="Faserrichtung im Zuschnitt: Auto = nach Material (Maserung längs), längs, quer (gedreht) oder frei">Faser</th><th>Programm</th></tr></thead><tbody>' +
       rows.map((r, k) => '<tr><td class="no">' + (k + 1) + '</td>' +
         '<td class="r"><input type="number" min="0" step="1" value="' + r.qty + '" data-bomqty="' + k + '" aria-label="Anzahl Position ' + (k + 1) + '"></td>' +
         '<td><b>' + r.names.map(esc).join(', ') + '</b><div class="sub">Bauteil ' + r.nums.join(', ') + '</div></td>' +
         '<td class="r">' + n1(r.L) + '</td><td class="r">' + n1(r.W) + '</td><td class="r">' + n1(r.T) + '</td>' +
         '<td>' + boardSwatch(r.board) + ' ' + esc(boardName(r.board)) + '</td>' +
+        '<td>' + edgeWidget(r.edges, k) + '</td>' +
         '<td class="r">' + n1(r.raw.L) + ' × ' + n1(r.raw.W) + '</td>' +
         '<td class="r">' + fmt(Math.round((r.L * r.W * r.qty) / 1e4) / 100) + '</td>' +
         '<td class="r">' + (r.time ? '<span title="' + esc(timeTitle(r.time)) + '">' + Toolpath.fmtTime(r.time.total) + '</span>' : '–') + '</td>' +
@@ -2644,7 +2709,14 @@ table.fmt.one .onet { display: inline; }
       '</tbody></table></div>' +
       '<div class="bomsum"><span><b>' + tot.qty + '</b> Teile</span>' +
       Array.from(tot.byMat).map(([k, v]) => '<span>' + esc(k) + ': <b>' + fmt(Math.round(v * 100) / 100) + ' m²</b></span>').join('') +
+      Array.from(tot.bands).map(([k, v]) => '<span>Kante ' + esc(k) + ': <b>' + fmt(Math.round(v * 10) / 10) + ' m</b></span>').join('') +
       '<span>Bearbeitungszeit gesamt: <b>' + Toolpath.fmtTime(tot.time) + '</b> <small>(geschätzt, inkl. Auflegen)</small></span></div>';
+    $('bomview').querySelectorAll('[data-bomedge]').forEach((b) => b.addEventListener('click', () => {
+      const r = rows[+b.dataset.bomedge];
+      const v = (edgesOf(r.parts[0])[b.dataset.side] + 1) % 3;
+      for (const p of r.parts) { p.edges = edgesOf(p); p.edges[b.dataset.side] = v; }
+      render();
+    }));
     $('bomview').querySelectorAll('[data-bomgrain]').forEach((sel) => sel.addEventListener('change', () => {
       for (const p of rows[+sel.dataset.bomgrain].parts) p.grain = sel.value === 'auto' ? undefined : sel.value;
       render();
@@ -2662,11 +2734,12 @@ table.fmt.one .onet { display: inline; }
     const rows = bomRows();
     const c = (v) => '"' + String(v).replace(/"/g, '""') + '"';
     const num = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
-    const lines = [['Pos', 'Anzahl', 'Bezeichnung', 'Bauteil-Nr', 'Länge mm', 'Breite mm', 'Dicke mm', 'Material', 'Kanten', 'Zuschnitt Länge mm', 'Zuschnitt Breite mm',
-      'Fläche m²', 'Zeit je Stück min', 'Programm'].map(c).join(';')];
+    const lines = [['Pos', 'Anzahl', 'Bezeichnung', 'Bauteil-Nr', 'Länge mm', 'Breite mm', 'Dicke mm', 'Material', 'Kanten', 'Kante L1 mm', 'Kante L2 mm', 'Kante B1 mm', 'Kante B2 mm',
+      'Kantenband m', 'Zuschnitt Länge mm', 'Zuschnitt Breite mm', 'Fläche m²', 'Zeit je Stück min', 'Programm'].map(c).join(';')];
     rows.forEach((r, k) => {
       const b = View3D.boardOf(r.board);
-      lines.push([k + 1, r.qty, c(r.names.join(', ')), c(r.nums.join(', ')), num(r.L), num(r.W), num(r.T), c(b.name), c(b.edgeName), num(r.raw.L), num(r.raw.W),
+      lines.push([k + 1, r.qty, c(r.names.join(', ')), c(r.nums.join(', ')), num(r.L), num(r.W), num(r.T), c(b.name), c(b.edgeName),
+        ...EDGE_SIDES.map(([k2]) => (r.edges[k2] ? num(edgeMm(r.edges[k2])) : '')), num(Array.from(edgeMeters(r).values()).reduce((a, v) => a + v, 0)), num(r.raw.L), num(r.raw.W),
         String(Math.round((r.L * r.W * r.qty) / 1e4) / 100).replace('.', ','), r.time ? String(Math.round(r.time.total / 6) / 10).replace('.', ',') : '', c(r.files.join(', '))].join(';'));
     });
     return '﻿' + lines.join('\r\n') + '\r\n';
@@ -2676,11 +2749,12 @@ table.fmt.one .onet { display: inline; }
     const tot = bomTotals(rows);
     const d = new Date();
     return '<h1>Stückliste</h1><p class="meta">' + d.toLocaleDateString('de-DE') + ' · ' + tot.qty + ' Teile · Bearbeitungszeit ≈ ' + Toolpath.fmtTime(tot.time) + '</p>' +
-      '<table class="pbom"><thead><tr><th>Pos.</th><th>Anz.</th><th>Bezeichnung</th><th>L</th><th>B</th><th>D</th><th>Material / Kanten</th><th>Zuschnitt</th><th>Zeit</th></tr></thead><tbody>' +
+      '<table class="pbom"><thead><tr><th>Pos.</th><th>Anz.</th><th>Bezeichnung</th><th>L</th><th>B</th><th>D</th><th>Material / Kanten</th><th>Kantenband</th><th>Zuschnitt</th><th>Zeit</th></tr></thead><tbody>' +
       rows.map((r, k) => '<tr><td>' + (k + 1) + '</td><td>' + r.qty + '</td><td>' + r.names.map(esc).join(', ') + ' <small>(' + r.nums.join(', ') + ')</small></td><td>' + n1(r.L) +
-        '</td><td>' + n1(r.W) + '</td><td>' + n1(r.T) + '</td><td>' + esc(boardName(r.board)) + '</td><td>' + n1(r.raw.L) + ' × ' + n1(r.raw.W) + '</td><td>' +
+        '</td><td>' + n1(r.W) + '</td><td>' + n1(r.T) + '</td><td>' + esc(boardName(r.board)) + '</td><td>' + esc(edgeText(r.edges)) + '</td><td>' + n1(r.raw.L) + ' × ' + n1(r.raw.W) + '</td><td>' +
         (r.time ? Toolpath.fmtTime(r.time.total) : '–') + '</td></tr>').join('') + '</tbody></table>' +
-      '<p class="meta">' + Array.from(tot.byMat).map(([k, v]) => esc(k) + ': ' + fmt(Math.round(v * 100) / 100) + ' m²').join(' · ') + '</p>';
+      '<p class="meta">' + Array.from(tot.byMat).map(([k, v]) => esc(k) + ': ' + fmt(Math.round(v * 100) / 100) + ' m²').join(' · ') +
+      Array.from(tot.bands).map(([k, v]) => ' · Kante ' + esc(k) + ': ' + fmt(Math.round(v * 10) / 10) + ' m').join('') + '</p>';
   }
 
   // Zuschnittplan je Material und Dicke; von Hand verschobene Pläne (lst.manual) gelten, solange Teile und Platte gleich bleiben
@@ -2695,7 +2769,8 @@ table.fmt.one .onet { display: inline; }
       const b = View3D.boardOf(row.board);
       const key = b.id + '|' + fmt(row.T);
       if (!groups.has(key)) groups.set(key, { key: key, name: b.name, T: row.T, board: row.board, grain: b.grain > 0, items: [] });
-      const dims = lst.raw ? row.raw : { L: row.L, W: row.W };
+      const dd = edgeDeduct(row.edges);
+      const dims = lst.raw ? row.raw : { L: row.L - dd.L, W: row.W - dd.W };
       groups.get(key).items.push({ id: row.nums[0], label: row.names[0], L: dims.L, W: dims.W, qty: row.qty, orient: orientOf(row.parts[0], row.board) });
     }
     return Array.from(groups.values()).map((g) => {
@@ -3007,7 +3082,7 @@ table.fmt.one .onet { display: inline; }
   }
   document.querySelectorAll('[data-ltab]').forEach((b) => b.addEventListener('click', () => { lst.tab = b.dataset.ltab; saveLst(); renderLists(); }));
   $('lgroup').addEventListener('change', (e) => { lst.group = e.target.checked; saveLst(); renderLists(); });
-  for (const [id, k] of [['csheetL', 'sheetL'], ['csheetW', 'sheetW'], ['ckerf', 'kerf'], ['ctrim', 'trim']]) {
+  for (const [id, k] of [['csheetL', 'sheetL'], ['csheetW', 'sheetW'], ['ckerf', 'kerf'], ['ctrim', 'trim'], ['ethin', 'edgeThin'], ['ethick', 'edgeThick'], ['eextra', 'edgeExtra']]) {
     $(id).value = lst[k];
     $(id).addEventListener('change', (e) => { const v = parseFloat(String(e.target.value).replace(',', '.')); if (v >= 0) { lst[k] = v; saveLst(); renderLists(); } });
   }
@@ -3015,7 +3090,7 @@ table.fmt.one .onet { display: inline; }
     $(id).value = lst[k];
     $(id).addEventListener('change', (e) => { lst[k] = e.target.value; saveLst(); renderLists(); });
   }
-  for (const [id, k] of [['craw', 'raw'], ['cgrain', 'grain'], ['ccuts', 'cuts']]) {
+  for (const [id, k] of [['craw', 'raw'], ['cgrain', 'grain'], ['ccuts', 'cuts'], ['ededuct', 'edgeDeduct']]) {
     $(id).checked = lst[k];
     $(id).addEventListener('change', (e) => { lst[k] = e.target.checked; saveLst(); renderLists(); });
   }
@@ -3029,10 +3104,10 @@ table.fmt.one .onet { display: inline; }
 
   // ------------------------------------------------ PDF-Dateien (ohne Druckdialog – geht auch, wo der Browser „Drucken“ sperrt)
   const pdfDate = () => new Date().toLocaleDateString('de-DE');
-  const BOM_COLS = [{ t: 'Pos.', w: 12 }, { t: 'Anz.', w: 12, align: 'right' }, { t: 'Bezeichnung', w: 70 }, { t: 'L', w: 18, align: 'right' }, { t: 'B', w: 18, align: 'right' },
-    { t: 'D', w: 12, align: 'right' }, { t: 'Material / Kanten', w: 58 }, { t: 'Faser', w: 18 }, { t: 'Zuschnitt', w: 32, align: 'right' }, { t: 'Zeit', w: 23, align: 'right' }];
+  const BOM_COLS = [{ t: 'Pos.', w: 10 }, { t: 'Anz.', w: 11, align: 'right' }, { t: 'Bezeichnung', w: 58 }, { t: 'L', w: 16, align: 'right' }, { t: 'B', w: 16, align: 'right' },
+    { t: 'D', w: 10, align: 'right' }, { t: 'Material / Kanten', w: 46 }, { t: 'Kantenband', w: 40 }, { t: 'Faser', w: 15 }, { t: 'Zuschnitt', w: 30, align: 'right' }, { t: 'Zeit', w: 21, align: 'right' }];
   function bomPdfRows(rows) {
-    return rows.map((r, k) => [String(k + 1), String(r.qty), r.names.join(', ') + ' (' + r.nums.join(', ') + ')', n1(r.L), n1(r.W), n1(r.T), boardName(r.board),
+    return rows.map((r, k) => [String(k + 1), String(r.qty), r.names.join(', ') + ' (' + r.nums.join(', ') + ')', n1(r.L), n1(r.W), n1(r.T), boardName(r.board), edgeText(r.edges),
       GRAIN_NAMES[grainOf(r.parts[0])], n1(r.raw.L) + ' × ' + n1(r.raw.W), r.time ? Toolpath.fmtTime(r.time.total) : '–']);
   }
   function addBomPdf(d) {
@@ -3043,7 +3118,9 @@ table.fmt.one .onet { display: inline; }
     d.text(12, 23, pdfDate() + ' · ' + tot.qty + ' Teile · Bearbeitungszeit ' + Toolpath.fmtTime(tot.time) + ' (geschätzt, inkl. Auflegen)', { size: 9.5, color: [0.25, 0.25, 0.25] });
     let y = d.table(12, 29, BOM_COLS, bomPdfRows(rows), { onPage: () => { d.text(12, 12, 'Stückliste (Fortsetzung)', { size: 10, bold: true }); return 16; } });
     y += 6;
-    d.text(12, y, Array.from(tot.byMat).map(([k, v]) => k + ': ' + fmt(Math.round(v * 100) / 100) + ' m²').join(' · '), { size: 9.5 });
+    d.text(12, y, Array.from(tot.byMat).map(([k, v]) => k + ': ' + fmt(Math.round(v * 100) / 100) + ' m²').join(' · '), { size: 9.5, maxW: 273 });
+    if (tot.bands.size) d.text(12, y + 5.5, 'Kantenband (inkl. ' + fmt(+lst.edgeExtra || 0) + ' mm Zugabe je Kante): ' +
+      Array.from(tot.bands).map(([k, v]) => k + ': ' + fmt(Math.round(v * 10) / 10) + ' m').join(' · '), { size: 9.5, maxW: 273 });
   }
   function bomPdf() {
     if (!bomRows().length) { toast('Keine Teile vorhanden.'); return; }

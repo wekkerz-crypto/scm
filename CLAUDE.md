@@ -23,6 +23,8 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   → `nameBoard` in `index.html` (Einstellung `boardFromName`), Reihenfolge `part.board` < Name < Einstellung.
   Schnitt `setSection` (clippingPlanes in `applyLook`), Bild `snapshot()` (Leinwand + Schilder/Maße nachgezeichnet).
 - Listen (`state.page` 'lists'): Stückliste `bomRows` (gleiche Teile zusammengefasst, Anzahl `part.qty`), CSV, Druck A4 `printA4`;
+  Kantenband je Teil `part.edges = {l1, l2, b1, b2}` (0/1/2 = keine/dünn/dick, L1 vorne Y=0, B1 links X=0): `edgeWidget`,
+  `edgeMeters`, `edgeDeduct` (`lst.edgeThin/edgeThick/edgeExtra/edgeDeduct`), Etikett `labelSketch(…, edges)`.
   Zuschnittplan `web/js/cutplan.js` (`CutPlan.plan`, Guillotine, Schnittfuge/Besäumen/Maserung; `dir` auto/long/cross =
   `packFree` bzw. Streifen `packStrips`, `goal` waste/cuts wählt aus Varianten; `cutSequence` mit `dir`; `fits` beim Verschieben
   von Hand → `lst.manual[Gruppe] = {sig, sheets}`), PDF-Datei über `web/js/pdf.js` (`MiniPdf`, ohne Druckdialog) in `cutPdf`.

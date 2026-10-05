@@ -10,7 +10,7 @@
   'use strict';
 
   // Holztöne je Bauteil (leicht verschieden, damit Nachbarteile unterscheidbar sind)
-  const TONES = ['#c79a63', '#b98a55', '#d1a771', '#b08050', '#c99d68', '#bd8f5a'];
+  const TONES = ['#d4ae7b', '#caa16c', '#dab886', '#c69c66', '#d0a874', '#c9a26f'];
 
   function Viewer(host, labels) {
     const THREE = window.THREE;
@@ -21,7 +21,9 @@
     r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     r.outputEncoding = THREE.sRGBEncoding;
     r.toneMapping = THREE.ACESFilmicToneMapping;
-    r.toneMappingExposure = 0.85;
+    r.toneMappingExposure = 0.92;
+    r.shadowMap.enabled = true;
+    r.shadowMap.type = THREE.PCFSoftShadowMap;
     host.appendChild(r.domElement);
     this.renderer = r;
     this.scene = new THREE.Scene();
@@ -33,9 +35,15 @@
     this.controls.screenSpacePanning = true;
     const pm = new THREE.PMREMGenerator(r);
     this.scene.environment = pm.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
-    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x887766, 0.45));
-    this.sun = new THREE.DirectionalLight(0xffffff, 1.2);
+    // Licht, Schatten und Tisch wie in der Teil-Ansicht (view3d.js)
+    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x887766, 0.35));
+    this.sun = new THREE.DirectionalLight(0xffffff, 1.6);
+    this.sun.castShadow = true;
+    this.sun.shadow.mapSize.set(2048, 2048);
+    this.sun.shadow.bias = -0.0004;
     this.scene.add(this.sun);
+    this.ground = new THREE.Group();
+    this.scene.add(this.ground);
     this.scene.add(this.sun.target);
     this.root = new THREE.Group();
     this.measureGroup = new THREE.Group();
@@ -86,7 +94,8 @@
   Viewer.prototype.setTheme = function (dark) {
     this.dark = dark;
     this.scene.background = new this.THREE.Color(dark ? 0x1b2120 : 0xeef0ee);
-    for (const p of this.parts) p.edges.material.color.set(dark ? 0x0d0a06 : 0x3d2b17);
+    for (const p of this.parts) p.edges.material.color.set(dark ? 0x1a120a : 0x4a3520);
+    if (this.box) this.groundFor(this.box);
   };
 
   // parts: [{ num, name, mesh: { pos: Float32Array (Modell, mm), index: Uint32Array|Array, normals?: Float32Array } }]
@@ -105,12 +114,16 @@
       g.setIndex(new T.BufferAttribute(src.mesh.index instanceof Uint32Array ? src.mesh.index : new Uint32Array(src.mesh.index), 1));
       if (!src.mesh.normals) g.computeVertexNormals();
       g.computeBoundingBox();
-      const color = new T.Color(TONES[i % TONES.length]);
-      const mat = new T.MeshStandardMaterial({ color: color, roughness: 0.62, metalness: 0, envMapIntensity: 0.5,
-        polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1, side: T.DoubleSide });
+      // Holz wie in der Teil-Ansicht; je Bauteil ein leicht anderer Ton, damit Nachbarteile unterscheidbar sind
+      const mat = window.View3D && View3D.woodMaterial ? View3D.woodMaterial(T, g, TONES[i % TONES.length])
+        : new T.MeshStandardMaterial({ color: TONES[i % TONES.length], roughness: 0.6, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+      mat.side = T.DoubleSide;
+      const color = new T.Color(0xffffff);
       const obj = new T.Mesh(g, mat);
+      obj.castShadow = true;
+      obj.receiveShadow = true;
       obj.userData.num = src.num;
-      const edges = new T.LineSegments(new T.EdgesGeometry(g, 24), new T.LineBasicMaterial({ color: this.dark ? 0x0d0a06 : 0x3d2b17, transparent: true, opacity: 0.8 }));
+      const edges = new T.LineSegments(new T.EdgesGeometry(g, 24), new T.LineBasicMaterial({ color: this.dark ? 0x1a120a : 0x4a3520, transparent: true, opacity: 0.75 }));
       this.root.add(obj, edges);
       const center = new T.Vector3();
       g.boundingBox.getCenter(center);
@@ -123,8 +136,35 @@
       box.union(g.boundingBox);
     });
     this.box = box;
+    this.groundFor(box);
     this.applyLook();
     this.view('iso');
+  };
+
+  // Boden unter dem Möbel: Schattenfänger und dezentes Raster (wie der Maschinentisch der Teil-Ansicht)
+  Viewer.prototype.groundFor = function (box) {
+    const T = this.THREE;
+    this.ground.clear();
+    if (!box || box.isEmpty()) return;
+    const c = box.getCenter(new T.Vector3());
+    const sz = box.getSize(new T.Vector3());
+    const size = Math.max(sz.x, sz.y) * 3 + 600;
+    const z = box.min.z - 0.5;
+    const shadow = new T.Mesh(new T.PlaneGeometry(size, size), new T.ShadowMaterial({ opacity: this.dark ? 0.45 : 0.22 }));
+    shadow.position.set(c.x, c.y, z);
+    shadow.receiveShadow = true;
+    const grid = new T.GridHelper(size, Math.round(size / 100), this.dark ? 0x2c3633 : 0xc4cbc4, this.dark ? 0x222a28 : 0xd5dbd4);
+    grid.rotation.x = Math.PI / 2;
+    grid.position.set(c.x, c.y, z - 0.2);
+    grid.material.transparent = true;
+    grid.material.opacity = this.dark ? 0.35 : 0.7;
+    this.ground.add(shadow, grid);
+    const R = sz.length();
+    this.sun.position.set(c.x - R * 0.6, c.y - R * 0.9, c.z + R * 1.4);
+    this.sun.target.position.copy(c);
+    const sc = this.sun.shadow.camera;
+    sc.left = -R; sc.right = R; sc.top = R; sc.bottom = -R; sc.near = 1; sc.far = R * 5;
+    sc.updateProjectionMatrix();
   };
 
   Viewer.prototype.part = function (num) { return this.parts.find((p) => p.num === num) || null; };
@@ -153,7 +193,7 @@
     for (const p of this.parts) {
       const sel = p.num === this.selected;
       const a = sel ? 1 : this.opacity;
-      p.obj.material.color.copy(sel ? new T.Color(0x6aa7ff).lerp(p.color, 0.35) : p.color);
+      p.obj.material.color.copy(sel ? new T.Color(0x6f9fff) : p.color);
       p.obj.material.emissive = new T.Color(sel ? 0x0b2a5a : 0x000000);
       p.obj.material.transparent = a < 0.999;
       p.obj.material.opacity = a;
@@ -187,8 +227,6 @@
     this.camera.updateProjectionMatrix();
     this.controls.target.copy(c);
     this.camera.lookAt(c);
-    this.sun.position.copy(c).add(new T.Vector3(-R, -R * 1.5, R * 2));
-    this.sun.target.position.copy(c);
   };
 
   // Nummern über den Bauteilen (HTML über der Ansicht, je Bild neu gesetzt)

@@ -78,6 +78,37 @@
     return cv;
   }
 
+  // Holz-UV: Projektion je Dreieck auf die Hauptebene seiner Normalen (Faser längs X)
+  function woodUV(T, g) {
+    const pos = g.getAttribute('position').array;
+    const nrm = g.getAttribute('normal').array;
+    const uv = new Float32Array((pos.length / 3) * 2);
+    const S = 1 / 700;
+    for (let i = 0, j = 0; i < pos.length; i += 3, j += 2) {
+      const ax = Math.abs(nrm[i]);
+      const ay = Math.abs(nrm[i + 1]);
+      const az = Math.abs(nrm[i + 2]);
+      if (az >= ax && az >= ay) { uv[j] = pos[i] * S; uv[j + 1] = pos[i + 1] * S * 2; } else if (ay >= ax) { uv[j] = pos[i] * S; uv[j + 1] = pos[i + 2] * S * 2; } else { uv[j] = pos[i + 1] * S; uv[j + 1] = pos[i + 2] * S * 2; }
+    }
+    g.setAttribute('uv', new T.BufferAttribute(uv, 2));
+  }
+
+  // Holz-Material (Maserung als Textur) – gleich für die Teil-Ansicht und Möbel 3D
+  const woodTex = new Map();
+  function woodMaterial(T, g, base) {
+    woodUV(T, g);
+    let tex = woodTex.get(base);
+    if (!tex) {
+      tex = new T.CanvasTexture(woodCanvas(base));
+      tex.wrapS = tex.wrapT = T.RepeatWrapping;
+      tex.encoding = T.sRGBEncoding;
+      tex.anisotropy = 8;
+      woodTex.set(base, tex);
+    }
+    return new T.MeshStandardMaterial({ map: tex, roughness: 0.58, metalness: 0, envMapIntensity: 0.4,
+      polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+  }
+
   // Spannuten-Streifen für drehende Werkzeuge
   function fluteCanvas() {
     const cv = document.createElement('canvas');
@@ -276,24 +307,7 @@
       if (placed.normals) g.setAttribute('normal', new T.BufferAttribute(placed.normals, 3));
       g.setIndex(new T.BufferAttribute(new Uint32Array(placed.index), 1));
       if (!placed.normals) g.computeVertexNormals();
-      // Holz-UV: Projektion je Dreieck auf die Hauptebene seiner Normalen (Faser längs X)
-      const pos = placed.pos;
-      const nrm = g.getAttribute('normal').array;
-      const uv = new Float32Array((pos.length / 3) * 2);
-      const S = 1 / 700;
-      for (let i = 0, j = 0; i < pos.length; i += 3, j += 2) {
-        const ax = Math.abs(nrm[i]);
-        const ay = Math.abs(nrm[i + 1]);
-        const az = Math.abs(nrm[i + 2]);
-        if (az >= ax && az >= ay) { uv[j] = pos[i] * S; uv[j + 1] = pos[i + 1] * S * 2; } else if (ay >= ax) { uv[j] = pos[i] * S; uv[j + 1] = pos[i + 2] * S * 2; } else { uv[j] = pos[i + 1] * S; uv[j + 1] = pos[i + 2] * S * 2; }
-      }
-      g.setAttribute('uv', new T.BufferAttribute(uv, 2));
-      const tex = new T.CanvasTexture(woodCanvas(opts.board || '#d4ae7b'));
-      tex.wrapS = tex.wrapT = T.RepeatWrapping;
-      tex.encoding = T.sRGBEncoding;
-      tex.anisotropy = 8;
-      const mat = new T.MeshStandardMaterial({ map: tex, roughness: 0.58, metalness: 0, envMapIntensity: 0.4,
-        polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+      const mat = woodMaterial(T, g, opts.board || '#d4ae7b');
       const mesh = new T.Mesh(g, mat);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
@@ -568,5 +582,5 @@
     if (this.renderer.domElement.parentNode) this.renderer.domElement.parentNode.removeChild(this.renderer.domElement);
   };
 
-  return { load: load, stepMeshes: stepMeshes, Viewer: Viewer, placeMesh: placeMesh };
+  return { load: load, stepMeshes: stepMeshes, Viewer: Viewer, placeMesh: placeMesh, woodMaterial: woodMaterial };
 });

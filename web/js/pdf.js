@@ -69,6 +69,18 @@
         cur.push('BT /' + (o.bold ? 'F2' : 'F1') + ' ' + n(size) + ' Tf ' + col(o.color || [0, 0, 0]) + ' rg ' + n(x0 * PT) + ' ' + n(H - y * PT) + ' Td (' + enc(t) + ') Tj ET');
         return api;
       },
+      // Schraffur im Rechteck (abgeschnitten): dir 'h' waagerecht, 'v' senkrecht, 'd' schräg 45°; gap Linienabstand in mm
+      schraffur(x, y, w, h, dir, gap, o) {
+        o = o || {};
+        const ops = ['q', n(x * PT) + ' ' + n(H - (y + h) * PT) + ' ' + n(w * PT) + ' ' + n(h * PT) + ' re W n', n((o.lw || 0.15) * PT) + ' w', col(o.stroke || [0.6, 0.6, 0.6]) + ' RG'];
+        const seg = (x1, y1, x2, y2) => ops.push(n(x1 * PT) + ' ' + n(H - y1 * PT) + ' m ' + n(x2 * PT) + ' ' + n(H - y2 * PT) + ' l');
+        if (dir === 'h') for (let yy = y + gap / 2; yy < y + h; yy += gap) seg(x, yy, x + w, yy);
+        else if (dir === 'v') for (let xx = x + gap / 2; xx < x + w; xx += gap) seg(xx, y, xx, y + h);
+        else for (let t = -h; t < w; t += gap) seg(x + t, y + h, x + t + h, y);
+        ops.push('S', 'Q');
+        cur.push(ops.join('\n'));
+        return api;
+      },
       // JPEG-Bild (Bytes) in mm-Rechteck; pw/ph = Pixelmaße
       image(x, y, w, h, jpeg, pw, ph) {
         images.push({ data: jpeg, pw: pw, ph: ph });

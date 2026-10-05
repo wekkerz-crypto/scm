@@ -275,6 +275,11 @@ svg.sheet { max-width: 100%; height: auto; display: block; }
 svg.sheet .sh { fill: var(--sunken); stroke: var(--line); stroke-width: 4; }
 svg.sheet .trim { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 12 10; }
 svg.sheet .pt { fill: var(--board); stroke: var(--board-edge); stroke-width: 4; }
+svg.sheet .hatch { pointer-events: none; }
+svg.sheet .hl { stroke: var(--board-edge); stroke-width: 3; opacity: 0.55; }
+svg.sheet .lb { fill: var(--board); pointer-events: none; }
+svg.sheet .cp.sel .lb { fill: color-mix(in srgb, var(--accent) 22%, var(--board)); }
+svg.sheet .cp.bad .lb { fill: color-mix(in srgb, var(--err) 35%, var(--board)); }
 svg.sheet .pl { fill: var(--ink); text-anchor: middle; dominant-baseline: middle; font-family: var(--font-mono); font-weight: 600; }
 svg.sheet .pn { fill: var(--muted); text-anchor: middle; dominant-baseline: middle; font-family: var(--font-body); }
 svg.sheet .cp { cursor: grab; touch-action: none; }
@@ -299,6 +304,8 @@ svg.sheet .cp.bad .pt { fill: color-mix(in srgb, var(--err) 35%, var(--board)); 
 #printarea .a4 .cutgrp h3 { break-after: avoid; }
 #printarea .a4 svg.sheet .sh { fill: #fff; stroke: #000; }
 #printarea .a4 svg.sheet .pt { fill: #eee; stroke: #000; }
+#printarea .a4 svg.sheet .lb { fill: #eee; }
+#printarea .a4 svg.sheet .hl { stroke: #aaa; opacity: 1; stroke-width: 1.2; }
 #printarea .a4 svg.sheet .pl, #printarea .a4 svg.sheet .pn { fill: #000; }
 #printarea .a4 img { max-width: 100%; max-height: 150mm; display: block; margin: 0 auto 4mm; }
 #printarea .a4 h2.ph { font-size: 12pt; margin: 2mm 0 1mm; }
@@ -2690,19 +2697,32 @@ table.fmt.one .onet { display: inline; }
     }
     return lst.manual[g.key];
   }
+  // Schraffur eines Teils: Holz mit Maserung → Linien in Faserrichtung (längs der langen Seite), Dekor → schräg
+  const hatchDir = (g, p) => (g.grain ? (p.l >= p.w ? 'h' : 'v') : 'd');
   function sheetSvg(s, g, si, w) {
+    const hid = 'ht' + si + '-' + g.key.replace(/[^A-Za-z0-9]/g, '');
     // Bildschirm: Breite in px; Druck (w = 0): feste Größe in mm, passt mit Überschrift auf A4 quer
     const mm = Math.min(265 / s.L, 140 / s.W);
     let out = '<svg class="sheet" viewBox="0 0 ' + s.L + ' ' + s.W + '"' + (w ? ' width="' + w + '" height="' + Math.round((s.W * w) / s.L) + '"'
       : ' width="' + (s.L * mm).toFixed(1) + 'mm" height="' + (s.W * mm).toFixed(1) + 'mm"') +
       ' data-grp="' + esc(g.key) + '" data-sheet="' + si + '" role="img" aria-label="Platte ' + (si + 1) + ' ' + fmt(s.L) + ' × ' + fmt(s.W) + '">' +
       '<rect x="0" y="0" width="' + s.L + '" height="' + s.W + '" class="sh"/>' +
-      '<rect x="' + lst.trim + '" y="' + lst.trim + '" width="' + (s.L - 2 * lst.trim) + '" height="' + (s.W - 2 * lst.trim) + '" class="trim"/>';
+      '<rect x="' + lst.trim + '" y="' + lst.trim + '" width="' + (s.L - 2 * lst.trim) + '" height="' + (s.W - 2 * lst.trim) + '" class="trim"/>' +
+      '<defs><pattern id="' + hid + 'h" width="40" height="40" patternUnits="userSpaceOnUse"><path class="hl" d="M0 20H40"/></pattern>' +
+      '<pattern id="' + hid + 'v" width="40" height="40" patternUnits="userSpaceOnUse"><path class="hl" d="M20 0V40"/></pattern>' +
+      '<pattern id="' + hid + 'd" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path class="hl" d="M0 20H40"/></pattern></defs>';
     for (const p of s.parts) {
       // Plattenkoordinaten: y nach oben → SVG y nach unten spiegeln
       const y = s.W - p.y - p.w;
       const fs = Math.max(24, Math.min(60, Math.min(p.l, p.w) / 5));
+      const t1 = p.l > 3 * fs && p.w > 1.4 * fs ? p.id + ' · ' + n1(p.l) + ' × ' + n1(p.w) : '';
+      const t2 = p.l > 3 * fs && p.w > 2.6 * fs ? p.label : '';
+      // ruhiges Feld hinter der Schrift (Schraffur nur außerhalb)
+      const bw = Math.min(p.l - 8, Math.max(t1.length * fs * 0.62, t2.length * fs * 0.8 * 0.56) + fs * 0.9);
+      const bh = t2 ? fs * 2.75 : fs * 1.45;
       out += '<g class="cp' + (cutSel && cutSel.grp === g.key && cutSel.uid === p.uid ? ' sel' : '') + '" data-uid="' + esc(p.uid) + '"><rect x="' + p.x + '" y="' + y + '" width="' + p.l + '" height="' + p.w + '" class="pt"/>' +
+        '<rect x="' + p.x + '" y="' + y + '" width="' + p.l + '" height="' + p.w + '" class="hatch" fill="url(#' + hid + hatchDir(g, p) + ')"/>' +
+        (t1 ? '<rect class="lb" x="' + (p.x + p.l / 2 - bw / 2) + '" y="' + (y + p.w / 2 - fs * 0.75) + '" width="' + bw + '" height="' + bh + '" rx="' + fs * 0.3 + '"/>' : '') +
         (p.l > 3 * fs && p.w > 1.4 * fs ? '<text x="' + (p.x + p.l / 2) + '" y="' + (y + p.w / 2) + '" font-size="' + fs + '" class="pl">' + esc(p.id + ' · ' + n1(p.l) + ' × ' + n1(p.w)) + '</text>' : '') +
         (p.l > 3 * fs && p.w > 2.6 * fs ? '<text x="' + (p.x + p.l / 2) + '" y="' + (y + p.w / 2 + fs * 1.2) + '" font-size="' + (fs * 0.8) + '" class="pn">' + esc(p.label) + '</text>' : '') +
         '<title>' + esc(p.label + ' – ' + n1(p.l) + ' × ' + n1(p.w) + (p.rot ? ' (gedreht)' : '') + ' · ziehen = verschieben, Doppelklick = drehen') + '</title></g>';
@@ -2755,12 +2775,22 @@ table.fmt.one .onet { display: inline; }
         for (const p of s.parts) {
           const pw = p.l * sc;
           const ph = p.w * sc;
-          d.rect(X(p.x), Y(p.y + p.w), pw, ph, { fill: [0.92, 0.92, 0.92], stroke: [0, 0, 0], lw: 0.3 });
+          d.rect(X(p.x), Y(p.y + p.w), pw, ph, { fill: [0.95, 0.95, 0.95] });
+          d.schraffur(X(p.x), Y(p.y + p.w), pw, ph, hatchDir(g, p), 2.2, { stroke: [0.7, 0.7, 0.7], lw: 0.12 });
+          d.rect(X(p.x), Y(p.y + p.w), pw, ph, { stroke: [0, 0, 0], lw: 0.3 });
           const size = Math.max(4.5, Math.min(10, ph * 0.9));
           const cx = X(p.x) + pw / 2;
           const cy = Y(p.y + p.w) + ph / 2;
-          if (ph > 4) d.text(cx, cy + (ph > 10 ? -0.5 : size * 0.12), p.id + ' · ' + n1(p.l) + ' × ' + n1(p.w), { size: size, bold: true, align: 'center', maxW: pw - 1.5 });
-          if (ph > 10) d.text(cx, cy + size * 0.42, p.label + (p.rot ? ' (gedreht)' : ''), { size: size * 0.78, align: 'center', maxW: pw - 1.5, color: [0.2, 0.2, 0.2] });
+          // Feld hinter der Schrift
+          const l1 = p.id + ' · ' + n1(p.l) + ' × ' + n1(p.w);
+          const l2 = p.label + (p.rot ? ' (gedreht)' : '');
+          if (ph > 4) {
+            const tw = Math.min(pw - 1.5, Math.max(d.textWidth(l1, size, true), ph > 10 ? d.textWidth(l2, size * 0.78) : 0) + 2.5);
+            const th = ph > 10 ? size * 0.8 + 2 : size * 0.42 + 1.4;
+            d.rect(cx - tw / 2, cy - (ph > 10 ? size * 0.36 + 1.2 : size * 0.21 + 0.7), tw, th, { fill: [0.95, 0.95, 0.95] });
+          }
+          if (ph > 4) d.text(cx, cy + (ph > 10 ? -0.5 : size * 0.12), l1, { size: size, bold: true, align: 'center', maxW: pw - 1.5 });
+          if (ph > 10) d.text(cx, cy + size * 0.42, l2, { size: size * 0.78, align: 'center', maxW: pw - 1.5, color: [0.2, 0.2, 0.2] });
         }
       });
     }

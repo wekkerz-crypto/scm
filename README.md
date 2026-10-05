@@ -201,6 +201,8 @@ Dritte Seite oben (**Listen**):
 - **Zuschnittplan:** Teile auf Rohplatten (Format, Schnittfuge, Besäumrand einstellbar) je Material und Dicke, mit
   durchgehenden Schnitten wie an der Plattensäge; mit Maserung bleibt die lange Seite längs der Plattenlänge, Dekore werden
   bei Bedarf gedreht. Rohmaß oder Fertigmaß wählbar. Zeichnung je Platte mit Nummer und Maß, Ausnutzung.
+  Die Teile sind leicht **schraffiert** (nicht hinter der Schrift): bei Holz mit Maserung in Faserrichtung (längs der langen
+  Seite), bei Dekor schräg – auch im Druck und im PDF.
   **Faserrichtung je Position** (Spalte *Faser* in der Stückliste): *Auto* (nach Material: Maserung längs, Dekor frei),
   *längs*, *quer* (gedreht) oder *frei* (drehen erlaubt).
   **Von Hand anordnen:** Teile mit der Maus ziehen – rasten an Plattenrand (Besäumen) und Nachbarteilen (mit Schnittfuge)

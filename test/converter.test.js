@@ -1587,3 +1587,36 @@ test('Möbel 3D: Fangpunkte aus den Kanten (Ecken, Kantenmitten, Kreismitte)', (
   assert.strictEqual(n('center').length, 1);
   assert.ok(Math.abs(n('center')[0].r - 10) < 1e-3 && Math.abs(n('center')[0].p[0] - 50) < 1e-3);
 });
+
+test('Zuschnittplan: Teile ohne Überlappung auf Platten, Maserung nicht gedreht, zu große Teile gemeldet', () => {
+  const CP = require('../web/js/cutplan.js');
+  const items = [{ id: 1, label: 'Seite', L: 720, W: 560, qty: 4, grain: true }, { id: 2, label: 'Rück', L: 780, W: 720, qty: 2, grain: false },
+    { id: 3, label: 'Lang', L: 3000, W: 100, qty: 1, grain: true }];
+  const r = CP.plan(items, { sheetL: 2800, sheetW: 2070, kerf: 4, trim: 10 });
+  assert.deepStrictEqual(r.unplaced.map((x) => x.label), ['Lang']);
+  const placed = r.sheets.flatMap((s) => s.parts);
+  assert.strictEqual(placed.length, 6);
+  for (const s of r.sheets) {
+    for (const p of s.parts) {
+      assert.ok(p.x >= 10 - 1e-9 && p.y >= 10 - 1e-9 && p.x + p.l <= 2790 + 1e-9 && p.y + p.w <= 2060 + 1e-9, 'innerhalb der besäumten Platte');
+      if (p.id === 1) assert.strictEqual(p.l, 720, 'Maserung: lange Seite längs der Platte');
+      for (const q of s.parts) if (p !== q) assert.ok(p.x + p.l + 4 - 1e-9 <= q.x || q.x + q.l + 4 - 1e-9 <= p.x || p.y + p.w + 4 - 1e-9 <= q.y || q.y + q.w + 4 - 1e-9 <= p.y, 'Schnittfuge');
+    }
+  }
+});
+
+test('Zeitschätzung: mehr Zustellungen und langsamerer Vorschub dauern länger', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const TP = require('../web/js/toolpath.js');
+  const info = { E014: { d: 47.11, len: 28, kind: 'mill', tech: { feed: [12, 8, 15], descent: [3, 2, 3] } } };
+  const [s] = readParts(read('step/Oberboden.step'), 'ob.step');
+  const t = (st, ov) => { const r = convertSolid(s, st); return TP.estimate(TP.build(r, info, st), r, info, Object.assign({ load: 0 }, ov)); };
+  const one = t({ stepDown: 0 });
+  const three = t({ stepDown: 7 });
+  assert.ok(one.total > 0 && one.cut > 0);
+  assert.ok(three.cut > one.cut * 2.5, three.cut + ' / ' + one.cut);
+  const slow = t({ stepDown: 0 }, { tech: { format: { feed: 6 } } });
+  assert.ok(slow.cut > one.cut * 1.8);
+  assert.strictEqual(TP.fmtTime(125), '2:05 min');
+  assert.strictEqual(TP.fmtTime(3725), '1:02 h');
+});

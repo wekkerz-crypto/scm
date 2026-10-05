@@ -54,6 +54,14 @@
     sandAllowance: 0,          // Schleifzugabe: Formatfräsen bleibt um … mm größer, die Walze schleift auf Endmaß
     sandLead: 1,               // An- und Abfahrt im Bogen: Bogen = … × Walzenradius
     sandOverlap: 20,           // Überlappung am Ende des Umlaufs in mm
+    // Zeitschätzung (Toolpath.estimate): Eilgang m/min, Werkzeugwechsel s, je Anfahrt s, je Bohrung s, Auflegen/Abnehmen s,
+    // Korrekturfaktor (gemessene ÷ geschätzte Zeit)
+    estRapid: 60,
+    estChange: 12,
+    estPerRapid: 0.5,
+    estPerDrill: 0.8,
+    estLoad: 30,
+    estFactor: 1,
     boardMaterial: 'eiche',    // Plattenfarbe in den 3D-Ansichten (View3D.MATERIALS id oder '#rrggbb', '/u' = einfarbig)
     labelWidth: 40,            // Etikett (Browser-Druck): Breite in mm
     labelHeight: 60,           // Etikett: Höhe in mm

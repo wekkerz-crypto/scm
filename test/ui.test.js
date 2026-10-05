@@ -168,7 +168,7 @@ test('Web-Tool: Draufsicht zoomen, Haltestege am Durchbruch umschalten', { skip:
   }
 });
 
-test('Web-Tool: Möbel 3D – Baugruppe mit Nummern, Ein-/Ausblenden, Wählen, Messen mit Fang, Bemaßen, Explosion', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+test('Web-Tool: Möbel 3D – Baugruppe mit Nummern, Ein-/Ausblenden, Wählen, Messen mit Fang, Bemaßen, Explosion, Schnitt, Bild', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
   const browser = await chromium.launch();
   try {
     const p = await browser.newPage({ viewport: { width: 1440, height: 950 } });
@@ -263,6 +263,21 @@ test('Web-Tool: Möbel 3D – Baugruppe mit Nummern, Ein-/Ausblenden, Wählen, M
     assert.strictEqual(await p.$$eval('#mlabelwrap .mlab.dim', (x) => x.length), 0);
     await p.keyboard.press('Escape');
     assert.strictEqual(await p.getAttribute('#mmeasure', 'aria-pressed'), 'false');
+    // Schnittebene, Explosion abspielen, Bild speichern
+    await p.click('[data-msec="z"]');
+    assert.ok(!(await p.$eval('#msecpos', (e) => e.disabled)));
+    await p.click('#msecflip');
+    await p.click('[data-msec=""]');
+    assert.ok(await p.$eval('#msecpos', (e) => e.disabled));
+    // steht auf 50 % → spielt zurück auf 0, dann wieder auseinander auf 100
+    await p.click('#mexplplay');
+    await p.waitForFunction(() => document.querySelector('#mexpl').value === '0', null, { timeout: 15000 });
+    await p.click('#mexplplay');
+    await p.waitForFunction(() => document.querySelector('#mexpl').value === '100', null, { timeout: 15000 });
+    const [png] = await Promise.all([p.waitForEvent('download'), p.click('#msnap')]);
+    assert.strictEqual(png.suggestedFilename(), 'moebel_3d.png');
+    const head = require('fs').readFileSync(await png.path()).subarray(0, 4);
+    assert.deepStrictEqual([...head], [0x89, 0x50, 0x4e, 0x47]);
     // zurück zu den Programmen
     await p.click('[data-page="pgmx"]');
     assert.ok(await p.$eval('#modelpage', (m) => m.hidden));
@@ -656,6 +671,53 @@ test('Web-Tool: andere Werkzeugdatei laden → Teile und Schnittwerte neu berech
     await p.setInputFiles('#tlgx', file);
     await p.waitForFunction(() => /10 m\/min/.test(document.querySelector('details.tech[data-techgrp="format"] summary').textContent));
     assert.match(await p.textContent('aside.steps'), /Werkzeug E016 steht nicht in der Werkzeugdatei/);
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('Web-Tool: Listen (Stückliste, Zuschnitt, Zeit) und Projektdatei speichern/öffnen', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const fs = require('fs');
+  const browser = await chromium.launch();
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 950 }, acceptDownloads: true });
+    const p = await ctx.newPage();
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    // Zeit an der Teilekarte
+    assert.match(await p.textContent('.part'), /≈ \d+:\d\d min/);
+    await p.click('[data-page="lists"]');
+    await p.waitForSelector('table.bom tbody tr');
+    const rows = await p.$$eval('table.bom tbody tr', (x) => x.length);
+    assert.strictEqual(rows, 3);
+    // Anzahl ändern → Summe und Zähler oben
+    await p.fill('[data-bomqty="1"]', '4');
+    await p.press('[data-bomqty="1"]', 'Tab');
+    await p.waitForFunction(() => /\b6\b Teile/.test(document.querySelector('.bomsum').textContent));
+    assert.strictEqual(await p.textContent('#ptn-lists'), '6');
+    // CSV
+    const [csv] = await Promise.all([p.waitForEvent('download'), p.click('#lcsv')]);
+    const text = fs.readFileSync(await csv.path(), 'utf8');
+    assert.match(text, /^﻿"Pos";"Anzahl";"Bezeichnung"/);
+    assert.match(text, /\n2;4;"kp1_-_Oberboden"/);
+    // Zuschnittplan
+    await p.click('[data-ltab="cut"]');
+    await p.waitForSelector('svg.sheet');
+    assert.strictEqual(await p.$$eval('svg.sheet .pt', (x) => x.length), 6);
+    // Projekt speichern, Liste leeren, Projekt öffnen → Teile und Anzahl wieder da
+    await p.click('[data-page="pgmx"]');
+    const [proj] = await Promise.all([p.waitForEvent('download'), p.click('#projsave')]);
+    assert.match(proj.suggestedFilename(), /\.s2m$/);
+    const file = await proj.path();
+    await p.click('#clear');
+    await p.waitForSelector('.empty');
+    const [chooser] = await Promise.all([p.waitForEvent('filechooser'), p.click('#projopen')]);
+    await chooser.setFiles({ name: 'projekt.s2m', mimeType: 'application/json', buffer: fs.readFileSync(file) });
+    await p.waitForFunction(() => document.querySelectorAll('.part').length === 3);
+    assert.strictEqual(await p.textContent('#ptn-lists'), '6');
     assert.deepStrictEqual(errors, []);
   } finally {
     await browser.close();

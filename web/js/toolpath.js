@@ -507,5 +507,62 @@
     return moves;
   }
 
-  return { build: build, samplePoly: samplePoly, offsetPath: offsetPath };
+  /*
+   * Bearbeitungszeit schätzen (Sekunden) aus den Bewegungen von build(): Schnittlänge / Vorschub (Werkzeugdatei bzw. eigene
+   * Schnittwerte je Gruppe), Zustellungen (mehrere Durchgänge + Rückweg im Eilgang), Bohren (Eintauchen hin und zurück),
+   * Eilgang, Werkzeugwechsel, dazu Auflegen/Abnehmen. Ein Korrekturfaktor gleicht mit der echten Maschinenzeit ab.
+   * opts: { rapid: m/min, change: s, perRapid: s, perDrill: s, load: s, factor, tech: { Gruppe: { feed, descent } } }
+   */
+  function estimate(moves, result, toolInfo, opts) {
+    const o = Object.assign({ rapid: 60, change: 12, perRapid: 0.5, perDrill: 0.8, load: 30, factor: 1, tech: null }, opts || {});
+    const ops = (result && result.ops) || [];
+    const ti = toolInfo || {};
+    const mms = (mpm) => (mpm * 1000) / 60; // m/min → mm/s
+    const vRapid = mms(o.rapid > 0 ? o.rapid : 60);
+    // Schnittwert k ('feed' | 'descent') für eine Bewegung: eigene Werte der Gruppe, sonst Werkzeugdatei (Bohrer: über den Ø)
+    const tv = (m, k, dflt) => {
+      const op = ops[m.op];
+      const own = op && o.tech && o.tech[op.group];
+      if (own && own[k] > 0) return own[k];
+      let t = ti[m.tool];
+      if (!t && (m.kind === 'drill' || m.kind === 'edge' || m.tool === 'Bohrer')) {
+        t = Object.values(ti).find((x) => x.kind === 'drill' && x.d && Math.abs(x.d - m.d) < 0.05);
+      }
+      const v = t && t.tech && t.tech[k] && t.tech[k][0];
+      return v > 0 ? v : dflt;
+    };
+    const len3 = (m) => {
+      const p = m.pts3 && m.pts3.length > 1 ? m.pts3 : m.pts;
+      let l = 0;
+      for (let i = 1; i < p.length; i++) l += Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1], (p[i][2] || 0) - (p[i - 1][2] || 0));
+      return l;
+    };
+    const t = { cut: 0, rapid: 0, change: 0, drill: 0, load: o.load > 0 ? o.load : 0 };
+    for (const m of moves) {
+      if (m.op < 0 && m.type === 'rapid') { t.rapid += len3(m) / vRapid; continue; } // zur Parkposition
+      if (m.change) { t.change += o.change; t.rapid += len3(m) / vRapid; continue; }
+      if (m.type === 'rapid') { t.rapid += len3(m) / vRapid + o.perRapid; continue; }
+      if (m.type === 'plunge') { t.drill += (2 * (m.z || 0)) / mms(tv(m, 'descent', 2)) + o.perDrill; continue; }
+      const l = len3(m);
+      if (m.tool === 'Bohrer') { t.drill += l / mms(tv(m, 'descent', 2)) + o.perDrill; continue; } // Kanten-/Schrägbohrung
+      const op = ops[m.op];
+      // Zustellung: mehrere Durchgänge (gleichsinnig: Rückweg im Eilgang), letzte Zustellung extra
+      let passes = 1;
+      if (op && op.step > 0 && op.depth > op.step) passes = Math.ceil(op.depth / op.step - 1e-9);
+      t.cut += (passes * l) / mms(tv(m, 'feed', 5));
+      if (passes > 1) t.rapid += ((passes - 1) * l) / vRapid;
+    }
+    const f = o.factor > 0 ? o.factor : 1;
+    const machine = (t.cut + t.rapid + t.change + t.drill) * f;
+    return { total: machine + t.load, machine: machine, cut: t.cut * f, rapid: t.rapid * f, change: t.change * f, drill: t.drill * f, load: t.load };
+  }
+
+  // Zeit lesbar: 3:40 min, 1:05 h
+  function fmtTime(sec) {
+    const s = Math.max(0, Math.round(sec));
+    if (s >= 3600) { const h = Math.floor(s / 3600); const mi = Math.round((s - h * 3600) / 60); return h + ':' + String(mi).padStart(2, '0') + ' h'; }
+    return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') + ' min';
+  }
+
+  return { build: build, samplePoly: samplePoly, offsetPath: offsetPath, estimate: estimate, fmtTime: fmtTime };
 });

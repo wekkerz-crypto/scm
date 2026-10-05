@@ -181,7 +181,36 @@ zusammengebaut, so wie sie im Modell stehen (OpenCascade, three.js – offline, 
   nach außen versetzt, auch beim Drehen, in der Explosion und nach dem Wechsel zu den Programmen. Richtung wählbar:
   *Direkt* (Abstand der Punkte) oder nur *X*, *Y*, *Z*. Rechts die Liste **Maße** (Wert, Bauteile, ✕ löschen,
   *Alle löschen*); Entf löscht das letzte Maß. Maße an ausgeblendeten Bauteilen werden nicht gezeigt. Nach dem
-  Neuladen der Seite sind die Maße weg.
+  Neuladen der Seite bleiben die Maße erhalten (auch in der Projektdatei).
+
+- **Schnittebene:** *Schnitt* X / Y / Z, Regler für die Lage, ⇄ zeigt die andere Seite – Falze, Nuten und Verbindungen von
+  innen ansehen; der Rahmen zeigt die Ebene.
+- **Explosion abspielen** (▶): Teile fahren weich auseinander bzw. wieder zusammen.
+- **Bild** speichert die Ansicht als PNG (mit Nummern, Maßen, Messung); **Drucken / PDF**: Ansicht, Maße und Stückliste auf A4
+  quer (im Druckdialog „Als PDF speichern“).
+
+### Listen: Stückliste, Zuschnittplan, Zeit
+
+Dritte Seite oben (**Listen**):
+- **Stückliste:** alle Teile mit Anzahl, Bezeichnung, L × B × D, Material/Kanten (Plattenfarbe), Zuschnittmaß (roh, mit
+  Rohteil-Aufmaß), Fläche, geschätzter Zeit und Programmname. *Gleiche Teile zusammenfassen* (gleiche Maße, Farbe und
+  gleiches Programm). **Anzahl** je Position änderbar (wird mit der Teileliste bzw. im Projekt gespeichert). Summen: Teile,
+  m² je Material und Dicke, Bearbeitungszeit gesamt. **CSV / Excel** (Semikolon, deutsche Kommazahlen) und **Drucken / PDF**.
+- **Zuschnittplan:** Teile auf Rohplatten (Format, Schnittfuge, Besäumrand einstellbar) je Material und Dicke, mit
+  durchgehenden Schnitten wie an der Plattensäge; mit Maserung bleibt die lange Seite längs der Plattenlänge, Dekore werden
+  bei Bedarf gedreht. Rohmaß oder Fertigmaß wählbar. Zeichnung je Platte mit Nummer und Maß, Ausnutzung; Drucken / PDF.
+- **Bearbeitungszeit** (geschätzt) steht auch an jeder Teilekarte und oben im Teil (Tooltip: Fräsen, Bohren, Eilgang,
+  Werkzeugwechsel, Auflegen). Aus Bahnlänge ÷ Vorschub (Werkzeugdatei bzw. eigene Schnittwerte), Zustellungen, Bohrungen,
+  Eilgang und Werkzeugwechsel; Werte unter Einstellungen → *Zeitschätzung*. Mit dem **Korrekturfaktor** an die echte
+  Maschinenzeit anpassen (gemessene ÷ geschätzte Zeit an 2–3 Teilen).
+
+### Projektdatei (.s2m)
+
+**Projekt speichern** (links in der Teileliste) schreibt eine Datei mit allen STEP/DXF-Dateien, allen Änderungen je Teil
+(Drehung, Feld, Werkzeuge, Reihenfolge, Profil …), Plattenfarben, Anzahl und den Maßen aus Möbel 3D. **Projekt öffnen …**
+(oder die .s2m auf die Seite ziehen) ersetzt die Teileliste – so geht ein Auftrag auf einem anderen PC weiter oder später
+wieder auf. Die Einstellungen (Werkzeuge, Sauger …) bleiben die des jeweiligen Rechners. Auch die Maße aus *Bemaßen* bleiben
+jetzt nach dem Neuladen erhalten.
 
 ## Was erkannt wird
 

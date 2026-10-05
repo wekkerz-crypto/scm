@@ -44,6 +44,7 @@
     r.toneMappingExposure = 0.92;
     r.shadowMap.enabled = true;
     r.shadowMap.type = THREE.PCFSoftShadowMap;
+    r.localClippingEnabled = true; // Schnittebene
     host.appendChild(r.domElement);
     this.renderer = r;
     this.scene = new THREE.Scene();
@@ -242,6 +243,7 @@
       p.edges.updateMatrixWorld();
     }
     this.groundFor(this.worldBox());
+    if (this.section) this.setSection(this.section.axis, this.section.t, this.section.flip); // Schnitt im neuen Hüllquader
     if (this.measurePts.length) this.drawMeasure();
     this.drawDims();
     if (!noView) this.setHover(null);
@@ -293,7 +295,106 @@
       }
       p.obj.renderOrder = a < 0.999 ? 1 : 0;
       p.edges.material.opacity = Math.max(0.15, 0.8 * a);
+      // Schnittebene an allen Materialien des Teils
+      const planes = this.clipPlanes || [];
+      for (const m of mats(p.obj).concat([p.edges.material])) {
+        if ((m.clippingPlanes || []).length !== planes.length) m.needsUpdate = true;
+        m.clippingPlanes = planes;
+        m.clipShadows = true;
+      }
     }
+  };
+
+  /*
+   * Schnittebene: axis 'x' | 'y' | 'z' | null, t = Lage 0…1 im Hüllquader (wie angezeigt), flip = andere Seite zeigen.
+   * Gezeigt wird ohne flip die Seite mit kleineren Koordinaten (links, vorne, unten); dazu ein Rahmen in der Schnittebene.
+   */
+  Viewer.prototype.setSection = function (axis, t, flip) {
+    const T = this.THREE;
+    this.section = axis ? { axis: axis, t: t, flip: !!flip } : null;
+    if (this.secFrame) { this.scene.remove(this.secFrame); this.secFrame.geometry.dispose(); this.secFrame.material.dispose(); this.secFrame = null; }
+    this.clipPlanes = [];
+    const b = this.worldBox();
+    if (this.section && !b.isEmpty()) {
+      const k = { x: 0, y: 1, z: 2 }[axis];
+      const lo = b.min.getComponent(k);
+      const hi = b.max.getComponent(k);
+      const pos = lo + (hi - lo) * Math.max(0, Math.min(1, t));
+      const n = new T.Vector3();
+      n.setComponent(k, flip ? 1 : -1);
+      this.clipPlanes = [new T.Plane(n, flip ? -pos : pos)];
+      // Rahmen der Schnittebene (etwas größer als das Möbel)
+      const pad = b.getSize(new T.Vector3()).length() * 0.04;
+      const o = [0, 1, 2].filter((i) => i !== k);
+      const pts = [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]].map(([u, v]) => {
+        const q = new T.Vector3();
+        q.setComponent(k, pos);
+        q.setComponent(o[0], (u ? b.max : b.min).getComponent(o[0]) + (u ? pad : -pad));
+        q.setComponent(o[1], (v ? b.max : b.min).getComponent(o[1]) + (v ? pad : -pad));
+        return q;
+      });
+      this.secFrame = new T.Line(new T.BufferGeometry().setFromPoints(pts), new T.LineDashedMaterial({ color: this.dark ? 0xff9a6b : 0xd2451e, dashSize: pad, gapSize: pad / 2 }));
+      this.secFrame.computeLineDistances();
+      this.scene.add(this.secFrame);
+    }
+    this.applyLook();
+  };
+
+  /*
+   * Bild der Ansicht (PNG-Leinwand) mit Nummern, Maßen und Messung – wie gerade auf dem Bildschirm (Thema, Transparenz, Schnitt).
+   */
+  Viewer.prototype.snapshot = function () {
+    this.resize();
+    this.controls.update();
+    this.renderer.render(this.scene, this.camera);
+    this.placeLabels();
+    const src = this.renderer.domElement;
+    const cv = document.createElement('canvas');
+    cv.width = src.width;
+    cv.height = src.height;
+    const c = cv.getContext('2d');
+    c.drawImage(src, 0, 0);
+    const k = src.width / (this._w || src.width);
+    c.scale(k, k);
+    // Maßlinien (SVG-Pfade) nachzeichnen
+    if (this.dimSvg && this.dimSvg.firstChild) {
+      const col = getComputedStyle(this.dimSvg).getPropertyValue('--dimc').trim() || '#1f5fbf';
+      for (const el of this.dimSvg.querySelectorAll('path')) {
+        const p = new Path2D(el.getAttribute('d') || '');
+        if (el.classList.contains('arr')) { c.fillStyle = col; c.fill(p); } else {
+          c.strokeStyle = col;
+          c.globalAlpha = el.classList.contains('ext') ? 0.7 : 1;
+          c.lineWidth = el.classList.contains('ext') ? 1 : 1.6;
+          c.stroke(p);
+          c.globalAlpha = 1;
+        }
+      }
+    }
+    // Schilder (Nummern, Maße, Messwerte) mit ihren Bildschirm-Farben
+    const host = this.host.getBoundingClientRect();
+    for (const el of this.labelEl.querySelectorAll('.mlab')) {
+      if (el.style.display === 'none' || !el.offsetWidth) continue;
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      const x = r.left - host.left;
+      const y = r.top - host.top;
+      const rad = Math.min(r.height / 2, r.width / 2);
+      c.beginPath();
+      if (c.roundRect) c.roundRect(x, y, r.width, r.height, rad); else c.rect(x, y, r.width, r.height);
+      c.fillStyle = cs.backgroundColor;
+      c.fill();
+      c.lineWidth = parseFloat(cs.borderTopWidth) || 1;
+      c.strokeStyle = cs.borderTopColor;
+      c.stroke();
+      if (el.textContent) {
+        c.fillStyle = cs.color;
+        c.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.fillText(el.textContent, x + r.width / 2, y + r.height / 2 + 0.5);
+      }
+    }
+    return cv;
   };
 
   Viewer.prototype.view = function (which, onlyNum) {
@@ -596,7 +697,12 @@
   Viewer.prototype.clearDims = function () { this.dims = []; this.drawDims(); if (this.onDims) this.onDims(this.dims); };
   // Maße nach neuem Laden der Bauteile wieder setzen (nur wenn Nummer und Name noch passen)
   Viewer.prototype.setDims = function (list) {
-    this.dims = (list || []).filter((d) => { const pa = this.part(d.a.num); const pb = this.part(d.b.num); return pa && pb && pa.name === d.a.name && pb.name === d.b.name; });
+    const T = this.THREE;
+    // gespeicherte Maße (Projekt, Sitzung): Punkte als Zahlenlisten → Vektoren
+    const pt = (q) => (Array.isArray(q.local) ? Object.assign({}, q, { local: new T.Vector3().fromArray(q.local),
+      normal: Array.isArray(q.normal) ? new T.Vector3().fromArray(q.normal) : null }) : q);
+    list = (list || []).map((d) => (Array.isArray(d.a.local) ? Object.assign({}, d, { id: ++dimSeq, a: pt(d.a), b: pt(d.b) }) : d));
+    this.dims = list.filter((d) => { const pa = this.part(d.a.num); const pb = this.part(d.b.num); return pa && pb && pa.name === d.a.name && pb.name === d.b.name; });
     this.drawDims();
     if (this.onDims) this.onDims(this.dims);
   };
@@ -604,6 +710,11 @@
    * Maße zeichnen wie in einer Zeichnung: Maßlinie nach außen versetzt (weg von der Mitte der Baugruppe), Hilfslinien
    * von den Punkten, Pfeile – als SVG über der Ansicht (feste Strichstärke), je Bild neu projiziert (drawDimSvg).
    */
+  // Maße zum Speichern (nur Zahlen)
+  Viewer.prototype.exportDims = function () {
+    const pt = (q) => ({ num: q.num, name: q.name, kind: q.kind, local: q.local.toArray(), normal: q.normal ? q.normal.toArray() : null });
+    return this.dims.map((d) => ({ axis: d.axis, value: d.value, a: pt(d.a), b: pt(d.b) }));
+  };
   Viewer.prototype.drawDims = function () {
     const T = this.THREE;
     for (const m of this.dimLabels) m.el.remove();

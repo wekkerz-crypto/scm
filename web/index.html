@@ -142,6 +142,9 @@ header.top { padding: 6px 0 4px; }
 .parts .head .tools { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .parts .head .tools .btn { white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding-inline: 6px; }
 .parts .head .tools #clear { grid-column: 1 / -1; color: var(--muted); }
+.parts .head .projrow { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.parts .head .projrow .pl { font-size: 0.78rem; color: var(--muted); margin-right: auto; }
+.parts .head .projrow .btn { flex: 0 1 auto; }
 .parts .empty { padding: 10px 4px; text-align: left; font-size: 0.88rem; color: var(--muted); }
 .part { position: relative; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; transition: border-color .15s, box-shadow .15s; }
 .part:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
@@ -229,7 +232,7 @@ table.ops td.k .jump:hover { color: var(--accent); }
 .view canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 /* Seiten: Programme (STEP → PGMX) / Möbel 3D */
 /* Seitenwahl oben: zwei große Schalter (Symbol, Name, Erklärung, Anzahl) – der aktive gefüllt in der Akzentfarbe */
-.pagetabs { display: grid; grid-template-columns: repeat(2, minmax(0, 330px)); gap: 6px; padding: 5px; margin: 4px 0 8px; width: fit-content; max-width: 100%;
+.pagetabs { display: grid; grid-template-columns: repeat(3, minmax(0, 300px)); gap: 6px; padding: 5px; margin: 4px 0 8px; width: fit-content; max-width: 100%;
   background: var(--sunken); border: 1px solid var(--line); border-radius: 14px; }
 .pagetabs button { display: flex; align-items: center; gap: 12px; text-align: left; border: 1px solid transparent; background: none; color: var(--muted);
   font: inherit; padding: 9px 14px; border-radius: 10px; cursor: pointer; min-width: 0; transition: background .15s, color .15s; }
@@ -243,19 +246,69 @@ table.ops td.k .jump:hover { color: var(--accent); }
 .pagetabs .ptn:empty { display: none; }
 .pagetabs button[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); box-shadow: 0 1px 4px rgba(0,0,0,0.18); }
 .pagetabs button[aria-selected="true"] .ptn { background: var(--accent-ink); color: var(--accent); border-color: transparent; }
-@media (max-width: 640px) { .pagetabs { width: 100%; grid-template-columns: 1fr 1fr; } .pagetabs button { gap: 8px; padding: 8px 10px; }
+@media (max-width: 640px) { .pagetabs { width: 100%; grid-template-columns: 1fr 1fr 1fr; } .pagetabs button { gap: 8px; padding: 8px 10px; }
   .pagetabs .ptt small, .pagetabs .ptn { display: none; } .pagetabs .ptt b { font-size: 1rem; white-space: nowrap; } .pagetabs .pti { width: 22px; height: 22px; } }
-body[data-page="model"] .profilebar, body[data-page="model"] .bench, body[data-page="model"] details.settings { display: none; }
+body[data-page="model"] .profilebar, body[data-page="model"] .bench, body[data-page="model"] details.settings,
+body[data-page="lists"] .profilebar, body[data-page="lists"] .bench, body[data-page="lists"] details.settings { display: none; }
+/* Listen: Stückliste und Zuschnittplan */
+.lbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 12px; }
+.lbar .sp { flex: 1; }
+.lbar label { display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; color: var(--muted); }
+.lbar input[type="number"] { width: 5.5em; font-family: var(--font-mono); font-size: 0.85rem; color: var(--ink); padding: 3px 6px; }
+.tblwrap { overflow-x: auto; }
+table.bom { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+table.bom th { text-align: left; font-size: 0.78rem; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1.5px solid var(--line); white-space: nowrap; }
+table.bom td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.bom .r { text-align: right; font-family: var(--font-mono); white-space: nowrap; }
+table.bom .no { font-family: var(--font-mono); color: var(--muted); }
+table.bom .sub { font-size: 0.75rem; color: var(--muted); }
+table.bom .files { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); }
+table.bom input[type=number] { width: 4.2em; text-align: right; }
+.bomsum { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-top: 12px; font-size: 0.9rem; }
+.bomsum small { color: var(--muted); }
+.cutgrp { margin-bottom: 18px; }
+.cutgrp h3 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 1rem; margin: 6px 0 8px; text-transform: none; letter-spacing: 0.01em; color: var(--ink); }
+.cutgrp h3 small { font-weight: 400; color: var(--muted); font-size: 0.82rem; }
+.cutgrp .warn { color: var(--warn); }
+.sheetfig { display: inline-block; margin: 0 14px 14px 0; vertical-align: top; max-width: 100%; }
+.sheetfig figcaption { font-size: 0.8rem; color: var(--muted); margin-bottom: 4px; }
+svg.sheet { max-width: 100%; height: auto; display: block; }
+svg.sheet .sh { fill: var(--sunken); stroke: var(--line); stroke-width: 4; }
+svg.sheet .trim { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 12 10; }
+svg.sheet .pt { fill: var(--board); stroke: var(--board-edge); stroke-width: 4; }
+svg.sheet .pl { fill: var(--ink); text-anchor: middle; dominant-baseline: middle; font-family: var(--font-mono); font-weight: 600; }
+svg.sheet .pn { fill: var(--muted); text-anchor: middle; dominant-baseline: middle; font-family: var(--font-body); }
+#printarea .a4 { font: 10pt/1.35 var(--font-body); color: #000; }
+#printarea .a4 h1 { font-size: 16pt; margin: 0 0 2mm; }
+#printarea .a4 .meta { color: #333; margin: 0 0 4mm; }
+#printarea .a4 table { width: 100%; border-collapse: collapse; }
+#printarea .a4 th, #printarea .a4 td { border-bottom: 0.3mm solid #999; padding: 1.2mm 1.5mm; text-align: left; vertical-align: top; }
+#printarea .a4 { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+#printarea .a4 .sheetfig { break-inside: avoid; display: block; margin: 0 0 4mm; }
+#printarea .a4 svg.sheet { width: auto; max-width: 100%; max-height: 120mm; }
+#printarea .a4 .cutgrp h3 { break-after: avoid; }
+#printarea .a4 svg.sheet .sh { fill: #fff; stroke: #000; }
+#printarea .a4 svg.sheet .pt { fill: #eee; stroke: #000; }
+#printarea .a4 svg.sheet .pl, #printarea .a4 svg.sheet .pn { fill: #000; }
+#printarea .a4 img { max-width: 100%; max-height: 150mm; display: block; margin: 0 auto 4mm; }
+#printarea .a4 h2.ph { font-size: 12pt; margin: 2mm 0 1mm; }
+#printarea .a4 .pbreak { break-after: page; page-break-after: always; }
 .modelpage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); gap: 16px; align-items: start; }
 @media (max-width: 1000px) { .modelpage { grid-template-columns: minmax(0, 1fr); } }
 .mview { display: grid; gap: 8px; }
-.mbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.mbar { display: grid; gap: 8px; }
+.mrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.mrow .sp { flex: 1; }
+.msep { width: 1px; align-self: stretch; background: var(--line); }
 .v3bar.static { position: static; }
 .mopac, .mchk { display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; color: var(--muted); }
-.mopac input { width: 120px; accent-color: var(--accent); }
+.mopac input { width: 96px; accent-color: var(--accent); }
+.mopac input#msecpos { width: 100px; }
+.iconbtn { min-width: 30px; padding-inline: 6px; }
+[data-msec][aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .mopac > span { font-family: var(--font-mono); font-size: 0.78rem; min-width: 3em; }
 #mmeasure[aria-pressed="true"], #mdim[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-.mhost { position: relative; height: max(420px, calc(100vh - 260px)); border-radius: var(--r); overflow: hidden; background: var(--sunken); }
+.mhost { position: relative; height: max(420px, calc(100vh - 310px)); border-radius: var(--r); overflow: hidden; background: var(--sunken); }
 .mhost canvas { display: block; }
 .mlabelwrap { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; }
 .mlab { position: absolute; left: 0; top: 0; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 99px; display: grid; place-items: center;
@@ -597,21 +650,52 @@ table.fmt.one .onet { display: inline; }
   </header>
 
   <nav class="pagetabs" role="tablist" aria-label="Ansicht">
-    <button type="button" role="tab" data-page="pgmx" aria-selected="true"><svg class="pti" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M9.5 12.5 7.5 15l2 2.5M14.5 12.5l2 2.5-2 2.5"/></svg><span class="ptt"><b>Programme</b><small>Teile prüfen, .xcs / .pgmx</small></span><span class="ptn" id="ptn-pgmx"></span></button>
-    <button type="button" role="tab" data-page="model" aria-selected="false"><svg class="pti" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 20.5 7v10L12 21.5 3.5 17V7z"/><path d="M12 21.5V12M20.5 7 12 12 3.5 7"/></svg><span class="ptt"><b>Möbel 3D</b><small>ganzes Möbel, messen, bemaßen</small></span><span class="ptn" id="ptn-model"></span></button>
+    <button type="button" role="tab" data-page="pgmx" aria-selected="true"><svg class="pti" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M9.5 12.5 7.5 15l2 2.5M14.5 12.5l2 2.5-2 2.5"/></svg><span class="ptt"><b>Programme</b><small>Teile prüfen, .xcs/.pgmx</small></span><span class="ptn" id="ptn-pgmx"></span></button>
+    <button type="button" role="tab" data-page="model" aria-selected="false"><svg class="pti" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 20.5 7v10L12 21.5 3.5 17V7z"/><path d="M12 21.5V12M20.5 7 12 12 3.5 7"/></svg><span class="ptt"><b>Möbel 3D</b><small>ansehen, messen, bemaßen</small></span><span class="ptn" id="ptn-model"></span></button>
+    <button type="button" role="tab" data-page="lists" aria-selected="false"><svg class="pti" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span class="ptt"><b>Listen</b><small>Stückliste, Zuschnitt, Zeit</small></span><span class="ptn" id="ptn-lists"></span></button>
   </nav>
+
+  <section class="card listpage" id="listpage" hidden>
+    <div class="lbar">
+      <span class="seg" role="group" aria-label="Liste"><button type="button" data-ltab="bom" aria-pressed="true">Stückliste</button><button type="button" data-ltab="cut" aria-pressed="false">Zuschnittplan</button></span>
+      <span id="bomopts"><label><input type="checkbox" id="lgroup"> Gleiche Teile zusammenfassen</label></span>
+      <span id="cutopts" hidden>
+        <label>Platte <input type="number" id="csheetL" min="100" step="1" aria-label="Plattenlänge"> × <input type="number" id="csheetW" min="100" step="1" aria-label="Plattenbreite"> mm</label>
+        <label>Schnittfuge <input type="number" id="ckerf" min="0" step="0.1"> mm</label>
+        <label>Besäumen <input type="number" id="ctrim" min="0" step="1"> mm</label>
+        <label><input type="checkbox" id="craw"> Rohmaß (mit Aufmaß)</label>
+        <label><input type="checkbox" id="cgrain"> Maserung beachten</label>
+      </span>
+      <span class="sp"></span>
+      <button type="button" class="btn small" id="lcsv">CSV / Excel</button>
+      <button type="button" class="btn small" id="lprintbtn">Drucken / PDF</button>
+    </div>
+    <div id="bomview"></div>
+    <div id="cutview" hidden><div id="cutsheets"></div>
+      <p class="note">Durchgehende Schnitte wie an der Plattensäge; Teile mit Maserung bleiben mit der langen Seite längs der Plattenlänge, Dekore ohne Maserung werden bei Bedarf gedreht. Material und Kanten wie in „Möbel 3D“ (Plattenfarbe).</p></div>
+  </section>
 
   <section class="modelpage" id="modelpage" hidden>
     <div class="card mview">
       <div class="mbar">
-        <span class="v3bar static" role="group" aria-label="Ansicht"><button type="button" data-mview="iso">Iso</button><button type="button" data-mview="top">Oben</button><button type="button" data-mview="front">Vorne</button><button type="button" data-mview="right">Rechts</button><button type="button" data-mview="fit" title="Alles einpassen (bzw. gewähltes Bauteil)">Einpassen</button></span>
-        <label class="mopac" title="Transparenz der Bauteile (das gewählte bleibt deckend)">Transparenz <input type="range" id="mopac" autocomplete="off" min="0" max="85" step="5" value="0"> <span id="mopacv">0 %</span></label>
-        <label class="mopac" title="Explosionsansicht: Bauteile auseinanderziehen (Maße bleiben wie zusammengebaut)">Explosion <input type="range" id="mexpl" autocomplete="off" min="0" max="100" step="5" value="0"> <span id="mexplv">0 %</span></label>
-        <label class="mchk"><input type="checkbox" id="mlabels" autocomplete="off" checked> Nummern</label>
-        <span class="mopac">Platten <button type="button" class="btn small boardbtn" id="mboard" title="Plattenfarbe für alle Bauteile (je Bauteil: Farbfeld in der Liste)"></button></span>
-        <button type="button" class="btn small" id="mmeasure" aria-pressed="false" title="Zwei Punkte anklicken – Fang auf Endpunkt, Mitte, Kreismitte, Kante, Fläche; Alt = ohne Fang; Esc beendet">📏 Messen</button>
-        <button type="button" class="btn small" id="mdim" aria-pressed="false" title="Maße setzen, die stehen bleiben: zwei Punkte anklicken (mit Fang); Entf löscht das letzte; Esc beendet">📐 Bemaßen</button>
-        <span class="v3bar static" id="mdimaxis" role="group" aria-label="Maßrichtung" hidden><button type="button" data-dimaxis="aligned" aria-pressed="true" title="Direkter Abstand der Punkte">Direkt</button><button type="button" data-dimaxis="x" aria-pressed="false" title="Abstand in X">X</button><button type="button" data-dimaxis="y" aria-pressed="false" title="Abstand in Y">Y</button><button type="button" data-dimaxis="z" aria-pressed="false" title="Abstand in Z (Höhe)">Z</button></span>
+        <div class="mrow">
+          <span class="v3bar static" role="group" aria-label="Ansicht"><button type="button" data-mview="iso">Iso</button><button type="button" data-mview="top">Oben</button><button type="button" data-mview="front">Vorne</button><button type="button" data-mview="right">Rechts</button><button type="button" data-mview="fit" title="Alles einpassen (bzw. gewähltes Bauteil)">Einpassen</button></span>
+          <label class="mopac" title="Transparenz der Bauteile (das gewählte bleibt deckend)">Transparenz <input type="range" id="mopac" autocomplete="off" min="0" max="85" step="5" value="0"> <span id="mopacv">0 %</span></label>
+          <label class="mopac" title="Explosionsansicht: Bauteile auseinanderziehen (Maße bleiben wie zusammengebaut)">Explosion <input type="range" id="mexpl" autocomplete="off" min="0" max="100" step="5" value="0"> <span id="mexplv">0 %</span></label><button type="button" class="btn small iconbtn" id="mexplplay" title="Explosion abspielen (auseinander bzw. zusammen)" aria-label="Explosion abspielen">▶</button>
+          <label class="mchk"><input type="checkbox" id="mlabels" autocomplete="off" checked> Nummern</label>
+        </div>
+        <div class="mrow">
+          <span class="mopac">Platten <button type="button" class="btn small boardbtn" id="mboard" title="Plattenfarbe für alle Bauteile (je Bauteil: Farbfeld in der Liste)"></button></span>
+          <span class="mopac msec">Schnitt <span class="v3bar static" role="group" aria-label="Schnittebene"><button type="button" data-msec="" aria-pressed="true">aus</button><button type="button" data-msec="x" aria-pressed="false" title="Schnitt quer zur Breite (X)">X</button><button type="button" data-msec="y" aria-pressed="false" title="Schnitt quer zur Tiefe (Y)">Y</button><button type="button" data-msec="z" aria-pressed="false" title="Schnitt waagerecht (Höhe Z)">Z</button></span>
+          <input type="range" id="msecpos" autocomplete="off" min="0" max="100" step="1" value="50" aria-label="Lage der Schnittebene" disabled><button type="button" class="btn small iconbtn" id="msecflip" title="Andere Seite zeigen" aria-label="Andere Seite zeigen" disabled>⇄</button></span>
+          <span class="msep" aria-hidden="true"></span>
+          <button type="button" class="btn small" id="mmeasure" aria-pressed="false" title="Zwei Punkte anklicken – Fang auf Endpunkt, Mitte, Kreismitte, Kante, Fläche; Alt = ohne Fang; Esc beendet">📏 Messen</button>
+          <button type="button" class="btn small" id="mdim" aria-pressed="false" title="Maße setzen, die stehen bleiben: zwei Punkte anklicken (mit Fang); Entf löscht das letzte; Esc beendet">📐 Bemaßen</button>
+          <span class="v3bar static" id="mdimaxis" role="group" aria-label="Maßrichtung" hidden><button type="button" data-dimaxis="aligned" aria-pressed="true" title="Direkter Abstand der Punkte">Direkt</button><button type="button" data-dimaxis="x" aria-pressed="false" title="Abstand in X">X</button><button type="button" data-dimaxis="y" aria-pressed="false" title="Abstand in Y">Y</button><button type="button" data-dimaxis="z" aria-pressed="false" title="Abstand in Z (Höhe)">Z</button></span>
+          <span class="sp"></span>
+          <button type="button" class="btn small" id="msnap" title="Bild der Ansicht mit Nummern und Maßen als PNG speichern">Bild</button>
+          <button type="button" class="btn small" id="mprint" title="Ansicht mit Stückliste und Maßen drucken bzw. als PDF speichern">Drucken / PDF</button>
+        </div>
       </div>
       <div class="mhost" id="mhost"><div class="mlabelwrap" id="mlabelwrap"></div><div class="v3msg" id="mmsg">3D-Ansicht wird geladen …</div></div>
       <div class="mhud" id="mhud">Linke Maustaste: drehen · rechte Maustaste/Shift: verschieben · Mausrad: zoomen · Klick: Bauteil wählen</div>
@@ -626,7 +710,7 @@ table.fmt.one .onet { display: inline; }
     </aside>
   </section>
 
-  <input id="file" type="file" accept=".step,.stp,.dxf,.STEP,.STP,.DXF" multiple hidden>
+  <input id="file" type="file" accept=".step,.stp,.dxf,.s2m,.STEP,.STP,.DXF,.S2M" multiple hidden>
   <div class="dropover" id="dropover" hidden>STEP- oder DXF-Dateien hier ablegen</div>
 
   <section class="bench">
@@ -684,6 +768,7 @@ table.fmt.one .onet { display: inline; }
 <script src="js/sample.js"></script>
 <script src="js/surface.js"></script>
 <script src="js/model3d.js"></script>
+<script src="js/cutplan.js"></script>
 <script src="js/occtmesh.js"></script>
 <script src="js/view3d.js"></script>
 <script>
@@ -806,6 +891,13 @@ table.fmt.one .onet { display: inline; }
       ['cupsPerBar', 'Sauger je Konsole höchstens', 'number', 'Stück'],
       ['cupEdgeMargin', 'Abstand zur Plattenkante', 'number', 'mm'],
       ['cupHoleMargin', 'Abstand zu Durchbrüchen/Bohrungen', 'number', 'mm']] },
+    { title: 'Zeitschätzung', c: '--muted', fields: [
+      ['estRapid', 'Eilgang', 'number', 'm/min'],
+      ['estChange', 'Werkzeugwechsel', 'number', 's'],
+      ['estPerRapid', 'je Anfahrt (heben, senken)', 'number', 's'],
+      ['estPerDrill', 'je Bohrung zusätzlich', 'number', 's'],
+      ['estLoad', 'Auflegen und Abnehmen je Teil', 'number', 's'],
+      ['estFactor', 'Korrekturfaktor (gemessen ÷ geschätzt)', 'number', '× · 1 = ohne']] },
     { title: 'Programmkopf', c: '--muted', fields: [
       ['commentOn', 'Kommentar und Beschreibung (Teil, Maße)', 'bool'],
       ['optimizeOn', 'Maestro optimiert beim Laden (SetOptimization)', 'bool'],
@@ -1174,7 +1266,9 @@ table.fmt.one .onet { display: inline; }
       sel: state.sel,
       files: Array.from(srcFiles).filter(([id]) => used.has(id)).map(([id, f]) => ({ id: id, label: f.label, kind: f.kind, text: f.text })),
       parts: parts.map((p) => ({ file: p.src.file, idx: p.src.idx, label: p.label, name: p.solid.name, orientation: p.orientation, field: p.field,
-        fileName: p.fileName, side: p.side, profile: p.profile, board: p.board || null, overrides: p.overrides, overrides2: p.overrides2 })),
+        fileName: p.fileName, side: p.side, profile: p.profile, board: p.board || null, qty: p.qty === undefined ? 1 : p.qty, overrides: p.overrides, overrides2: p.overrides2 })),
+      // Maße aus „Möbel 3D“ (Bemaßen)
+      dims: typeof mdl !== 'undefined' ? (mdl.viewer ? mdl.viewer.exportDims() : mdl.dimsSaved || []) : [],
     };
   }
   function writeSession() {
@@ -1194,6 +1288,12 @@ table.fmt.one .onet { display: inline; }
     let data = null;
     try { data = await idbGet(SESSION_KEY); } catch (e) { data = null; }
     if (!data || data.v !== 1) return false;
+    restoreFrom(data);
+    return true;
+  }
+  // Teile (mit allen Änderungen) aus gespeicherten Daten anhängen – Sitzung oder Projektdatei
+  function restoreFrom(data) {
+    const first = state.parts.length;
     const files = new Map((data.files || []).map((f) => [f.id, f]));
     const solidsOf = new Map();
     for (const sp of data.parts || []) {
@@ -1212,14 +1312,40 @@ table.fmt.one .onet { display: inline; }
         solid.name = sp.name;
       }
       const part = { label: sp.label || f.label, src: { file: fileId, idx: sp.idx }, solid: solid, orientation: sp.orientation || null,
-        field: sp.field || null, fileName: sp.fileName || null, result: null, side: sp.side || 1, profile: sp.profile === undefined ? null : sp.profile, board: sp.board || null,
+        field: sp.field || null, fileName: sp.fileName || null, result: null, side: sp.side || 1, profile: sp.profile === undefined ? null : sp.profile, board: sp.board || null, qty: sp.qty === undefined ? 1 : sp.qty,
         overrides: sp.overrides || { tools: {}, steps: {}, depths: {} }, overrides2: sp.overrides2 || { tools: {}, steps: {}, depths: {} } };
       if (f.kind === 'dxf') part.dxfText = f.text; else part.stepText = f.text;
       try { compute(part); } catch (e) { continue; }
       state.parts.push(part);
     }
-    state.sel = Math.max(0, Math.min(data.sel || 0, state.parts.length - 1));
-    return true;
+    state.sel = Math.max(0, Math.min(first + (data.sel || 0), state.parts.length - 1));
+    if (typeof mdl !== 'undefined' && Array.isArray(data.dims) && data.dims.length) {
+      mdl.dimsSaved = data.dims;
+      mdl.key = null; // Möbel 3D neu aufbauen, dann Maße setzen
+    }
+  }
+
+  // ------------------------------------------------ Projektdatei (.s2m): Dateien, Teile mit allen Änderungen, Farben, Anzahl, Maße
+  const PROJECT_FORMAT = 'step2maestro-projekt';
+  function saveProject() {
+    if (!state.parts.length) { toast('Keine Teile vorhanden.'); return; }
+    const first = state.parts.find((p) => p.label);
+    const base = StepToXcs.partName(String(first ? first.label : 'Projekt').replace(/^Beispiel: /, '').replace(/^.*[\\/]/, '').replace(/\.(step|stp|dxf)$/i, ''));
+    const d = new Date();
+    const stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const data = { format: PROJECT_FORMAT, saved: d.toISOString(), session: JSON.parse(JSON.stringify(sessionData())) };
+    saveOne(base + '_' + stamp + '.s2m', JSON.stringify(data), 'application/json');
+  }
+  function openProject(text, name) {
+    let data;
+    try { data = JSON.parse(text); } catch (e) { toast(name + ': keine gültige Projektdatei.'); return; }
+    if (!data || data.format !== PROJECT_FORMAT || !data.session || data.session.v !== 1) { toast(name + ': keine Step2Maestro-Projektdatei.'); return; }
+    if (state.parts.length && !confirm('Projekt „' + name + '“ öffnen? Die aktuelle Teileliste wird ersetzt.')) return;
+    state.parts = [];
+    anim.result = null;
+    restoreFrom(data.session);
+    toast('Projekt geöffnet: ' + state.parts.length + ' Teile');
+    render();
   }
   function addStep(text, label) {
     let solids;
@@ -1385,8 +1511,10 @@ table.fmt.one .onet { display: inline; }
   }
 
   async function loadFiles(list) {
+    const proj = Array.from(list).find((f) => /\.s2m$/i.test(f.name));
+    if (proj) { openProject(await proj.text(), proj.name); return; }
     const files = Array.from(list).filter((f) => /\.(step|stp|dxf)$/i.test(f.name));
-    if (!files.length) { toast('Bitte .step-, .stp- oder .dxf-Dateien wählen.'); return; }
+    if (!files.length) { toast('Bitte .step-, .stp-, .dxf- oder .s2m-Dateien (Projekt) wählen.'); return; }
     const first = state.parts.length;
     for (const f of files) {
       if (/\.dxf$/i.test(f.name)) addDxf(await f.text(), f.name);
@@ -1547,10 +1675,14 @@ table.fmt.one .onet { display: inline; }
     const head = '<div class="head"><button class="btn primary" id="pick" type="button" title="STEP: ein Volumenkörper = ein Programm, Baugruppen werden zerlegt. DXF: größte Kontur = Teil, alles darin als Vorschlag">STEP/DXF wählen</button>' +
       (state.parts.length ? '<span class="tools"><button class="btn small" id="zipall" type="button" title="Alle Programme als ZIP mit konvertieren.bat">' + ICON_ZIP + ' Alle als ZIP</button>' +
         '<button class="btn small" id="labelall" type="button" title="Etiketten aller Teile drucken">' + ICON_PRINT + ' Etiketten</button>' +
-        '<button class="btn ghost small" id="clear" type="button" title="Alle Teile aus der Liste entfernen">' + ICON_TRASH + ' Liste leeren</button></span>' : '') + '</div>';
+        '<button class="btn ghost small" id="clear" type="button" title="Alle Teile aus der Liste entfernen">' + ICON_TRASH + ' Liste leeren</button></span>' : '') +
+      '<span class="projrow"><span class="pl">Projekt</span>' +
+      (state.parts.length ? '<button class="btn ghost small" id="projsave" type="button" title="Projekt als Datei (.s2m) speichern: STEP/DXF, alle Änderungen je Teil, Farben, Anzahl, Maße – auf einem anderen PC weiterarbeiten">Speichern</button>' : '') +
+      '<button class="btn ghost small" id="projopen" type="button" title="Gespeichertes Projekt (.s2m) öffnen – ersetzt die Teileliste">Öffnen …</button></span></div>';
     if (!state.parts.length) {
       el.innerHTML = head + '<div class="empty">Noch keine Teile – STEP- oder DXF-Dateien wählen oder auf die Seite ziehen.</div>';
       $('pick').addEventListener('click', openPicker);
+      $('projopen').addEventListener('click', openPicker);
       return;
     }
     el.innerHTML = head;
@@ -1569,6 +1701,7 @@ table.fmt.one .onet { display: inline; }
           (c.saw ? '<span class="chip ok">' + n(c.saw, 'Sägeschnitt', 'Sägeschnitte') + '</span>' : '') +
           '<span class="chip ok">' + n(c.mill, 'Fräsung', 'Fräsungen') + '</span>' +
           (r.side2 ? '<span class="chip ok">+ Seite 2: ' + r.side2.ops.length + '</span>' : '') +
+          ((tm) => tm ? '<span class="chip" title="' + esc(timeTitle(tm)) + '">≈ ' + Toolpath.fmtTime(tm.total) + '</span>' : '')(partTime(p)) +
           (p.profile !== null && p.profile !== undefined ? '<span class="chip prof">' + esc(profName(p.profile)) + '</span>' : '') +
           (r.warnings.length ? '<span class="chip warn">' + r.warnings.length + ' Hinweis' + (r.warnings.length > 1 ? 'e' : '') + '</span>' : '') + '</span>';
       } else {
@@ -1593,6 +1726,8 @@ table.fmt.one .onet { display: inline; }
     $('labelall').addEventListener('click', () => openLabels(state.parts));
     $('pick').addEventListener('click', openPicker);
     $('clear').addEventListener('click', () => { state.parts = []; state.sel = 0; anim.result = null; render(); });
+    $('projsave').addEventListener('click', saveProject);
+    $('projopen').addEventListener('click', openPicker);
   }
 
   function openPicker() { $('file').click(); }
@@ -1932,7 +2067,8 @@ table.fmt.one .onet { display: inline; }
       .concat((r.suppressed || []).length ? [['color-mix(in srgb, var(--err) 35%, transparent);border:1.5px dashed var(--err)', 'Gelöscht (unterdrückt)']] : []);
     el.innerHTML =
       '<div class="work"><div class="card stagecard" id="stagecard"><div class="dhead"><div class="title"><h2>' + esc(p.name) + '</h2><span class="dims">' + fmt(p.L) + ' × ' + fmt(p.W) + ' × ' +
-      fmt(p.T) + ' mm · ' + esc(part.label) + (part.profile !== null && part.profile !== undefined ? ' · <b>Profil ' + esc(profName(part.profile)) + '</b>' : '') + (part.res.side2 ? ' · <b>Seite ' + part.side + (part.side === 2 ? ' (um Y gewendet, ohne Rohteil-Versatz)' : ' (mit Formatfräsen)') + '</b>' : '') + '</span></div>' +
+      fmt(p.T) + ' mm · ' + esc(part.label) + (part.profile !== null && part.profile !== undefined ? ' · <b>Profil ' + esc(profName(part.profile)) + '</b>' : '') + (part.res.side2 ? ' · <b>Seite ' + part.side + (part.side === 2 ? ' (um Y gewendet, ohne Rohteil-Versatz)' : ' (mit Formatfräsen)') + '</b>' : '') +
+      ((tm) => tm ? ' · <span class="est" title="' + esc(timeTitle(tm)) + '">≈ ' + Toolpath.fmtTime(tm.total) + (tm.s2 ? ' (beide Seiten)' : '') + '</span>' : '')(partTime(part)) + '</span></div>' +
       '<div class="tools"><span class="seg" role="group" aria-label="Ansicht"><button type="button" data-vmode="2d" aria-pressed="' + !state.mode3d + '">2D</button>' +
       '<button type="button" data-vmode="3d" aria-pressed="' + !!state.mode3d + '">3D</button></span>' +
       (part.res.canTwoSided ? '<span class="seg" role="group" aria-label="Seiten"><button type="button" data-two="0" aria-pressed="' + !part.res.side2 +
@@ -2315,26 +2451,258 @@ table.fmt.one .onet { display: inline; }
       window.print();
     });
   }
-  // Drehung gleich merken (wie eine Einstellung, ohne die übrigen ungespeicherten Änderungen mitzuspeichern)
-  function render() { renderProfileBar(); renderParts(); renderDetail(); renderPageTabs(); if (state.page === 'model') renderModel(); saveSession(); }
+  // Geschätzte Bearbeitungszeit eines Teils (s): Seite 1 (+ Seite 2), am Ergebnis zwischengespeichert
+  function timeOfResult(r, ov) {
+    if (!r || !r.panel) return null;
+    if (r._est === undefined) {
+      try {
+        const info = ToolLibrary.infoMap(state.tools);
+        const st = state.settings;
+        r._est = Toolpath.estimate(Toolpath.build(r, info, st), r, info, { rapid: st.estRapid, change: st.estChange, perRapid: st.estPerRapid,
+          perDrill: st.estPerDrill, load: st.estLoad, factor: st.estFactor, tech: ov && ov.tech });
+      } catch (e) { r._est = null; }
+    }
+    return r._est;
+  }
+  function partTime(p) {
+    const r = p.res || p.result;
+    const a = timeOfResult(r, p.overrides);
+    if (!a) return null;
+    const b = r.side2 ? timeOfResult(r.side2, p.overrides2) : null;
+    return { total: a.total + (b ? b.total : 0), s1: a, s2: b };
+  }
+  // Tooltip: Aufteilung der geschätzten Zeit
+  function timeTitle(t) {
+    const one = (e) => 'Fräsen ' + Toolpath.fmtTime(e.cut) + ', Bohren ' + Toolpath.fmtTime(e.drill) + ', Eilgang ' + Toolpath.fmtTime(e.rapid) +
+      ', Werkzeugwechsel ' + Toolpath.fmtTime(e.change) + ', Auflegen ' + Toolpath.fmtTime(e.load);
+    return 'Geschätzte Bearbeitungszeit (Einstellungen → Zeitschätzung). ' + (t.s2 ? 'Seite 1: ' + one(t.s1) + ' · Seite 2: ' + one(t.s2) : one(t.s1));
+  }
+
+  function render() { renderProfileBar(); renderParts(); renderDetail(); renderPageTabs(); if (state.page === 'model') renderModel(); if (state.page === 'lists') renderLists(); saveSession(); }
   // Anzahl auf den Seiten-Schaltern: Programme = alle Teile, Möbel 3D = Teile mit STEP-Modell
   function renderPageTabs() {
     $('ptn-pgmx').textContent = state.parts.length || '';
     $('ptn-model').textContent = state.parts.filter((p) => p.solid && p.stepText).length || '';
     $('ptn-pgmx').title = state.parts.length + ' Teile';
+    const q = state.parts.reduce((a, p) => a + (p.res || p.result ? qtyOf(p) : 0), 0);
+    $('ptn-lists').textContent = q || '';
+    $('ptn-lists').title = q + ' Teile (mit Anzahl)';
   }
+
+  // ------------------------------------------------ Listen: Stückliste und Zuschnittplan
+  // Datei speichern (CSV, Projekt …): direkt als Download bzw. im claude.ai-Artifact über die downloads-Fähigkeit
+  async function saveOne(name, text, mime) {
+    if (claudeHost) {
+      if (!downloadsCap) { toast('Speichern ist hier nicht verfügbar.'); return; }
+      try { await downloadsCap.save({ filename: name, data: new Blob([text], { type: mime }) }); toast('Gespeichert: ' + name); } catch (e) {
+        if (e && e.code !== 'declined') toast('Speichern nicht möglich (' + (e.code || 'Fehler') + ').');
+      }
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type: mime }));
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+  // Seiten in A4 drucken (Browser: „Als PDF speichern“ möglich)
+  function printA4(html, landscape) {
+    let area = $('printarea');
+    if (!area) { area = document.createElement('div'); area.id = 'printarea'; document.body.appendChild(area); }
+    area.innerHTML = '<div class="a4">' + html + '</div>';
+    let pg = $('labelpage');
+    if (!pg) { pg = document.createElement('style'); pg.id = 'labelpage'; document.head.appendChild(pg); }
+    pg.textContent = '@page { size: A4' + (landscape ? ' landscape' : '') + '; margin: 12mm; }';
+    window.print();
+  }
+  // Stückzahl eines Teils (Stückliste; ohne Angabe 1, 0 = nicht fertigen)
+  const qtyOf = (p) => (p.qty === undefined || p.qty === null ? 1 : Math.max(0, Math.round(p.qty)));
+  const LIST_KEY = 'step2xcs.lists.v1';
+  const lst = Object.assign({ tab: 'bom', group: true, raw: true, sheetL: 2800, sheetW: 2070, kerf: 4.4, trim: 10, grain: true }, loadJson(LIST_KEY, {}) || {});
+  const saveLst = () => storeJson(LIST_KEY, lst);
+
+  // Rohmaß (Zuschnitt) eines Teils: Fertigmaß + Rohteil-Aufmaß (Profil mit gesägten Stirnseiten: nur in der Länge)
+  function rawDims(r) {
+    const o = state.settings.rawOversize || 0;
+    const prof = r.panel.profile && state.settings.profileRule !== 'off';
+    return { L: r.panel.L + 2 * o, W: r.panel.W + (prof ? 0 : 2 * o) };
+  }
+  // Positionen der Stückliste: gleiche Teile (Maße, Plattenfarbe, gleiches Programm) zusammengefasst
+  function bomRows() {
+    const rows = [];
+    const byKey = new Map();
+    state.parts.forEach((p, i) => {
+      const r = p.res || p.result;
+      if (!r || !r.panel) return;
+      const name = p.solid ? p.solid.name : p.label;
+      const board = boardKeyOf(p);
+      const prog = (r.xcs || '').split(name).join('§') + (r.side2 ? r.side2.xcs.split(name).join('§') : '');
+      const key = lst.group ? [Math.round(r.panel.L * 10), Math.round(r.panel.W * 10), Math.round(r.panel.T * 10), board, prog].join('|') : 'p' + i;
+      let row = byKey.get(key);
+      if (!row) {
+        row = { parts: [], nums: [], names: [], qty: 0, L: r.panel.L, W: r.panel.W, T: r.panel.T, raw: rawDims(r), board: board, time: partTime(p),
+          files: [] };
+        byKey.set(key, row);
+        rows.push(row);
+      }
+      row.parts.push(p);
+      row.nums.push(i + 1);
+      if (!row.names.includes(name)) row.names.push(name);
+      row.qty += qtyOf(p);
+      const fn = p.fileName || r.fileName;
+      if (fn && !row.files.includes(fn)) row.files.push(fn);
+    });
+    return rows;
+  }
+  function bomTotals(rows) {
+    const byMat = new Map();
+    let qty = 0;
+    let time = 0;
+    for (const r of rows) {
+      qty += r.qty;
+      if (r.time) time += r.time.total * r.qty;
+      const k = View3D.boardOf(r.board).name + ' ' + fmt(r.T) + ' mm';
+      byMat.set(k, (byMat.get(k) || 0) + (r.L * r.W * r.qty) / 1e6);
+    }
+    return { qty: qty, time: time, byMat: byMat };
+  }
+  function renderBom() {
+    const rows = bomRows();
+    const tot = bomTotals(rows);
+    if (!rows.length) { $('bomview').innerHTML = '<p class="note">Keine Teile geladen.</p>'; return; }
+    $('bomview').innerHTML = '<div class="tblwrap"><table class="bom"><thead><tr><th>Pos.</th><th class="r">Anzahl</th><th>Bezeichnung</th><th class="r">Länge</th><th class="r">Breite</th>' +
+      '<th class="r">Dicke</th><th>Material / Kanten</th><th class="r">Zuschnitt (roh)</th><th class="r">m²</th><th class="r">Zeit je Stück</th><th>Programm</th></tr></thead><tbody>' +
+      rows.map((r, k) => '<tr><td class="no">' + (k + 1) + '</td>' +
+        '<td class="r"><input type="number" min="0" step="1" value="' + r.qty + '" data-bomqty="' + k + '" aria-label="Anzahl Position ' + (k + 1) + '"></td>' +
+        '<td><b>' + r.names.map(esc).join(', ') + '</b><div class="sub">Bauteil ' + r.nums.join(', ') + '</div></td>' +
+        '<td class="r">' + n1(r.L) + '</td><td class="r">' + n1(r.W) + '</td><td class="r">' + n1(r.T) + '</td>' +
+        '<td>' + boardSwatch(r.board) + ' ' + esc(boardName(r.board)) + '</td>' +
+        '<td class="r">' + n1(r.raw.L) + ' × ' + n1(r.raw.W) + '</td>' +
+        '<td class="r">' + fmt(Math.round((r.L * r.W * r.qty) / 1e4) / 100) + '</td>' +
+        '<td class="r">' + (r.time ? '<span title="' + esc(timeTitle(r.time)) + '">' + Toolpath.fmtTime(r.time.total) + '</span>' : '–') + '</td>' +
+        '<td class="files">' + r.files.map(esc).join('<br>') + '</td></tr>').join('') +
+      '</tbody></table></div>' +
+      '<div class="bomsum"><span><b>' + tot.qty + '</b> Teile</span>' +
+      Array.from(tot.byMat).map(([k, v]) => '<span>' + esc(k) + ': <b>' + fmt(Math.round(v * 100) / 100) + ' m²</b></span>').join('') +
+      '<span>Bearbeitungszeit gesamt: <b>' + Toolpath.fmtTime(tot.time) + '</b> <small>(geschätzt, inkl. Auflegen)</small></span></div>';
+    $('bomview').querySelectorAll('[data-bomqty]').forEach((inp) => inp.addEventListener('change', () => {
+      const r = rows[+inp.dataset.bomqty];
+      const want = Math.max(0, Math.round(+inp.value || 0));
+      // Anzahl der Position: das erste Teil trägt den Rest (übrige je 1)
+      const others = r.parts.slice(1).reduce((a, p) => a + qtyOf(p), 0);
+      r.parts[0].qty = Math.max(0, want - others);
+      render();
+    }));
+  }
+  function bomCsv() {
+    const rows = bomRows();
+    const c = (v) => '"' + String(v).replace(/"/g, '""') + '"';
+    const num = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
+    const lines = [['Pos', 'Anzahl', 'Bezeichnung', 'Bauteil-Nr', 'Länge mm', 'Breite mm', 'Dicke mm', 'Material', 'Kanten', 'Zuschnitt Länge mm', 'Zuschnitt Breite mm',
+      'Fläche m²', 'Zeit je Stück min', 'Programm'].map(c).join(';')];
+    rows.forEach((r, k) => {
+      const b = View3D.boardOf(r.board);
+      lines.push([k + 1, r.qty, c(r.names.join(', ')), c(r.nums.join(', ')), num(r.L), num(r.W), num(r.T), c(b.name), c(b.edgeName), num(r.raw.L), num(r.raw.W),
+        String(Math.round((r.L * r.W * r.qty) / 1e4) / 100).replace('.', ','), r.time ? String(Math.round(r.time.total / 6) / 10).replace('.', ',') : '', c(r.files.join(', '))].join(';'));
+    });
+    return '﻿' + lines.join('\r\n') + '\r\n';
+  }
+  function bomPrintHtml() {
+    const rows = bomRows();
+    const tot = bomTotals(rows);
+    const d = new Date();
+    return '<h1>Stückliste</h1><p class="meta">' + d.toLocaleDateString('de-DE') + ' · ' + tot.qty + ' Teile · Bearbeitungszeit ≈ ' + Toolpath.fmtTime(tot.time) + '</p>' +
+      '<table class="pbom"><thead><tr><th>Pos.</th><th>Anz.</th><th>Bezeichnung</th><th>L</th><th>B</th><th>D</th><th>Material / Kanten</th><th>Zuschnitt</th><th>Zeit</th></tr></thead><tbody>' +
+      rows.map((r, k) => '<tr><td>' + (k + 1) + '</td><td>' + r.qty + '</td><td>' + r.names.map(esc).join(', ') + ' <small>(' + r.nums.join(', ') + ')</small></td><td>' + n1(r.L) +
+        '</td><td>' + n1(r.W) + '</td><td>' + n1(r.T) + '</td><td>' + esc(boardName(r.board)) + '</td><td>' + n1(r.raw.L) + ' × ' + n1(r.raw.W) + '</td><td>' +
+        (r.time ? Toolpath.fmtTime(r.time.total) : '–') + '</td></tr>').join('') + '</tbody></table>' +
+      '<p class="meta">' + Array.from(tot.byMat).map(([k, v]) => esc(k) + ': ' + fmt(Math.round(v * 100) / 100) + ' m²').join(' · ') + '</p>';
+  }
+
+  // Zuschnittplan je Material und Dicke
+  function cutGroups() {
+    const groups = new Map();
+    for (const row of bomRows()) {
+      const b = View3D.boardOf(row.board);
+      const key = b.id + '|' + fmt(row.T);
+      if (!groups.has(key)) groups.set(key, { name: b.name, T: row.T, board: row.board, grain: b.grain > 0, items: [] });
+      const dims = lst.raw ? row.raw : { L: row.L, W: row.W };
+      groups.get(key).items.push({ id: row.nums[0], label: row.names[0], L: dims.L, W: dims.W, qty: row.qty, grain: lst.grain && b.grain > 0 });
+    }
+    return Array.from(groups.values()).map((g) => Object.assign(g, { plan: CutPlan.plan(g.items, { sheetL: lst.sheetL, sheetW: lst.sheetW, kerf: lst.kerf, trim: lst.trim }) }));
+  }
+  function sheetSvg(s, g, w) {
+    const sc = w / s.L;
+    const h = s.W * sc;
+    const isDark = isDarkTheme();
+    let out = '<svg class="sheet" viewBox="0 0 ' + s.L + ' ' + s.W + '" width="' + w + '" height="' + h.toFixed(0) + '" role="img" aria-label="Platte ' + fmt(s.L) + ' × ' + fmt(s.W) + '">' +
+      '<rect x="0" y="0" width="' + s.L + '" height="' + s.W + '" class="sh"/>' +
+      '<rect x="' + lst.trim + '" y="' + lst.trim + '" width="' + (s.L - 2 * lst.trim) + '" height="' + (s.W - 2 * lst.trim) + '" class="trim"/>';
+    for (const p of s.parts) {
+      // Plattenkoordinaten: y nach oben → SVG y nach unten spiegeln
+      const y = s.W - p.y - p.w;
+      const fs = Math.max(24, Math.min(60, Math.min(p.l, p.w) / 5));
+      out += '<g><rect x="' + p.x + '" y="' + y + '" width="' + p.l + '" height="' + p.w + '" class="pt"/>' +
+        (p.l > 3 * fs && p.w > 1.4 * fs ? '<text x="' + (p.x + p.l / 2) + '" y="' + (y + p.w / 2) + '" font-size="' + fs + '" class="pl">' + esc(p.id + ' · ' + n1(p.l) + ' × ' + n1(p.w)) + '</text>' : '') +
+        (p.l > 3 * fs && p.w > 2.6 * fs ? '<text x="' + (p.x + p.l / 2) + '" y="' + (y + p.w / 2 + fs * 1.2) + '" font-size="' + (fs * 0.8) + '" class="pn">' + esc(p.label) + '</text>' : '') +
+        '<title>' + esc(p.label + ' – ' + n1(p.l) + ' × ' + n1(p.w) + (p.rot ? ' (gedreht)' : '')) + '</title></g>';
+    }
+    return out + '</svg>' + (isDark ? '' : '');
+  }
+  function renderCut(forPrint) {
+    const groups = cutGroups();
+    if (!groups.length) return '<p class="note">Keine Teile geladen.</p>';
+    return groups.map((g) => {
+      const pl = g.plan;
+      return '<section class="cutgrp"><h3>' + boardSwatch(g.board) + ' ' + esc(g.name) + ' ' + fmt(g.T) + ' mm <small>' + pl.sheets.length + ' Platte' + (pl.sheets.length === 1 ? '' : 'n') +
+        ' ' + fmt(lst.sheetL) + ' × ' + fmt(lst.sheetW) + ' · Ausnutzung ' + Math.round((1 - pl.waste) * 100) + ' %' + (g.grain && lst.grain ? ' · Maserung längs' : '') + '</small></h3>' +
+        (pl.unplaced.length ? '<p class="warn">Passt nicht auf die Platte: ' + pl.unplaced.map((x) => esc(x.label) + ' (' + n1(x.L) + ' × ' + n1(x.W) + ')').join(', ') + '</p>' : '') +
+        pl.sheets.map((s, i) => '<figure class="sheetfig"><figcaption>Platte ' + (i + 1) + ' · ' + s.parts.length + ' Teile · genutzt ' + Math.round((s.used / (s.L * s.W)) * 100) + ' %</figcaption>' +
+          sheetSvg(s, g, forPrint ? 900 : 620) + '</figure>').join('') + '</section>';
+    }).join('');
+  }
+  function renderLists() {
+    if (state.page !== 'lists') return;
+    document.querySelectorAll('[data-ltab]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.ltab === lst.tab)));
+    $('bomview').hidden = lst.tab !== 'bom';
+    $('cutview').hidden = lst.tab !== 'cut';
+    $('bomopts').hidden = lst.tab !== 'bom';
+    $('cutopts').hidden = lst.tab !== 'cut';
+    $('lgroup').checked = lst.group;
+    if (lst.tab === 'bom') renderBom();
+    else $('cutsheets').innerHTML = renderCut(false);
+  }
+  document.querySelectorAll('[data-ltab]').forEach((b) => b.addEventListener('click', () => { lst.tab = b.dataset.ltab; saveLst(); renderLists(); }));
+  $('lgroup').addEventListener('change', (e) => { lst.group = e.target.checked; saveLst(); renderLists(); });
+  for (const [id, k] of [['csheetL', 'sheetL'], ['csheetW', 'sheetW'], ['ckerf', 'kerf'], ['ctrim', 'trim']]) {
+    $(id).value = lst[k];
+    $(id).addEventListener('change', (e) => { const v = parseFloat(String(e.target.value).replace(',', '.')); if (v >= 0) { lst[k] = v; saveLst(); renderLists(); } });
+  }
+  for (const [id, k] of [['craw', 'raw'], ['cgrain', 'grain']]) {
+    $(id).checked = lst[k];
+    $(id).addEventListener('change', (e) => { lst[k] = e.target.checked; saveLst(); renderLists(); });
+  }
+  $('lcsv').addEventListener('click', () => saveOne('stueckliste.csv', bomCsv(), 'text/csv;charset=utf-8'));
+  $('lprintbtn').addEventListener('click', () => {
+    if (lst.tab === 'bom') printA4(bomPrintHtml(), true);
+    else printA4('<h1>Zuschnittplan</h1><p class="meta">' + new Date().toLocaleDateString('de-DE') + ' · Schnittfuge ' + fmt(lst.kerf) + ' mm · Besäumen ' + fmt(lst.trim) +
+      ' mm · ' + (lst.raw ? 'Rohmaß (mit Aufmaß)' : 'Fertigmaß') + '</p>' + renderCut(true), true);
+  });
 
   // ------------------------------------------------ Möbel 3D: alle STEP-Bauteile zusammengebaut
   const PAGE_KEY = 'step2xcs.page.v1';
-  state.page = loadJson(PAGE_KEY, 'pgmx') === 'model' ? 'model' : 'pgmx';
+  state.page = ['model', 'lists'].includes(loadJson(PAGE_KEY, 'pgmx')) ? loadJson(PAGE_KEY, 'pgmx') : 'pgmx';
   const mdl = { viewer: null, key: null, hidden: new Set(), sel: null, loading: false };
   function setPage(pg) {
     state.page = pg;
     storeJson(PAGE_KEY, pg);
     document.body.dataset.page = pg;
     $('modelpage').hidden = pg !== 'model';
+    $('listpage').hidden = pg !== 'lists';
     document.querySelectorAll('.pagetabs [data-page]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.page === pg)));
     if (pg === 'model') renderModel();
+    if (pg === 'lists') renderLists();
   }
   document.querySelectorAll('.pagetabs [data-page]').forEach((b) => b.addEventListener('click', () => setPage(b.dataset.page)));
   // Bauteile mit STEP (DXF hat kein 3D-Modell); Nummer = Platz in der Programmliste
@@ -2512,7 +2880,7 @@ table.fmt.one .onet { display: inline; }
         mdl.viewer = new Model3D.Viewer($('mhost'), $('mlabelwrap'));
         mdl.viewer.onPick = (num) => { mdl.sel = num; renderModelList(); updateModelHud(); const tr = document.querySelector('#mtable tr[data-num="' + num + '"]'); if (tr) tr.scrollIntoView({ block: 'nearest' }); };
         mdl.viewer.onMeasure = (m) => { mdl.meas = m; updateModelHud(); };
-        mdl.viewer.onDims = () => renderDimList();
+        mdl.viewer.onDims = () => { renderDimList(); saveSession(); };
       }
       mdl.viewer.setTheme(isDarkTheme());
       // je STEP-Datei die Netze von OpenCascade, Zuordnung über den Hüllquader
@@ -2530,6 +2898,7 @@ table.fmt.one .onet { display: inline; }
       mdl.viewer.setOpacity(1 - (+$('mopac').value) / 100);
       mdl.viewer.setLabels($('mlabels').checked);
       mdl.viewer.setExplode((+$('mexpl').value) / 100, true);
+      if (mdl.dimsSaved) { mdl.viewer.setDims(mdl.dimsSaved); mdl.dimsSaved = null; }
       mdl.key = key;
       const missing = parts.filter((x) => !x.mesh).length;
       $('mmsg').hidden = !missing;
@@ -2612,6 +2981,59 @@ table.fmt.one .onet { display: inline; }
   $('mexpl').addEventListener('input', (e) => {
     $('mexplv').textContent = e.target.value + ' %';
     if (mdl.viewer) mdl.viewer.setExplode((+e.target.value) / 100);
+  });
+  // Explosion abspielen: von der aktuellen Stellung ganz auseinander (bzw. zurück, wenn schon über der Hälfte)
+  let explAnim = null;
+  $('mexplplay').addEventListener('click', () => {
+    if (!mdl.viewer) return;
+    if (explAnim) { cancelAnimationFrame(explAnim); explAnim = null; return; }
+    const from = +$('mexpl').value;
+    const to = from >= 50 ? 0 : 100;
+    const t0 = performance.now();
+    const dur = reduceMotion ? 1 : 1400;
+    const step = (now) => {
+      const u = Math.min(1, (now - t0) / dur);
+      const e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2; // weich an- und auslaufen
+      const v = Math.round(from + (to - from) * e);
+      $('mexpl').value = v;
+      $('mexplv').textContent = v + ' %';
+      mdl.viewer.setExplode((from + (to - from) * e) / 100, true);
+      explAnim = u < 1 ? requestAnimationFrame(step) : null;
+    };
+    explAnim = requestAnimationFrame(step);
+  });
+  // Schnittebene
+  const sec = { axis: '', t: 0.5, flip: false };
+  const applySec = () => {
+    document.querySelectorAll('[data-msec]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.msec === sec.axis)));
+    $('msecpos').disabled = !sec.axis;
+    $('msecflip').disabled = !sec.axis;
+    if (mdl.viewer) mdl.viewer.setSection(sec.axis || null, sec.t, sec.flip);
+  };
+  document.querySelectorAll('[data-msec]').forEach((b) => b.addEventListener('click', () => { sec.axis = b.dataset.msec; applySec(); }));
+  $('msecpos').addEventListener('input', (e) => { sec.t = (+e.target.value) / 100; applySec(); });
+  $('msecflip').addEventListener('click', () => { sec.flip = !sec.flip; applySec(); });
+  // Bild speichern / drucken
+  function modelImage() {
+    if (!mdl.viewer) return null;
+    try { return mdl.viewer.snapshot().toDataURL('image/png'); } catch (e) { toast('Bild nicht möglich: ' + (e.message || e)); return null; }
+  }
+  $('msnap').addEventListener('click', () => {
+    const url = modelImage();
+    if (!url) return;
+    const bin = atob(url.split(',')[1]);
+    const u8 = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    saveOne('moebel_3d.png', u8, 'image/png');
+  });
+  $('mprint').addEventListener('click', () => {
+    const url = modelImage();
+    if (!url) return;
+    const dims = mdl.viewer.dims;
+    printA4('<h1>Möbel 3D</h1><p class="meta">' + new Date().toLocaleDateString('de-DE') + '</p><img src="' + url + '" alt="Ansicht des Möbels">' +
+      (dims.length ? '<h2 class="ph">Maße</h2><p>' + dims.map((d, i) => (i + 1) + '. ' + (d.axis === 'aligned' ? '' : d.axis.toUpperCase() + ' ') + fmt(Math.round(d.value * 10) / 10) +
+        ' mm (Bauteil ' + d.a.num + (d.b.num !== d.a.num ? ' → ' + d.b.num : '') + ')').join(' · ') + '</p>' : '') +
+      '<div class="pbreak"></div>' + bomPrintHtml(), true);
   });
   $('mlabels').addEventListener('change', (e) => { if (mdl.viewer) mdl.viewer.setLabels(e.target.checked); });
   // Messen (vorübergehend) und Bemaßen (Maße bleiben stehen) – höchstens eins von beiden an

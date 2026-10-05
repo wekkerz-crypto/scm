@@ -34,10 +34,13 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
 - Zapfen auf Schräge: `bossOf` in `panel.js` (herausragende Flächen an einer Innenkontur der schrägen Fläche) →
   `slantWall.boss = {height, plane, islands, bottomZ}`; `xcs.js`: Vorschnitt auf versetzter Linie (`tenonPrecut`) und
   Tasche mit Insel auf Ebene `Zapfen_n` (`tenonTool`, `tenonAllowance`). Nach unten zeigend → `bottom` (wenden).
-- Clamex: `findClamex` in `panel.js` (Zylinder R 40–60 hohl + zwei Wände ⟂ Achse, Abstand 3–12) → `panel.clamex`
-  `{c, a, n, r, w, depth, chord}`; Standard `clamexMode: 'macro'` → `CreateMacro(…, "SawCut_Lamello", …)` nach Position mit
-  der Vorlage `clamexTemplate` aus den Werkstatt-Programmen (`maestro/beispiele/33_/38_SW-Schrag`, `40_Mittelseite_st2`),
-  sonst `clamexPlan` (Ebene Top bzw. Kante, Bahn), Op `clamex-i`.
+- Clamex: `findClamex` in `panel.js` (Zylinder R 40–60 hohl + zwei Wände ⟂ Achse, Abstand 3–12; oder nur Wandpaare mit
+  Kreisbogen – Nutgrund Extrusion/Freiform aus Lamello-Bibliothek) → `panel.clamex` `{c, a, n, r, w, depth, chord}`;
+  Standard `clamexMode: 'macro'` → `clamexMacros` (je Kante/Linie ein Makro, Anzahl) und `CreateMacro(…, "SawCut_Lamello", …)`
+  nach Position mit `clamexTplEdge/Miter/Face` – gleich den Werkstatt-Programmen `maestro/beispiele/5_`–`10_` (Test
+  `clamex_korpus.step`); sonst `clamexPlan` (Ebene Top bzw. Kante, Bahn), Op `clamex-i`.
+- Sägeschnitt wie Werkstatt: Linie Oberkante von Kante zu Kante (`bladeOverrun` 0), `CreateSectioningMillingStrategy(2, 50, 0)`,
+  Extra-Tiefe 20; Nuten weiter mit `sawOverrun`.
 - Schnittwerte: `tools.js` liest je Werkzeug `tech = {feed, rot, descent}` (je [Standard, min, max]); je Teil/Seite
   `overrides.tech = {Gruppe: {feed, rot, descent}}` → `S3`/`SD` in `xcs.js` (sonst `-1` = Werkzeugdatei).
 - Etiketten (Browser-Druck): `labelHtml`/`labelSketch`/`openLabels` in `index.html`, Einstellungen `label*` (40 × 60 mm);

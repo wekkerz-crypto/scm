@@ -572,12 +572,28 @@
     const zs = f.pts.map((q) => q[2]);
     const zmin = minOf(zs);
     const zmax = maxOf(zs);
-    const top = inclinedSection(f, zmax - 1e-6);
-    const bottom = inclinedSection(f, zmin + 1e-6);
-    if (!top || !bottom) return null;
     const n = f.surf.n;
     const h = Math.hypot(n[0], n[1]);
     const u = [n[0] / h, n[1] / h]; // waagerecht nach außen (Abfallseite)
+    // Kante knapp innerhalb der Fläche schneiden. Liegen die Punkte der Oberkante in der STEP minimal verschieden hoch
+    // (z. B. durch Nutöffnungen geteilte Kante), trifft der Schnitt dicht unter zmax nur ein Stück: dann aus zwei Schnitten
+    // etwas tiefer linear auf zmax/zmin hochrechnen (exakt bei ebenen Flächen, auch mit schrägen Enden)
+    const edgeAt = (z, dir) => {
+      const near = inclinedSection(f, z - dir * 1e-6);
+      if (!near) return null;
+      const eps = Math.min(0.01, (zmax - zmin) / 8);
+      const A = inclinedSection(f, z - dir * eps);
+      const B = inclinedSection(f, z - dir * 2 * eps);
+      if (!A || !B) return near;
+      const ex = (p, q) => [2 * p[0] - q[0], 2 * p[1] - q[1]];
+      const far = Object.assign({}, near, { a: ex(A.a, B.a), b: ex(A.b, B.b) });
+      const d = [-u[1], u[0]];
+      const span = (sec) => (sec.b[0] - sec.a[0]) * d[0] + (sec.b[1] - sec.a[1]) * d[1];
+      return Math.abs(span(far)) > Math.abs(span(near)) + 0.01 ? far : near;
+    };
+    const top = edgeAt(zmax, 1);
+    const bottom = edgeAt(zmin, -1);
+    if (!top || !bottom) return null;
     // Abstand unten gegenüber oben, positiv = untere Kante liegt weiter außen
     const offset = (bottom.a[0] - top.a[0]) * u[0] + (bottom.a[1] - top.a[1]) * u[1];
     const dir = [-u[1], u[0]]; // Bahnrichtung mit Abfall rechts
@@ -791,6 +807,51 @@
         faceIds: [f.id].concat(walls.map((g) => g.id)) });
       ids.add(f.id);
       walls.forEach((g) => ids.add(g.id));
+    }
+    // Variante aus Bauteil-Bibliotheken (Lamello P-System): Nutgrund keine Zylinderfläche, sondern Extrusion/Freiform –
+    // erkannt an zwei ebenen Seitenwänden mit Kreisbogen R 40–60 auf gemeinsamer Achse im Abstand 3–12 mm
+    const walls = [];
+    for (const f of faces) {
+      if (f.surf.type !== 'plane' || ids.has(f.id)) continue;
+      for (const b of f.bounds) for (const e of b.edges) {
+        const cv = e.curve;
+        if (cv.type !== 'circle' || cv.r < CLAMEX_R[0] || cv.r > CLAMEX_R[1] || Math.abs(Math.abs(dot(cv.a, f.surf.n)) - 1) > 1e-4) continue;
+        walls.push({ f: f, c: cv.c, a: dot(cv.a, f.surf.n) > 0 ? f.surf.n : mul(f.surf.n, -1), r: cv.r });
+      }
+    }
+    const used = new Set();
+    for (let i = 0; i < walls.length; i++) {
+      const w0 = walls[i];
+      if (used.has(i)) continue;
+      const a = w0.a;
+      // gleiche Achse (Mittelpunkte auf einer Geraden längs a), gleicher Radius; mehrere Nuten auf derselben Achse
+      // (z. B. zwei Flächennuten hintereinander) nach Abstand trennen: eine Nut = Wände innerhalb der größten Nutbreite
+      const onAxis = walls.map((w, j) => ({ w: w, j: j, t: dot(sub(w.c, w0.c), a) })).filter(({ w, j }) => !used.has(j) && Math.abs(w.r - w0.r) < 0.05 &&
+        Math.abs(Math.abs(dot(w.a, a)) - 1) < 1e-4 && len(sub(sub(w.c, w0.c), mul(a, dot(sub(w.c, w0.c), a)))) < 0.05);
+      const same = onAxis.filter((x) => Math.abs(x.t) <= CLAMEX_W[1] + 0.05);
+      const near0 = same.filter((x) => same.every((y) => Math.abs(y.t - x.t) <= CLAMEX_W[1] + 0.05) || Math.abs(x.t) < 1e-6);
+      const ts = near0.map((x) => x.t);
+      const t0 = minOf(ts);
+      const t1 = maxOf(ts);
+      const wd = t1 - t0;
+      if (wd < CLAMEX_W[0] || wd > CLAMEX_W[1]) continue;
+      near0.forEach(({ j }) => used.add(j));
+      const c = add(w0.c, mul(a, (t0 + t1) / 2));
+      const r = w0.r;
+      const radial = (q) => { const v = sub(q, c); return sub(v, mul(a, dot(v, a))); };
+      const wallFaces = Array.from(new Set(near0.map(({ w }) => w.f)));
+      const wpts = wallFaces.flatMap((g) => g.pts);
+      let m = [0, 0, 0];
+      for (const q of wpts) { const v = radial(q); if (len(v) > 1e-6) m = add(m, unit(v)); }
+      const n = mul(unit(m), -1);
+      const dist = minOf(wpts.map((q) => dot(radial(q), mul(n, -1))));
+      // Nutgrund und weitere Teilflächen: alle übrigen Flächen innerhalb der Scheibe zwischen den Wänden
+      const inside = (q) => Math.abs(dot(sub(q, c), a)) <= wd / 2 + 0.1 && len(radial(q)) <= r + 0.1;
+      const floor = faces.filter((g) => !ids.has(g.id) && !wallFaces.includes(g) && g.pts.length && g.pts.every(inside) &&
+        (g.surf.type !== 'plane' || Math.abs(Math.abs(dot(g.surf.n, a)) - 1) < 1e-4));
+      out.push({ c: c, a: a, n: n, r: r, w: wd, depth: r - dist, chord: 2 * Math.sqrt(Math.max(0, r * r - dist * dist)),
+        faceIds: wallFaces.concat(floor).map((g) => g.id) });
+      wallFaces.concat(floor).forEach((g) => ids.add(g.id));
     }
     return { grooves: out, faceIds: ids };
   }

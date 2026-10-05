@@ -1,0 +1,39 @@
+SetMachiningParameters("IJ", 1, 10, 196608, false);
+
+CreateFinishedWorkpieceBox("Workpiece", 500, 250.84, 19);
+
+CreateRawWorkpiece("Workpiece", 2, 2, 4, 4, 0, 0);
+
+SetWorkpieceSetupPosition(2, 4, 0, 0);
+
+CreatePolyline("Contour_1", 0, 125.42);
+AddSegmentToPolyline(0, -2);
+AddSegmentToPolyline(500, -2);
+AddSegmentToPolyline(500, 252.84);
+AddSegmentToPolyline(0, 252.84);
+AddSegmentToPolyline(0, 125.42);
+
+ResetApproachStrategy();
+ResetRetractStrategy();
+SetApproachStrategy(false, true, 2);
+SetRetractStrategy(false, true, 2, 0);
+SetPneumaticHoodPosition(1);
+CreateRoughFinish("Milling_1", 21, "", TypeOfProcess.GeneralRouting, "E014", "-1", 2, "-1", "-1", "-1");
+
+CreateSegment("BladeCutSegment_1", 500, 231.84, 0, 231.84);
+CreateSectioningMillingStrategy(2, 50, 0);
+CreateBladeCut("BladeCut_1", "Saw Cut", TypeOfProcess.GeneralRouting, "E071", "-1", 45, 2, -1, -1, -1, 0, true, true, 0, 20);
+
+CreateSegment("BladeCutSegment_2", 0, 19, 500, 19);
+CreateSectioningMillingStrategy(2, 50, 0);
+CreateBladeCut("BladeCut_2", "Saw Cut", TypeOfProcess.GeneralRouting, "E071", "-1", 45, 2, -1, -1, -1, 0, true, true, 0, 20);
+
+CreateMacro("SawCut_Lamello_1", "SawCut_Lamello", 70, 0, 270, 0, 45, 1, 19, 1, 5, 3, 0.05, 145.89, 305.89, null, null, 3, "-1", "E071", null, "-1", "E030", null, '2', 0, false, -1, 0, 1, 0, false, "-1", "E031", null, null, null, 0, 0, 0, null, 2, 8.54, 1.4, "14", 0, "-1", "E030", 0, null);
+
+CreateMacro("SawCut_Lamello_2", "SawCut_Lamello", 70, 250.84, -130, 250.84, 45, 1, 19, 1, 5, 3, 0.05, 527.38, -32.62, null, null, 3, "-1", "E071", null, "-1", "E030", null, '2', 0, false, -1, 0, 1, 0, false, "-1", "E031", null, null, null, 0, 0, 0, null, 2, 18.33, 1.4, "14", 0, "-1", "E030", 180, null);
+
+CreateMacro("SawCut_Lamello_3", "SawCut_Lamello", 430, 0, 630, 0, 45, 1, 19, 1, 5, 3, 0.05, 505.89, -54.11, null, null, 3, "-1", "E071", null, "-1", "E030", null, '2', 0, false, -1, 0, 1, 0, false, "-1", "E031", null, null, null, 0, 0, 0, null, 2, 8.54, 1.4, "14", 0, "-1", "E030", 0, null);
+
+CreateMacro("SawCut_Lamello_4", "SawCut_Lamello", 430, 250.84, 230, 250.84, 45, 1, 19, 1, 5, 3, 0.05, 167.38, 327.38, null, null, 3, "-1", "E071", null, "-1", "E030", null, '2', 0, false, -1, 0, 1, 0, false, "-1", "E031", null, null, null, 0, 0, 0, null, 2, 18.33, 1.4, "14", 0, "-1", "E030", 180, null);
+
+CreateNullOperation("XN", 1500, null, 1, 50, false, " ");

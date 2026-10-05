@@ -593,7 +593,9 @@ table.fmt.one .onet { display: inline; }
     { title: 'Clamex (Lamello P-System)', c: '--saw', wide: true, fields: [
       ['clamexMode', 'Clamex-Nuten', 'choice', [['macro', 'über SCM-Makro (nur Position)'], ['direct', 'direkt mit dem Scheibenfräser']]],
       ['clamexMacro', 'Makro-Name', 'text'],
-      ['clamexTemplate', 'Makro-Parameter (Vorlage)', 'text', '{sx} {sy} {ex} {ey} {angle} {angleZ} {T} {h} werden eingesetzt'],
+      ['clamexTplEdge', 'Makro-Vorlage Kante (90°)', 'text', '{sx} {sy} {ex} {ey} {angle} {angleZ} {T} {n} {h} {type} {saw} werden eingesetzt'],
+      ['clamexTplMiter', 'Makro-Vorlage Gehrung', 'text', 'wie Kante'],
+      ['clamexTplFace', 'Makro-Vorlage Fläche (0°)', 'text', 'wie Kante'],
       ['clamexTool', 'Scheibenfräser (nur direkt)', 'mill'],
       ['clamexClear', 'Anfahrt: Abstand vor der Oberfläche', 'number', 'mm'],
       ['clamexMaxReach', 'Hinweis ab Abstand zur Kante', 'number', 'mm']] },
@@ -601,11 +603,12 @@ table.fmt.one .onet { display: inline; }
       ['slantCut', 'Schräge Kanten von Kante zu Kante', 'choice', [['saw', 'mit der Säge schneiden'], ['mill', 'fräsen (5-Achs)']]],
       ['bladeTool', 'Säge für Sägeschnitte', 'saw'],
       ['bladeExtra', 'Sägeschnitt: Extra-Tiefe', 'number', 'mm unter der Platte'],
+      ['bladeOverrun', 'Sägeschnitt: Überlauf', 'number', 'mm · 0 = von Kante zu Kante (Werkstatt)'],
       ['scoreCut', 'Sägeschnitt vorritzen', 'bool'],
       ['scoreDepth', 'Vorritzen: Tiefe', 'number', 'mm erster Schnitt'],
       ['scoreOut', 'Vorritzen: Abstand außen', 'number', 'mm'],
       ['sawTool', 'Säge für Nuten', 'saw'],
-      ['sawOverrun', 'Überlauf', 'number', 'mm'],
+      ['sawOverrun', 'Nuten: Überlauf', 'number', 'mm'],
       ['maxGrooveWidth', 'Max. Nutbreite', 'number', 'mm']] },
     { title: 'Fasen, Rundungen & schräge Kanten', c: '--chamfer', fields: [
       ['chamferTool', 'Fräser Fasen', 'mill'],
@@ -683,6 +686,7 @@ table.fmt.one .onet { display: inline; }
     try { s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { s = {}; }
     if (s.fieldThreshold === 1500) s.fieldThreshold = XcsWriter.DEFAULTS.fieldThreshold; // alte Voreinstellung
     delete s.formatLast; // ersetzt durch die Reihenfolge-Regel
+    delete s.clamexTemplate; // ersetzt durch je eine Vorlage für Kante, Gehrung und Fläche (Werkstatt-Programme)
     // früherer Vorgabe-Sauger 145×50 → in Maestro heißt er H75-M-145x55
     if (s.cupSmallCode === 'H75-M-145x50') { delete s.cupSmallCode; if (s.cupSmallY === 50) delete s.cupSmallY; }
     // frühere Standardpfade (aus dem Handbuch) auf den Pfad in der Werkstatt umstellen
@@ -1288,8 +1292,10 @@ table.fmt.one .onet { display: inline; }
     if (op.kind === 'drill' || op.kind === 'sdrill') return techBox(part, op);
     if (op.macro) {
       // Makro: Werkzeug, Tiefe und Schnittwerte kommen aus dem Makro bzw. SawCut_Lamello.xspc
-      return '<span class="note">Makro ' + esc(state.settings.clamexMacro || 'SawCut_Lamello') + ' · X ' + fmt(op.macro.x) + ' Y ' + fmt(op.macro.y) +
-        ' · Winkel ' + fmt(op.macro.angle) + '° · Richtung ' + fmt(op.macro.angleZ) + '° – Werkzeug, Tiefe und Höhe aus dem Makro</span>';
+      const m = op.macro;
+      return '<span class="note">Makro ' + esc(state.settings.clamexMacro || 'SawCut_Lamello') + ' · ' + (m.n > 1 ? m.n + ' Verbinder X ' + fmt(m.x) + ' Y ' + fmt(m.y) +
+        ' → X ' + fmt(m.ex) + ' Y ' + fmt(m.ey) : 'X ' + fmt(m.x) + ' Y ' + fmt(m.y)) + ' · Winkel ' + fmt(m.angle) + '° · Richtung ' + fmt(m.angleZ) + '°' +
+        (m.kind !== 'face' ? ' · Höhe ' + fmt(Math.round(m.h * 100) / 100) + ' mm' : '') + ' · P-' + m.type + '</span>';
     }
     let html = '';
     if (op.key === 'format') {

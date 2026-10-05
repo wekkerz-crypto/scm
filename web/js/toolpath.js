@@ -349,8 +349,9 @@
         return;
       }
       if (op.kind === 'clamex') {
-        // Clamex-Nut in der Draufsicht: Kante – Fläche der Nut (Sehne × Tiefe), Fläche/Schräge – Sehne in Nutbreite
-        const g = op.groove;
+        // Clamex-Nut in der Draufsicht: Kante – Fläche der Nut (Sehne × Tiefe), Fläche/Schräge – Sehne in Nutbreite;
+        // Makro: alle Verbinder der Kante/Linie
+        for (const g of op.grooves || [op.groove]) {
         const dist = g.r - g.depth;
         const s0 = [g.c[0] - g.n[0] * dist, g.c[1] - g.n[1] * dist]; // Mitte der Öffnung
         meta.kind = 'edge';
@@ -364,6 +365,7 @@
           const h = g.chord / 2 / ul;
           meta.z = g.depth;
           go([[s0[0] - u[0] * h, s0[1] - u[1] * h], [s0[0] + u[0] * h, s0[1] + u[1] * h]], g.w, op.label, op.tool, i);
+        }
         }
         return;
       }

@@ -399,7 +399,7 @@ test('Teilename aus der STEP, bereinigt, gleich für .xcs', () => {
   const [hz] = convert(read('test/fixtures/holz.step'), {}, 'holz.step');
   assert.strictEqual(hz.name, 'holz');
   assert.ok(hz.xcs.includes('CreateBladeCut("Saegeschnitt_1", "Saegeschnitt 45 Grad",'));
-  assert.ok(hz.ops.filter((o) => o.kind === 'blade').every((o) => o.label === 'Sägeschnitt 45°'));
+  assert.ok(hz.ops.filter((o) => o.kind === 'blade').every((o) => /^Sägeschnitt 45°/.test(o.label)));
 });
 
 test('Zustelltiefe Taschen, Extra-Tiefe Säge, Vorritzen', () => {
@@ -415,8 +415,11 @@ test('Zustelltiefe Taschen, Extra-Tiefe Säge, Vorritzen', () => {
   const [h] = convert(read('test/fixtures/holz.step'), { bladeExtra: 5, scoreCut: true, scoreDepth: 2.5, scoreOut: 12 });
   const cuts = h.xcs.match(/CreateSectioningMillingStrategy\(2\.5, 12, 0\);\r\nCreateBladeCut\([^)]*, 5\);/g) || [];
   assert.strictEqual(cuts.length, 2, h.xcs);
+  // Standard wie in der Werkstatt: vorritzen 2 / 50, Extra-Tiefe 20, Linie von Kante zu Kante; ausschaltbar
   const [k] = convert(read('test/fixtures/holz.step'), {});
-  assert.ok(!k.xcs.includes('CreateSectioningMillingStrategy'));
+  assert.strictEqual((k.xcs.match(/CreateSectioningMillingStrategy\(2, 50, 0\);\r\nCreateBladeCut\([^)]*, 20\);/g) || []).length, 2);
+  const [k2] = convert(read('test/fixtures/holz.step'), { scoreCut: false });
+  assert.ok(!k2.xcs.includes('CreateSectioningMillingStrategy'));
 });
 
 test('Prüfung: Befehlsparameter, stabile Schlüssel, Sägeblatt, Dateinamen', () => {
@@ -1274,27 +1277,52 @@ test('Clamex-Nuten direkt (Kreissegment R50): Kante von oben, Fläche von der Se
   assert.ok(!r2.warnings.some((w) => /Reichweite/.test(w)));
 });
 
-test('Clamex über das SCM-Makro SawCut_Lamello: Parameterliste wie in der Werkstatt, Lage/Winkel/Richtung eingesetzt', () => {
+test('Clamex über das SCM-Makro SawCut_Lamello: je Kante ein Makro mit Anzahl, Fläche, eigene Vorlage', () => {
   const { readParts, convertSolid } = require('../web/js/convert.js');
   const [a, b] = readParts(read('test/fixtures/schrank1.step'), 'schrank1.step');
   const r1 = convertSolid(a, {});
-  // Kante vorne: Start = Ende an der Nutmitte auf der Kante, gerade (90°), Richtung 0° → 360°, sonst wie im Werkstatt-Programm
-  assert.match(r1.xcs, /CreateMacro\("SawCut_Lamello_1", "SawCut_Lamello", 250, 0, 250, 0, 90, 1, 19, 1, 5, 3, 0\.05, 150, 150, null, null, 3, "-1", "E071", null, "-1", "E030", null, '2', 0, false, -1, 0, 4, 0, false, "-1", "E031", null, null, null, 0, 0, 0, null, 2, 10, 1\.4, "10", 0, "-1", "E030", 360, null\);/);
-  assert.strictEqual((r1.xcs.match(/CreateMacro\(/g) || []).length, 3);
-  assert.doesNotMatch(r1.xcs, /ClamexPath_|SetMacroParam/);
-  // Parameterliste wie in 38_SW-Schrag.xcs: gleiche Anzahl Werte (48)
+  // Kante vorne, drei Verbinder (50, 150, 250) mit gleichem Abstand → ein Makro Start → Ende, Anzahl 3, Höhe 9,5
+  assert.match(r1.xcs, /CreateMacro\("SawCut_Lamello_1", "SawCut_Lamello", 50, 0, 250, 0, 90, 1, 19, 5, null, 3, 0\.05, null, null, null, null, 3, "-1", "E030", null, "-1", "E030", null, '2', 0, false, -1, 0, 3, 0, false, "-1", "E031", null, null, null, 0, 0, 0, null, 2, 9\.5, 1\.4, "\d+", 0, "-1", "E030", 0, null\);/);
+  assert.strictEqual((r1.xcs.match(/CreateMacro\(/g) || []).length, 1);
   const args = /CreateMacro\("SawCut_Lamello_1", "SawCut_Lamello", (.*)\);/.exec(r1.xcs)[1].split(',');
   assert.strictEqual(args.length, 48);
-  // Richtung gegen den Uhrzeigersinn wie in der Werkstatt: links −90, rechts 90, hinten 180 (Teil gedreht)
+  // gedreht: hinten 180, Laufrichtung −X
   const r1b = convertSolid(a, {}, { orientation: { rot: 2, flip: false } });
-  assert.match(r1b.xcs, /"E030", 180, null\);/);
-  // Nuten in der Fläche: über das Makro noch nicht → Hinweis, kein Aufruf
+  assert.match(r1b.xcs, /"SawCut_Lamello", 250, 120, 50, 120, 90,[^;]*"E030", 180, null\);/);
+  // Nuten in der Fläche: Makro mit Winkel 0 und E032
   const r2 = convertSolid(b, {});
-  assert.doesNotMatch(r2.xcs, /CreateMacro/);
-  assert.ok(r2.warnings.some((w) => /Clamex-Nut in der Fläche .*nicht ausgegeben/.test(w)));
+  assert.match(r2.xcs, /CreateMacro\("SawCut_Lamello_1", "SawCut_Lamello", 9\.5, 50, 9\.5, 250, 0, 1, null, 5, null,[^;]*"E032", 90, null\);/);
+  assert.ok(!r2.warnings.some((w) => /Clamex/.test(w)));
   // eigene Vorlage
-  const r3 = convertSolid(a, { clamexTemplate: '{sx}, {sy}, {ex}, {ey}, {angle}, {angleZ}' });
-  assert.match(r3.xcs, /CreateMacro\("SawCut_Lamello_1", "SawCut_Lamello", 250, 0, 250, 0, 90, 360\);/);
+  const r3 = convertSolid(a, { clamexTplEdge: '{sx}, {sy}, {ex}, {ey}, {angle}, {n}, {h}, {angleZ}' });
+  assert.match(r3.xcs, /CreateMacro\("SawCut_Lamello_1", "SawCut_Lamello", 50, 0, 250, 0, 90, 3, 9\.5, 0\);/);
+});
+
+test('Clamex-Korpus aus der Werkstatt (P-14 aus Bauteil-Bibliothek): Programme wie 5_–10_ in maestro/beispiele', () => {
+  // Nutgrund als Extrusions-/Freiformfläche: Erkennung über die Seitenwände mit Kreisbogen R 50,2
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const parts = readParts(read('test/fixtures/clamex_korpus.step'), 'clamex_korpus.step');
+  const shop = ['5_Seitenwand_L', '6_Seitenwand_R', '7_Aufkantung', '8_Unterboden', '9_Zwischenboden'];
+  const norm = (t) => t.split(/\r?\n/).filter((l) => /CreateMacro|CreateBladeCut|CreateSegment|Sectioning|FinishedWorkpieceBox/.test(l))
+    .map((l) => l.replace(/^Create(Macro|BladeCut|Segment)\("[^"]*", /, '$1(').replace(/"Saw Cut"|"Saegeschnitt [^"]*"/, '"S"').trim()).sort();
+  // Drehlage wie in der Werkstatt (unser Standard legt die Teile um 90° gedreht)
+  const orient = [{ rot: 1, flip: true }, { rot: 1, flip: true }, { rot: 1, flip: false }, { rot: 1, flip: true }, { rot: 1, flip: true }];
+  shop.forEach((f, i) => {
+    const r = convertSolid(parts[i], {}, { orientation: orient[i] });
+    assert.deepStrictEqual(norm(r.xcs), norm(read('maestro/beispiele/' + f + '.xcs')), f);
+    assert.deepStrictEqual(r.warnings, [], f);
+  });
+  // ohne Drehung: richtige Seite oben, keine Hinweise
+  for (const s of parts) {
+    const r = convertSolid(s, {});
+    assert.deepStrictEqual(r.warnings, [], s.name);
+    assert.ok(r.panel.clamex.length >= 2, s.name);
+  }
+  // SW-Schräg: beide Gehrungen voll gesägt, Höhe je Seite 8,54 / 18,33
+  const sw = convertSolid(parts[5], {}, { orientation: { rot: 2, flip: true } });
+  assert.match(sw.xcs, /CreateSegment\("Saegeschnitt_Linie_\d", 0, 19, 500, 19\);/);
+  assert.match(sw.xcs, /"SawCut_Lamello", 70, 0, 430, 0, 45,[^;]*, 2, 8\.54, 1\.4, "14", 0, "-1", "E030", 0, null\);/);
+  assert.match(sw.xcs, /"SawCut_Lamello", 430, 250\.839, 70, 250\.839, 45,[^;]*, 2, 18\.33, 1\.4, "14", 0, "-1", "E030", 180, null\);/);
 });
 
 test('Gehrung mit Zapfen: Vorschnitt parallel um Zapfenhöhe, dann Tasche auf der geneigten Ebene (Zapfen = Insel)', () => {
@@ -1311,7 +1339,7 @@ test('Gehrung mit Zapfen: Vorschnitt parallel um Zapfenhöhe, dann Tasche auf de
   assert.ok(!r.warnings.some((x) => /ohne Verbindung|nicht ausgegeben/.test(x)), r.warnings.join(' | '));
   assert.ok(r.warnings.some((x) => /taucht an der Unterkante der Schräge bis ≈6\.8 mm unter die Platte/.test(x)));
   // 1) Vorschnitt: Oberkante 370 + 8/sin45 = 381,32
-  assert.match(r.xcs, /CreateSegment\("Saegeschnitt_Linie_1", 381\.32, -50, 381\.32, 250\);/);
+  assert.match(r.xcs, /CreateSegment\("Saegeschnitt_Linie_1", 381\.32, 0, 381\.32, 200\);/);
   // 2) Ebene auf Höhe der Zapfenoberseite, 45° geneigt, Normale nach oben außen
   assert.match(r.xcs, /CreateWorkplane\("Zapfen_1", 405\.658, 0, 5\.656, 90, 45\.008\);/);
   // Zapfen als Insel (im Uhrzeigersinn), Tasche größer als die Fläche, 8 tief mit E020

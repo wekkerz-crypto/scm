@@ -35,8 +35,14 @@
     clamexMacro: 'SawCut_Lamello',
     // Parameterliste wie in den Werkstatt-Programmen (33/38_SW-Schrag, 40_Mittelseite_st2), Platzhalter werden ersetzt:
     // {sx} {sy} Start, {ex} {ey} Ende (je Nut gleich = ein Verbinder), {angle} Winkel der Schnittfläche, {T} Dicke, {angleZ} Richtung
-    clamexTemplate: '{sx}, {sy}, {ex}, {ey}, {angle}, 1, {T}, 1, 5, 3, 0.05, 150, 150, null, null, 3, "-1", "E071", null, "-1", "E030", null, ' +
-      "'2', 0, false, -1, 0, 4, 0, false, \"-1\", \"E031\", null, null, null, 0, 0, 0, null, 2, 10, 1.4, \"10\", 0, \"-1\", \"E030\", {angleZ}, null",
+    // Makro-Parameter nach Position (48 Werte) aus den Werkstatt-Programmen; {sx} {sy} {ex} {ey} Start/Ende, {angle} Winkel,
+    // {T} Dicke, {n} Anzahl Verbinder, {h} Höhe Oberkante → Nutmitte, {type} Nuttyp (14 = P-14), {saw} Säge, {angleZ} Winkel um Z
+    clamexTplEdge: '{sx}, {sy}, {ex}, {ey}, {angle}, 1, {T}, 5, null, 3, 0.05, null, null, null, null, 3, "-1", "E030", null, "-1", "E030", null, ' +
+      "'2', 0, false, -1, 0, {n}, 0, false, \"-1\", \"E031\", null, null, null, 0, 0, 0, null, 2, {h}, 1.4, \"{type}\", 0, \"-1\", \"E030\", {angleZ}, null",
+    clamexTplMiter: '{sx}, {sy}, {ex}, {ey}, {angle}, 1, {T}, 1, 5, 3, 0.05, 145.9, 145.9, null, null, 3, "-1", "{saw}", null, "-1", "E030", null, ' +
+      "'2', 0, false, -1, 0, {n}, 0, false, \"-1\", \"E031\", null, null, null, 0, 0, 0, null, 2, {h}, 1.4, \"{type}\", 0, \"-1\", \"E030\", {angleZ}, null",
+    clamexTplFace: '{sx}, {sy}, {ex}, {ey}, 0, 1, null, 5, null, 3, 0.05, null, null, null, null, 3, "-1", "E032", null, "-1", "E032", null, ' +
+      "'2', 0, false, -1, 0, {n}, 0, false, \"-1\", \"E031\", null, null, null, 0, 0, 0, null, 2, 0, 1.4, \"{type}\", 0, \"-1\", \"E032\", {angleZ}, null",
     clamexTool: 'E030',        // nur direkt: Clamex-Scheibenfräser Ø 100 (auf Blattmitte vermessen)
     clamexClear: 5,            // Anfahrt: Scheibe so weit vor der Oberfläche (mm) beginnen
     clamexMaxReach: 60,        // Nut weiter als … mm von der Bezugsebene (Kante/Oberseite) → Hinweis Kollision/Reichweite
@@ -63,7 +69,8 @@
     cutoutExtra: 2,
     leadLength: 20,            // Ein-/Auslauf entlang der Kante bei Ausschnitten
     sawTool: '066',            // Nut mit Säge
-    sawOverrun: 50,            // Säge-Überlauf an beiden Enden
+    sawOverrun: 50,            // Säge-Überlauf an beiden Enden (Nuten)
+    bladeOverrun: 0,           // Sägeschnitt: Überlauf an beiden Enden (Werkstatt: Linie genau von Kante zu Kante)
     maxGrooveWidth: 12,        // breitere Nuten → Warnung
     rebateTool: 'E016',        // Falz
     rebateToolDia: 12,         // nur falls der Fräser nicht in der Werkzeugliste steht
@@ -98,10 +105,10 @@
     surfTol: 0.02,             // Toleranz beim Zusammenfassen von Punkten in mm
     surfSafe: 5,               // Abheben zwischen den Zeilen: über der Oberseite in mm
     bladeTool: 'E070',         // Säge für Sägeschnitte
-    bladeExtra: 2,             // Sägeschnitt: Extra-Tiefe unter der Platte (extraDepth)
-    scoreCut: false,           // Sägeschnitt vorritzen (CreateSectioningMillingStrategy)
-    scoreDepth: 3,             // Vorritzen: Tiefe des ersten Schnitts in mm
-    scoreOut: 10,              // Vorritzen: Abstand nach außen zwischen den Durchgängen in mm
+    bladeExtra: 20,            // Sägeschnitt: Extra-Tiefe unter der Platte (extraDepth, Werkstatt 20)
+    scoreCut: true,            // Sägeschnitt vorritzen (CreateSectioningMillingStrategy, wie in der Werkstatt)
+    scoreDepth: 2,             // Vorritzen: Tiefe des ersten Schnitts in mm
+    scoreOut: 50,              // Vorritzen: Abstand nach außen zwischen den Durchgängen in mm
     stepDown: 0,               // Zustellung je Durchgang in mm (0 = in einem Durchgang)
     finishDepth: 0,            // letzte Zustellung in mm (0 = keine eigene)
     contourMode: 'whole',      // Sonderkontur: 'whole' = Außenkontur am Stück, 'rect' = Rechteck + Ausschnitte
@@ -769,42 +776,24 @@
         depth: k.depth, tool: auto, label: 'Tasche ' + size + '×' + fmt(k.depth) + (k.islands.length ? ' mit Insel' : '') });
     }
 
-    // 6a) Clamex-Nuten: Scheibenfräser fährt auf der Mittelebene der Nut von außen bis zur Nutmitte und zurück
+    // 6a) Clamex-Nuten: über das SCM-Makro SawCut_Lamello (Standard, Aufbau wie in den Werkstatt-Programmen) oder direkt:
+    // Scheibenfräser fährt auf der Mittelebene der Nut von außen bis zur Nutmitte und zurück
+    const macroGrooves = [];
     for (const [i, g] of (p.clamex || []).entries()) {
-      if (cfg.clamexMode !== 'direct') {
-        // SCM-Makro: ein Verbinder je Nut (Start = Ende) an der Kante der Schnittfläche, Richtung gegen den Uhrzeigersinn
-        const edge = Math.abs(g.n[2]) < 0.99;
-        if (!edge) {
-          warnings.push('Clamex-Nut in der Fläche (' + fmt(g.c[0]) + ' / ' + fmt(g.c[1]) + '): über das Makro noch nicht möglich (kein Beispielprogramm) – nicht ausgegeben.');
-          continue;
-        }
-        const dist = g.r - g.depth;
-        const s0 = [g.c[0] - g.n[0] * dist, g.c[1] - g.n[1] * dist, g.c[2] - g.n[2] * dist];
-        let pt0 = s0;
-        if (Math.abs(g.n[2]) > 1e-6) {
-          // schräge Schnittfläche: Punkt auf der längeren (weiter außen liegenden) Kante oben bzw. unten
-          const up = [-g.n[0] * g.n[2], -g.n[1] * g.n[2], 1 - g.n[2] * g.n[2]];
-          const at = (z) => { const k = (z - s0[2]) / up[2]; return [s0[0] + up[0] * k, s0[1] + up[1] * k, z]; };
-          const top = at(T);
-          const bot = at(0);
-          const out = (q) => (q[0] - s0[0]) * g.n[0] + (q[1] - s0[1]) * g.n[1];
-          pt0 = out(top) >= out(bot) ? top : bot;
-        }
-        let angZ = Math.atan2(g.n[0], -g.n[1]) * 180 / Math.PI; // Tangente (−n_y, n_x): vorne 0, rechts 90, hinten 180, links −90
-        if (Math.abs(angZ) < 0.5) angZ = 360; // 0° liest das Makro als „nicht angegeben“
-        const tilt = Math.asin(Math.min(1, Math.abs(g.n[2]))) * 180 / Math.PI;
-        const where = 'Kante ' + ({ '0,-1': 'vorne', '0,1': 'hinten', '-1,0': 'links', '1,0': 'rechts' }[Math.round(g.n[0]) + ',' + Math.round(g.n[1])] || 'schräg');
-        // Winkel wie beim Sägeschnitt derselben Fläche: Fläche nach oben (unten breiter) 90 − Neigung, nach unten 90 + Neigung
-        ops.push({ kind: 'clamex', key: 'clamex-' + i, macro: { x: pt0[0], y: pt0[1], angle: g.n[2] >= 0 ? 90 - tilt : 90 + tilt, angleZ: angZ, height: s0[2] },
-          groove: g, depth: g.depth, label: 'Clamex ' + where + ' (Makro)' });
-        continue;
-      }
+      if (cfg.clamexMode !== 'direct') { macroGrooves.push(g); continue; }
       const pl = clamexPlan(p, g, cfg);
       const where = pl.face === 'Top' ? 'Kante ' + ({ '0,-1': 'vorne', '0,1': 'hinten', '-1,0': 'links', '1,0': 'rechts' }[Math.round(g.n[0]) + ',' + Math.round(g.n[1])] || 'schräg')
         : g.n[2] > 0.99 ? 'Fläche' : 'Schräge';
       if (pl.error) { warnings.push('Clamex-Nut ' + where + ' (' + fmt(g.c[0]) + ' / ' + fmt(g.c[1]) + '): ' + pl.error); continue; }
       ops.push({ kind: 'clamex', key: 'clamex-' + i, toolKind: 'mill', toolDefault: 'clamexTool', face: pl.face, start: pl.start, end: pl.end, depth: pl.depth,
         reach: pl.reach, groove: g, tool: cfg.clamexTool, label: 'Clamex-Nut ' + where + ' ' + fmt(g.w) + '×' + fmt(g.depth) });
+    }
+
+    for (const [i, m] of clamexMacros(macroGrooves, T).entries()) {
+      const where = m.kind === 'face' ? 'Fläche' : m.kind === 'miter' ? 'Gehrung ' + fmt(Math.round(m.angle * 10) / 10) + '°' :
+        'Kante ' + ({ 0: 'vorne', 90: 'rechts', 180: 'hinten', '-90': 'links' }[Math.round(m.angleZ)] || 'schräg');
+      ops.push({ kind: 'clamex', key: 'clamex-' + i, macro: m, groove: m.grooves[0], grooves: m.grooves, depth: m.grooves[0].depth,
+        label: 'Clamex ' + where + (m.n > 1 ? ' ×' + m.n : '') + ' (Makro)' });
     }
 
     // 6b) Taschen in den Kanten (Stirn-/Längsseiten, eigene Bearbeitungsebene)
@@ -1019,7 +1008,7 @@
       const u = [d[0] / l, d[1] / l];
       // Gerader Schnitt von Kante zu Kante: mit der Säge (Schnittfläche wird zur neuen schrägen Ebene)
       if (w.boss ? cfg.tenonPrecut !== 'mill' && atEdge(w.top.a) && atEdge(w.top.b) : cfg.slantCut === 'saw' && (w.sawable || (atEdge(ww.top.a) && atEdge(ww.top.b)))) {
-        const so = cfg.sawOverrun;
+        const so = cfg.bladeOverrun;
         ops.push({ kind: 'blade', key: 'blade-' + i, toolKind: 'saw', toolDefault: 'bladeTool',
           a: [ww.top.a[0] - u[0] * so, ww.top.a[1] - u[1] * so], b: [ww.top.b[0] + u[0] * so, ww.top.b[1] + u[1] * so],
           a0: ww.top.a, b0: ww.top.b, tilt: w.angle, leanOut: w.leanOut, depth: T, extra: cfg.bladeExtra, tool: cfg.bladeTool,
@@ -1350,10 +1339,7 @@
 
     if (!side2) {
       for (const b of p.bottom) {
-        // Clamex in der Fläche geht über das Makro noch nicht – auch nicht auf Seite 2
-        const viaMacro = b.kind === 'Clamex' && cfg.clamexMode !== 'direct';
-        warnings.push(b.text + (viaMacro ? ' – über das Makro noch nicht möglich, nicht ausgegeben.'
-          : cfg.twoSided ? ' – wird auf Seite 2 bearbeitet.' : ' – nicht von oben bearbeitbar (Zweiseitig einschalten oder Platte wenden).'));
+        warnings.push(b.text + (cfg.twoSided ? ' – wird auf Seite 2 bearbeitet.' : ' – nicht von oben bearbeitbar (Zweiseitig einschalten oder Platte wenden).'));
       }
     }
     // Schleifzugabe: Radiusfräser erst nach dem Schleifen (sonst sitzt die Rundung um die Zugabe versetzt)
@@ -1547,6 +1533,74 @@
     const n = Math.max(2, Math.ceil(Math.abs(sw) / (Math.PI / 36)));
     const out = [];
     for (let i = 0; i < n; i++) out.push([s.c[0] + s.r * Math.cos(a0 + (sw * i) / n), s.c[1] + s.r * Math.sin(a0 + (sw * i) / n)]);
+    return out;
+  }
+
+  /*
+   * Clamex über das Makro SawCut_Lamello – Aufbau wie in den Werkstatt-Programmen (maestro/beispiele, 5_/6_Seitenwand, 7_Aufkantung,
+   * 8_Unterboden, 9_Zwischenboden, 10_SW-Schrag): drei Arten
+   *   edge  – Nut in einer senkrechten Kante (Winkel 90), Punkt auf der Kante;
+   *   miter – Nut in einer Gehrung/Schnittfläche (Winkel 90 − Neigung), Punkt auf der längeren (äußeren) Kante;
+   *   face  – Nut in der Fläche (Winkel 0), Punkt = Nutmitte.
+   * Höhe h = Abstand Oberkante → Nutmitte entlang der Schnittfläche (Kante: Dicke − Höhe der Mitte; Fläche 0).
+   * Richtung: Kante/Gehrung wie „Winkel um Z“ (vorne 0, rechts 90, hinten 180, links −90, Laufrichtung = (cos, sin));
+   * Fläche: längs der Nut (Sehne), 0 … 90. Verbinder auf einer Linie mit gleichem Abstand → ein Makro Start → Ende mit Anzahl;
+   * sonst je Verbinder ein Makro (Ende = Start + 200 in Laufrichtung, Anzahl 1).
+   */
+  function clamexMacros(grooves, T) {
+    const items = grooves.map((g) => {
+      const dist = g.r - g.depth;
+      const s0 = [g.c[0] - g.n[0] * dist, g.c[1] - g.n[1] * dist, g.c[2] - g.n[2] * dist];
+      if (g.n[2] > 0.99) {
+        // Fläche: Laufrichtung längs der Sehne (⟂ Scheibenachse), 0 … 90
+        let d = [g.a[1] * g.n[2] - g.a[2] * g.n[1], g.a[2] * g.n[0] - g.a[0] * g.n[2]];
+        const l = Math.hypot(d[0], d[1]) || 1;
+        d = [d[0] / l, d[1] / l];
+        let az = Math.atan2(d[1], d[0]) * 180 / Math.PI;
+        if (az <= -90 + 1e-6 || az > 90 + 1e-6) { d = [-d[0], -d[1]]; az = Math.atan2(d[1], d[0]) * 180 / Math.PI; }
+        return { kind: 'face', g: g, p: [s0[0], s0[1]], d: d, angleZ: Math.round(az * 1000) / 1000, angle: 0, h: 0 };
+      }
+      // Kante/Gehrung: auf der Schnittfläche nach oben bis zur Oberseite (h) und zur längeren Kante (Punkt)
+      const up = [-g.n[0] * g.n[2], -g.n[1] * g.n[2], 1 - g.n[2] * g.n[2]];
+      const at = (z) => { const k = (z - s0[2]) / up[2]; return [s0[0] + up[0] * k, s0[1] + up[1] * k, z]; };
+      const top = at(T);
+      const bot = at(0);
+      const out = (q) => (q[0] - s0[0]) * g.n[0] + (q[1] - s0[1]) * g.n[1];
+      const pt = Math.abs(g.n[2]) < 1e-6 ? s0 : out(top) >= out(bot) ? top : bot;
+      const h = Math.hypot(top[0] - s0[0], top[1] - s0[1], top[2] - s0[2]);
+      let az = Math.atan2(g.n[0], -g.n[1]) * 180 / Math.PI; // Tangente (−n_y, n_x)
+      if (az <= -179.5) az = 180; // hinten: immer 180 (wie in der Werkstatt)
+      const tilt = Math.asin(Math.min(1, Math.abs(g.n[2]))) * 180 / Math.PI;
+      const rad = az * Math.PI / 180;
+      return { kind: tilt < 0.5 ? 'edge' : 'miter', g: g, p: [pt[0], pt[1]], d: [Math.cos(rad), Math.sin(rad)], angleZ: Math.round(az * 1000) / 1000,
+        angle: g.n[2] >= 0 ? 90 - tilt : 90 + tilt, h: h };
+    });
+    // gleiche Art, Richtung, Linie, Höhe und Winkel → eine Gruppe
+    const r2 = (v) => Math.round(v * 100) / 100;
+    const groups = new Map();
+    for (const it of items) {
+      const off = -it.p[0] * it.d[1] + it.p[1] * it.d[0]; // Abstand der Linie (⟂ Laufrichtung)
+      const k = [it.kind, it.angleZ, r2(off), r2(it.h), r2(it.angle), r2(it.g.depth)].join('|');
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(it);
+    }
+    const out = [];
+    for (const list of groups.values()) {
+      const t = (it) => it.p[0] * it.d[0] + it.p[1] * it.d[1];
+      list.sort((a, b) => t(a) - t(b));
+      const gaps = list.slice(1).map((it, j) => t(it) - t(list[j]));
+      const even = list.length >= 2 && gaps.every((x) => Math.abs(x - gaps[0]) < 0.05 && x > 1);
+      const base = list[0];
+      const common = { kind: base.kind, angle: base.angle, angleZ: base.angleZ, h: base.h, type: Math.round(base.g.depth) };
+      if (even) {
+        const e = list[list.length - 1];
+        out.push(Object.assign({ x: base.p[0], y: base.p[1], ex: e.p[0], ey: e.p[1], n: list.length, grooves: list.map((it) => it.g) }, common));
+      } else {
+        for (const it of list) {
+          out.push(Object.assign({ x: it.p[0], y: it.p[1], ex: it.p[0] + it.d[0] * 200, ey: it.p[1] + it.d[1] * 200, n: 1, grooves: [it.g] }, common));
+        }
+      }
+    }
     return out;
   }
 
@@ -1903,8 +1957,10 @@
         // SCM-Makro SawCut_Lamello mit der Parameterliste aus der Werkstatt, nur Lage/Winkel/Richtung eingesetzt
         const n = ++counts.clamex;
         const m = op.macro;
-        const vals = { sx: fmt(m.x), sy: fmt(m.y), ex: fmt(m.x), ey: fmt(m.y), angle: fmt(m.angle), angleZ: fmt(m.angleZ), T: fmt(p.T), h: fmt(m.height) };
-        const args = String(cfg.clamexTemplate || DEFAULTS.clamexTemplate).replace(/\{(\w+)\}/g, (all, k) => (vals[k] !== undefined ? vals[k] : all));
+        const vals = { sx: fmt(m.x), sy: fmt(m.y), ex: fmt(m.ex), ey: fmt(m.ey), angle: fmt(m.angle), angleZ: fmt(m.angleZ), T: fmt(p.T),
+          h: fmt(Math.round(m.h * 100) / 100), n: String(m.n), type: String(m.type), saw: String(cfg.bladeTool || 'E070').replace(/"/g, '') };
+        const key = { edge: 'clamexTplEdge', miter: 'clamexTplMiter', face: 'clamexTplFace' }[m.kind];
+        const args = String(cfg[key] || DEFAULTS[key]).replace(/\{(\w+)\}/g, (all, k) => (vals[k] !== undefined ? vals[k] : all));
         L.push('CreateMacro("SawCut_Lamello_' + n + '", "' + String(cfg.clamexMacro || 'SawCut_Lamello').replace(/"/g, '') + '", ' + args + ');');
         blank();
       } else if (op.kind === 'clamex') {

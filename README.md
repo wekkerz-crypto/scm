@@ -78,18 +78,22 @@ Schräge taucht der Fräser um ≈ Radius × sin(Neigung) unter die Platte – d
 **So in der STEP modellieren:** die Nut so, wie die Scheibe sie fräst – Kreis **Ø 100** (Radius 50) auf der Mittelebene der
 Nut, Mittelpunkt **36 mm** vor der Oberfläche (= 14 mm tief), symmetrisch in Nutbreite (z. B. 6 mm) extrudieren und abziehen.
 Das Tool erkennt jedes Kreissegment R 40–60 zwischen zwei parallelen Wänden 3–12 mm Abstand als Clamex-Nut (nicht als Tasche
-oder gewölbte Fläche) – in der Kante oder in der Fläche (Beispiel `test/fixtures/schrank1.step`).
+oder gewölbte Fläche) – in der Kante, auf einer Gehrung oder in der Fläche (Beispiele `test/fixtures/schrank1.step`,
+`test/fixtures/clamex_korpus.step`). Auch Nuten aus Bauteil-Bibliotheken (Lamello), deren Nutgrund eine Extrusions- oder
+Freiformfläche ist, werden erkannt (an den Seitenwänden mit Kreisbogen); mehrere Nuten auf einer Achse werden getrennt.
 
-**Programm – Standard: SCM-Makro `SawCut_Lamello`** (Makrohilfe: `maestro/doku/SawCut_Lamello_Makrohilfe.pdf`), so wie in
-den Werkstatt-Programmen `maestro/beispiele/33_SW-Schrag.xcs`, `38_SW-Schrag.xcs`, `40_Mittelseite_st2.xcs`: ein
-`CreateMacro("SawCut_Lamello_n", "SawCut_Lamello", …)` je Nut mit der **Parameterliste dieser Programme (nach Position)**;
-eingesetzt werden nur Start X/Y = Ende X/Y (Mitte der Nutöffnung auf der Kante, bei schrägen Schnittflächen auf der
-längeren Kante) – laut Makrohilfe dann automatisch ein Verbinder ohne Sägeschnitt –, *Winkel* der Schnittfläche (90 =
-gerade; schräg: Fläche nach oben 90 − Neigung, nach unten 90 + Neigung wie beim Sägeschnitt) und *Winkel um Z* (Richtung gegen den Uhrzeigersinn: vorne 360 – 0 gilt als „nicht angegeben“ –, rechts 90,
-hinten 180, links −90). Werkzeuge, Tiefe, Oszillation usw. wie in den Programmen bzw. aus `SawCut_Lamello.xspc`.
-Die Vorlage ist unter *Werkzeuge & Regeln → Clamex* änderbar (Platzhalter `{sx} {sy} {ex} {ey} {angle} {angleZ} {T} {h}`;
-`{h}` = Höhe der Nutmitte an der Oberfläche, in der Vorgabe nicht verwendet – Position der *EinfHöhe* noch unbekannt).
-Nuten in der **Fläche** gehen über das Makro noch nicht (kein Beispiel) – Hinweis, nicht ausgegeben.
+**Programm – Standard: SCM-Makro `SawCut_Lamello`** (Makrohilfe: `maestro/doku/SawCut_Lamello_Makrohilfe.pdf`) genau wie
+in den Werkstatt-Programmen `maestro/beispiele/5_…10_` (Korpus mit Clamex P-14; Vergleich im Test, Zeichen für Zeichen):
+`CreateMacro("SawCut_Lamello_n", "SawCut_Lamello", …)` mit 48 Werten nach Position, je **Kante/Linie ein Makro** – Start →
+Ende über alle Verbinder (gleicher Abstand), Anzahl an Position 28; sonst je Verbinder ein Makro (Ende 200 mm weiter, Anzahl 1).
+Drei Vorlagen (*Werkzeuge & Regeln → Clamex*, Platzhalter `{sx} {sy} {ex} {ey} {angle} {angleZ} {T} {n} {h} {type} {saw}`):
+- **Kante** (Winkel 90, `E030`), **Gehrung** nach dem Sägeschnitt (Winkel 90 − Neigung, z. B. 45; Säge des Schnitts, Punkt auf
+  der längeren Kante), **Fläche** (Winkel 0, `E032`, Laufrichtung längs der Nut).
+- *Winkel um Z* = Laufrichtung: vorne 0, rechts 90, hinten 180, links −90. *Höhe* (Pos. 41) = Oberkante → Nutmitte entlang der
+  Schnittfläche (z. B. 8,54 bei 19 mm), *Nuttyp* (Pos. 43) aus der Nuttiefe („14“ = P-14).
+
+Hinweis Drehlage: Das Tool legt die lange Seite in X; die Werkstatt hat die Korpusteile teils 90° gedreht – mit *Drehen 90°*
+angleichen (Programm sonst gleich).
 
 **Alternativ direkt** (*Clamex-Nuten: direkt mit dem Scheibenfräser*): Scheibenfräser `E030` (auf Blattmitte vermessen),
 Werkzeugachse = Nutachse:
@@ -347,10 +351,8 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
 - **Zapfen auf Schräge:** Vorschnitt mit versetzter Säge-Linie und Tasche mit Insel auf `CreateWorkplane` (wie Taschen auf
   Schrägen) – in der Simulation prüfen: Lage der Ebene (Ursprung an der Unterkante + Zapfenhöhe), Zapfen bleibt stehen,
   Fräser unter der Platte an der Unterkante.
-- **Clamex über `SawCut_Lamello`:** Parameterliste nach Position aus den Werkstatt-Programmen; geprüft werden muss
-  der Fall Start = Ende (ein Verbinder an der Nutposition) mit *Winkel um Z* an Position 47, die Höhe der Nut (das
-  Makro nimmt sie aus seinen Vorgaben, Wert 10 an Position 41?) und die Lage bei schrägen Schnittflächen (längere Kante).
-  Erster Test mit Parameternamen (`SetMacroParam`) ergab „Ausrichtung … Winkel um Z-Achse“ – daher jetzt nach Position.
+- **Clamex über `SawCut_Lamello`:** Ausgabe gleich den Werkstatt-Programmen `5_`–`10_` (Kante, Gehrung, Fläche). Offen:
+  Positionen 12/13 bei Gehrungen (in `10_SW-Schrag` andere Werte als 145,9), Gehrungen mit anderem Winkel als 45°.
 - **Clamex direkt:** Tiefe bis zur Blattmitte (Scheibe auf Blattmitte vermessen), Bahn hin und auf derselben Linie
   zurück, Nut in der Fläche mit waagerechtem Werkzeug auf der Kanten-Ebene – in der Simulation prüfen.
 - **Eigene Schnittwerte:** Einheiten laut Handbuch wie in Xilog (V/F in m/min, S in U/min) – an einer Bearbeitung mit

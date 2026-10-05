@@ -245,7 +245,7 @@ body[data-page="model"] .profilebar, body[data-page="model"] .bench, body[data-p
 .mopac, .mchk { display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; color: var(--muted); }
 .mopac input { width: 120px; accent-color: var(--accent); }
 .mopac span { font-family: var(--font-mono); font-size: 0.78rem; min-width: 3em; }
-#mmeasure[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+#mmeasure[aria-pressed="true"], #mdim[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .mhost { position: relative; height: max(420px, calc(100vh - 260px)); border-radius: var(--r); overflow: hidden; background: var(--sunken); }
 .mhost canvas { display: block; }
 .mlabelwrap { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; }
@@ -254,6 +254,25 @@ body[data-page="model"] .profilebar, body[data-page="model"] .bench, body[data-p
 .mlab.sel { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .mlab.meas { background: #e0442c; color: #fff; border-color: #e0442c; }
 .mlab.meas.live { opacity: 0.85; font-weight: 500; }
+.mlab.dim { background: #1f5fbf; color: #fff; border-color: #1f5fbf; font-weight: 600; }
+.mlab.dim.dot { min-width: 0; width: 8px; height: 8px; padding: 0; border: 1.5px solid #fff; }
+:root[data-theme="dark"] .mlab.dim { background: #8fb4ff; color: #0d1a2e; border-color: #8fb4ff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mlab.dim { background: #8fb4ff; color: #0d1a2e; border-color: #8fb4ff; } }
+#mdimaxis button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.mdimsvg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; --dimc: #1f5fbf; }
+.mdimsvg .dim { stroke: var(--dimc); stroke-width: 1.6; fill: none; }
+.mdimsvg .ext { stroke: var(--dimc); stroke-width: 1; fill: none; opacity: 0.7; }
+.mdimsvg .arr { fill: var(--dimc); stroke: none; }
+:root[data-theme="dark"] .mdimsvg { --dimc: #8fb4ff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mdimsvg { --dimc: #8fb4ff; } }
+.mdimhead { margin-top: 14px; }
+.mdimlist { margin: 0; padding: 0; list-style: none; font-size: 0.88rem; }
+.mdimlist li { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-top: 1px solid var(--line); }
+.mdimlist li b { font-family: var(--font-mono); min-width: 6.5em; }
+.mdimlist li span { color: var(--muted); flex: 1; }
+.mdimlist li button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 1rem; padding: 0 4px; }
+.mdimlist li button:hover { color: var(--ink); }
+.mdimlist .note { border: 0; }
 .mlab.meas.dot { min-width: 0; width: 10px; height: 10px; padding: 0; border: 2px solid #fff; box-shadow: 0 0 0 1px #e0442c, 0 1px 3px rgba(0,0,0,0.4); }
 /* Fang-Markierung: Endpunkt □, Mitte △, Kreismitte ○, Kante ✕, Fläche · – Name daneben */
 .msnap { position: absolute; left: 0; top: 0; pointer-events: none; padding-left: 14px; margin-top: -8px; font: 600 0.72rem/16px var(--font-body);
@@ -546,6 +565,8 @@ table.fmt.one .onet { display: inline; }
         <label class="mopac" title="Explosionsansicht: Bauteile auseinanderziehen (Maße bleiben wie zusammengebaut)">Explosion <input type="range" id="mexpl" min="0" max="100" step="5" value="0"> <span id="mexplv">0 %</span></label>
         <label class="mchk"><input type="checkbox" id="mlabels" checked> Nummern</label>
         <button type="button" class="btn small" id="mmeasure" aria-pressed="false" title="Zwei Punkte anklicken – Fang auf Endpunkt, Mitte, Kreismitte, Kante, Fläche; Alt = ohne Fang; Esc beendet">📏 Messen</button>
+        <button type="button" class="btn small" id="mdim" aria-pressed="false" title="Maße setzen, die stehen bleiben: zwei Punkte anklicken (mit Fang); Entf löscht das letzte; Esc beendet">📐 Bemaßen</button>
+        <span class="v3bar static" id="mdimaxis" role="group" aria-label="Maßrichtung" hidden><button type="button" data-dimaxis="aligned" aria-pressed="true" title="Direkter Abstand der Punkte">Direkt</button><button type="button" data-dimaxis="x" aria-pressed="false" title="Abstand in X">X</button><button type="button" data-dimaxis="y" aria-pressed="false" title="Abstand in Y">Y</button><button type="button" data-dimaxis="z" aria-pressed="false" title="Abstand in Z (Höhe)">Z</button></span>
       </div>
       <div class="mhost" id="mhost"><div class="mlabelwrap" id="mlabelwrap"></div><div class="v3msg" id="mmsg">3D-Ansicht wird geladen …</div></div>
       <div class="mhud" id="mhud">Linke Maustaste: drehen · rechte Maustaste/Shift: verschieben · Mausrad: zoomen · Klick: Bauteil wählen</div>
@@ -554,6 +575,8 @@ table.fmt.one .onet { display: inline; }
       <div class="mlisthead"><h2>Bauteile</h2><span class="mlact"><button type="button" class="btn ghost small" id="mall">Alle zeigen</button></span></div>
       <table class="mtable" id="mtable"></table>
       <p class="note">Nummern wie in der Programmliste. Klick auf eine Zeile wählt das Bauteil, Doppelklick zoomt hin.</p>
+      <div class="mlisthead mdimhead"><h2>Maße</h2><span class="mlact"><button type="button" class="btn ghost small" id="mdimclear" hidden>Alle löschen</button></span></div>
+      <ol class="mdimlist" id="mdimlist"></ol>
     </aside>
   </section>
 
@@ -2273,6 +2296,7 @@ table.fmt.one .onet { display: inline; }
         mdl.viewer = new Model3D.Viewer($('mhost'), $('mlabelwrap'));
         mdl.viewer.onPick = (num) => { mdl.sel = num; renderModelList(); updateModelHud(); const tr = document.querySelector('#mtable tr[data-num="' + num + '"]'); if (tr) tr.scrollIntoView({ block: 'nearest' }); };
         mdl.viewer.onMeasure = (m) => { mdl.meas = m; updateModelHud(); };
+        mdl.viewer.onDims = () => renderDimList();
       }
       mdl.viewer.setTheme(isDarkTheme());
       // je STEP-Datei die Netze von OpenCascade, Zuordnung über den Hüllquader
@@ -2307,6 +2331,11 @@ table.fmt.one .onet { display: inline; }
     if (mdl.viewer && mdl.viewer.measuring) {
       const r1 = (v) => fmt(Math.round(v * 10) / 10);
       const fang = 'Fang: □ Endpunkt · ○ Kreismitte · △ Mitte · ✕ Kante · Fläche (Alt = ohne Fang)';
+      if (mdl.viewer.mode === 'dim') {
+        h.innerHTML = (m && m.first ? 'Bemaßen: zweiten Punkt anklicken' : 'Bemaßen: ersten Punkt anklicken – Maße bleiben stehen') + ' · Richtung ' +
+          { aligned: 'direkt', x: 'X', y: 'Y', z: 'Z' }[mdl.viewer.dimAxis] + ' · ' + fang + ' · Entf löscht das letzte · Esc beendet';
+        return;
+      }
       h.innerHTML = !m ? 'Messen: ersten Punkt anklicken · ' + fang + ' · Esc beendet'
         : m.first ? 'Messen: zweiten Punkt anklicken · ' + fang
           : 'Abstand <b>' + r1(m.dist) + ' mm</b> · ΔX <b>' + r1(m.dx) + '</b> · ΔY <b>' + r1(m.dy) + '</b> · ΔZ <b>' + r1(m.dz) + '</b>' +
@@ -2364,16 +2393,46 @@ table.fmt.one .onet { display: inline; }
     if (mdl.viewer) mdl.viewer.setExplode((+e.target.value) / 100);
   });
   $('mlabels').addEventListener('change', (e) => { if (mdl.viewer) mdl.viewer.setLabels(e.target.checked); });
-  $('mmeasure').addEventListener('click', () => {
+  // Messen (vorübergehend) und Bemaßen (Maße bleiben stehen) – höchstens eins von beiden an
+  function setMeasureMode(mode) {
     if (!mdl.viewer) return;
-    const on = !mdl.viewer.measuring;
-    mdl.viewer.setMeasuring(on);
-    $('mmeasure').setAttribute('aria-pressed', String(on));
+    mdl.viewer.setMeasuring(!!mode, mode);
+    $('mmeasure').setAttribute('aria-pressed', String(mode === 'measure'));
+    $('mdim').setAttribute('aria-pressed', String(mode === 'dim'));
+    $('mdimaxis').hidden = mode !== 'dim';
     mdl.meas = null;
     updateModelHud();
+  }
+  $('mmeasure').addEventListener('click', () => setMeasureMode(mdl.viewer && mdl.viewer.mode === 'measure' ? null : 'measure'));
+  $('mdim').addEventListener('click', () => setMeasureMode(mdl.viewer && mdl.viewer.mode === 'dim' ? null : 'dim'));
+  $('mdimaxis').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-dimaxis]');
+    if (!b || !mdl.viewer) return;
+    mdl.viewer.dimAxis = b.dataset.dimaxis;
+    $('mdimaxis').querySelectorAll('[data-dimaxis]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    updateModelHud();
   });
+  function renderDimList() {
+    const dims = mdl.viewer ? mdl.viewer.dims : [];
+    $('mdimclear').hidden = !dims.length;
+    $('mdimlist').innerHTML = !dims.length ? '<li class="note">Noch keine Maße – „📐 Bemaßen“ und zwei Punkte anklicken.</li>'
+      : dims.map((d, i) => '<li data-dim="' + d.id + '">' + (i + 1) + '. <b>' + (d.axis === 'aligned' ? '' : d.axis.toUpperCase() + ' ') +
+        fmt(Math.round(d.value * 10) / 10) + ' mm</b><span>Bauteil ' + d.a.num + (d.b.num !== d.a.num ? ' → ' + d.b.num : '') + '</span>' +
+        '<button type="button" data-dimdel="' + d.id + '" title="Maß löschen" aria-label="Maß ' + (i + 1) + ' löschen">✕</button></li>').join('');
+  }
+  renderDimList();
+  $('mdimlist').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-dimdel]');
+    if (b && mdl.viewer) mdl.viewer.removeDim(+b.dataset.dimdel);
+  });
+  $('mdimclear').addEventListener('click', () => { if (mdl.viewer) mdl.viewer.clearDims(); });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && state.page === 'model' && mdl.viewer && mdl.viewer.measuring) { $('mmeasure').click(); }
+    if (state.page !== 'model' || !mdl.viewer || !mdl.viewer.measuring) return;
+    if (e.key === 'Escape') setMeasureMode(null);
+    else if ((e.key === 'Delete' || e.key === 'Backspace') && mdl.viewer.mode === 'dim' && mdl.viewer.dims.length && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) {
+      e.preventDefault();
+      mdl.viewer.removeDim(mdl.viewer.dims[mdl.viewer.dims.length - 1].id);
+    }
   });
 
   // ------------------------------------------------ Werkstück-Profile

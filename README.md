@@ -170,6 +170,11 @@ zusammengebaut, so wie sie im Modell stehen (OpenCascade, three.js – offline, 
   = ohne Fang. Nach dem ersten Punkt Gummiband mit laufendem Abstand. Ergebnis Abstand und ΔX/ΔY/ΔZ, bei zwei parallelen
   Flächen zusätzlich der senkrechte Abstand (z. B. Plattendicke, lichte Weite). Maße gelten immer wie zusammengebaut, auch
   in der Explosionsansicht. Esc beendet.
+- **Bemaßen** (📐): wie Messen mit Fang, aber die Maße **bleiben stehen** – als Maßlinie mit Pfeilen und Hilfslinien,
+  nach außen versetzt, auch beim Drehen, in der Explosion und nach dem Wechsel zu den Programmen. Richtung wählbar:
+  *Direkt* (Abstand der Punkte) oder nur *X*, *Y*, *Z*. Rechts die Liste **Maße** (Wert, Bauteile, ✕ löschen,
+  *Alle löschen*); Entf löscht das letzte Maß. Maße an ausgeblendeten Bauteilen werden nicht gezeigt. Nach dem
+  Neuladen der Seite sind die Maße weg.
 
 ## Was erkannt wird
 

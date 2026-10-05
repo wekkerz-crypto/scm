@@ -1,7 +1,7 @@
 /*
  * Möbel-3D: alle Bauteile einer STEP-Baugruppe zusammengebaut (Modellkoordinaten, Z oben) – drehen, verschieben,
- * zoomen, Bauteile ein-/ausblenden, Transparenz, Explosionsansicht, Nummern am Bauteil, Bauteil anklicken, Messen mit
- * Fang (Endpunkt, Kantenmitte, Kreismitte, Kante, Fläche). three.js und OrbitControls kommen aus View3D.load().
+ * zoomen, Bauteile ein-/ausblenden, Transparenz, Explosionsansicht, Nummern am Bauteil, Bauteil anklicken, Messen und
+ * Bemaßen (Maße bleiben stehen) mit Fang (Endpunkt, Kantenmitte, Kreismitte, Kante, Fläche). three.js und OrbitControls kommen aus View3D.load().
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
@@ -53,7 +53,12 @@
     this.showLabels = true;
     this.selected = null;
     this.measuring = false;
+    this.mode = null; // 'measure' = Messen (vorübergehend), 'dim' = Bemaßen (bleibt stehen)
     this.measurePts = [];
+    this.dims = [];
+    this.dimAxis = 'aligned';
+    this.dimLabels = [];
+    this.onDims = null;
     this.onPick = null;
     this.onMeasure = null;
     this.raycaster = new THREE.Raycaster();
@@ -109,7 +114,8 @@
     this.dark = dark;
     this.scene.background = new this.THREE.Color(dark ? 0x1b2120 : 0xeef0ee);
     for (const p of this.parts) p.edges.material.color.set(dark ? 0x1a120a : 0x4a3520);
-    if (this.box) this.groundFor(this.box);
+    if (this.box) this.groundFor(this.worldBox ? this.worldBox() : this.box);
+    if (this.dims && this.dims.length) this.drawDims();
   };
 
   // parts: [{ num, name, mesh: { pos: Float32Array (Modell, mm), index: Uint32Array|Array, normals?: Float32Array } }]
@@ -152,6 +158,7 @@
     });
     this.box = box;
     this.setExplode(this.explode, true);
+    this.setDims(this.dims);
     this.applyLook();
     this.view('iso');
   };
@@ -200,6 +207,7 @@
     }
     this.groundFor(this.worldBox());
     if (this.measurePts.length) this.drawMeasure();
+    this.drawDims();
     if (!noView) this.setHover(null);
   };
 
@@ -221,6 +229,7 @@
     p.obj.visible = on;
     p.edges.visible = on;
     if (!on && this.selected === num) this.select(null);
+    if (this.dims.length) this.drawDims();
   };
 
   Viewer.prototype.setOpacity = function (a) { this.opacity = a; this.applyLook(); };
@@ -294,6 +303,12 @@
       m.el.style.display = v.z > 1 ? 'none' : '';
       m.el.style.transform = 'translate(' + ((v.x + 1) / 2 * w).toFixed(1) + 'px,' + ((1 - v.y) / 2 * h).toFixed(1) + 'px) translate(-50%,' + (m.el.classList.contains('dot') ? '-50%' : '-130%') + ')';
     }
+    if (this.dimShapes && (this.dimShapes.length || (this.dimSvg && this.dimSvg.firstChild))) this.drawDimSvg();
+    for (const m of this.dimLabels) {
+      v.copy(m.at).project(this.camera);
+      m.el.style.display = v.z > 1 ? 'none' : '';
+      m.el.style.transform = 'translate(' + ((v.x + 1) / 2 * w).toFixed(1) + 'px,' + ((1 - v.y) / 2 * h).toFixed(1) + 'px) translate(-50%,-50%)';
+    }
     if (this.hover && !this.snapEl.hidden) {
       v.copy(this.hover.world).project(this.camera);
       this.snapEl.style.transform = 'translate(' + ((v.x + 1) / 2 * w).toFixed(1) + 'px,' + ((1 - v.y) / 2 * h).toFixed(1) + 'px)';
@@ -345,6 +360,7 @@
       if (!r) return null;
       const p = this.part(r.num);
       r.local = r.world.clone().sub(p.offset);
+      r.name = p.name;
       return r;
     };
     if (free) return finish(face);
@@ -425,6 +441,12 @@
       if (!h) return;
       if (this.measurePts.length >= 2) this.clearMeasure();
       this.measurePts.push(h);
+      if (this.mode === 'dim' && this.measurePts.length === 2) {
+        const [a, b] = this.measurePts;
+        this.clearMeasure();
+        this.addDim(a, b, this.dimAxis);
+        return;
+      }
       this.drawMeasure();
       return;
     }
@@ -432,8 +454,10 @@
     this.select(h ? h.num : null);
   };
 
-  Viewer.prototype.setMeasuring = function (on) {
+  Viewer.prototype.setMeasuring = function (on, mode) {
     this.measuring = on;
+    this.mode = on ? mode || 'measure' : null;
+    this.clearMeasure();
     this.renderer.domElement.style.cursor = on ? 'crosshair' : '';
     if (!on) { this.clearMeasure(); this.setHover(null); }
   };
@@ -495,17 +519,134 @@
       const [a, b] = pts;
       line(a, b);
       const m = measureOf(this.measurePts[0], this.measurePts[1]);
-      tag(m.dist.toFixed(1) + ' mm', a.clone().add(b).multiplyScalar(0.5));
+      tag(num1(m.dist) + ' mm', a.clone().add(b).multiplyScalar(0.5));
       if (this.onMeasure) this.onMeasure(Object.assign(m, { exploded: this.explode > 0 }));
     } else if (this.measurePts.length === 1) {
       const hv = this.hover;
       if (hv) {
         line(pts[0], hv.world, true);
         const m = measureOf(this.measurePts[0], hv);
-        tag(m.dist.toFixed(1), pts[0].clone().add(hv.world).multiplyScalar(0.5), 'live');
+        const ax = this.mode === 'dim' ? this.dimAxis : 'aligned';
+        tag((ax === 'aligned' ? '' : ax.toUpperCase() + ' ') + num1(ax === 'aligned' ? m.dist : m['d' + ax]), pts[0].clone().add(hv.world).multiplyScalar(0.5), 'live');
       }
       if (this.onMeasure) this.onMeasure({ first: true, kind: this.measurePts[0].kind });
     }
+  };
+
+  // Zahl mit einer Nachkommastelle, deutsch (462 bzw. 12,5)
+  function num1(v) { return String(Math.round(v * 10) / 10).replace('.', ','); }
+
+  /*
+   * Bemaßen: Maße bleiben stehen (auch beim Drehen, Ausblenden, in der Explosion). axis 'aligned' = direkter Abstand,
+   * 'x'/'y'/'z' = Abstand in der Achse (Maßlinie in Achsrichtung ab Punkt a, Hilfslinie zum Punkt b).
+   * Wert immer wie zusammengebaut (lokale Punkte ohne Explosion).
+   */
+  let dimSeq = 0;
+  Viewer.prototype.addDim = function (a, b, axis) {
+    const m = measureOf(a, b);
+    const d = { id: ++dimSeq, a: a, b: b, axis: axis || 'aligned' };
+    d.value = d.axis === 'aligned' ? m.dist : m['d' + d.axis];
+    this.dims.push(d);
+    this.drawDims();
+    if (this.onDims) this.onDims(this.dims);
+    return d;
+  };
+  Viewer.prototype.removeDim = function (id) {
+    this.dims = this.dims.filter((d) => d.id !== id);
+    this.drawDims();
+    if (this.onDims) this.onDims(this.dims);
+  };
+  Viewer.prototype.clearDims = function () { this.dims = []; this.drawDims(); if (this.onDims) this.onDims(this.dims); };
+  // Maße nach neuem Laden der Bauteile wieder setzen (nur wenn Nummer und Name noch passen)
+  Viewer.prototype.setDims = function (list) {
+    this.dims = (list || []).filter((d) => { const pa = this.part(d.a.num); const pb = this.part(d.b.num); return pa && pb && pa.name === d.a.name && pb.name === d.b.name; });
+    this.drawDims();
+    if (this.onDims) this.onDims(this.dims);
+  };
+  /*
+   * Maße zeichnen wie in einer Zeichnung: Maßlinie nach außen versetzt (weg von der Mitte der Baugruppe), Hilfslinien
+   * von den Punkten, Pfeile – als SVG über der Ansicht (feste Strichstärke), je Bild neu projiziert (drawDimSvg).
+   */
+  Viewer.prototype.drawDims = function () {
+    const T = this.THREE;
+    for (const m of this.dimLabels) m.el.remove();
+    this.dimLabels = [];
+    this.dimShapes = [];
+    if (!this.dimSvg) {
+      this.dimSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      this.dimSvg.setAttribute('class', 'mdimsvg');
+      this.labelEl.insertBefore(this.dimSvg, this.labelEl.firstChild);
+    }
+    const wb = this.worldBox();
+    const c = wb.isEmpty() ? new T.Vector3() : wb.getCenter(new T.Vector3());
+    const off = wb.isEmpty() ? 20 : Math.max(20, wb.getSize(new T.Vector3()).length() * 0.06);
+    const tag = (text, at, cls, title) => {
+      const el = document.createElement('span');
+      el.className = 'mlab dim' + (cls ? ' ' + cls : '');
+      el.textContent = text;
+      if (title) el.title = title;
+      this.labelEl.appendChild(el);
+      this.dimLabels.push({ el: el, at: at });
+    };
+    const AX = { x: new T.Vector3(1, 0, 0), y: new T.Vector3(0, 1, 0), z: new T.Vector3(0, 0, 1) };
+    this.dims.forEach((d, i) => {
+      const pa = this.part(d.a.num);
+      const pb = this.part(d.b.num);
+      if (!pa || !pb || !pa.visible || !pb.visible) return;
+      const a = this.worldOf(d.a);
+      const b = this.worldOf(d.b);
+      // Richtung der Maßlinie und Versatz nach außen (senkrecht dazu)
+      const dir = d.axis === 'aligned' ? b.clone().sub(a) : AX[d.axis].clone().multiplyScalar(b.clone().sub(a).dot(AX[d.axis]));
+      const len = dir.length();
+      const u = len > 1e-6 ? dir.clone().divideScalar(len) : new T.Vector3(1, 0, 0);
+      const mid = a.clone().addScaledVector(dir, 0.5);
+      let n = mid.clone().sub(c);
+      n.addScaledVector(u, -n.dot(u));
+      if (n.length() < 1e-3) { n = (Math.abs(u.z) < 0.9 ? new T.Vector3(0, 0, 1) : new T.Vector3(0, -1, 0)); n.addScaledVector(u, -n.dot(u)); }
+      n.normalize();
+      // Maßlinie: von a (versetzt) in Richtung u um die Maßlänge; Hilfslinie von b bis zum Ende der Maßlinie
+      const A = a.clone().addScaledVector(n, off);
+      const E = A.clone().add(dir);
+      const over = off * 0.18;
+      const B = b.clone().addScaledVector(E.clone().sub(b).normalize(), E.distanceTo(b) + over);
+      this.dimShapes.push({ dim: [A, E], ext: [[a, A.clone().addScaledVector(n, over)], [b, B]] });
+      tag('', a, 'dot');
+      tag('', b, 'dot');
+      tag((d.axis === 'aligned' ? '' : d.axis.toUpperCase() + ' ') + num1(d.value), A.clone().add(E).multiplyScalar(0.5), '',
+        'Maß ' + (i + 1) + ': Bauteil ' + d.a.num + (d.b.num !== d.a.num ? ' → ' + d.b.num : ''));
+    });
+    if (!this.dimShapes.length) this.dimSvg.innerHTML = '';
+  };
+
+  // Maßlinien als SVG für die aktuelle Kamera
+  Viewer.prototype.drawDimSvg = function () {
+    if (!this.dimSvg) return;
+    const w = this._w;
+    const h = this._h;
+    const sc = (q) => { const v = q.clone().project(this.camera); return v.z > 1 ? null : [((v.x + 1) / 2) * w, ((1 - v.y) / 2) * h]; };
+    const f = (v) => v.toFixed(1);
+    let ext = '';
+    let dim = '';
+    let arr = '';
+    for (const s of this.dimShapes || []) {
+      for (const [p, q] of s.ext) { const P = sc(p); const Q = sc(q); if (P && Q) ext += 'M' + f(P[0]) + ' ' + f(P[1]) + 'L' + f(Q[0]) + ' ' + f(Q[1]); }
+      const A = sc(s.dim[0]);
+      const E = sc(s.dim[1]);
+      if (!A || !E) continue;
+      dim += 'M' + f(A[0]) + ' ' + f(A[1]) + 'L' + f(E[0]) + ' ' + f(E[1]);
+      const L = Math.hypot(E[0] - A[0], E[1] - A[1]);
+      if (L < 4) continue;
+      const ux = (E[0] - A[0]) / L;
+      const uy = (E[1] - A[1]) / L;
+      const k = Math.min(10, L / 3);
+      for (const [P, sx] of [[A, 1], [E, -1]]) {
+        const bx = P[0] + ux * k * sx;
+        const by = P[1] + uy * k * sx;
+        arr += 'M' + f(P[0]) + ' ' + f(P[1]) + 'L' + f(bx - uy * k * 0.32) + ' ' + f(by + ux * k * 0.32) + 'L' + f(bx + uy * k * 0.32) + ' ' + f(by - ux * k * 0.32) + 'Z';
+      }
+    }
+    this.dimSvg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    this.dimSvg.innerHTML = ext || dim ? '<path class="ext" d="' + ext + '"/><path class="dim" d="' + dim + '"/><path class="arr" d="' + arr + '"/>' : '';
   };
 
   /*

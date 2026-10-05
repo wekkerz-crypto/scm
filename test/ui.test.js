@@ -168,7 +168,7 @@ test('Web-Tool: Draufsicht zoomen, Haltestege am Durchbruch umschalten', { skip:
   }
 });
 
-test('Web-Tool: Möbel 3D – Baugruppe mit Nummern, Ein-/Ausblenden, Wählen, Messen mit Fang, Explosion', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+test('Web-Tool: Möbel 3D – Baugruppe mit Nummern, Ein-/Ausblenden, Wählen, Messen mit Fang, Bemaßen, Explosion', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
   const browser = await chromium.launch();
   try {
     const p = await browser.newPage({ viewport: { width: 1440, height: 950 } });
@@ -220,6 +220,22 @@ test('Web-Tool: Möbel 3D – Baugruppe mit Nummern, Ein-/Ausblenden, Wählen, M
     await p.mouse.click(a2[1] + 30, a2[2] + 3);
     await p.mouse.click(b2[1] + 30, b2[2] + 3);
     assert.match(await p.textContent('#mhud'), /ΔZ 462 .*wie zusammengebaut/);
+    // Bemaßen: Maße bleiben stehen (auch nach Esc), Richtung Z, Liste rechts, löschen
+    await p.click('#mdim');
+    assert.strictEqual(await p.getAttribute('#mmeasure', 'aria-pressed'), 'false');
+    await p.click('#mdimaxis [data-dimaxis="z"]');
+    await p.mouse.click(a2[1] + 30, a2[2] + 3);
+    await p.mouse.click(b2[1] + 30, b2[2] + 3);
+    await p.mouse.click(a2[1] - 40, a2[2] + 3);
+    await p.mouse.click(b2[1] - 40, b2[2] + 3);
+    await p.keyboard.press('Escape');
+    assert.strictEqual(await p.$$eval('#mdimlist li[data-dim]', (x) => x.length), 2);
+    assert.match(await p.textContent('#mdimlist'), /Z 462 mm.*Bauteil 4 → 3/);
+    assert.ok((await p.$$eval('#mlabelwrap .mlab.dim:not(.dot)', (x) => x.map((e) => e.textContent))).includes('Z 462'));
+    await p.click('#mdimlist [data-dimdel]');
+    assert.strictEqual(await p.$$eval('#mdimlist li[data-dim]', (x) => x.length), 1);
+    await p.click('#mdimclear');
+    assert.strictEqual(await p.$$eval('#mlabelwrap .mlab.dim', (x) => x.length), 0);
     await p.keyboard.press('Escape');
     assert.strictEqual(await p.getAttribute('#mmeasure', 'aria-pressed'), 'false');
     // zurück zu den Programmen

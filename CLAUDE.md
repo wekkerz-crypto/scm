@@ -21,7 +21,9 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   (Sitzung), `boardPicker` in `index.html`, `Viewer.setBoards`.
   Schnitt `setSection` (clippingPlanes in `applyLook`), Bild `snapshot()` (Leinwand + Schilder/Maße nachgezeichnet).
 - Listen (`state.page` 'lists'): Stückliste `bomRows` (gleiche Teile zusammengefasst, Anzahl `part.qty`), CSV, Druck A4 `printA4`;
-  Zuschnittplan `web/js/cutplan.js` (`CutPlan.plan`, Guillotine, Schnittfuge/Besäumen/Maserung). Zeit: `Toolpath.estimate`
+  Zuschnittplan `web/js/cutplan.js` (`CutPlan.plan`, Guillotine, Schnittfuge/Besäumen/Maserung; `fits` beim Verschieben
+  von Hand → `lst.manual[Gruppe] = {sig, sheets}`), PDF-Datei über `web/js/pdf.js` (`MiniPdf`, ohne Druckdialog) in `cutPdf`.
+  Eigene Farben mit Namen: Schlüssel `#rrggbb[/u]~Name`, gemerkt in `settings.customBoards`. Zeit: `Toolpath.estimate`
   (Einstellungen `est*`), `partTime` in `index.html`. Projektdatei .s2m: `saveProject`/`openProject` (= `sessionData`/`restoreFrom`).
 - Gekrümmte Flächen (je Teil `overrides.curved = {slant, surface}`, Schalter nur sichtbar, wenn erkannt):
   `panel.curvedSlants` (Schräge an Rundungen → `slantpath`, `offsetRun` in `xcs.js`) und `panel.curvedSurfaces`

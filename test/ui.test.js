@@ -723,3 +723,66 @@ test('Web-Tool: Listen (Stückliste, Zuschnitt, Zeit) und Projektdatei speichern
     await browser.close();
   }
 });
+
+test('Web-Tool: Zuschnittplan von Hand verschieben, als PDF speichern; eigene Farbe mit Namen', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const fs = require('fs');
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    await p.click('[data-page="lists"]');
+    await p.click('[data-ltab="cut"]');
+    await p.waitForSelector('svg.sheet g.cp');
+    // Teil ziehen: an eine freie Stelle rechts oben
+    const g = await p.$('svg.sheet g.cp');
+    const uid = await g.getAttribute('data-uid');
+    const svg = await p.$('svg.sheet');
+    const sb = await svg.boundingBox();
+    const gb = await g.boundingBox();
+    await p.mouse.move(gb.x + gb.width / 2, gb.y + gb.height / 2);
+    await p.mouse.down();
+    await p.mouse.move(sb.x + sb.width - gb.width / 2 - 8, sb.y + gb.height / 2 + 8, { steps: 8 });
+    await p.mouse.up();
+    await p.waitForSelector('[data-cutreset]');
+    assert.match(await p.textContent('.cutgrp h3'), /von Hand angeordnet/);
+    const moved = await p.$eval('svg.sheet g.cp[data-uid="' + uid + '"] rect', (r) => +r.getAttribute('x'));
+    assert.ok(moved > 1500, 'nach rechts verschoben: ' + moved);
+    // auf ein anderes Teil ziehen geht nicht (bleibt liegen)
+    const parts = await p.$$('svg.sheet g.cp');
+    const a = await parts[0].boundingBox();
+    const b = await parts[1].boundingBox();
+    const before = await p.$eval('svg.sheet', (s) => s.innerHTML);
+    await p.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+    await p.mouse.down();
+    await p.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 5 });
+    await p.mouse.up();
+    await p.waitForTimeout(100);
+    assert.strictEqual(await p.$eval('svg.sheet', (s) => s.innerHTML), before);
+    // PDF als Datei
+    const [pdf] = await Promise.all([p.waitForEvent('download'), p.click('#lpdf')]);
+    assert.strictEqual(pdf.suggestedFilename(), 'zuschnittplan.pdf');
+    const head = fs.readFileSync(await pdf.path(), 'latin1');
+    assert.match(head, /^%PDF-1\.4/);
+    assert.match(head, /Zuschnittplan/);
+    // automatisch anordnen
+    await p.click('[data-cutreset]');
+    assert.ok(!(await p.$('[data-cutreset]')));
+    // eigene Farbe mit Namen → in Stückliste und Auswahl
+    await p.click('[data-page="model"]');
+    await p.click('#mboard');
+    await p.fill('.bpick .ownname', 'Egger U999');
+    await p.click('.bpick [data-bown]');
+    assert.match(await p.textContent('#mboard'), /Egger U999/);
+    assert.match(await p.textContent('.bpick'), /Eigene Farben.*Egger U999/);
+    await p.keyboard.press('Escape');
+    await p.click('[data-page="lists"]');
+    await p.click('[data-ltab="bom"]');
+    assert.match(await p.textContent('table.bom'), /Egger U999/);
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});

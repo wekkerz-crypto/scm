@@ -165,7 +165,9 @@ zusammengebaut, so wie sie im Modell stehen (OpenCascade, three.js – offline, 
   Klick auf Bauteil oder Zeile wählt es (blau, unten Name/Maße, *Im Programm öffnen*), Doppelklick auf die Zeile zoomt hin.
 - Je Bauteil **ein-/ausblenden** (Auge) und **Fokus** (nur dieses Bauteil, heranzoomen; nochmal klicken = wieder alle), *Alle zeigen*; **Transparenz** für alle (das gewählte bleibt deckend).
 - **Plattenfarbe:** *Platten* oben (gilt für alle, auch Einstellungen → 3D-Ansicht) – Eiche hell, Buche, Ahorn/Birke,
-  Kirschbaum, Nussbaum, MDF roh, Weiß, Lichtgrau, Anthrazit, Schwarz oder eine eigene Farbe (mit/ohne Maserung). Je Bauteil
+  Kirschbaum, Nussbaum, MDF roh, Weiß, Lichtgrau, Anthrazit, Schwarz oder eine eigene Farbe (mit/ohne Maserung) mit
+  eigenem **Namen** (z. B. „Egger U999“) – benannte Farben bleiben unter *Eigene Farben* in der Auswahl (✕ entfernt) und
+  erscheinen so in Stückliste und Zuschnittplan. Je Bauteil
   über das Farbfeld in der Liste (blau umrandet = eigene Farbe, *Wie Einstellung* nimmt sie zurück); gilt auch in der
   3D-Ansicht des Teils und wird mit der Teileliste gespeichert.
   **Kanten (Schmalflächen)** getrennt von der Oberfläche: *Wie Oberfläche*, *Spanplatte* (Späne), *Multiplex* (Furnierlagen),
@@ -198,7 +200,12 @@ Dritte Seite oben (**Listen**):
   m² je Material und Dicke, Bearbeitungszeit gesamt. **CSV / Excel** (Semikolon, deutsche Kommazahlen) und **Drucken / PDF**.
 - **Zuschnittplan:** Teile auf Rohplatten (Format, Schnittfuge, Besäumrand einstellbar) je Material und Dicke, mit
   durchgehenden Schnitten wie an der Plattensäge; mit Maserung bleibt die lange Seite längs der Plattenlänge, Dekore werden
-  bei Bedarf gedreht. Rohmaß oder Fertigmaß wählbar. Zeichnung je Platte mit Nummer und Maß, Ausnutzung; Drucken / PDF.
+  bei Bedarf gedreht. Rohmaß oder Fertigmaß wählbar. Zeichnung je Platte mit Nummer und Maß, Ausnutzung.
+  **Von Hand anordnen:** Teile mit der Maus ziehen – rasten an Plattenrand (Besäumen) und Nachbarteilen (mit Schnittfuge)
+  ein, auch auf eine andere Platte derselben Gruppe; *+ Platte* hängt eine leere Platte an; Doppelklick dreht (Hinweis bei
+  Maserung); überlappt es, bleibt das Teil liegen. *Automatisch anordnen* verwirft die eigene Anordnung (ändern sich Teile
+  oder Plattenformat, wird ohnehin neu angeordnet). **PDF speichern** schreibt den Plan direkt als PDF-Datei (eine Platte je
+  Seite, ohne Druckdialog); **Drucken** über den Browser.
 - **Bearbeitungszeit** (geschätzt) steht auch an jeder Teilekarte und oben im Teil (Tooltip: Fräsen, Bohren, Eilgang,
   Werkzeugwechsel, Auflegen). Aus Bahnlänge ÷ Vorschub (Werkzeugdatei bzw. eigene Schnittwerte), Zustellungen, Bohrungen,
   Eilgang und Werkzeugwechsel; Werte unter Einstellungen → *Zeitschätzung*. Mit dem **Korrekturfaktor** an die echte

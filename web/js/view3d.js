@@ -53,7 +53,7 @@
 
   /*
    * Plattenfarben (Einstellung „Plattenfarbe“, je Bauteil änderbar): Holz mit Maserung (grain 0…1) oder Dekor einfarbig.
-   * Schlüssel = id; eigene Farbe als '#rrggbb' (mit Maserung) bzw. '#rrggbb/u' (einfarbig).
+   * Schlüssel = id; eigene Farbe als '#rrggbb' (mit Maserung) bzw. '#rrggbb/u' (einfarbig), mit Namen '…~Name' (URI-kodiert).
    */
   const MATERIALS = [
     { id: 'eiche', name: 'Eiche hell', color: '#d4ae7b', grain: 1 },
@@ -79,7 +79,13 @@
     const parts = typeof key === 'string' ? key.split('|') : [key];
     const sk = parts[0];
     let surf;
-    if (typeof sk === 'string' && /^#[0-9a-f]{6}(\/u)?$/i.test(sk)) surf = { id: sk, color: sk.slice(0, 7).toLowerCase(), grain: /\/u$/i.test(sk) ? 0 : 1, name: 'Eigene Farbe' };
+    // eigene Farbe: '#rrggbb', '/u' = einfarbig, '~Name' (URI-kodiert) = eigener Name
+    const own = typeof sk === 'string' && /^(#[0-9a-f]{6})(\/u)?(?:~(.*))?$/i.exec(sk);
+    if (own) {
+      let nm = '';
+      try { nm = own[3] ? decodeURIComponent(own[3]) : ''; } catch (e) { nm = own[3] || ''; }
+      surf = { id: sk, color: own[1].toLowerCase(), grain: own[2] ? 0 : 1, name: nm || 'Eigene Farbe' };
+    }
     else surf = MATERIALS.find((m) => m.id === sk) || MATERIALS[0];
     const ek = parts[1] && (EDGES.some((e) => e.id === parts[1]) || /^#[0-9a-f]{6}$/i.test(parts[1])) ? parts[1] : 'same';
     const e = EDGES.find((x) => x.id === ek);

@@ -277,6 +277,13 @@ svg.sheet .trim { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dash
 svg.sheet .pt { fill: var(--board); stroke: var(--board-edge); stroke-width: 4; }
 svg.sheet .pl { fill: var(--ink); text-anchor: middle; dominant-baseline: middle; font-family: var(--font-mono); font-weight: 600; }
 svg.sheet .pn { fill: var(--muted); text-anchor: middle; dominant-baseline: middle; font-family: var(--font-body); }
+svg.sheet .cp { cursor: grab; touch-action: none; }
+svg.sheet .cp text { pointer-events: none; user-select: none; }
+svg.sheet .cp:hover .pt { stroke: var(--accent); }
+svg.sheet .cp.drag { cursor: grabbing; opacity: 0.85; }
+svg.sheet .cp.drag .pt { stroke: var(--accent); stroke-width: 8; }
+svg.sheet .cp.bad .pt { fill: color-mix(in srgb, var(--err) 35%, var(--board)); stroke: var(--err); }
+.cutact { display: inline-flex; gap: 6px; margin-left: auto; }
 #printarea .a4 { font: 10pt/1.35 var(--font-body); color: #000; }
 #printarea .a4 h1 { font-size: 16pt; margin: 0 0 2mm; }
 #printarea .a4 .meta { color: #333; margin: 0 0 4mm; }
@@ -284,7 +291,8 @@ svg.sheet .pn { fill: var(--muted); text-anchor: middle; dominant-baseline: midd
 #printarea .a4 th, #printarea .a4 td { border-bottom: 0.3mm solid #999; padding: 1.2mm 1.5mm; text-align: left; vertical-align: top; }
 #printarea .a4 { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 #printarea .a4 .sheetfig { break-inside: avoid; display: block; margin: 0 0 4mm; }
-#printarea .a4 svg.sheet { width: auto; max-width: 100%; max-height: 120mm; }
+#printarea .a4 svg.sheet { max-width: 100%; }
+#printarea .a4 .cutgrp + .cutgrp, #printarea .a4 .sheetfig + .sheetfig { break-before: page; }
 #printarea .a4 .cutgrp h3 { break-after: avoid; }
 #printarea .a4 svg.sheet .sh { fill: #fff; stroke: #000; }
 #printarea .a4 svg.sheet .pt { fill: #eee; stroke: #000; }
@@ -323,10 +331,10 @@ svg.sheet .pn { fill: var(--muted); text-anchor: middle; dominant-baseline: midd
 /* Plattenfarbe: Farbfeld (Holz gestreift, Dekor einfarbig) und Auswahlfenster */
 .bsw { display: inline-block; width: 16px; height: 16px; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--ink) 35%, transparent); flex: none; vertical-align: -3px; }
 .boardbtn { display: inline-flex; align-items: center; gap: 7px; }
-.boardbtn .bn { white-space: nowrap; font-family: var(--font-body); }
+.boardbtn .bn { white-space: nowrap; font-family: var(--font-body); max-width: 16em; overflow: hidden; text-overflow: ellipsis; }
 .mtable .act button.mbsw .bsw { width: 18px; height: 18px; }
 .mtable .act button.mbsw.own .bsw { box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--accent); }
-.bpick { position: fixed; z-index: 60; width: 296px; padding: 12px; border-radius: 12px; background: var(--surface); color: var(--ink);
+.bpick { position: fixed; z-index: 60; overflow-y: auto; width: 296px; padding: 12px; border-radius: 12px; background: var(--surface); color: var(--ink);
   border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,0.25); font-size: 0.86rem; }
 .bpick h5 { margin: 0 0 8px; font-size: 0.82rem; color: var(--muted); font-weight: 600; }
 .bpick .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
@@ -338,7 +346,13 @@ svg.sheet .pn { fill: var(--muted); text-anchor: middle; dominant-baseline: midd
 .bpick .own { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
 .bpick .own input[type=color] { width: 34px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer; }
 .bpick .own label { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); }
+.bpick .own { flex-wrap: wrap; }
+.bpick .own .ownname { flex: 1 1 100%; order: 3; font: inherit; font-size: 0.85rem; }
 .bpick .own .btn { margin-left: auto; }
+.bpick .ownk { display: flex; align-items: center; min-width: 0; grid-column: 1 / -1; }
+.bpick .ownk button[data-bkey] { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bpick .ownk .del { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 2px 4px; }
+.bpick .ownk .del:hover { color: var(--ink); }
 .bpick .inh { color: var(--muted); }
 .bpick h5.eh { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
 .bpick .edges { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
@@ -671,11 +685,12 @@ table.fmt.one .onet { display: inline; }
       </span>
       <span class="sp"></span>
       <button type="button" class="btn small" id="lcsv">CSV / Excel</button>
-      <button type="button" class="btn small" id="lprintbtn">Drucken / PDF</button>
+      <button type="button" class="btn small" id="lpdf" hidden title="Zuschnittplan als PDF-Datei speichern (eine Platte je Seite)">PDF speichern</button>
+      <button type="button" class="btn small" id="lprintbtn">Drucken</button>
     </div>
     <div id="bomview"></div>
     <div id="cutview" hidden><div id="cutsheets"></div>
-      <p class="note">Durchgehende Schnitte wie an der Plattensäge; Teile mit Maserung bleiben mit der langen Seite längs der Plattenlänge, Dekore ohne Maserung werden bei Bedarf gedreht. Material und Kanten wie in „Möbel 3D“ (Plattenfarbe).</p></div>
+      <p class="note">Teile mit der Maus verschieben (rasten an Rand und Nachbarteilen mit Schnittfuge ein, auch auf eine andere Platte), Doppelklick dreht. Durchgehende Schnitte wie an der Plattensäge; Teile mit Maserung bleiben mit der langen Seite längs der Plattenlänge, Dekore ohne Maserung werden bei Bedarf gedreht. Material und Kanten wie in „Möbel 3D“ (Plattenfarbe).</p></div>
   </section>
 
   <section class="modelpage" id="modelpage" hidden>
@@ -772,6 +787,7 @@ table.fmt.one .onet { display: inline; }
 <script src="js/surface.js"></script>
 <script src="js/model3d.js"></script>
 <script src="js/cutplan.js"></script>
+<script src="js/pdf.js"></script>
 <script src="js/occtmesh.js"></script>
 <script src="js/view3d.js"></script>
 <script>
@@ -2621,35 +2637,58 @@ table.fmt.one .onet { display: inline; }
       '<p class="meta">' + Array.from(tot.byMat).map(([k, v]) => esc(k) + ': ' + fmt(Math.round(v * 100) / 100) + ' m²').join(' · ') + '</p>';
   }
 
-  // Zuschnittplan je Material und Dicke
+  // Zuschnittplan je Material und Dicke; von Hand verschobene Pläne (lst.manual) gelten, solange Teile und Platte gleich bleiben
+  const cutOpts = () => ({ sheetL: lst.sheetL, sheetW: lst.sheetW, kerf: lst.kerf, trim: lst.trim });
   function cutGroups() {
     const groups = new Map();
     for (const row of bomRows()) {
       const b = View3D.boardOf(row.board);
       const key = b.id + '|' + fmt(row.T);
-      if (!groups.has(key)) groups.set(key, { name: b.name, T: row.T, board: row.board, grain: b.grain > 0, items: [] });
+      if (!groups.has(key)) groups.set(key, { key: key, name: b.name, T: row.T, board: row.board, grain: b.grain > 0, items: [] });
       const dims = lst.raw ? row.raw : { L: row.L, W: row.W };
       groups.get(key).items.push({ id: row.nums[0], label: row.names[0], L: dims.L, W: dims.W, qty: row.qty, grain: lst.grain && b.grain > 0 });
     }
-    return Array.from(groups.values()).map((g) => Object.assign(g, { plan: CutPlan.plan(g.items, { sheetL: lst.sheetL, sheetW: lst.sheetW, kerf: lst.kerf, trim: lst.trim }) }));
+    return Array.from(groups.values()).map((g) => {
+      const auto = CutPlan.plan(g.items, cutOpts());
+      g.sig = JSON.stringify([cutOpts(), g.items.map((i) => [i.id, Math.round(i.L * 10), Math.round(i.W * 10), i.qty, i.grain])]);
+      const man = lst.manual && lst.manual[g.key];
+      if (man && man.sig === g.sig) {
+        const sheets = man.sheets.map((s) => ({ L: lst.sheetL, W: lst.sheetW, parts: s.parts, used: s.parts.reduce((a, p) => a + p.l * p.w, 0) }));
+        const used = sheets.reduce((a, s) => a + s.used, 0);
+        g.plan = { sheets: sheets, unplaced: auto.unplaced, waste: sheets.length ? 1 - used / (sheets.length * lst.sheetL * lst.sheetW) : 0, manual: true };
+      } else {
+        if (man) delete lst.manual[g.key]; // Teile oder Platte geändert: wieder automatisch
+        g.plan = auto;
+      }
+      return g;
+    });
   }
-  function sheetSvg(s, g, w) {
-    const sc = w / s.L;
-    const h = s.W * sc;
-    const isDark = isDarkTheme();
-    let out = '<svg class="sheet" viewBox="0 0 ' + s.L + ' ' + s.W + '" width="' + w + '" height="' + h.toFixed(0) + '" role="img" aria-label="Platte ' + fmt(s.L) + ' × ' + fmt(s.W) + '">' +
+  // Plan einer Gruppe zum Bearbeiten (beim ersten Verschieben aus dem automatischen übernommen)
+  function manualOf(g) {
+    if (!lst.manual) lst.manual = {};
+    if (!lst.manual[g.key] || lst.manual[g.key].sig !== g.sig) {
+      lst.manual[g.key] = { sig: g.sig, sheets: g.plan.sheets.map((s) => ({ parts: s.parts.map((p) => Object.assign({}, p)) })) };
+    }
+    return lst.manual[g.key];
+  }
+  function sheetSvg(s, g, si, w) {
+    // Bildschirm: Breite in px; Druck (w = 0): feste Größe in mm, passt mit Überschrift auf A4 quer
+    const mm = Math.min(265 / s.L, 140 / s.W);
+    let out = '<svg class="sheet" viewBox="0 0 ' + s.L + ' ' + s.W + '"' + (w ? ' width="' + w + '" height="' + Math.round((s.W * w) / s.L) + '"'
+      : ' width="' + (s.L * mm).toFixed(1) + 'mm" height="' + (s.W * mm).toFixed(1) + 'mm"') +
+      ' data-grp="' + esc(g.key) + '" data-sheet="' + si + '" role="img" aria-label="Platte ' + (si + 1) + ' ' + fmt(s.L) + ' × ' + fmt(s.W) + '">' +
       '<rect x="0" y="0" width="' + s.L + '" height="' + s.W + '" class="sh"/>' +
       '<rect x="' + lst.trim + '" y="' + lst.trim + '" width="' + (s.L - 2 * lst.trim) + '" height="' + (s.W - 2 * lst.trim) + '" class="trim"/>';
     for (const p of s.parts) {
       // Plattenkoordinaten: y nach oben → SVG y nach unten spiegeln
       const y = s.W - p.y - p.w;
       const fs = Math.max(24, Math.min(60, Math.min(p.l, p.w) / 5));
-      out += '<g><rect x="' + p.x + '" y="' + y + '" width="' + p.l + '" height="' + p.w + '" class="pt"/>' +
+      out += '<g class="cp" data-uid="' + esc(p.uid) + '"><rect x="' + p.x + '" y="' + y + '" width="' + p.l + '" height="' + p.w + '" class="pt"/>' +
         (p.l > 3 * fs && p.w > 1.4 * fs ? '<text x="' + (p.x + p.l / 2) + '" y="' + (y + p.w / 2) + '" font-size="' + fs + '" class="pl">' + esc(p.id + ' · ' + n1(p.l) + ' × ' + n1(p.w)) + '</text>' : '') +
         (p.l > 3 * fs && p.w > 2.6 * fs ? '<text x="' + (p.x + p.l / 2) + '" y="' + (y + p.w / 2 + fs * 1.2) + '" font-size="' + (fs * 0.8) + '" class="pn">' + esc(p.label) + '</text>' : '') +
-        '<title>' + esc(p.label + ' – ' + n1(p.l) + ' × ' + n1(p.w) + (p.rot ? ' (gedreht)' : '')) + '</title></g>';
+        '<title>' + esc(p.label + ' – ' + n1(p.l) + ' × ' + n1(p.w) + (p.rot ? ' (gedreht)' : '') + ' · ziehen = verschieben, Doppelklick = drehen') + '</title></g>';
     }
-    return out + '</svg>' + (isDark ? '' : '');
+    return out + '</svg>';
   }
   function renderCut(forPrint) {
     const groups = cutGroups();
@@ -2657,12 +2696,153 @@ table.fmt.one .onet { display: inline; }
     return groups.map((g) => {
       const pl = g.plan;
       return '<section class="cutgrp"><h3>' + boardSwatch(g.board) + ' ' + esc(g.name) + ' ' + fmt(g.T) + ' mm <small>' + pl.sheets.length + ' Platte' + (pl.sheets.length === 1 ? '' : 'n') +
-        ' ' + fmt(lst.sheetL) + ' × ' + fmt(lst.sheetW) + ' · Ausnutzung ' + Math.round((1 - pl.waste) * 100) + ' %' + (g.grain && lst.grain ? ' · Maserung längs' : '') + '</small></h3>' +
+        ' ' + fmt(lst.sheetL) + ' × ' + fmt(lst.sheetW) + ' · Ausnutzung ' + Math.round((1 - pl.waste) * 100) + ' %' + (g.grain && lst.grain ? ' · Maserung längs' : '') +
+        (pl.manual ? ' · von Hand angeordnet' : '') + '</small>' +
+        (forPrint ? '' : '<span class="cutact"><button type="button" class="btn ghost small" data-cutadd="' + esc(g.key) + '" title="Leere Platte anhängen, um Teile darauf zu verschieben">+ Platte</button>' +
+          (pl.manual ? '<button type="button" class="btn ghost small" data-cutreset="' + esc(g.key) + '" title="Eigene Anordnung verwerfen">Automatisch anordnen</button>' : '') + '</span>') + '</h3>' +
         (pl.unplaced.length ? '<p class="warn">Passt nicht auf die Platte: ' + pl.unplaced.map((x) => esc(x.label) + ' (' + n1(x.L) + ' × ' + n1(x.W) + ')').join(', ') + '</p>' : '') +
         pl.sheets.map((s, i) => '<figure class="sheetfig"><figcaption>Platte ' + (i + 1) + ' · ' + s.parts.length + ' Teile · genutzt ' + Math.round((s.used / (s.L * s.W)) * 100) + ' %</figcaption>' +
-          sheetSvg(s, g, forPrint ? 900 : 620) + '</figure>').join('') + '</section>';
+          sheetSvg(s, g, i, forPrint ? 0 : 620) + '</figure>').join('') + '</section>';
     }).join('');
   }
+
+  // Zuschnittplan als PDF-Datei (eine Platte je Seite, A4 quer) – geht ohne Druckdialog
+  function cutPdf() {
+    const groups = cutGroups();
+    const d = MiniPdf.doc(297, 210);
+    const date = new Date().toLocaleDateString('de-DE');
+    const info = 'Schnittfuge ' + fmt(lst.kerf) + ' mm · Besäumen ' + fmt(lst.trim) + ' mm · ' + (lst.raw ? 'Rohmaß (mit Aufmaß)' : 'Fertigmaß') + ' · ' + date;
+    let total = 0;
+    for (const g of groups) total += g.plan.sheets.length;
+    let page = 0;
+    for (const g of groups) {
+      g.plan.sheets.forEach((s, i) => {
+        d.page();
+        page++;
+        d.text(12, 16, 'Zuschnittplan – ' + g.name + ' ' + fmt(g.T) + ' mm', { size: 15, bold: true });
+        d.text(12, 23, 'Platte ' + (i + 1) + ' von ' + g.plan.sheets.length + ' · ' + fmt(s.L) + ' × ' + fmt(s.W) + ' mm · ' + s.parts.length + ' Teile · genutzt ' +
+          Math.round((s.used / (s.L * s.W)) * 100) + ' %' + (g.grain && lst.grain ? ' · Maserung längs' : ''), { size: 9.5, color: [0.25, 0.25, 0.25] });
+        d.text(285, 203, info + ' · Seite ' + page + '/' + total, { size: 7.5, align: 'right', color: [0.35, 0.35, 0.35] });
+        const sc = Math.min(273 / s.L, 168 / s.W);
+        const ox = 12 + (273 - s.L * sc) / 2;
+        const oy = 30;
+        const X = (x) => ox + x * sc;
+        const Y = (y) => oy + (s.W - y) * sc; // Plattenkoordinaten (y nach oben) → Seite (y nach unten)
+        d.rect(ox, oy, s.L * sc, s.W * sc, { stroke: [0, 0, 0], lw: 0.4 });
+        d.rect(X(lst.trim), Y(s.W - lst.trim), (s.L - 2 * lst.trim) * sc, (s.W - 2 * lst.trim) * sc, { stroke: [0.5, 0.5, 0.5], lw: 0.2, dash: [1.5, 1] });
+        for (const p of s.parts) {
+          const pw = p.l * sc;
+          const ph = p.w * sc;
+          d.rect(X(p.x), Y(p.y + p.w), pw, ph, { fill: [0.92, 0.92, 0.92], stroke: [0, 0, 0], lw: 0.3 });
+          const size = Math.max(4.5, Math.min(10, ph * 0.9));
+          const cx = X(p.x) + pw / 2;
+          const cy = Y(p.y + p.w) + ph / 2;
+          if (ph > 4) d.text(cx, cy + (ph > 10 ? -0.5 : size * 0.12), p.id + ' · ' + n1(p.l) + ' × ' + n1(p.w), { size: size, bold: true, align: 'center', maxW: pw - 1.5 });
+          if (ph > 10) d.text(cx, cy + size * 0.42, p.label + (p.rot ? ' (gedreht)' : ''), { size: size * 0.78, align: 'center', maxW: pw - 1.5, color: [0.2, 0.2, 0.2] });
+        }
+      });
+    }
+    if (!page) { toast('Keine Teile für den Zuschnitt.'); return; }
+    saveOne('zuschnittplan.pdf', d.save(), 'application/pdf');
+  }
+
+  // Teile im Zuschnittplan mit der Maus verschieben (auch auf eine andere Platte derselben Gruppe), Doppelklick dreht
+  (function cutDrag() {
+    const host = $('cutsheets');
+    let drag = null;
+    const svgPt = (svg, e) => { const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()); };
+    const groupOf = (key) => cutGroups().find((g) => g.key === key);
+    // an Plattenrand (Besäumen) und Nachbarteilen (mit Schnittfuge) einrasten
+    function snap(s, p, tol) {
+      const xs = [lst.trim, s.L - lst.trim - p.l];
+      const ys = [lst.trim, s.W - lst.trim - p.w];
+      for (const q of s.parts) {
+        if (q.uid === p.uid) continue;
+        xs.push(q.x + q.l + lst.kerf, q.x - lst.kerf - p.l, q.x, q.x + q.l - p.l);
+        ys.push(q.y + q.w + lst.kerf, q.y - lst.kerf - p.w, q.y, q.y + q.w - p.w);
+      }
+      const best = (v, list) => { let b = v; let dmin = tol; for (const c of list) { const dd = Math.abs(c - v); if (dd < dmin) { dmin = dd; b = c; } } return b; };
+      return { x: best(p.x, xs), y: best(p.y, ys) };
+    }
+    host.addEventListener('pointerdown', (e) => {
+      const gEl = e.target.closest('g.cp');
+      const svg = gEl && gEl.closest('svg.sheet');
+      if (!gEl || !svg || e.button > 0) return;
+      const g = groupOf(svg.dataset.grp);
+      const s = g && g.plan.sheets[+svg.dataset.sheet];
+      const p = s && s.parts.find((q) => q.uid === gEl.dataset.uid);
+      if (!p) return;
+      e.preventDefault();
+      const at = svgPt(svg, e);
+      drag = { g: g, si: +svg.dataset.sheet, p: p, el: gEl, svg: svg, at: at, grab: { x: at.x - p.x, y: at.y - (s.W - p.y - p.w) }, moved: false, tol: 10 / (svg.getScreenCTM().a || 1) };
+      gEl.classList.add('drag');
+      gEl.setPointerCapture(e.pointerId);
+    });
+    host.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      const at = svgPt(drag.svg, e);
+      const dx = at.x - drag.at.x;
+      const dy = at.y - drag.at.y;
+      if (Math.abs(dx) + Math.abs(dy) > 2) drag.moved = true;
+      const s = drag.g.plan.sheets[drag.si];
+      const c = snap(s, Object.assign({}, drag.p, { x: drag.p.x + dx, y: drag.p.y - dy }), drag.tol);
+      drag.el.setAttribute('transform', 'translate(' + (c.x - drag.p.x) + ' ' + (drag.p.y - c.y) + ')');
+      drag.el.classList.toggle('bad', !CutPlan.fits(s, Object.assign({}, drag.p, c), cutOpts(), drag.p.uid));
+    });
+    const finish = (e) => {
+      if (!drag) return;
+      const d = drag;
+      drag = null;
+      d.el.classList.remove('drag');
+      if (!d.moved) return;
+      // Ziel: Platte unter dem Mauszeiger (gleiche Gruppe), sonst die eigene
+      const over = document.elementFromPoint(e.clientX, e.clientY);
+      const tSvg = over && over.closest && over.closest('svg.sheet');
+      const sameGrp = tSvg && tSvg.dataset.grp === d.g.key;
+      const ti = sameGrp ? +tSvg.dataset.sheet : d.si;
+      const svg = sameGrp ? tSvg : d.svg;
+      const tS = d.g.plan.sheets[ti];
+      const at = svgPt(svg, e);
+      let cand = Object.assign({}, d.p, { x: at.x - d.grab.x, y: tS.W - (at.y - d.grab.y) - d.p.w });
+      cand = Object.assign(cand, snap(ti === d.si ? tS : { L: tS.L, W: tS.W, parts: tS.parts }, cand, d.tol));
+      if (!CutPlan.fits(tS, cand, cutOpts(), d.p.uid)) { toast('Passt dort nicht – überlappt ein anderes Teil oder ragt über den Rand.'); renderLists(); return; }
+      const man = manualOf(d.g);
+      const src = man.sheets[d.si].parts;
+      const k = src.findIndex((q) => q.uid === d.p.uid);
+      const moved = src.splice(k, 1)[0];
+      moved.x = cand.x;
+      moved.y = cand.y;
+      man.sheets[ti].parts.push(moved);
+      saveLst();
+      renderLists();
+    };
+    host.addEventListener('pointerup', finish);
+    host.addEventListener('pointercancel', () => { drag = null; renderLists(); });
+    host.addEventListener('dblclick', (e) => {
+      const gEl = e.target.closest('g.cp');
+      const svg = gEl && gEl.closest('svg.sheet');
+      if (!gEl || !svg) return;
+      const g = groupOf(svg.dataset.grp);
+      const si = +svg.dataset.sheet;
+      const p = g.plan.sheets[si].parts.find((q) => q.uid === gEl.dataset.uid);
+      const cand = Object.assign({}, p, { l: p.w, w: p.l });
+      if (!CutPlan.fits(g.plan.sheets[si], cand, cutOpts(), p.uid)) { toast('Gedreht passt es hier nicht – erst verschieben.'); return; }
+      const man = manualOf(g);
+      const q = man.sheets[si].parts.find((x) => x.uid === p.uid);
+      q.l = cand.l;
+      q.w = cand.w;
+      q.rot = !q.rot;
+      if (q.grain) toast('Gedreht – Achtung: jetzt quer zur Maserung.');
+      saveLst();
+      renderLists();
+    });
+    host.addEventListener('click', (e) => {
+      const add = e.target.closest('[data-cutadd]');
+      const rst = e.target.closest('[data-cutreset]');
+      if (add) { const g = groupOf(add.dataset.cutadd); manualOf(g).sheets.push({ parts: [] }); saveLst(); renderLists(); }
+      if (rst) { delete lst.manual[rst.dataset.cutreset]; saveLst(); renderLists(); }
+    });
+  })();
   function renderLists() {
     if (state.page !== 'lists') return;
     document.querySelectorAll('[data-ltab]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.ltab === lst.tab)));
@@ -2670,6 +2850,8 @@ table.fmt.one .onet { display: inline; }
     $('cutview').hidden = lst.tab !== 'cut';
     $('bomopts').hidden = lst.tab !== 'bom';
     $('cutopts').hidden = lst.tab !== 'cut';
+    $('lcsv').hidden = lst.tab !== 'bom';
+    $('lpdf').hidden = lst.tab !== 'cut';
     $('lgroup').checked = lst.group;
     if (lst.tab === 'bom') renderBom();
     else $('cutsheets').innerHTML = renderCut(false);
@@ -2684,6 +2866,7 @@ table.fmt.one .onet { display: inline; }
     $(id).checked = lst[k];
     $(id).addEventListener('change', (e) => { lst[k] = e.target.checked; saveLst(); renderLists(); });
   }
+  $('lpdf').addEventListener('click', cutPdf);
   $('lcsv').addEventListener('click', () => saveOne('stueckliste.csv', bomCsv(), 'text/csv;charset=utf-8'));
   $('lprintbtn').addEventListener('click', () => {
     if (lst.tab === 'bom') printA4(bomPrintHtml(), true);
@@ -2732,6 +2915,13 @@ table.fmt.one .onet { display: inline; }
   const boardChip = (key) => boardSwatch(key) + '<span class="bn">' + esc(boardName(key)) + '</span>';
   // Auswahlfenster: Oberfläche (Holzarten/Dekore, eigene Farbe mit/ohne Maserung) und Kanten (wie Oberfläche, Spanplatte,
   // Multiplex, MDF, Kantenband in Farbe). Jede Wahl gilt sofort; inherit = Schlüssel der Einstellung → „wie Einstellung“
+  // eigene Farben mit Namen merken (Einstellung customBoards, höchstens 12)
+  const customBoards = () => (Array.isArray(state.settings.customBoards) ? state.settings.customBoards : []);
+  function rememberBoard(key) {
+    const list = customBoards().filter((k) => k !== key && k.split('~')[1] !== (key.split('~')[1] || null));
+    state.settings.customBoards = [key].concat(list).slice(0, 12);
+    saveSettings();
+  }
   let pickerClose = null;
   function boardPicker(anchor, value, inherit, onPick) {
     if (pickerClose) pickerClose();
@@ -2748,8 +2938,13 @@ table.fmt.one .onet { display: inline; }
     box.setAttribute('aria-label', 'Plattenfarbe');
     box.innerHTML = '<h5>Oberfläche</h5><div class="grid">' + View3D.MATERIALS.map((m) => '<button type="button" data-bkey="' + m.id + '" aria-pressed="' + (!own && m.id === b0.id) + '">' +
       boardSwatch(m.id) + esc(m.name) + '</button>').join('') + '</div>' +
+      // gespeicherte eigene Farben (mit Namen)
+      (customBoards().length ? '<h5 class="eh">Eigene Farben</h5><div class="grid">' + customBoards().map((k) => '<span class="ownk"><button type="button" data-bkey="' + esc(k) +
+        '" aria-pressed="' + (k === surf) + '">' + boardSwatch(k) + esc(View3D.boardOf(k).name) + '</button><button type="button" class="del" data-bdel="' + esc(k) +
+        '" title="Aus der Liste entfernen" aria-label="' + esc(View3D.boardOf(k).name) + ' entfernen">✕</button></span>').join('') + '</div>' : '') +
       '<div class="own"><input type="color" value="' + b0.color + '" aria-label="Eigene Farbe"><label><input type="checkbox"' + (!own || b0.grain ? ' checked' : '') + '> Maserung</label>' +
-      '<button type="button" class="btn small" data-bown aria-pressed="' + own + '">Eigene Farbe</button></div>' +
+      '<input type="text" class="ownname" maxlength="40" placeholder="Name, z. B. Egger U999" aria-label="Name der eigenen Farbe" value="' + (own && b0.name !== 'Eigene Farbe' ? esc(b0.name) : '') + '">' +
+      '<button type="button" class="btn small" data-bown aria-pressed="' + own + '" title="Eigene Farbe übernehmen und unter „Eigene Farben“ merken">Übernehmen</button></div>' +
       '<h5 class="eh">Kanten (Schmalflächen)</h5><div class="edges">' + View3D.EDGES.map((e) => '<button type="button" data-bedge="' + e.id + '" aria-pressed="' + (edge === e.id) + '">' +
       (e.color ? '<span class="bsw" style="background:' + e.color + '" aria-hidden="true"></span>' : boardSwatch(surf)) + esc(e.name) + '</button>').join('') +
       '<label class="eband"><input type="color" value="' + (/^#/.test(edge) ? edge : '#3a3a3a') + '" aria-label="Farbe Kantenband"><button type="button" data-bband aria-pressed="' + /^#/.test(edge) + '">Kantenband</button></label></div>' +
@@ -2759,8 +2954,20 @@ table.fmt.one .onet { display: inline; }
     const r = anchor.getBoundingClientRect();
     const bw = box.offsetWidth;
     const bh = box.offsetHeight;
-    box.style.left = Math.max(8, Math.min(window.innerWidth - bw - 8, r.right - bw)) + 'px';
-    box.style.top = (r.bottom + 6 + bh > window.innerHeight - 8 ? Math.max(8, r.top - 6 - bh) : r.bottom + 6) + 'px';
+    // unter dem Knopf, sonst darüber, sonst daneben (links bzw. rechts) – nie über dem Knopf selbst
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+    let left = Math.max(8, Math.min(vw - bw - 8, r.right - bw));
+    let top;
+    if (r.bottom + 6 + bh <= vh - 8) top = r.bottom + 6;
+    else if (r.top - 6 - bh >= 8) top = r.top - 6 - bh;
+    else {
+      top = Math.max(8, Math.min(vh - bh - 8, r.top + r.height / 2 - bh / 2));
+      left = r.left - bw - 8 >= 8 ? r.left - bw - 8 : Math.min(vw - bw - 8, r.right + 8);
+    }
+    box.style.left = left + 'px';
+    box.style.top = top + 'px';
+    box.style.maxHeight = (vh - 16) + 'px';
     anchor.setAttribute('aria-expanded', 'true');
     const close = () => {
       box.remove();
@@ -2787,11 +2994,25 @@ table.fmt.one .onet { display: inline; }
       if (same) same.outerHTML = boardSwatch(surf);
     };
     const apply = () => { mark(); onPick(View3D.boardKey(surf, edge)); };
-    const ownKey = () => colorIn.value.toLowerCase() + (grainIn.checked ? '' : '/u');
+    const nameIn = box.querySelector('.ownname');
+    const ownKey = () => colorIn.value.toLowerCase() + (grainIn.checked ? '' : '/u') + (nameIn.value.trim() ? '~' + encodeURIComponent(nameIn.value.trim()) : '');
     box.addEventListener('click', (e) => {
       const k = e.target.closest('[data-bkey]');
       if (k) { surf = k.dataset.bkey; apply(); return; }
-      if (e.target.closest('[data-bown]')) { surf = ownKey(); apply(); return; }
+      if (e.target.closest('[data-bown]')) {
+        surf = ownKey();
+        rememberBoard(surf);
+        apply();
+        boardPicker(anchorNow(), View3D.boardKey(surf, edge), inherit, onPick); // neu öffnen: erscheint unter „Eigene Farben“
+        return;
+      }
+      const del = e.target.closest('[data-bdel]');
+      if (del) {
+        state.settings.customBoards = customBoards().filter((k) => k !== del.dataset.bdel);
+        saveSettings();
+        boardPicker(anchorNow(), View3D.boardKey(surf, edge), inherit, onPick);
+        return;
+      }
       const ed = e.target.closest('[data-bedge]');
       if (ed) { edge = ed.dataset.bedge; apply(); return; }
       if (e.target.closest('[data-bband]')) { edge = bandIn.value.toLowerCase(); apply(); return; }

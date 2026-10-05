@@ -1,7 +1,8 @@
 /*
  * Zuschnittplan: Teile (Rechtecke) auf Rohplatten verteilen – Guillotine-Schnitte (durchgehend, wie an der Plattensäge),
  * Schnittfuge und Besäumrand, Faserrichtung (Teil mit der langen Seite längs der Plattenlänge, nicht drehen).
- * plan(items, opts) → { sheets: [{ L, W, parts: [{ id, label, x, y, l, w, rot }], used }], unplaced: [items], waste }
+ * plan(items, opts) → { sheets: [{ L, W, parts: [{ uid, id, label, x, y, l, w, rot, grain }], used }], unplaced: [items], waste }
+ * fits(sheet, part, opts, skipUid) – passt das Teil dort (innerhalb Besäumen, Abstand Schnittfuge zu allen anderen)?
  *   items: [{ id, label, L, W, qty, grain }]  (grain: Maserung beachten → nicht drehen)
  *   opts:  { sheetL, sheetW, kerf, trim }
  */
@@ -18,7 +19,8 @@
     const k = Math.max(0, o.kerf);
     // Einzelteile, größte zuerst (lange Seite, dann Fläche)
     const list = [];
-    for (const it of items) for (let q = 0; q < (it.qty === undefined ? 1 : it.qty); q++) list.push(it);
+    // je Stück eine feste Kennung (uid = id#Stück) – für das Verschieben von Hand
+    for (const it of items) for (let q = 0; q < (it.qty === undefined ? 1 : it.qty); q++) list.push(Object.assign({}, it, { uid: it.id + '#' + (q + 1) }));
     list.sort((a, b) => Math.max(b.L, b.W) - Math.max(a.L, a.W) || b.L * b.W - a.L * a.W);
     const sheets = [];
     const unplaced = [];
@@ -60,7 +62,7 @@
       }
       const f = s.free.splice(pick.i, 1)[0];
       const { l, w, rot } = pick.or;
-      s.parts.push({ id: it.id, label: it.label, x: f.x, y: f.y, l: l, w: w, rot: rot });
+      s.parts.push({ uid: it.uid, id: it.id, label: it.label, x: f.x, y: f.y, l: l, w: w, rot: rot, grain: !!it.grain });
       s.used += l * w;
       // Guillotine-Teilung des Rests (Schnittfuge abziehen): entlang der kürzeren Restseite schneiden
       const rl = f.l - l - k;
@@ -76,5 +78,18 @@
     return { sheets: sheets, unplaced: unplaced, waste: areaAll ? 1 - usedAll / areaAll : 0 };
   }
 
-  return { plan: plan };
+  // Lage prüfen (Verschieben von Hand): innerhalb der besäumten Platte und mit Schnittfuge zu allen anderen Teilen
+  function fits(sheet, p, opts, skipUid) {
+    const o = Object.assign({ kerf: 4.4, trim: 10 }, opts || {});
+    const e = 1e-6;
+    if (p.x < o.trim - e || p.y < o.trim - e || p.x + p.l > sheet.L - o.trim + e || p.y + p.w > sheet.W - o.trim + e) return false;
+    for (const q of sheet.parts) {
+      if (q.uid === skipUid) continue;
+      const apart = p.x + p.l + o.kerf <= q.x + e || q.x + q.l + o.kerf <= p.x + e || p.y + p.w + o.kerf <= q.y + e || q.y + q.w + o.kerf <= p.y + e;
+      if (!apart) return false;
+    }
+    return true;
+  }
+
+  return { plan: plan, fits: fits };
 });

@@ -198,10 +198,16 @@ test('Web-Tool: Möbel 3D – Baugruppe mit Nummern, Ein-/Ausblenden, Wählen, M
       const T = window.THREE;
       const g = new T.BoxGeometry(800, 400, 19).toNonIndexed();
       const m = View3D.boardMaterials(T, g, 'weiss', null, { m: [[1, 0, 0], [0, 1, 0], [0, 0, 1]], e: { l1: 2, l2: 0, b1: 1, b2: 0 } });
-      return { mats: m.length, groups: g.groups.map((x) => [x.count, x.materialIndex]) };
+      // hervorheben: Kantenband in der Signalfarbe
+      const h = View3D.boardMaterials(T, g, 'weiss', null, { m: [[1, 0, 0], [0, 1, 0], [0, 0, 1]], e: { l1: 2, l2: 0, b1: 1, b2: 0 }, hl: '#22a34a' });
+      return { mats: m.length, groups: g.groups.map((x) => [x.count, x.materialIndex]), hl: h[2].color.getHexString() + '/' + h[2].userData.tint.getHexString() };
     });
     // 4 Dreiecke Ober-/Unterseite, 4 offene Schmalflächen (L2, B2), 4 mit Kantenband (L1, B1)
-    assert.deepStrictEqual(groups, { mats: 3, groups: [[12, 0], [12, 1], [12, 2]] });
+    assert.deepStrictEqual(groups, { mats: 3, groups: [[12, 0], [12, 1], [12, 2]], hl: '22a34a/22a34a' });
+    assert.ok(!(await p.isDisabled('#medgehl')));
+    await p.check('#medgehl');
+    assert.strictEqual(await p.evaluate(() => JSON.parse(localStorage.getItem('step2xcs.settings.v1') || '{}').modelEdgeHl), true);
+    await p.uncheck('#medgehl');
     await p.uncheck('#medges');
     // Plattenfarbe: für alle (Einstellung) und je Bauteil, „wie Einstellung“ nimmt sie wieder weg
     await p.click('#mboard');
@@ -710,6 +716,12 @@ test('Web-Tool: Listen (Stückliste, Zuschnitt, Zeit) und Projektdatei speichern
     await p.press('[data-bomqty="1"]', 'Tab');
     await p.waitForFunction(() => /\b6\b Teile/.test(document.querySelector('.bomsum').textContent));
     assert.strictEqual(await p.textContent('#ptn-lists'), '6');
+    // ringsum: alle vier Seiten auf einmal (keine → dünn → dick → keine)
+    await p.click('[data-bomedge="1"][data-side="all"]');
+    assert.strictEqual(await p.textContent('table.bom tbody tr:nth-child(2) .et'), 'L1 1 · L2 1 · B1 1 · B2 1');
+    await p.click('[data-bomedge="1"][data-side="all"]');
+    await p.click('[data-bomedge="1"][data-side="all"]');
+    assert.strictEqual(await p.textContent('table.bom tbody tr:nth-child(2) .et'), '');
     // Kantenband: L1 dick (2 × klicken), B2 dünn → Text, Laufmeter, Zuschnitt mit Abzug
     await p.click('[data-bomedge="0"][data-side="l1"]');
     await p.click('[data-bomedge="0"][data-side="l1"]');

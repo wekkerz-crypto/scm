@@ -224,7 +224,7 @@
    * langen Seite; auf Schmalflächen quer dazu die Dicke (Multiplex: 1 Texturhöhe = 19,5 mm ab Unterseite).
    */
   /*
-   * bands (Kantenbelegung, optional): { m: Zeilen von panel.tf (Modell → Platte), e: { l1, l2, b1, b2 } } – Schmalflächen der
+   * bands (Kantenbelegung, optional): { m: Zeilen von panel.tf (Modell → Platte), e: { l1, l2, b1, b2 }, hl: Farbe oder null } – Schmalflächen der
    * Seiten mit Kantenband kommen in Gruppe 2 (Seite nach der Normalen in Plattenkoordinaten: −Y L1, +Y L2, −X B1, +X B2).
    */
   function boardUV(T, g, edgeKind, bands) {
@@ -316,7 +316,10 @@
       const surf = woodMaterial(T, base, bd.grain);
       const rawMat = new T.MeshStandardMaterial(Object.assign({ map: cachedTex(T, 'e' + raw + rawColor, () => edgeCanvas(raw, rawColor)), roughness: 0.85 }, matOpts));
       const bandColor = own ? bd.edgeColor : base;
-      const band = new T.MeshStandardMaterial(Object.assign({ map: cachedTex(T, 'eband' + bandColor, () => edgeCanvas('band', bandColor)), roughness: 0.4 }, matOpts));
+      // hervorheben (bands.hl = Farbe): Kantenband in der Signalfarbe, ohne Spiegelung/Tonwert, leicht leuchtend – auch im Schatten gut zu sehen
+      const band = bands.hl ? new T.MeshStandardMaterial(Object.assign({ color: bands.hl, emissive: bands.hl, emissiveIntensity: 0.12, roughness: 1 }, matOpts, { envMapIntensity: 0, toneMapped: false }))
+        : new T.MeshStandardMaterial(Object.assign({ map: cachedTex(T, 'eband' + bandColor, () => edgeCanvas('band', bandColor)), roughness: 0.4 }, matOpts));
+      if (bands.hl) band.userData = { tint: new T.Color(bands.hl), glow: new T.Color(bands.hl) };
       return [surf, rawMat, band];
     }
     boardUV(T, g, bd.edge);

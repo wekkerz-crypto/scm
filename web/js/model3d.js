@@ -290,8 +290,10 @@
       const sel = p.num === this.selected;
       const a = sel ? 1 : this.opacity;
       for (const m of mats(p.obj)) {
-        m.color.copy(sel ? new T.Color(0x6f9fff) : p.color);
-        m.emissive = new T.Color(sel ? 0x0b2a5a : 0x000000);
+        // eigene Farbe des Materials (z. B. hervorgehobenes Kantenband) bleibt, nur die Auswahl färbt blau
+        const ud = m.userData || {};
+        m.color.copy(sel ? new T.Color(0x6f9fff) : ud.tint || p.color);
+        m.emissive = new T.Color(sel ? 0x0b2a5a : ud.glow || 0x000000);
         m.transparent = a < 0.999;
         m.opacity = a;
         m.depthWrite = a >= 0.999;

@@ -263,16 +263,18 @@ table.bom .no { font-family: var(--font-mono); color: var(--muted); }
 table.bom .sub { font-size: 0.75rem; color: var(--muted); }
 table.bom .files { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); }
 table.bom input[type=number] { width: 4.2em; text-align: right; }
-.edgew { display: inline-grid; grid-template-columns: 10px 44px 10px; grid-template-rows: 10px 20px 10px; gap: 2px; vertical-align: middle; flex: none; }
-.edgew button { padding: 0; border: 1.5px dashed color-mix(in srgb, var(--muted) 60%, transparent); background: transparent; border-radius: 3px; cursor: pointer; min-width: 0; min-height: 0; }
+.edgew { display: inline-grid; grid-template-columns: 18px 84px 18px; grid-template-rows: 18px 40px 18px; gap: 3px; vertical-align: middle; flex: none; }
+.edgew button { padding: 0; border: 2px dashed color-mix(in srgb, var(--muted) 60%, transparent); background: transparent; border-radius: 4px; cursor: pointer; min-width: 0; min-height: 0; }
 .edgew button:hover, .edgew button:focus-visible { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
 .edgew button.e1 { border: 0; background: linear-gradient(var(--muted), var(--muted)) center / 100% 45% no-repeat; }
 .edgew button.b1.e1, .edgew button.b2.e1 { background-size: 45% 100%; }
 .edgew button.e2 { border: 0; background: var(--ink); }
 .edgew .l2 { grid-column: 2; grid-row: 1; } .edgew .b1 { grid-column: 1; grid-row: 2; } .edgew .b2 { grid-column: 3; grid-row: 2; } .edgew .l1 { grid-column: 2; grid-row: 3; }
-.edgew .pc { grid-column: 2; grid-row: 2; border: 1px solid var(--line); border-radius: 2px; font-size: 0.6rem; color: var(--muted); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); }
+.edgew .pc { grid-column: 2; grid-row: 2; border: 1.5px solid var(--line); border-radius: 4px; font-size: 0.72rem; line-height: 1.15; color: var(--ink); background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: inherit; }
+.edgew .pc small { font-size: 0.62rem; color: var(--muted); font-family: var(--font-mono); }
+.edgew .pc.all { border-color: var(--accent); }
 .edgecell { white-space: nowrap; display: flex; gap: 6px; align-items: center; }
-.edgecell .et { font-size: 0.72rem; color: var(--muted); font-family: var(--font-mono); }
+.edgecell .et { font-size: 0.8rem; color: var(--ink); font-family: var(--font-mono); max-width: 9em; white-space: normal; }
 .bomsum { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-top: 12px; font-size: 0.9rem; }
 .bomsum small { color: var(--muted); }
 .cutgrp { margin-bottom: 18px; }
@@ -341,13 +343,15 @@ svg.sheet .ct { fill: var(--cutc, #d2451e); font: 700 46px var(--font-mono); tex
 @media (max-width: 1000px) { .modelpage { grid-template-columns: minmax(0, 1fr); } }
 .mview { display: grid; gap: 8px; }
 .mbar { display: grid; gap: 8px; }
-.mrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.mrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
 .mrow .sp { flex: 1; }
 .msep { width: 1px; align-self: stretch; background: var(--line); }
 .v3bar.static { position: static; }
 .mopac, .mchk { display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; color: var(--muted); }
 .mopac input { width: 96px; accent-color: var(--accent); }
-.mopac input#msecpos { width: 60px; }
+#medgecol { width: 26px; height: 20px; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: none; cursor: pointer; vertical-align: middle; }
+#medgecol:disabled { opacity: 0.4; cursor: default; }
+.mopac input#msecpos { width: 100px; }
 .iconbtn { min-width: 30px; padding-inline: 6px; }
 [data-msec][aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .mopac > span { font-family: var(--font-mono); font-size: 0.78rem; min-width: 3em; }
@@ -746,8 +750,6 @@ table.fmt.one .onet { display: inline; }
           <label class="mchk"><input type="checkbox" id="mlabels" autocomplete="off" checked> Nummern</label>
         </div>
         <div class="mrow">
-          <span class="mopac">Platten <button type="button" class="btn small boardbtn" id="mboard" title="Plattenfarbe für alle Bauteile (je Bauteil: Farbfeld in der Liste)"></button></span>
-          <label class="mchk" title="Kantenbelegung anzeigen: Seiten mit Kantenband im Dekor, offene Seiten als Rohkante (Spanplatte) – Kanten in „Listen › Stückliste“ setzen"><input type="checkbox" id="medges" autocomplete="off"> Kanten</label>
           <span class="mopac msec">Schnitt <span class="v3bar static" role="group" aria-label="Schnittebene"><button type="button" data-msec="" aria-pressed="true">aus</button><button type="button" data-msec="x" aria-pressed="false" title="Schnitt quer zur Breite (X)">X</button><button type="button" data-msec="y" aria-pressed="false" title="Schnitt quer zur Tiefe (Y)">Y</button><button type="button" data-msec="z" aria-pressed="false" title="Schnitt waagerecht (Höhe Z)">Z</button></span>
           <input type="range" id="msecpos" autocomplete="off" min="0" max="100" step="1" value="50" aria-label="Lage der Schnittebene" disabled><button type="button" class="btn small iconbtn" id="msecflip" title="Andere Seite zeigen" aria-label="Andere Seite zeigen" disabled>⇄</button></span>
           <span class="msep" aria-hidden="true"></span>
@@ -758,6 +760,11 @@ table.fmt.one .onet { display: inline; }
           <button type="button" class="btn small" id="msnap" title="Bild der Ansicht mit Nummern und Maßen als PNG speichern">Bild</button>
           <button type="button" class="btn small" id="mpdf" title="Ansicht, Maße und Stückliste als PDF-Datei speichern (ohne Druckdialog)">PDF</button>
         <button type="button" class="btn small" id="mprint" title="Ansicht mit Stückliste und Maßen drucken">Drucken</button>
+        </div>
+        <div class="mrow mlook">
+          <span class="mopac">Platten <button type="button" class="btn small boardbtn" id="mboard" title="Plattenfarbe für alle Bauteile (je Bauteil: Farbfeld in der Liste)"></button></span>
+          <label class="mchk" title="Kantenbelegung anzeigen: Seiten mit Kantenband im Dekor, offene Seiten als Rohkante (Spanplatte) – Kanten in „Listen › Stückliste“ setzen"><input type="checkbox" id="medges" autocomplete="off"> Kanten</label>
+          <label class="mchk" title="Kanten mit Kantenband zusätzlich in einer eigenen Farbe hervorheben"><input type="checkbox" id="medgehl" autocomplete="off"> hervorheben <input type="color" id="medgecol" value="#22a34a" aria-label="Farbe der hervorgehobenen Kanten"></label>
         </div>
       </div>
       <div class="mhost" id="mhost"><div class="mlabelwrap" id="mlabelwrap"></div><div class="v3msg" id="mmsg">3D-Ansicht wird geladen …</div></div>
@@ -2646,7 +2653,8 @@ table.fmt.one .onet { display: inline; }
     const st = (v) => (v === 2 ? 'dick ' + fmt(edgeMm(2)) + ' mm' : v === 1 ? 'dünn ' + fmt(edgeMm(1)) + ' mm' : 'keine');
     return '<span class="edgecell"><span class="edgew">' + EDGE_SIDES.map(([s2, t, w]) => '<button type="button" class="' + s2 + ' e' + e[s2] + '" data-bomedge="' + k + '" data-side="' + s2 +
       '" title="Kante ' + t + ' (' + w + '): ' + st(e[s2]) + ' – Klick wechselt" aria-label="Position ' + (k + 1) + ' Kante ' + t + ' ' + w + ': ' + st(e[s2]) + '"></button>').join('') +
-      '<span class="pc" aria-hidden="true">L ↔</span></span><span class="et">' + esc(edgeText(e)) + '</span></span>';
+      '<button type="button" class="pc' + (EDGE_SIDES.every(([s2]) => e[s2]) ? ' all' : '') + '" data-bomedge="' + k + '" data-side="all" title="Alle vier Kanten ringsum – Klick wechselt keine → dünn → dick" aria-label="Position ' +
+      (k + 1) + ' alle Kanten ringsum">ringsum<small>L ↔</small></button></span><span class="et">' + esc(edgeText(e)) + '</span></span>';
   }
   // Positionen der Stückliste: gleiche Teile (Maße, Plattenfarbe, gleiches Programm) zusammengefasst
   function bomRows() {
@@ -2714,8 +2722,12 @@ table.fmt.one .onet { display: inline; }
       '<span>Bearbeitungszeit gesamt: <b>' + Toolpath.fmtTime(tot.time) + '</b> <small>(geschätzt, inkl. Auflegen)</small></span></div>';
     $('bomview').querySelectorAll('[data-bomedge]').forEach((b) => b.addEventListener('click', () => {
       const r = rows[+b.dataset.bomedge];
-      const v = (edgesOf(r.parts[0])[b.dataset.side] + 1) % 3;
-      for (const p of r.parts) { p.edges = edgesOf(p); p.edges[b.dataset.side] = v; }
+      const cur = edgesOf(r.parts[0]);
+      const sd = b.dataset.side;
+      // ringsum: alle gleich → nächste Stufe für alle, sonst alle auf die stärkste vorhandene (mindestens dünn)
+      const vals = EDGE_SIDES.map(([k2]) => cur[k2]);
+      const v = sd === 'all' ? (vals.every((x) => x === vals[0]) ? (vals[0] + 1) % 3 : Math.max(1, ...vals)) : (cur[sd] + 1) % 3;
+      for (const p of r.parts) { p.edges = edgesOf(p); for (const [k2] of EDGE_SIDES) if (sd === 'all' || sd === k2) p.edges[k2] = v; }
       applyBoards();
     }));
     $('bomview').querySelectorAll('[data-bomgrain]').forEach((sel) => sel.addEventListener('change', () => {
@@ -3201,7 +3213,9 @@ table.fmt.one .onet { display: inline; }
   // Kantenbelegung für Möbel 3D (Schalter „Kanten“): Lage der Platte im Modell (panel.tf) und Kanten je Seite
   const bandsOf = (part) => {
     const r = part && (part.res || part.result);
-    return state.settings.modelEdges && r && r.panel && r.panel.tf ? { m: r.panel.tf.m, e: edgesOf(part) } : null;
+    if (!state.settings.modelEdges || !r || !r.panel || !r.panel.tf) return null;
+    const hl = state.settings.modelEdgeHl ? (/^#[0-9a-f]{6}$/i.test(state.settings.modelEdgeColor || '') ? state.settings.modelEdgeColor : '#22a34a') : null;
+    return { m: r.panel.tf.m, e: edgesOf(part), hl: hl };
   };
   const boardKeyOf = (part) => (part && part.board) || nameBoard(part) || state.settings.boardMaterial || 'eiche';
   /*
@@ -3577,7 +3591,13 @@ table.fmt.one .onet { display: inline; }
   });
   $('mlabels').addEventListener('change', (e) => { if (mdl.viewer) mdl.viewer.setLabels(e.target.checked); });
   $('medges').checked = !!state.settings.modelEdges;
-  $('medges').addEventListener('change', (e) => { state.settings.modelEdges = e.target.checked; saveSettings(); applyBoards(); });
+  $('medgehl').checked = !!state.settings.modelEdgeHl;
+  $('medgecol').value = /^#[0-9a-f]{6}$/i.test(state.settings.modelEdgeColor || '') ? state.settings.modelEdgeColor : '#22a34a';
+  const edgeHlUi = () => { $('medgehl').disabled = !$('medges').checked; $('medgecol').disabled = !$('medges').checked || !$('medgehl').checked; };
+  edgeHlUi();
+  $('medges').addEventListener('change', (e) => { state.settings.modelEdges = e.target.checked; edgeHlUi(); saveSettings(); applyBoards(); });
+  $('medgehl').addEventListener('change', (e) => { state.settings.modelEdgeHl = e.target.checked; edgeHlUi(); saveSettings(); applyBoards(); });
+  $('medgecol').addEventListener('input', (e) => { state.settings.modelEdgeColor = e.target.value; saveSettings(); applyBoards(); });
   // Messen (vorübergehend) und Bemaßen (Maße bleiben stehen) – höchstens eins von beiden an
   function setMeasureMode(mode) {
     if (!mdl.viewer) return;

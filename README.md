@@ -203,12 +203,15 @@ Dritte Seite oben (**Listen**):
   H Holz mit Maserung, F Stein). Stückliste, Zuschnitt und Möbel 3D gruppieren danach; je Teil von Hand änderbar, abschaltbar in
   *Einstellungen › 3D-Ansicht* (Beispiel `test/fixtures/schrank3.step`).
 - **Kantenband:** In der Stückliste je Position die Seiten anklicken – **L1** vorne / **L2** hinten (lange Seiten, Länge L),
-  **B1** links / **B2** rechts (Breite B); jeder Klick wechselt *keine → dünn → dick* (Dicken oben einstellbar, Vorgabe 1 und
+  **B1** links / **B2** rechts (Breite B); jeder Klick wechselt *keine → dünn → dick*, der Knopf **ringsum** in der Mitte setzt
+  alle vier Seiten auf einmal (Dicken oben einstellbar, Vorgabe 1 und
   2 mm). Unten die **Laufmeter je Kantenband** (Material + Dicke, mit Zugabe je Kante, Vorgabe 50 mm). Wahlweise *Kantendicke
   vom Zuschnitt abziehen* (Länge − B1 − B2, Breite − L1 − L2; auch im Zuschnittplan). Kanten stehen in CSV (je Seite in mm,
   Laufmeter), PDF/Druck, auf dem Etikett (dicker Strich an der Seite, Zeile „Kante …“) und in der Projektdatei.
   In **Möbel 3D** zeigt der Schalter **Kanten** die Kantenbelegung: Seiten mit Kantenband im Dekor (bzw. in der eingestellten
   Kantenfarbe), offene Seiten als Rohkante (Spanplatte bzw. die gewählte Kante Multiplex/MDF); aus = Ansicht wie bisher.
+  **hervorheben** färbt alle Kanten mit Kantenband zusätzlich in einer Signalfarbe (Vorgabe Grün, wählbar) – so sieht man
+  auf einen Blick, was bekantet ist.
 - **Zuschnittplan:** Teile auf Rohplatten (Format, Schnittfuge, Besäumrand einstellbar) je Material und Dicke, mit
   durchgehenden Schnitten wie an der Plattensäge; mit Maserung bleibt die lange Seite längs der Plattenlänge, Dekore werden
   bei Bedarf gedreht. Rohmaß oder Fertigmaß wählbar. Zeichnung je Platte mit Nummer und Maß, Ausnutzung.

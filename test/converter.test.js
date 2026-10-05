@@ -1647,3 +1647,14 @@ test('Schnittfolge: durchgehende Schnitte trennen jedes Teil frei, von Hand verb
     { uid: 'c', x: 314, y: 624, l: 600, w: 300 }, { uid: 'd', x: 10, y: 314, l: 300, w: 600 }] };
   assert.strictEqual(CP.cutSequence(wind, { kerf: 4, trim: 10 }).ok, false);
 });
+
+test('Lamello Cabineo: 3 überlappende Bohrungen Ø15 (eine zur Kante offen) werden Bohrungen statt Tasche', () => {
+  const part = one('test/fixtures/cabineo.step', { orientRule: 'model' });
+  assert.strictEqual(part.panel.pockets.length, 0);
+  const ds = part.panel.drills.filter((d) => d.combo);
+  assert.strictEqual(ds.length, 9);
+  for (const d of ds) { assert.strictEqual(d.face, 'Top'); assert.ok(Math.abs(d.d - 15) < 1e-6); assert.ok(Math.abs(d.depth - 11) < 1e-6); }
+  assert.deepStrictEqual([...new Set(ds.map((d) => +d.x.toFixed(1)))].sort((a, b) => a - b), [374, 385.2, 396.4]);
+  assert.match(part.xcs, /CreateDrill \("Drill_Vertical_1", 374, 50, 11, 15,/);
+  assert.doesNotMatch(part.xcs, /CreateContourPocket/);
+});

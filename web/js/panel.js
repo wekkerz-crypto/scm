@@ -1552,6 +1552,32 @@
       }
       return false;
     };
+    // Boden nur aus Kreisbögen gleichen Radius (Ø ≤ 20) um ≥ 2 Mitten in einer Reihe, die sich überlappen (Abstand < Ø),
+    // dazu höchstens Linien auf der Plattenkante → je Mitte eine Bohrung von oben statt einer Tasche
+    const drillCombo = (fl, depth) => {
+      const arcs = fl.segs.filter((q) => q.type === 'arc');
+      if (arcs.length < 2) return false;
+      const r = arcs[0].r;
+      if (r > 10 + TOL || arcs.some((q) => !near(q.r, r))) return false;
+      const onEdge = (p) => p[0] < TOL || p[0] > L - TOL || p[1] < TOL || p[1] > W - TOL;
+      if (fl.segs.some((q) => q.type !== 'arc' && !(onEdge(q.a) && onEdge(q.b)))) return false;
+      const cs = [];
+      for (const q of arcs) if (!cs.some((c) => near2(c, q.c, 0.01))) cs.push(q.c);
+      if (cs.length < 2) return false;
+      // in einer Reihe: nach der Hauptrichtung sortieren, Nachbarn überlappen sich
+      const dx = maxOf(cs.map((c) => c[0])) - minOf(cs.map((c) => c[0]));
+      const dy = maxOf(cs.map((c) => c[1])) - minOf(cs.map((c) => c[1]));
+      const k = dx >= dy ? 0 : 1;
+      cs.sort((p, q) => p[k] - q[k]);
+      const ul = Math.hypot(cs[cs.length - 1][0] - cs[0][0], cs[cs.length - 1][1] - cs[0][1]);
+      const u = [(cs[cs.length - 1][0] - cs[0][0]) / ul, (cs[cs.length - 1][1] - cs[0][1]) / ul];
+      if (cs.some((c) => Math.abs((c[0] - cs[0][0]) * u[1] - (c[1] - cs[0][1]) * u[0]) > 0.05)) return false;
+      for (let i = 1; i < cs.length; i++) if (Math.hypot(cs[i][0] - cs[i - 1][0], cs[i][1] - cs[i - 1][1]) > 2 * r - TOL) return false;
+      for (const c of cs) res.drills.push({ face: 'Top', x: c[0], y: c[1], d: 2 * r, depth: depth, through: false, combo: true });
+      combos.push(cs.length + ' × Ø' + fmt(2 * r));
+      return true;
+    };
+    const combos = [];
     for (const fl of floors) {
       const bb = fl.bb;
       const depth = T - fl.z;
@@ -1572,6 +1598,8 @@
         else res.grooves.push({ dir: 'Y', from: bb.x0, to: bb.x1, depth: depth });
       } else if (fl.rect && !fl.inner.length && stoppedRebate(fl, bb, depth)) {
         // abgesetzter Falz: lang und schmal, zu genau einer Kante hin offen, endet vor der Plattenkante (from/to = Enden)
+      } else if (!fl.inner.length && drillCombo(fl, depth)) {
+        // überlappende Bohrungen (z. B. Lamello Cabineo: 3 × Ø15 in einer Reihe, unterste zur Kante offen)
       } else {
         const outerLoop = orient(fl.segs, true);
         res.pockets.push({ x0: bb.x0, y0: bb.y0, x1: bb.x1, y1: bb.y1, depth: depth, segs: outerLoop,
@@ -1580,6 +1608,7 @@
       }
     }
 
+    if (combos.length) warnings.push(combos.length + ' Bohrungsgruppe(n) aus überlappenden Bohrungen (z. B. Lamello Cabineo, ' + combos[0] + ') als Bohrungen statt Tasche ausgegeben.');
     res.pockets.sort((a, b) => a.depth - b.depth);
     // Stufen von flach nach tief (erst die flache Stufe über die ganze Breite, dann die tiefere)
     res.rebates.sort((a, b) => a.depth - b.depth);

@@ -238,6 +238,7 @@ jetzt nach dem Neuladen erhalten.
 | Sonderkontur (Ausschnitte, Rundungen, Schrägen) | Standard: ganze Außenkontur **am Stück** als eine Bahn; umschaltbar auf „Rechteck + Ausschnitte einzeln“ (`E016`, Tiefe D+2) |
 | Durchbrüche (innen), auch mit Fase oder Falz am Rand | geschlossene Fräsbahn (`E016`) entlang der engsten Stelle |
 | Bohrung von oben (Sackloch / durch) | `CreateDrill` Spitze `"P"` / `"L"` (durch: Tiefe D+2) |
+| Überlappende Bohrungen gleichen Durchmessers (bis Ø20) in einer Reihe, auch zur Kante offen – z. B. **Lamello Cabineo** (3 × Ø15, Tiefe 11, Abstand 11,2) | je Mitte ein `CreateDrill` statt einer Tasche (Hinweis in der Liste; Beispiel `test/fixtures/cabineo.step`) |
 | Bohrung, für die kein Bohrer existiert und die durchgeht | Kreisfräsung entlang der Kontur (`E016`) |
 | Bohrung in der Kante links/rechts/vorne/hinten | `SelectWorkplane(...)` + horizontale `CreateDrill` |
 | gleichabständige Lochreihen | `CreatePattern(...)` |

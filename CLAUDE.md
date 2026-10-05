@@ -50,6 +50,8 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
 - Zapfen auf Schräge: `bossOf` in `panel.js` (herausragende Flächen an einer Innenkontur der schrägen Fläche) →
   `slantWall.boss = {height, plane, islands, bottomZ}`; `xcs.js`: Vorschnitt auf versetzter Linie (`tenonPrecut`) und
   Tasche mit Insel auf Ebene `Zapfen_n` (`tenonTool`, `tenonAllowance`). Nach unten zeigend → `bottom` (wenden).
+- Cabineo (überlappende Bohrungen): Boden nur aus Bögen gleichen Radius (≤ 10) um ≥ 2 Mitten in einer Reihe, Abstand < Ø,
+  sonst nur Linien auf der Plattenkante → `drillCombo` in `panel.js` → Bohrungen von oben (`combo: true`) statt Tasche.
 - Clamex: `findClamex` in `panel.js` (Zylinder R 40–60 hohl + zwei Wände ⟂ Achse, Abstand 3–12; oder nur Wandpaare mit
   Kreisbogen – Nutgrund Extrusion/Freiform aus Lamello-Bibliothek) → `panel.clamex` `{c, a, n, r, w, depth, chord}`;
   Standard `clamexMode: 'macro'` → `clamexMacros` (je Kante/Linie ein Makro, Anzahl) und `CreateMacro(…, "SawCut_Lamello", …)`

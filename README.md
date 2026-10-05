@@ -164,7 +164,12 @@ zusammengebaut, so wie sie im Modell stehen (OpenCascade, three.js – offline, 
 - **Bauteil-Nummern** am Bauteil und in der Liste rechts (Name, Maße) – dieselben Nummern wie in der Programmliste.
   Klick auf Bauteil oder Zeile wählt es (blau, unten Name/Maße, *Im Programm öffnen*), Doppelklick auf die Zeile zoomt hin.
 - Je Bauteil **ein-/ausblenden** (●/◌), **nur** dieses zeigen, *Alle zeigen*; **Transparenz** für alle (das gewählte bleibt deckend).
-- **Messen:** zwei Punkte anklicken (rastet auf Ecken ein) – Abstand und ΔX/ΔY/ΔZ; Esc beendet.
+- **Explosionsansicht** (Regler 0–100 %): die Bauteile rücken von der Mitte der Baugruppe weg; Nummern und Messungen wandern mit.
+- **Messen mit Fang:** zwei Punkte anklicken, unter dem Mauszeiger zeigt eine Markierung, worauf eingerastet wird –
+  □ Endpunkt/Ecke, ○ Kreismitte (mit Radius, auch Bögen und Bohrungen), △ Kantenmitte, ✕ Kante, sonst Fläche; Alt gedrückt
+  = ohne Fang. Nach dem ersten Punkt Gummiband mit laufendem Abstand. Ergebnis Abstand und ΔX/ΔY/ΔZ, bei zwei parallelen
+  Flächen zusätzlich der senkrechte Abstand (z. B. Plattendicke, lichte Weite). Maße gelten immer wie zusammengebaut, auch
+  in der Explosionsansicht. Esc beendet.
 
 ## Was erkannt wird
 

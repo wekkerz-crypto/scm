@@ -168,7 +168,7 @@ test('Web-Tool: Draufsicht zoomen, Haltestege am Durchbruch umschalten', { skip:
   }
 });
 
-test('Web-Tool: Möbel 3D – Baugruppe mit Nummern, Ein-/Ausblenden, Wählen, Messen', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+test('Web-Tool: Möbel 3D – Baugruppe mit Nummern, Ein-/Ausblenden, Wählen, Messen mit Fang, Explosion', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
   const browser = await chromium.launch();
   try {
     const p = await browser.newPage({ viewport: { width: 1440, height: 950 } });
@@ -202,8 +202,24 @@ test('Web-Tool: Möbel 3D – Baugruppe mit Nummern, Ein-/Ausblenden, Wählen, M
     const a = pos.find((q) => q[0] === '4');
     const b = pos.find((q) => q[0] === '3');
     await p.mouse.click(a[1] + 30, a[2] + 3);
+    // Fang-Markierung unter dem Mauszeiger, Gummiband mit Abstand
+    await p.mouse.move(b[1] + 30, b[2] + 3);
+    await p.waitForFunction(() => !document.querySelector('.msnap').hidden && document.querySelector('.mlab.meas.live'));
+    assert.match(await p.getAttribute('.msnap', 'data-kind'), /^(end|mid|center|edge|face)$/);
     await p.mouse.click(b[1] + 30, b[2] + 3);
     assert.match(await p.textContent('#mhud'), /ΔZ 462 /);
+    // Explosionsansicht: Bauteile rücken auseinander, Maße bleiben wie zusammengebaut
+    await p.keyboard.press('Escape');
+    await p.$eval('#mexpl', (e) => { e.value = 50; e.dispatchEvent(new Event('input')); });
+    await p.waitForTimeout(200);
+    const pos2 = await p.$$eval('#mlabelwrap .mlab', (els) => els.map((e) => { const r = e.getBoundingClientRect(); return [e.textContent, r.x + r.width / 2, r.y + r.height / 2]; }));
+    const a2 = pos2.find((q) => q[0] === '4');
+    const b2 = pos2.find((q) => q[0] === '3');
+    assert.ok(b2[2] - a2[2] < b[2] - a[2] - 50, 'Aufkantung und Unterboden weiter auseinander');
+    await p.click('#mmeasure');
+    await p.mouse.click(a2[1] + 30, a2[2] + 3);
+    await p.mouse.click(b2[1] + 30, b2[2] + 3);
+    assert.match(await p.textContent('#mhud'), /ΔZ 462 .*wie zusammengebaut/);
     await p.keyboard.press('Escape');
     assert.strictEqual(await p.getAttribute('#mmeasure', 'aria-pressed'), 'false');
     // zurück zu den Programmen

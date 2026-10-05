@@ -12,7 +12,8 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   Bewegungen tragen dafür `pts3`/`ax3`/`disc` (5-Achs entlang Rundungen: `ax3s` je Punkt, Kugelfräser: `ball`) aus
   `toolpath.js`, Teile `panel.tf` (Modell → Plattenkoordinaten).
 - Möbel 3D (Seite oben umschaltbar, `state.page` 'pgmx'/'model'): `web/js/model3d.js` (`Model3D.Viewer`: Baugruppe in
-  Modellkoordinaten, Nummern, Ein-/Ausblenden, Transparenz, Wählen, Messen; `assign` ordnet OpenCascade-Netze über den
+  Modellkoordinaten, Nummern, Ein-/Ausblenden, Transparenz, Explosion `setExplode` (Versatz je Teil `offset`), Wählen,
+  Messen mit Fang `snapAt` – Fangpunkte je Teil `snapFeatures` aus den Kanten; Maße aus `local` = ohne Explosion; `assign` ordnet OpenCascade-Netze über den
   Hüllquader den Bauteilen zu); Nummer = Platz in der Programmliste (`.pnum`).
 - Gekrümmte Flächen (je Teil `overrides.curved = {slant, surface}`, Schalter nur sichtbar, wenn erkannt):
   `panel.curvedSlants` (Schräge an Rundungen → `slantpath`, `offsetRun` in `xcs.js`) und `panel.curvedSurfaces`

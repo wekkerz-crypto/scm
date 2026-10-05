@@ -207,6 +207,8 @@ Dritte Seite oben (**Listen**):
   2 mm). Unten die **Laufmeter je Kantenband** (Material + Dicke, mit Zugabe je Kante, Vorgabe 50 mm). Wahlweise *Kantendicke
   vom Zuschnitt abziehen* (Länge − B1 − B2, Breite − L1 − L2; auch im Zuschnittplan). Kanten stehen in CSV (je Seite in mm,
   Laufmeter), PDF/Druck, auf dem Etikett (dicker Strich an der Seite, Zeile „Kante …“) und in der Projektdatei.
+  In **Möbel 3D** zeigt der Schalter **Kanten** die Kantenbelegung: Seiten mit Kantenband im Dekor (bzw. in der eingestellten
+  Kantenfarbe), offene Seiten als Rohkante (Spanplatte bzw. die gewählte Kante Multiplex/MDF); aus = Ansicht wie bisher.
 - **Zuschnittplan:** Teile auf Rohplatten (Format, Schnittfuge, Besäumrand einstellbar) je Material und Dicke, mit
   durchgehenden Schnitten wie an der Plattensäge; mit Maserung bleibt die lange Seite längs der Plattenlänge, Dekore werden
   bei Bedarf gedreht. Rohmaß oder Fertigmaß wählbar. Zeichnung je Platte mit Nummer und Maß, Ausnutzung.

@@ -223,7 +223,11 @@
    * UV und Gruppen: Gruppe 0 = Deck-/Unterseite (Normale ∥ Dicke), Gruppe 1 = Schmalflächen. Faser (Textur-X) längs der
    * langen Seite; auf Schmalflächen quer dazu die Dicke (Multiplex: 1 Texturhöhe = 19,5 mm ab Unterseite).
    */
-  function boardUV(T, g, edgeKind) {
+  /*
+   * bands (Kantenbelegung, optional): { m: Zeilen von panel.tf (Modell → Platte), e: { l1, l2, b1, b2 } } – Schmalflächen der
+   * Seiten mit Kantenband kommen in Gruppe 2 (Seite nach der Normalen in Plattenkoordinaten: −Y L1, +Y L2, −X B1, +X B2).
+   */
+  function boardUV(T, g, edgeKind, bands) {
     if (!g.getAttribute('normal')) g.computeVertexNormals();
     if (!g.index) { const n = g.getAttribute('position').count; const ix = new Uint32Array(n); for (let i = 0; i < n; i++) ix[i] = i; g.setIndex(new T.BufferAttribute(ix, 1)); }
     const F = g.userData.boardFrame || (g.userData.boardFrame = boardFrame(g));
@@ -246,18 +250,30 @@
       uv[v * 2 + 1] = (dot(i, F.t) - F.t0) * ev;
     }
     g.setAttribute('uv', new T.BufferAttribute(uv, 2));
-    // Dreiecke sortieren: erst Flächen, dann Schmalflächen
+    // Dreiecke sortieren: erst Flächen, dann Schmalflächen, dann Schmalflächen mit Kantenband
     const idx = g.index.array;
     const a = [];
     const b = [];
+    const c = [];
+    const side = (k) => {
+      if (!bands) return false;
+      let nx = 0, ny = 0, nz = 0;
+      for (let j = 0; j < 3; j++) { const i = idx[k + j] * 3; nx += nrm[i]; ny += nrm[i + 1]; nz += nrm[i + 2]; }
+      const m = bands.m;
+      const px = m[0][0] * nx + m[0][1] * ny + m[0][2] * nz;
+      const py = m[1][0] * nx + m[1][1] * ny + m[1][2] * nz;
+      const sd = Math.abs(py) >= Math.abs(px) ? (py < 0 ? 'l1' : 'l2') : (px < 0 ? 'b1' : 'b2');
+      return !!bands.e[sd];
+    };
     for (let k = 0; k < idx.length; k += 3) {
       const f = face[idx[k]] + face[idx[k + 1]] + face[idx[k + 2]];
-      (f >= 2 ? a : b).push(idx[k], idx[k + 1], idx[k + 2]);
+      (f >= 2 ? a : side(k) ? c : b).push(idx[k], idx[k + 1], idx[k + 2]);
     }
-    g.setIndex(new T.BufferAttribute(new Uint32Array(a.concat(b)), 1));
+    g.setIndex(new T.BufferAttribute(new Uint32Array(a.concat(b, c)), 1));
     g.clearGroups();
     g.addGroup(0, a.length, 0);
     g.addGroup(a.length, b.length, 1);
+    if (c.length) g.addGroup(a.length + b.length, c.length, 2);
   }
 
   const texCache = new Map();
@@ -288,9 +304,21 @@
    * Materialien einer Platte aus dem Schlüssel (boardOf): [Oberfläche, Schmalflächen]; setzt UV und Gruppen am Netz.
    * color = Oberflächenfarbe (für leichte Helligkeitsunterschiede je Bauteil schon abgewandelt), sonst aus dem Schlüssel.
    */
-  function boardMaterials(T, g, key, color) {
+  function boardMaterials(T, g, key, color, bands) {
     const bd = boardOf(key);
     const base = color || bd.color;
+    if (bands) {
+      // Kantenbelegung zeigen: Kantenband im Dekor (bzw. in der eingestellten Kantenfarbe), offene Seiten als Rohkante
+      const own = /^#/.test(bd.edge);
+      const raw = bd.edge === 'same' || own ? 'span' : bd.edge;
+      const rawColor = (EDGES.find((e) => e.id === raw) || EDGES[1]).color;
+      boardUV(T, g, raw, bands);
+      const surf = woodMaterial(T, base, bd.grain);
+      const rawMat = new T.MeshStandardMaterial(Object.assign({ map: cachedTex(T, 'e' + raw + rawColor, () => edgeCanvas(raw, rawColor)), roughness: 0.85 }, matOpts));
+      const bandColor = own ? bd.edgeColor : base;
+      const band = new T.MeshStandardMaterial(Object.assign({ map: cachedTex(T, 'eband' + bandColor, () => edgeCanvas('band', bandColor)), roughness: 0.4 }, matOpts));
+      return [surf, rawMat, band];
+    }
     boardUV(T, g, bd.edge);
     const surf = woodMaterial(T, base, bd.grain);
     if (bd.edge === 'same') return [surf, surf];

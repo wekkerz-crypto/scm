@@ -16,7 +16,7 @@
   const mats = (o) => [...new Set([].concat(o.material))];
 
   // Material eines Bauteils aus der Plattenfarbe (Schlüssel wie View3D.boardOf) – Holz wie in der Teil-Ansicht
-  function boardLook(T, g, board, i) {
+  function boardLook(T, g, board, i, bands) {
     const bd = window.View3D && View3D.boardOf ? View3D.boardOf(board) : { color: '#d4ae7b', grain: 1 };
     const c = new T.Color(bd.color);
     const hsl = {};
@@ -24,7 +24,7 @@
     c.setHSL(hsl.h, hsl.s, Math.min(0.97, hsl.l * SHADE[i % SHADE.length]));
     const hex = '#' + c.getHexString();
     // [Oberfläche, Schmalflächen] – Maserung längs der langen Seite, Kanten je nach Einstellung (Spanplatte, Multiplex …)
-    const mat = window.View3D && View3D.boardMaterials ? View3D.boardMaterials(T, g, board, hex)
+    const mat = window.View3D && View3D.boardMaterials ? View3D.boardMaterials(T, g, board, hex, bands || null)
       : [new T.MeshStandardMaterial({ color: hex, roughness: 0.6, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 })];
     for (const m of mat) m.side = T.DoubleSide;
     // Kanten: deutlich dunkler als die Platte (auf Weiß grau, auf Nussbaum fast schwarz)
@@ -158,7 +158,7 @@
       if (!src.mesh.normals) g.computeVertexNormals();
       g.computeBoundingBox();
       // Holz wie in der Teil-Ansicht; je Bauteil ein leicht anderer Ton, damit Nachbarteile unterscheidbar sind
-      const look = boardLook(T, g, src.board, i);
+      const look = boardLook(T, g, src.board, i, src.bands);
       const mat = look.mat;
       const color = new T.Color(0xffffff);
       const obj = new T.Mesh(g, mat);
@@ -174,7 +174,7 @@
       lab.textContent = src.num;
       lab.title = src.num + ' – ' + src.name;
       this.labelEl.appendChild(lab);
-      this.parts.push({ num: src.num, name: src.name, board: src.board, index: i, obj: obj, edges: edges, color: color, center: center, label: lab, visible: true,
+      this.parts.push({ num: src.num, name: src.name, board: src.board, bands: src.bands || null, bandSig: JSON.stringify(src.bands || null), index: i, obj: obj, edges: edges, color: color, center: center, label: lab, visible: true,
         feat: snapFeatures(edges.geometry.getAttribute('position').array), offset: new T.Vector3() });
       box.union(g.boundingBox);
     });
@@ -212,17 +212,21 @@
     sc.updateProjectionMatrix();
   };
 
-  // Plattenfarbe ändern (boards: num → Schlüssel), ohne neu zu laden
-  Viewer.prototype.setBoards = function (boards) {
+  // Plattenfarbe ändern (boards: num → Schlüssel), Kantenbelegung (bands: num → { m, e } oder null), ohne neu zu laden
+  Viewer.prototype.setBoards = function (boards, bands) {
     const T = this.THREE;
     for (const p of this.parts) {
-      const b = boards[p.num];
-      if (b === undefined || b === p.board) continue;
-      const look = boardLook(T, p.obj.geometry, b, p.index);
+      const b = boards[p.num] === undefined ? p.board : boards[p.num];
+      const bn = bands ? bands[p.num] || null : p.bands || null;
+      const sig = JSON.stringify(bn);
+      if (b === p.board && sig === (p.bandSig || 'null')) continue;
+      const look = boardLook(T, p.obj.geometry, b, p.index, bn);
       mats(p.obj).forEach((m) => m.dispose());
       p.obj.material = look.mat;
       p.edges.material.color.copy(look.edge);
       p.board = b;
+      p.bands = bn;
+      p.bandSig = sig;
     }
     this.applyLook();
   };

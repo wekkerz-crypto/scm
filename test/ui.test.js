@@ -191,6 +191,18 @@ test('Web-Tool: Möbel 3D – Baugruppe mit Nummern, Ein-/Ausblenden, Wählen, M
     assert.ok(await p.$eval('#mtable tr[data-num="5"]', (t) => t.classList.contains('off')));
     await p.click('#mall');
     assert.ok(!(await p.$eval('#mtable tr[data-num="5"]', (t) => t.classList.contains('off'))));
+    // Kantenbelegung: Schalter „Kanten“ (bleibt gespeichert); Schmalflächen mit Kantenband bekommen eine eigene Gruppe
+    await p.check('#medges');
+    assert.strictEqual(await p.evaluate(() => JSON.parse(localStorage.getItem('step2xcs.settings.v1') || '{}').modelEdges), true);
+    const groups = await p.evaluate(() => {
+      const T = window.THREE;
+      const g = new T.BoxGeometry(800, 400, 19).toNonIndexed();
+      const m = View3D.boardMaterials(T, g, 'weiss', null, { m: [[1, 0, 0], [0, 1, 0], [0, 0, 1]], e: { l1: 2, l2: 0, b1: 1, b2: 0 } });
+      return { mats: m.length, groups: g.groups.map((x) => [x.count, x.materialIndex]) };
+    });
+    // 4 Dreiecke Ober-/Unterseite, 4 offene Schmalflächen (L2, B2), 4 mit Kantenband (L1, B1)
+    assert.deepStrictEqual(groups, { mats: 3, groups: [[12, 0], [12, 1], [12, 2]] });
+    await p.uncheck('#medges');
     // Plattenfarbe: für alle (Einstellung) und je Bauteil, „wie Einstellung“ nimmt sie wieder weg
     await p.click('#mboard');
     await p.click('.bpick [data-bkey="weiss"]');

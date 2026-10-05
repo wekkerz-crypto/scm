@@ -64,6 +64,7 @@
     estFactor: 1,
     boardMaterial: 'eiche',    // Plattenfarbe in den 3D-Ansichten (View3D.MATERIALS id oder '#rrggbb', '/u' = einfarbig)
     boardFromName: true,       // Material aus dem Bauteilnamen („… (U708 ST9)“) als Platte des Teils (Farbe aus der STEP)
+    modelEdges: false,         // Möbel 3D: Kantenbelegung zeigen (Kantenband im Dekor, offene Seiten als Rohkante)
     labelWidth: 40,            // Etikett (Browser-Druck): Breite in mm
     labelHeight: 60,           // Etikett: Höhe in mm
     labelRotate: false,        // Inhalt um 90° drehen (Drucker zieht das Etikett quer ein)

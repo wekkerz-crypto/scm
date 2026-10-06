@@ -653,7 +653,7 @@ test('Web-Tool: Etiketten 40 × 60 (Vorschau, Druckbereich, Seitengröße)', { s
   }
 });
 
-test('Web-Tool: Etiketten-Konfigurator (Elemente ziehen, Felder, Vorlage, Druck, wieder automatisch)', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+test('Web-Tool: Spalten Etiketten (Konfigurator, Druckliste) und Material', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
   const browser = await chromium.launch();
   try {
     const p = await browser.newPage({ viewport: { width: 1440, height: 950 } });
@@ -662,10 +662,12 @@ test('Web-Tool: Etiketten-Konfigurator (Elemente ziehen, Felder, Vorlage, Druck,
     await p.goto(page);
     await p.waitForSelector('.part');
     await p.evaluate(() => { window.__printed = 0; window.print = () => { window.__printed++; }; });
+    // aus der Etiketten-Vorschau „Gestalten“ → eigene Spalte „Etiketten“
     await p.click('#label');
     await p.waitForSelector('#labeldlg[open]');
     await p.click('#ldes');
-    await p.waitForSelector('#labeldes[open] #ldlabel');
+    await p.waitForSelector('#lblpage:not([hidden]) #ldlabel');
+    assert.strictEqual(await p.getAttribute('.pagetabs [data-page="labels"]', 'aria-selected'), 'true');
     assert.match(await p.textContent('.ldmode'), /Automatisch/);
     const n0 = await p.$$eval('#ldlabel [data-li]', (x) => x.length);
     assert.ok(n0 >= 8);
@@ -701,20 +703,40 @@ test('Web-Tool: Etiketten-Konfigurator (Elemente ziehen, Felder, Vorlage, Druck,
     const n1 = await p.$$eval('#ldlabel [data-li]', (x) => x.length);
     await p.keyboard.press('Delete');
     assert.strictEqual(await p.$$eval('#ldlabel [data-li]', (x) => x.length), n1 - 1);
-    // fertig → Vorschau und Druck mit eigenem Layout
-    await p.click('#ldclose');
-    await p.waitForSelector('#labeldlg[open] .lbl .lin.free');
-    await p.click('#lprint');
+    // Druckliste: Anzahl je Teil (Vorgabe = Stückliste), abwählen, drucken mit eigenem Layout
+    const nParts = await p.$$eval('.ldpi', (x) => x.length);
+    assert.ok(nParts >= 2);
+    await p.fill('[data-lpn="0"]', '3');
+    await p.press('[data-lpn="0"]', 'Enter');
+    await p.uncheck('[data-lpon="1"]');
+    const want = await p.$$eval('.ldpi', (rs) => rs.reduce((a, r) => a + (r.querySelector('[data-lpon]').checked ? +r.querySelector('[data-lpn]').value : 0), 0));
+    assert.match(await p.textContent('#ldprintgo'), new RegExp('^\\s*' + want + ' Etikett'));
+    await p.click('#ldprintgo');
     assert.strictEqual(await p.evaluate(() => window.__printed), 1);
+    assert.strictEqual(await p.$$eval('#printarea .lbl', (x) => x.length), want);
     assert.ok(await p.$('#printarea .lbl .lin.free .li-bc'));
+    // Vorschau-Teil über die Liste wechseln
+    await p.click('[data-lpsel="1"]');
+    assert.ok(await p.$eval('.ldpi >> nth=1', (e) => e.classList.contains('cur')));
     // wieder automatisch
-    await p.click('#label');
-    await p.click('#ldes');
     await p.click('#ldauto');
     assert.strictEqual(await stored(), null);
-    await p.click('#ldclose');
+    await p.click('[data-page="pgmx"]');
+    await p.click('#label');
     await p.waitForSelector('#labeldlg[open] .lbl');
     assert.strictEqual(await p.$('#labeldlg .lbl .lin.free'), null);
+    await p.click('#lclose');
+    // Material-Spalte: Materialien im Projekt, Kantenband und Rohplatten wie in den Listen
+    await p.click('[data-page="material"]');
+    await p.waitForSelector('#matpage:not([hidden]) .mattbl');
+    assert.ok((await p.$$eval('.mattbl tbody tr', (x) => x.length)) >= 1);
+    await p.fill('#m-emm', '2');
+    await p.press('#m-emm', 'Enter');
+    await p.fill('#m-sheetL', '2500');
+    await p.press('#m-sheetL', 'Enter');
+    await p.click('[data-page="lists"]');
+    assert.strictEqual(await p.inputValue('#emm'), '2');
+    assert.strictEqual(await p.inputValue('#csheetL'), '2500');
     assert.deepStrictEqual(errors, []);
   } finally {
     await browser.close();

@@ -99,16 +99,53 @@ header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: 
 .li-eg span { display: flex; align-items: center; gap: 0.8mm; white-space: nowrap; overflow: hidden; }
 .li-eg svg { flex: none; }
 .li-bc { display: flex; flex-direction: column; }
-/* Etiketten-Konfigurator */
-.labeldes { max-width: min(97vw, 1320px); width: min(97vw, 1320px); }
-.labeldes .ldhead { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 12px; font-size: 0.9rem; }
-.labeldes .ldhead h3 { margin: 0 8px 0 0; }
-.labeldes .ldhead input[type=number] { width: 4.5em; font-family: var(--font-mono); }
-.labeldes .ldhead .sp { flex: 1; }
-.labeldes .ldmode { font-size: 0.82rem; color: var(--muted); }
-.labeldes .ldmain { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); gap: 16px; align-items: start; }
-@media (max-width: 900px) { .labeldes .ldmain { grid-template-columns: 1fr; } }
-.ldstage { position: relative; background: var(--sunken); border-radius: var(--r); padding: 28px; min-height: 360px; display: flex; align-items: flex-start; justify-content: center; overflow: auto; max-height: 76vh; }
+/* Material-Seite */
+.mathead h3 { margin: 0 0 4px; }
+.mathead .note, .matcard .note { font-size: 0.82rem; color: var(--muted); margin: 0; }
+.matgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-top: 12px; }
+.matcard { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--surface); display: grid; gap: 10px; align-content: start; min-width: 0; }
+.matcard.wide { grid-column: 1 / -1; }
+.matcard h4 { margin: 0; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; }
+.matcard h4 small { font: 600 0.75rem var(--font-mono); color: var(--muted); }
+.mattbl { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
+.mattbl th { text-align: left; font-size: 0.75rem; color: var(--muted); font-weight: 600; padding: 4px 8px; border-bottom: 1.5px solid var(--line); }
+.mattbl td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.mattbl .r { text-align: right; font-family: var(--font-mono); white-space: nowrap; }
+.mattbl .btn { white-space: nowrap; }
+.matrows { display: grid; gap: 8px; font-size: 0.88rem; }
+.matrows > label { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.matrows > label.ck { justify-content: flex-start; }
+.matrows input[type=number] { width: 5.5em; font-family: var(--font-mono); }
+.matrows input[type=text] { width: 11em; }
+.matsub { display: grid; gap: 4px; font-size: 0.85rem; }
+.matown, .matdec { display: flex; flex-wrap: wrap; gap: 8px; }
+.matown span { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 8px; border: 1px solid var(--line); border-radius: 8px; font-size: 0.85rem; }
+.matdec span { display: grid; grid-template-columns: 40px auto; grid-template-rows: auto auto; column-gap: 8px; align-items: center; padding: 6px; border: 1px solid var(--line);
+  border-radius: 8px; font: 600 0.82rem var(--font-mono); min-width: 150px; }
+.matdec i { grid-row: 1 / 3; width: 40px; height: 40px; border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15); }
+.matdec small { font: 400 0.75rem var(--font-body); color: var(--muted); }
+/* Etiketten-Seite: Druckliste | Etikett | Eigenschaften */
+.labelpage .ldhead { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 12px; font-size: 0.9rem; }
+.labelpage .ldhead h3 { margin: 0 8px 0 0; }
+.labelpage .ldhead input[type=number] { width: 4.5em; font-family: var(--font-mono); }
+.labelpage .ldhead .sp { flex: 1; }
+.labelpage .ldmode { font-size: 0.82rem; color: var(--muted); }
+.labelpage .ldmain { display: grid; grid-template-columns: minmax(250px, 300px) minmax(0, 1fr) minmax(300px, 380px); gap: 16px; align-items: start; }
+@media (max-width: 1200px) { .labelpage .ldmain { grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); } .labelpage .ldprint { grid-column: 1 / -1; order: 3; } }
+@media (max-width: 800px) { .labelpage .ldmain { grid-template-columns: 1fr; } }
+.ldprint { display: grid; gap: 8px; align-content: start; font-size: 0.88rem; }
+.ldprint h4 { margin: 0; font-size: 0.85rem; }
+.ldprint h4 small { font-weight: 400; color: var(--muted); }
+.ldprow { display: flex; gap: 6px; }
+.ldplist { display: grid; gap: 2px; max-height: 62vh; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 4px; }
+.ldpi { display: grid; grid-template-columns: auto minmax(0, 1fr) 3.6em; gap: 6px; align-items: center; padding: 3px 4px; border-radius: 6px; }
+.ldpi.cur { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.ldpi button { all: unset; cursor: pointer; display: grid; min-width: 0; line-height: 1.25; }
+.ldpi button b { font-family: var(--font-mono); margin-right: 4px; }
+.ldpi button span, .ldpi button small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ldpi small { color: var(--muted); font-family: var(--font-mono); font-size: 0.78rem; }
+.ldpi input[type=number] { width: 3.4em; font-family: var(--font-mono); }
+.ldstage { position: relative; background: var(--sunken); border-radius: var(--r); padding: 28px 28px 52px; min-height: 360px; display: flex; align-items: flex-start; justify-content: center; overflow: auto; max-height: 76vh; }
 .ldlabel { position: relative; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.3); flex: none; touch-action: none; user-select: none;
   background-image: radial-gradient(circle, rgba(0,0,0,0.12) 0.12mm, transparent 0.13mm); background-size: 1mm 1mm; }
 .ldlabel .li { cursor: move; outline: 0.12mm dashed rgba(31, 95, 191, 0.45); }
@@ -288,7 +325,7 @@ table.ops td.k .jump:hover { color: var(--accent); }
 .view canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 /* Seiten: Programme (STEP → PGMX) / Möbel 3D */
 /* Seitenwahl oben: zwei große Schalter (Symbol, Name, Erklärung, Anzahl) – der aktive gefüllt in der Akzentfarbe */
-.pagetabs { display: grid; grid-template-columns: repeat(3, minmax(0, 300px)); gap: 6px; padding: 5px; margin: 4px 0 8px; width: fit-content; max-width: 100%;
+.pagetabs { display: grid; grid-template-columns: repeat(5, minmax(0, 250px)); gap: 6px; padding: 5px; margin: 4px 0 8px; width: fit-content; max-width: 100%;
   background: var(--sunken); border: 1px solid var(--line); border-radius: 14px; }
 .pagetabs button { display: flex; align-items: center; gap: 12px; text-align: left; border: 1px solid transparent; background: none; color: var(--muted);
   font: inherit; padding: 9px 14px; border-radius: 10px; cursor: pointer; min-width: 0; transition: background .15s, color .15s; }
@@ -303,10 +340,13 @@ table.ops td.k .jump:hover { color: var(--accent); }
 .pagetabs button[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); box-shadow: 0 1px 4px rgba(0,0,0,0.18); }
 .pagetabs button[aria-selected="true"] .ptn { background: var(--accent-ink); color: var(--accent); border-color: transparent; }
 @media (max-width: 520px) { .pagetabs .pti { display: none; } .pagetabs .ptt b { font-size: 0.92rem !important; overflow: hidden; text-overflow: ellipsis; } .pagetabs button { justify-content: center; } }
-@media (max-width: 640px) { .pagetabs { width: 100%; grid-template-columns: 1fr 1fr 1fr; } .pagetabs button { gap: 8px; padding: 8px 10px; }
+@media (max-width: 1100px) { .pagetabs .ptt small, .pagetabs .ptn { display: none; } .pagetabs button { gap: 8px; } }
+@media (max-width: 640px) { .pagetabs { width: 100%; grid-template-columns: repeat(5, minmax(0, 1fr)); } .pagetabs button { gap: 8px; padding: 8px 10px; }
   .pagetabs .ptt small, .pagetabs .ptn { display: none; } .pagetabs .ptt b { font-size: 1rem; white-space: nowrap; } .pagetabs .pti { width: 22px; height: 22px; } }
 body[data-page="model"] .profilebar, body[data-page="model"] .bench, body[data-page="model"] details.settings,
-body[data-page="lists"] .profilebar, body[data-page="lists"] .bench, body[data-page="lists"] details.settings { display: none; }
+body[data-page="lists"] .profilebar, body[data-page="lists"] .bench, body[data-page="lists"] details.settings,
+body[data-page="labels"] .profilebar, body[data-page="labels"] .bench, body[data-page="labels"] details.settings,
+body[data-page="material"] .profilebar, body[data-page="material"] .bench, body[data-page="material"] details.settings { display: none; }
 /* Listen: Stückliste und Zuschnittplan */
 .lbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 12px; }
 .lbar .sp { flex: 1; }
@@ -907,7 +947,12 @@ table.fmt.one .onet { display: inline; }
     <button type="button" role="tab" data-page="pgmx" aria-selected="true"><svg class="pti" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M9.5 12.5 7.5 15l2 2.5M14.5 12.5l2 2.5-2 2.5"/></svg><span class="ptt"><b>Programme</b><small>Teile prüfen, .xcs/.pgmx</small></span><span class="ptn" id="ptn-pgmx"></span></button>
     <button type="button" role="tab" data-page="model" aria-selected="false"><svg class="pti" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 20.5 7v10L12 21.5 3.5 17V7z"/><path d="M12 21.5V12M20.5 7 12 12 3.5 7"/></svg><span class="ptt"><b>Möbel 3D</b><small>ansehen, messen, bemaßen</small></span><span class="ptn" id="ptn-model"></span></button>
     <button type="button" role="tab" data-page="lists" aria-selected="false"><svg class="pti" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span class="ptt"><b>Listen</b><small>Stückliste, Zuschnitt, Zeit</small></span><span class="ptn" id="ptn-lists"></span></button>
+    <button type="button" role="tab" data-page="labels" aria-selected="false"><svg class="pti" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1.4 1.4 0 0 1 0 2l-6.6 6.6a1.4 1.4 0 0 1-2 0z"/><circle cx="8" cy="8" r="1.6"/></svg><span class="ptt"><b>Etiketten</b><small>gestalten, drucken</small></span></button>
+    <button type="button" role="tab" data-page="material" aria-selected="false"><svg class="pti" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5 12 3l9 4.5-9 4.5z"/><path d="M3 12l9 4.5 9-4.5M3 16.5 12 21l9-4.5"/></svg><span class="ptt"><b>Material</b><small>Platten, Dekore, Kanten</small></span></button>
   </nav>
+
+  <section class="card labelpage" id="lblpage" hidden></section>
+  <section class="card matpage" id="matpage" hidden></section>
 
   <section class="card listpage" id="listpage" hidden>
     <div class="lbar">
@@ -2811,7 +2856,7 @@ table.fmt.one .onet { display: inline; }
       '<span class="sp"></span><button class="btn ghost" type="button" id="lclose">Schließen</button><button class="btn primary" type="button" id="lprint">' + ICON_PRINT + ' Drucken</button></div>';
     if (!dlg.open) dlg.showModal();
     $('lclose').addEventListener('click', () => dlg.close());
-    $('ldes').addEventListener('click', () => { dlg.close(); openLabelDesigner(list[0], () => openLabels(parts)); });
+    $('ldes').addEventListener('click', () => { dlg.close(); openLabelDesigner(list[0]); });
     $('lrot').addEventListener('click', () => {
       state.settings.labelRotate = !state.settings.labelRotate;
       saveSettings();
@@ -2826,28 +2871,33 @@ table.fmt.one .onet { display: inline; }
    * Elemente ziehen (Raster 0,5 mm, Alt = frei), Größe am Griff unten rechts, Pfeiltasten verschieben, Entf löscht;
    * rechts Elemente hinzufügen, Liste (Reihenfolge = Ebenen) und Eigenschaften. Jede Änderung wird gleich gespeichert.
    */
-  let ld = null; // { lay, sel, part, onClose }
+  let ld = null; // { lay, own, sel, part, zoom, print: Map(Teil → { on, n }) }
   const LD_TYPES = { text: 'Text', two: 'Hinweis 2-seitig', sketch: 'Draufsicht', edges: 'Kanten-Legende', barcode: 'Strichcode', box: 'Linie / Rahmen' };
-  function openLabelDesigner(part, onClose) {
-    const parts = state.parts.filter((x) => x.res && x.res.panel);
-    if (!parts.length) { toast('Erst Teile laden – das Etikett wird an einem echten Teil gezeigt.'); return; }
+  const ldParts = () => state.parts.filter((x) => x.res && x.res.panel);
+  // Stand des Konfigurators (beim ersten Öffnen bzw. nach geänderter Größe / Einstellung neu)
+  function ldInit() {
     const D = labelDims();
-    lblNums = labelNums();
+    const parts = ldParts();
     const own = state.settings.labelLayout && Array.isArray(state.settings.labelLayout.items);
-    ld = { lay: own ? LabelLayout.scaled(JSON.parse(JSON.stringify(state.settings.labelLayout)), D.cw, D.ch) : LabelLayout.layoutOf('standard', D.cw, D.ch),
-      own: own, sel: null, part: part && parts.includes(part) ? part : parts[Math.max(0, Math.min(parts.length - 1, state.sel))], onClose: onClose || null,
-      zoom: Math.max(4, Math.min(14, Math.round(Math.min((window.innerHeight * 0.64) / D.ch, (window.innerWidth * 0.5) / D.cw)))) };
-    let dlg = $('labeldes');
-    if (!dlg) {
-      dlg = document.createElement('dialog');
-      dlg.id = 'labeldes';
-      dlg.className = 'labeldlg labeldes';
-      document.body.appendChild(dlg);
-      dlg.addEventListener('close', () => { const f = ld && ld.onClose; ld = null; renderSoon(); if (f) f(); });
-      document.addEventListener('keydown', ldKey); // Fokus kann nach dem Neuzeichnen auf der Seite liegen
+    if (!ld) {
+      ld = { lay: null, own: false, sel: null, part: null, print: new Map(),
+        zoom: Math.max(4, Math.min(12, Math.round(Math.min((window.innerHeight * 0.6) / D.ch, (window.innerWidth * 0.3) / D.cw)))) };
+      document.addEventListener('keydown', ldKey); // Pfeiltasten / Entf auf der Seite
     }
-    renderLD();
-    if (!dlg.open) dlg.showModal();
+    if (!ld.lay || ld.own !== !!own || (own && ld.lay !== state.settings.labelLayout && JSON.stringify(ld.lay) !== JSON.stringify(state.settings.labelLayout))) {
+      ld.lay = own ? LabelLayout.scaled(JSON.parse(JSON.stringify(state.settings.labelLayout)), D.cw, D.ch) : LabelLayout.layoutOf('standard', D.cw, D.ch);
+      ld.own = !!own;
+    }
+    if (ld.lay.w !== D.cw || ld.lay.h !== D.ch) ld.lay = LabelLayout.scaled(ld.lay, D.cw, D.ch);
+    if (!parts.includes(ld.part)) ld.part = parts[Math.max(0, Math.min(parts.length - 1, state.sel))] || null;
+    lblNums = labelNums();
+  }
+  // Etiketten-Seite öffnen (aus der Vorschau oder den Einstellungen), optional mit einem Teil als Vorschau
+  function openLabelDesigner(part) {
+    ldInit();
+    if (part && ldParts().includes(part)) ld.part = part;
+    setPage('labels');
+    window.scrollTo({ top: $('lblpage').offsetTop - 12, behavior: 'smooth' });
   }
   // Layout speichern (eigenes Layout ab der ersten Änderung)
   function ldSave() {
@@ -2908,25 +2958,46 @@ table.fmt.one .onet { display: inline; }
       '<button type="button" class="btn small" data-ldact="down" title="eine Ebene nach hinten">▲ nach hinten</button><button type="button" class="btn small danger" data-ldact="del">Löschen</button></div></div>';
     return h;
   }
+  // Druckliste: je Bauteil an/aus und Anzahl Etiketten (Vorgabe = Anzahl in der Stückliste)
+  function ldPrintOf(p) {
+    if (!ld.print.has(p)) ld.print.set(p, { on: true, n: Math.max(0, qtyOf(p)) });
+    return ld.print.get(p);
+  }
+  function ldPrintHtml(parts) {
+    const tot = parts.reduce((a, p) => { const q = ldPrintOf(p); return a + (q.on ? q.n : 0); }, 0);
+    return '<div class="ldprint"><h4>Drucken <small>' + tot + ' Etikett' + (tot === 1 ? '' : 'en') + '</small></h4>' +
+      '<div class="ldprow"><button type="button" class="btn ghost small" data-lpall="1">alle</button><button type="button" class="btn ghost small" data-lpall="0">keine</button></div>' +
+      '<div class="ldplist">' + parts.map((p, i) => {
+        const q = ldPrintOf(p);
+        const row = lblNums && lblNums.get(p);
+        return '<div class="ldpi' + (p === ld.part ? ' cur' : '') + '"><input type="checkbox" data-lpon="' + i + '"' + (q.on ? ' checked' : '') + ' aria-label="drucken">' +
+          '<button type="button" data-lpsel="' + i + '" title="als Vorschau zeigen"><span><b>' + (row ? row.nums[0] : i + 1) + '</b> ' + esc(p.fileName.replace(/\.xcs$/i, '')) + '</span>' +
+          '<small>' + n1(p.res.panel.L) + ' × ' + n1(p.res.panel.W) + ' × ' + n1(p.res.panel.T) + '</small></button>' +
+          '<input type="number" min="0" step="1" data-lpn="' + i + '" value="' + q.n + '" aria-label="Anzahl Etiketten"></div>';
+      }).join('') + '</div>' +
+      '<button type="button" class="btn primary" id="ldprintgo"' + (tot ? '' : ' disabled') + '>' + ICON_PRINT + ' ' + tot + ' Etikett' + (tot === 1 ? '' : 'en') + ' drucken</button></div>';
+  }
   function renderLD() {
-    const dlg = $('labeldes');
-    if (!dlg || !ld) return;
+    const host = $('lblpage');
+    if (!host || state.page !== 'labels') return;
+    const parts = ldParts();
+    if (!parts.length) { host.innerHTML = '<p class="note">Keine Teile geladen – das Etikett wird an einem echten Teil gestaltet.</p>'; return; }
+    ldInit();
     const D = labelDims();
-    const parts = state.parts.filter((x) => x.res && x.res.panel);
-    const scroll = dlg.querySelector('.ldside') ? dlg.querySelector('.ldside').scrollTop : 0;
-    dlg.innerHTML = '<div class="ldhead"><h3>Etikett gestalten</h3>' +
+    const scroll = host.querySelector('.ldside') ? host.querySelector('.ldside').scrollTop : 0;
+    const scroll2 = host.querySelector('.ldplist') ? host.querySelector('.ldplist').scrollTop : 0;
+    host.innerHTML = '<div class="ldhead">' +
       '<label>Etikett <input type="number" min="10" step="1" id="ldW" value="' + D.LW + '" aria-label="Etikett Breite"> × <input type="number" min="10" step="1" id="ldH" value="' + D.LH + '" aria-label="Etikett Höhe"> mm</label>' +
       '<label><input type="checkbox" id="ldrot"' + (D.rot ? ' checked' : '') + '> Inhalt um 90° drehen</label>' +
       '<label>Vorlage <select id="ldtpl">' + LabelLayout.TEMPLATES.map(([k, t]) => '<option value="' + k + '">' + esc(t) + '</option>').join('') + '</select></label>' +
       '<button type="button" class="btn small" id="ldtplgo" title="Ersetzt das Layout durch die Vorlage">Laden</button>' +
-      '<label>Vorschau <select id="ldpart">' + parts.map((x, i) => '<option value="' + i + '"' + (x === ld.part ? ' selected' : '') + '>' + esc((i + 1) + ' · ' + x.fileName.replace(/\.xcs$/i, '')) + '</option>').join('') + '</select></label>' +
       '<span class="sp"></span><span class="ldmode">' + (ld.own ? 'Eigenes Layout' : 'Automatisch – die erste Änderung speichert ein eigenes Layout') + '</span>' +
-      (ld.own ? '<button type="button" class="btn ghost small" id="ldauto" title="Eigenes Layout verwerfen, wieder das automatische Etikett">Automatisch verwenden</button>' : '') +
-      '<button type="button" class="btn primary small" id="ldclose">Fertig</button></div>' +
-      '<div class="ldmain"><div class="ldstage" id="ldstage">' + ldStageHtml() + '<div class="ldzoom"><button type="button" class="btn small" data-ldz="-1" aria-label="kleiner">−</button>' +
+      (ld.own ? '<button type="button" class="btn ghost small" id="ldauto" title="Eigenes Layout verwerfen, wieder das automatische Etikett">Automatisch verwenden</button>' : '') + '</div>' +
+      '<div class="ldmain">' + ldPrintHtml(parts) + '<div class="ldstage" id="ldstage">' + ldStageHtml() + '<div class="ldzoom"><button type="button" class="btn small" data-ldz="-1" aria-label="kleiner">−</button>' +
       '<button type="button" class="btn small" data-ldz="1" aria-label="größer">+</button></div></div><div class="ldside">' + ldInspector() + '</div></div>';
-    dlg.querySelector('.ldside').scrollTop = scroll;
-    ldWire(dlg);
+    host.querySelector('.ldside').scrollTop = scroll;
+    host.querySelector('.ldplist').scrollTop = scroll2;
+    ldWire(host);
   }
   // nur die Vorschau neu (beim Tippen in den Eigenschaften, Fokus bleibt)
   function ldRefreshStage() {
@@ -2947,7 +3018,17 @@ table.fmt.one .onet { display: inline; }
   function ldChanged(full) { ldSave(); if (full) renderLD(); else ldRefreshStage(); }
   function ldWire(dlg) {
     ldMarkSel();
-    $('ldclose').addEventListener('click', () => dlg.close());
+    // Druckliste
+    const parts = ldParts();
+    dlg.querySelectorAll('[data-lpon]').forEach((c) => c.addEventListener('change', () => { ldPrintOf(parts[+c.dataset.lpon]).on = c.checked; renderLD(); }));
+    dlg.querySelectorAll('[data-lpn]').forEach((c) => c.addEventListener('change', () => { ldPrintOf(parts[+c.dataset.lpn]).n = Math.max(0, Math.round(+c.value || 0)); renderLD(); }));
+    dlg.querySelectorAll('[data-lpsel]').forEach((b) => b.addEventListener('click', () => { ld.part = parts[+b.dataset.lpsel]; renderLD(); }));
+    dlg.querySelectorAll('[data-lpall]').forEach((b) => b.addEventListener('click', () => { for (const p of parts) ldPrintOf(p).on = b.dataset.lpall === '1'; renderLD(); }));
+    $('ldprintgo').addEventListener('click', () => {
+      const list = [];
+      for (const p of parts) { const q = ldPrintOf(p); if (q.on) for (let c = 0; c < q.n; c++) list.push(p); }
+      printLabels(list);
+    });
     if ($('ldauto')) $('ldauto').addEventListener('click', () => {
       state.settings.labelLayout = null;
       saveSettings();
@@ -2974,7 +3055,6 @@ table.fmt.one .onet { display: inline; }
     $('ldW').addEventListener('change', size);
     $('ldH').addEventListener('change', size);
     $('ldrot').addEventListener('change', size);
-    $('ldpart').addEventListener('change', (e) => { ld.part = state.parts.filter((x) => x.res && x.res.panel)[+e.target.value]; renderLD(); });
     $('ldtplgo').addEventListener('click', () => {
       const D = labelDims();
       ld.lay = LabelLayout.layoutOf($('ldtpl').value, D.cw, D.ch);
@@ -3074,7 +3154,7 @@ table.fmt.one .onet { display: inline; }
     ldChanged(true);
   }
   function ldKey(ev) {
-    if (!ld || !ld.sel || !$('labeldes').open || /^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName)) return;
+    if (!ld || !ld.sel || state.page !== 'labels' || /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(ev.target.tagName) || ev.target.closest('dialog')) return;
     const e = ldItem();
     if (!e) return;
     const st = ev.shiftKey ? 2 : 0.5;
@@ -3082,6 +3162,106 @@ table.fmt.one .onet { display: inline; }
     if (mv) { ev.preventDefault(); e.x = Math.round((e.x + mv[0]) * 10) / 10; e.y = Math.round((e.y + mv[1]) * 10) / 10; ldChanged(true); }
     else if (ev.key === 'Delete' || ev.key === 'Backspace') { ev.preventDefault(); ldAct('del'); }
     else if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'd') { ev.preventDefault(); ldAct('dup'); }
+  }
+  /*
+   * Material (eigene Spalte, erste Fassung zum Überarbeiten): alles zur Materialdefinition an einer Stelle –
+   * Materialien im Projekt (Teile, Dicken, Fläche, Format, Kante; für alle Teile ändern), Standard-Platte und Material aus dem
+   * Namen, Kantenband (Dicke, Dekor 1/2, Zugabe), Plattenformat/Schnittfuge/Besäumen und Format je Material, eigene Farben,
+   * Dekor-Bibliothek. Werte sind dieselben wie in Stückliste, Zuschnitt und Einstellungen.
+   */
+  function renderMat() {
+    const host = $('matpage');
+    if (!host || state.page !== 'material') return;
+    const rows = bomRows();
+    const m2 = (v) => v.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    // je Material: Teile, Dicken, Fläche
+    const mats = new Map();
+    for (const r of rows) {
+      if (!mats.has(r.board)) mats.set(r.board, { key: r.board, qty: 0, area: 0, T: new Map(), parts: [] });
+      const m = mats.get(r.board);
+      m.qty += r.qty;
+      m.area += (r.L * r.W * r.qty) / 1e6;
+      const tk = Math.round(r.T * 10) / 10; // gleiche Dicke trotz Rundungsresten zusammen
+      m.T.set(tk, (m.T.get(tk) || 0) + r.qty);
+      m.parts.push(...r.parts);
+    }
+    const groups = cutGroups();
+    const fmtTxt = (key, T) => { const g = groups.find((x) => x.key === View3D.boardOf(key).id + '|' + fmt(T)); return g ? fmt(g.fmt.L) + ' × ' + fmt(g.fmt.W) : fmt(lst.sheetL) + ' × ' + fmt(lst.sheetW); };
+    const kind = (b) => (b.tex ? 'Dekor (Bibliothek)' : b.grain > 0 ? 'Holz, Maserung längs' : 'Dekor / einfarbig');
+    const list = Array.from(mats.values());
+    const num = (id, v, step, label) => '<label>' + label + ' <input type="number" id="' + id + '" step="' + step + '" value="' + esc(v) + '"></label>';
+    const decs = View3D.decors();
+    host.innerHTML = '<div class="mathead"><h3>Material</h3><p class="note">Alles zur Materialdefinition an einer Stelle – dieselben Werte wie in Stückliste, Zuschnitt und Einstellungen. ' +
+        'Erste Fassung: wird noch überarbeitet.</p></div>' +
+      '<div class="matgrid">' +
+      // Materialien im Projekt
+      '<section class="matcard wide"><h4>Materialien im Projekt <small>' + list.length + '</small></h4>' + (list.length ?
+        '<div class="tblwrap"><table class="mattbl"><thead><tr><th>Material</th><th>Art</th><th>Schmalflächen</th><th class="r">Dicken (Teile)</th><th class="r">Teile</th><th class="r">Fläche</th><th class="r">Plattenformat</th><th>Kante Dekor 1</th><th></th></tr></thead><tbody>' +
+        list.map((m, i) => { const b = View3D.boardOf(m.key); const Ts = Array.from(m.T.keys()).sort((a, c) => a - c);
+          return '<tr><td>' + boardSwatch(m.key) + ' <b>' + esc(b.name) + '</b></td><td>' + kind(b) + '</td><td>' + esc(b.edge === 'same' ? 'wie Oberfläche' : b.edgeName) + '</td>' +
+            '<td class="r">' + Ts.map((T) => fmt(T) + ' mm (' + m.T.get(T) + ')').join('<br>') + '</td><td class="r">' + m.qty + '</td><td class="r">' + m2(m.area) + ' m²</td>' +
+            '<td class="r">' + Ts.map((T) => fmtTxt(m.key, T)).join('<br>') + '</td><td>' + esc(decoName(1, m.key)) + '</td>' +
+            '<td><button type="button" class="btn small" id="matchg' + i + '" data-matchg="' + i + '" title="Material für alle ' + m.parts.length + ' Bauteile ändern">Ändern …</button></td></tr>'; }).join('') +
+        '</tbody></table></div>' : '<p class="note">Keine Teile geladen.</p>') + '</section>' +
+      // Standard
+      '<section class="matcard"><h4>Standard</h4><div class="matrows">' +
+        '<label>Platte für alle Teile <button type="button" class="btn small boardbtn" id="matdef">' + boardChip(state.settings.boardMaterial) + '</button></label>' +
+        '<label class="ck"><input type="checkbox" id="matname"' + (state.settings.boardFromName !== false ? ' checked' : '') + '> Material aus dem Bauteilnamen (z. B. „Seite (U708 ST9)“)</label>' +
+        '<p class="note">Reihenfolge: je Teil gewählt &gt; aus dem Namen &gt; Standard.</p></div></section>' +
+      // Kantenband
+      '<section class="matcard"><h4>Kantenband</h4><div class="matrows">' +
+        num('m-emm', lst.edgeMm, 0.1, 'Dicke (alle Kanten) mm') +
+        '<label>Dekor 1 <input type="text" id="m-ename1" value="' + esc(lst.edgeName1 || '') + '" placeholder="wie Platte"></label>' +
+        '<label>Dekor 2 <input type="text" id="m-ename2" value="' + esc(lst.edgeName2 || '') + '"> <input type="color" id="m-ecol2" value="' + esc(/^#[0-9a-f]{6}$/i.test(lst.edgeColor2 || '') ? lst.edgeColor2 : '#5b4a3a') + '" aria-label="Farbe Dekor 2"></label>' +
+        num('m-eextra', lst.edgeExtra, 1, 'Zugabe je Kante mm') +
+        '<label class="ck"><input type="checkbox" id="m-ededuct"' + (lst.edgeDeduct ? ' checked' : '') + '> Kantendicke vom Zuschnitt abziehen</label>' +
+        '<p class="note">Belegung je Teil in der Stückliste; automatische Vorbelegung dort unter <i>Kanten-Regeln</i>.</p></div></section>' +
+      // Platten
+      '<section class="matcard"><h4>Rohplatten</h4><div class="matrows">' +
+        '<label>Format <span><input type="number" id="m-sheetL" step="1" value="' + lst.sheetL + '"> × <input type="number" id="m-sheetW" step="1" value="' + lst.sheetW + '"> mm</span></label>' +
+        num('m-kerf', lst.kerf, 0.1, 'Schnittfuge mm') + num('m-trim', lst.trim, 1, 'Besäumen mm') +
+        '<label class="ck"><input type="checkbox" id="m-grain"' + (lst.grain ? ' checked' : '') + '> Maserung beachten</label>' +
+        (lst.groupSheet && Object.keys(lst.groupSheet).length ? '<div class="matsub">Eigenes Format je Material:' + Object.entries(lst.groupSheet).map(([k, f]) =>
+          '<div>' + esc(k.replace('|', ' · ') + ' mm') + ': <b>' + fmt(f.L) + ' × ' + fmt(f.W) + '</b> <button type="button" class="btn ghost small" data-matgf="' + esc(k) + '" title="wieder allgemeines Format">↺</button></div>').join('') + '</div>'
+          : '<p class="note">Format je Material im Zuschnittplan (Kopf der Gruppe).</p>') + '</div></section>' +
+      // eigene Farben
+      '<section class="matcard"><h4>Eigene Farben <small>' + customBoards().length + '</small></h4>' + (customBoards().length ? '<div class="matown">' + customBoards().map((k) =>
+          '<span>' + boardSwatch(k) + ' ' + esc(View3D.boardOf(k).name) + ' <button type="button" class="btn ghost small" data-matdel="' + esc(k) + '" aria-label="entfernen">✕</button></span>').join('') + '</div>'
+        : '<p class="note">Noch keine – in der Farbauswahl (z. B. „Ändern …“) eigene Farbe mit Namen anlegen.</p>') + '</section>' +
+      // Dekor-Bibliothek
+      '<section class="matcard wide"><h4>Dekor-Bibliothek <small>' + decs.length + '</small>' + (decorBase ? ' <a class="btn ghost small" href="' + esc(decorBase) + '" target="_blank" rel="noopener">verwalten ↗</a>' : '') + '</h4>' +
+        (decs.length ? '<div class="matdec">' + decs.map((d) => '<span title="' + esc(d.code + (d.name ? ' ' + d.name : '')) + '"><i style="background:' + esc(d.color || '#ccc') +
+          (d.thumb ? ' url(\'' + esc(d.thumb) + '\') center / cover' : '') + '"></i>' + esc(d.code) + '<small>' + esc(d.name || '') + '</small></span>').join('') + '</div>'
+          : '<p class="note">Nur auf dem Webserver (Strato): Dekore mit Bild und Namen unter <i>dekore/</i> pflegen – dann hier und in Möbel 3D.</p>') + '</section>' +
+      '</div>';
+    // Ereignisse
+    list.forEach((m, i) => $('matchg' + i).addEventListener('click', (ev) => boardPicker(ev.currentTarget, m.key, null, (k) => {
+      for (const p of m.parts) p.board = k || null;
+      applyBoards();
+      render();
+    })));
+    $('matdef').addEventListener('click', (ev) => boardPicker(ev.currentTarget, state.settings.boardMaterial, null, (k) => { setBoardDefault(k); renderMat(); }));
+    $('matname').addEventListener('change', (e) => { state.settings.boardFromName = e.target.checked; const c = $('set-boardFromName'); if (c) c.checked = e.target.checked; saveSettings(); applyBoards(); render(); });
+    const sync = (id, k, isNum, isChk) => $(id).addEventListener('change', (e) => {
+      const v = isChk ? e.target.checked : isNum ? parseFloat(String(e.target.value).replace(',', '.')) : e.target.value.trim();
+      if (isNum && !(v >= 0)) return;
+      lst[k] = v;
+      saveLst();
+      // Felder in Stückliste / Zuschnitt nachziehen
+      const twin = { edgeMm: 'emm', edgeName1: 'ename1', edgeName2: 'ename2', edgeColor2: 'ecol2', edgeExtra: 'eextra', edgeDeduct: 'ededuct', sheetL: 'csheetL', sheetW: 'csheetW', kerf: 'ckerf', trim: 'ctrim', grain: 'cgrain' }[k];
+      if (twin && $(twin)) { if (isChk) $(twin).checked = v; else $(twin).value = v; }
+      applyBoards();
+      render();
+    });
+    sync('m-emm', 'edgeMm', true); sync('m-ename1', 'edgeName1'); sync('m-ename2', 'edgeName2'); sync('m-ecol2', 'edgeColor2'); sync('m-eextra', 'edgeExtra', true);
+    sync('m-ededuct', 'edgeDeduct', false, true); sync('m-sheetL', 'sheetL', true); sync('m-sheetW', 'sheetW', true); sync('m-kerf', 'kerf', true); sync('m-trim', 'trim', true);
+    sync('m-grain', 'grain', false, true);
+    host.querySelectorAll('[data-matgf]').forEach((b) => b.addEventListener('click', () => { delete lst.groupSheet[b.dataset.matgf]; saveLst(); renderMat(); }));
+    host.querySelectorAll('[data-matdel]').forEach((b) => b.addEventListener('click', () => {
+      state.settings.customBoards = customBoards().filter((k) => k !== b.dataset.matdel);
+      saveSettings();
+      renderMat();
+    }));
   }
   // Etiketten direkt drucken (Druckbereich in Etikettgröße, schwarz-weiß) – auch aus dem Sägemodus
   function printLabels(list) {
@@ -3124,7 +3304,7 @@ table.fmt.one .onet { display: inline; }
     return 'Geschätzte Bearbeitungszeit (Einstellungen → Zeitschätzung). ' + (t.s2 ? 'Seite 1: ' + one(t.s1) + ' · Seite 2: ' + one(t.s2) : one(t.s1));
   }
 
-  function render() { renderProfileBar(); renderParts(); renderDetail(); renderPageTabs(); if (state.page === 'model') renderModel(); if (state.page === 'lists') renderLists(); saveSession(); }
+  function render() { renderProfileBar(); renderParts(); renderDetail(); renderPageTabs(); if (state.page === 'model') renderModel(); if (state.page === 'lists') renderLists(); if (state.page === 'labels') renderLD(); if (state.page === 'material') renderMat(); saveSession(); }
   // Anzahl auf den Seiten-Schaltern: Programme = alle Teile, Möbel 3D = Teile mit STEP-Modell
   function renderPageTabs() {
     $('ptn-pgmx').textContent = state.parts.length || '';
@@ -4403,7 +4583,7 @@ table.fmt.one .onet { display: inline; }
 
   // ------------------------------------------------ Möbel 3D: alle STEP-Bauteile zusammengebaut
   const PAGE_KEY = 'step2xcs.page.v1';
-  state.page = ['model', 'lists'].includes(loadJson(PAGE_KEY, 'pgmx')) ? loadJson(PAGE_KEY, 'pgmx') : 'pgmx';
+  state.page = ['model', 'lists', 'labels', 'material'].includes(loadJson(PAGE_KEY, 'pgmx')) ? loadJson(PAGE_KEY, 'pgmx') : 'pgmx';
   const mdl = { viewer: null, key: null, hidden: new Set(), sel: null, loading: false };
   function setPage(pg) {
     state.page = pg;
@@ -4411,9 +4591,13 @@ table.fmt.one .onet { display: inline; }
     document.body.dataset.page = pg;
     $('modelpage').hidden = pg !== 'model';
     $('listpage').hidden = pg !== 'lists';
+    $('lblpage').hidden = pg !== 'labels';
+    $('matpage').hidden = pg !== 'material';
     document.querySelectorAll('.pagetabs [data-page]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.page === pg)));
     if (pg === 'model') renderModel();
     if (pg === 'lists') renderLists();
+    if (pg === 'labels') renderLD();
+    if (pg === 'material') renderMat();
   }
   document.querySelectorAll('.pagetabs [data-page]').forEach((b) => b.addEventListener('click', () => setPage(b.dataset.page)));
   // Bauteile mit STEP (DXF hat kein 3D-Modell); Nummer = Platz in der Programmliste

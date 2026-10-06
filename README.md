@@ -22,8 +22,10 @@ Seiten bzw. „ringsum“), Fußzeile mit Datum, Profil und Anzahl der Bearbeitu
 Nullpunkt, Bohrungen (Kantenbohrungen als Striche), Durchbrüchen und Taschen. Breite Etiketten (z. B. 60 × 40): Kopf
 oben, Text links, Draufsicht rechts.
 
-**Etiketten-Konfigurator** (*✎ Gestalten …* in der Etiketten-Vorschau oder *Werkzeuge & Regeln → Etiketten → Etikett
-gestalten*): das Etikett selbst aufbauen – an einem echten Teil als Vorschau.
+**Etiketten** (eigene Spalte oben neben *Listen*; auch über *✎ Gestalten …* in der Etiketten-Vorschau oder *Werkzeuge &
+Regeln → Etiketten*): links die **Druckliste** (je Bauteil an/aus und Anzahl Etiketten, Vorgabe = Anzahl aus der Stückliste;
+Klick auf ein Teil = Vorschau; *N Etiketten drucken*), in der Mitte das Etikett, rechts der **Konfigurator** – das Etikett
+selbst aufbauen, an einem echten Teil als Vorschau.
 - **Elemente:** Text (mit Feldern), Draufsicht, Kanten-Legende, Hinweis 2-seitig, Strichcode (Code 128), Linie, Rahmen.
 - **Felder** in Texten: `{nr}` `{name}` `{masse}` `{L}` `{B}` `{D}` `{material}` `{kanten}` `{kantentext}` `{zuschnitt}`
   `{anzahl}` `{seiten}` `{bearbeitung}` `{zeit}` `{profil}` `{datum}` `{auftrag}` (= Zusatzzeile) `{datei}` – leere Felder fallen
@@ -37,6 +39,13 @@ gestalten*): das Etikett selbst aufbauen – an einem echten Teil als Vorschau.
 - Jede Änderung wird sofort gespeichert (eigenes Layout); *Automatisch verwenden* schaltet zurück auf das automatische Etikett. Größe (Vorgabe 40 × 60 mm), Drehung um 90° (wenn der
 Drucker das Etikett quer einzieht), Draufsicht an/aus und eine Zusatzzeile (Auftrag, Kunde …) unter *Werkzeuge & Regeln →
 Etiketten*. Im Druckdialog den Etikettendrucker wählen, Papier = Etikettgröße, Ränder „Keine“, Skalierung 100 %.
+
+**Material** (eigene Spalte, erste Fassung – wird noch überarbeitet): alles zur Materialdefinition an einer Stelle.
+*Materialien im Projekt* (Art, Schmalflächen, Dicken mit Anzahl, Fläche, Plattenformat, Kante Dekor 1; *Ändern …* setzt ein
+anderes Material für alle Bauteile damit), *Standard* (Platte für alle Teile, Material aus dem Bauteilnamen), *Kantenband*
+(Dicke, Dekor 1/2, Farbe, Zugabe, Abzug vom Zuschnitt), *Rohplatten* (Format, Schnittfuge, Besäumen, Maserung, eigene Formate je
+Material), *Eigene Farben* und *Dekor-Bibliothek* (vom Webserver). Es sind dieselben Werte wie in Stückliste, Zuschnitt und
+Einstellungen – Änderung an einer Stelle gilt überall.
 
 **DXF (2D-Zeichnung):** wird wie STEP geladen, ohne Layer-Steuerung. Die größte geschlossene Kontur ist das Teil
 (lange Seite in X, *Drehen 90°* möglich), alles darin wird vorgeschlagen: Kreis mit passendem Bohrer → Bohrung

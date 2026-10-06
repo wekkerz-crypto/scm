@@ -37,7 +37,7 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   `applyLook` lässt sie stehen), `Viewer.setBoards(boards, bands)`.
   Zuschnittplan `web/js/cutplan.js` (`CutPlan.plan`, Guillotine, Schnittfuge/Besäumen/Maserung; `dir` auto/long/cross =
   `packFree` bzw. Streifen `packStrips`, `goal` waste/cuts wählt aus Varianten; `cutSequence` mit `dir`; `fits` beim Verschieben
-  von Hand → `lst.manual[Gruppe] = {sig, sheets}`; Sägemodus `lst.tab` 'saw': `renderSaw`/`sawSteps`/`sawText`/`sawSvg`, Stand
+  von Hand → `lst.manual[Gruppe] = {sig, sheets}`; Zoom `lst.cutZoom` → CSS `--cz` an `#cutsheets` (`setCutZoom`, `--ar` je Platte); Sägemodus `lst.tab` 'saw': `renderSaw`/`sawSteps`/`sawText`/`sawSvg`, Stand
   `lst.saw = {key, step}`, Einstellungen `lst.sawCfg` (`SAW_CFG`: trimLong/trimCross/trimFirst, primary, startX/startY → `flipX`/`flipY`,
   order depth|strips, trims now|strip|end, trimMax/trimPct, restMin, measure piece|remain, labelPopup), Vollbild `sawFull` (Klasse `sawfull`);
   fertige Teile nicht mehr gezeichnet, Beschriftung `partLabelSvg` (auch `sheetSvg`), Etikett-Fenster `sawPop`/`sawPopHtml` →

@@ -319,7 +319,10 @@ svg.sheet .cp.bad .pt { fill: color-mix(in srgb, var(--err) 35%, var(--board)); 
 /* Bildschirm: Platte so groß wie Platz ist (höchstens fast Fensterhöhe), Teileliste daneben bzw. darunter */
 #cutsheets .sheetfig { display: block; margin: 0 0 26px; }
 #cutsheets .sheetfig figcaption { font-size: 0.95rem; margin-bottom: 6px; }
-#cutsheets .sheetrow > svg.sheet { flex: 1 1 820px; min-width: 0; width: 100%; height: auto; }
+/* Zoom (lst.cutZoom → --cz am Container): Anteil der Breite, höchstens so hoch wie das Fenster (--ar = Seitenverhältnis der Platte) */
+#cutsheets .sheetrow > svg.sheet { flex: 0 1 auto; min-width: 0; width: calc(var(--cz, 0.7) * 100%); max-width: calc(82vh * var(--ar, 1.35) * var(--cz, 0.7)); height: auto; }
+.czoom { display: inline-flex; align-items: center; gap: 4px; }
+.czoom output { min-width: 3.4em; text-align: center; font-family: var(--font-mono); font-size: 0.85rem; }
 #cutsheets .sheetrow > table.sheetlist { flex: 0 1 340px; font-size: 0.92rem; }
 table.sheetlist { border-collapse: collapse; font-size: 0.82rem; min-width: 260px; }
 table.sheetlist th { text-align: left; font-size: 0.75rem; color: var(--muted); font-weight: 600; padding: 3px 6px; border-bottom: 1.5px solid var(--line); }
@@ -828,6 +831,9 @@ table.fmt.one .onet { display: inline; }
         <label title="Welche Schnitte zuerst: längs = Streifen über die ganze Plattenlänge, quer = über die Plattenbreite">Erster Schnitt <select id="cdir"><option value="auto">automatisch</option><option value="long">längs bevorzugt</option><option value="cross">quer bevorzugt</option></select></label>
         <label title="Minimaler Verschnitt: wenig Platten, großes Reststück · Optimale Schnitte: wenig Schnitte, einfach zu sägen">Ziel <select id="cgoal"><option value="waste">minimaler Verschnitt</option><option value="cuts">optimale Schnitte</option></select></label>
         <label><input type="checkbox" id="ccuts"> Schnittfolge</label>
+        <span class="czoom" role="group" aria-label="Zoom Zuschnittplan" title="Größe der Zeichnung – auch Strg + Mausrad über der Platte"><span>Zoom</span>
+          <button type="button" class="btn small" data-czoom="-1" aria-label="Kleiner">−</button><output id="czoomv">70 %</output>
+          <button type="button" class="btn small" data-czoom="1" aria-label="Größer">+</button><button type="button" class="btn ghost small" data-czoom="fit" title="So groß wie das Fenster">Einpassen</button></span>
       </span>
       <span class="sp"></span>
       <button type="button" class="btn small" id="lcsv">CSV / Excel</button>
@@ -2716,7 +2722,7 @@ table.fmt.one .onet { display: inline; }
   }
   const LIST_KEY = 'step2xcs.lists.v1';
   const lst = Object.assign({ tab: 'bom', group: true, raw: true, sheetL: 2800, sheetW: 2070, kerf: 4.4, trim: 10, grain: true, cuts: true, dir: 'auto', goal: 'waste', edgeMm: 1, edgeName1: '', edgeName2: 'Dekor 2', edgeColor2: '#5b4a3a', edgeExtra: 50, edgeDeduct: false,
-    edgeAuto: true, edgeFront: '-y', edgeRules: null }, loadJson(LIST_KEY, {}) || {});
+    edgeAuto: true, edgeFront: '-y', edgeRules: null, cutZoom: 0.7 }, loadJson(LIST_KEY, {}) || {});
   const saveLst = () => storeJson(LIST_KEY, lst);
 
   /*
@@ -3010,7 +3016,7 @@ table.fmt.one .onet { display: inline; }
     // Bildschirm: Breite in px; Druck (w = 0): feste Größe in mm, passt mit Überschrift auf A4 quer
     const mm = Math.min(185 / s.L, 140 / s.W); // daneben die Teileliste
     // Bildschirm: Breite höchstens so, dass die Höhe ins Fenster passt (sonst leere Ränder neben der Platte)
-    let out = '<svg class="sheet" viewBox="0 0 ' + s.L + ' ' + s.W + '"' + (w ? ' width="' + w + '" height="' + Math.round((s.W * w) / s.L) + '" style="max-width:calc(82vh * ' + (s.L / s.W).toFixed(4) + ')"'
+    let out = '<svg class="sheet" viewBox="0 0 ' + s.L + ' ' + s.W + '"' + (w ? ' width="' + w + '" height="' + Math.round((s.W * w) / s.L) + '" style="--ar:' + (s.L / s.W).toFixed(4) + '"'
       : ' width="' + (s.L * mm).toFixed(1) + 'mm" height="' + (s.W * mm).toFixed(1) + 'mm"') +
       ' data-grp="' + esc(g.key) + '" data-sheet="' + si + '" role="img" aria-label="Platte ' + (si + 1) + ' ' + fmt(s.L) + ' × ' + fmt(s.W) + '">' +
       '<rect x="0" y="0" width="' + s.L + '" height="' + s.W + '" class="sh"/>' +
@@ -3575,6 +3581,20 @@ table.fmt.one .onet { display: inline; }
   }
   $('ecol2').value = /^#[0-9a-f]{6}$/i.test(lst.edgeColor2 || '') ? lst.edgeColor2 : '#5b4a3a';
   $('ecol2').addEventListener('input', (e) => { lst.edgeColor2 = e.target.value; saveLst(); applyBoards(); });
+  // Zoom des Zuschnittplans: 30 … 100 % der Fenstergröße, nur CSS (kein Neuzeichnen)
+  function setCutZoom(z) {
+    lst.cutZoom = Math.max(0.3, Math.min(1, Math.round(z * 10) / 10));
+    $('cutsheets').style.setProperty('--cz', String(lst.cutZoom));
+    $('czoomv').textContent = Math.round(lst.cutZoom * 100) + ' %';
+    saveLst();
+  }
+  document.querySelectorAll('[data-czoom]').forEach((b) => b.addEventListener('click', () => setCutZoom(b.dataset.czoom === 'fit' ? 1 : (lst.cutZoom || 0.7) + 0.1 * +b.dataset.czoom)));
+  $('cutsheets').addEventListener('wheel', (e) => {
+    if (!e.ctrlKey || !e.target.closest('svg.sheet')) return;
+    e.preventDefault();
+    setCutZoom((lst.cutZoom || 0.7) + (e.deltaY < 0 ? 0.1 : -0.1));
+  }, { passive: false });
+  setCutZoom(lst.cutZoom || 0.7);
   for (const [id, k] of [['cdir', 'dir'], ['cgoal', 'goal']]) {
     $(id).value = lst[k];
     $(id).addEventListener('change', (e) => { lst[k] = e.target.value; saveLst(); renderLists(); });

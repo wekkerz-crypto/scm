@@ -243,7 +243,8 @@ Dritte Seite oben (**Listen**):
 - **Zuschnittplan:** Teile auf Rohplatten (Format, Schnittfuge, Besäumrand einstellbar) je Material und Dicke, mit
   durchgehenden Schnitten wie an der Plattensäge; mit Maserung bleibt die lange Seite längs der Plattenlänge, Dekore werden
   bei Bedarf gedreht. Rohmaß oder Fertigmaß wählbar. Zeichnung je Platte so groß wie das Fenster (Teileliste daneben bzw.
-  darunter), jedes Teil mit Nr., Maß und vollem Namen beschriftet, Ausnutzung.
+  darunter), jedes Teil mit Nr., Maß und vollem Namen beschriftet, Ausnutzung. **Zoom** in der Leiste (− / + / Einpassen,
+  30–100 %, Vorgabe 70 %) oder Strg + Mausrad über der Platte.
   **Erster Schnitt:** *längs bevorzugt* = erst Streifen über die ganze Plattenlänge, darin quer ablängen; *quer bevorzugt* =
   erst Streifen über die ganze Plattenbreite, darin längs; *automatisch* = was am besten passt. **Ziel:** *minimaler
   Verschnitt* (wenig Platten, möglichst großes Reststück) oder *optimale Schnitte* (wenig Schnitte, gleich breite Teile im

@@ -782,6 +782,16 @@ test('Web-Tool: Zuschnittplan von Hand verschieben, als PDF speichern; eigene Fa
     await p.click('[data-page="lists"]');
     await p.click('[data-ltab="cut"]');
     await p.waitForSelector('svg.sheet g.cp');
+    // Zoom: Vorgabe 70 %, kleiner/größer/einpassen ändert die Breite der Zeichnung
+    assert.strictEqual(await p.textContent('#czoomv'), '70 %');
+    const sw = () => p.$eval('#cutsheets svg.sheet', (e) => e.getBoundingClientRect().width);
+    const w70 = await sw();
+    await p.click('[data-czoom="-1"]');
+    assert.strictEqual(await p.textContent('#czoomv'), '60 %');
+    assert.ok((await sw()) < w70);
+    await p.click('[data-czoom="fit"]');
+    assert.strictEqual(await p.textContent('#czoomv'), '100 %');
+    assert.ok((await sw()) > w70);
     // Platte ganz ins Bild holen (sie ist so groß wie das Fenster), dann ein Teil ziehen: an eine freie Stelle rechts oben
     await p.$eval('svg.sheet', (e) => e.scrollIntoView({ block: 'end' }));
     const g = await p.$('svg.sheet g.cp');

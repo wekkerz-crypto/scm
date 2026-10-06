@@ -198,6 +198,10 @@ Dritte Seite oben (**Listen**):
   Rohteil-Aufmaß), Fläche, geschätzter Zeit und Programmname. *Gleiche Teile zusammenfassen* (gleiche Maße, Farbe und
   gleiches Programm). **Anzahl** je Position änderbar (wird mit der Teileliste bzw. im Projekt gespeichert). Summen: Teile,
   m² je Material und Dicke, Bearbeitungszeit gesamt. **CSV / Excel** (Semikolon, deutsche Kommazahlen) und **Drucken / PDF**.
+- **Sägeplatz mit Raspberry Pi 5:** `npm run build:pi` → `dist/Step2Maestro-Pi.zip` mit `einrichten.sh` (Zebra an USB über
+  CUPS mit Treiber „Zebra ZPL Label Printer“ als Standarddrucker in Etikettgröße, Bildschirm bleibt an, Chromium startet beim
+  Anmelden im Vollbild mit `--kiosk-printing` → Etiketten ohne Druckdialog), `ANLEITUNG-PI.txt` (Einkaufsliste, Schritte,
+  Probleme) und `step2maestro/` für den Offline-Betrieb (`--offline`, ohne Dekor-Bibliothek).
 - **Dekor-Bibliothek (Webserver):** Im Webserver-Paket liegt `dekore/` – eine Verwaltung im Browser (PHP, Passwort) zum
   Hochladen, Benennen und Pflegen eurer Standard-Dekore (Bild, Code, Name, Hersteller, Maserung, Farbe, Bildbreite in mm).
   Dateiname = Code (`U708_ST9.jpg` → „U708 ST9“). Step2Maestro lädt die Liste beim Start: Bauteile mit diesem Code im

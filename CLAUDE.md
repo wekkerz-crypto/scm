@@ -88,6 +88,9 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
 - `exe/` – kleine Windows-.exe (Go), bettet `web/` ein und öffnet es im Browser; bauen mit `npm run build:exe` → `dist/`.
   Webserver-Paket: `npm run build:web` → `dist/Step2Maestro-Webserver.zip` (`tools/webserver/`: ANLEITUNG.txt für Strato,
   `.htaccess`, Schriften lokal – Google-Fonts-Link wird dabei ersetzt).
+- Raspberry Pi am Sägeplatz: `tools/pi/einrichten.sh` (CUPS + Zebra USB `drv:///sample.drv/zebra.ppd`, Autostart
+  `~/.local/bin/step2maestro-kiosk.sh` per XDG-Autostart und labwc, Chromium `--kiosk --kiosk-printing`), `ANLEITUNG-PI.txt`;
+  Paket `npm run build:pi` → `dist/Step2Maestro-Pi.zip` (`tools/build_pi.sh`, nutzt das Webserver-Paket ohne PHP).
 - `cli/step2xcs.js` – Kommandozeile. `test/` – `npm test` (node:test; UI-Tests mit Playwright, werden ohne übersprungen).
 - `maestro/doku/Maestro_MSL_KI_Referenz.pdf` – Handbuch der Script-Sprache; Befehlsparameter **immer** dort prüfen
   (`pdftotext -layout`). `maestro/beispiele/*.xcs` – Programme aus der Werkstatt, in Maestro bestätigt.

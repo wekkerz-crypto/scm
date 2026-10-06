@@ -1,0 +1,84 @@
+STEP2MAESTRO AM SÄGEPLATZ – RASPBERRY PI 5 MIT ZEBRA (USB)
+=========================================================
+
+Ziel: Pi einschalten -> Step2Maestro startet im Vollbild (Sägemodus, Zuschnitt,
+Stückliste). Tippen auf „Etikett drucken“ -> Etikett kommt sofort aus der Zebra,
+ohne Druckdialog. Keine Zwangsupdates, kein ungefragter Neustart.
+
+Inhalt der ZIP
+--------------
+  ANLEITUNG-PI.txt     diese Datei
+  einrichten.sh        richtet alles ein (Drucker, Vollbild-Start)
+  step2maestro/        das Programm zum Offline-Betrieb (ohne Server)
+
+Einkaufsliste
+-------------
+* Raspberry Pi 5, 8 GB
+* Offizielles Netzteil 27 W (USB-C) – andere führen oft zu Abstürzen
+* Kühlung: offizieller „Active Cooler“ oder Alu-Gehäuse mit Lüfter
+  (Gehäuse möglichst geschlossen – Sägestaub)
+* Speicher: NVMe-SSD mit M.2-Aufsatz (HAT) – hält länger als eine SD-Karte;
+  sonst eine gute SD-Karte (A2, 64 GB)
+* Touch-Monitor 15,6" mit HDMI und USB-Touch (Full HD), Kabel Micro-HDMI auf HDMI
+* Die Zebra hängt per USB direkt am Pi
+
+1. Raspberry Pi OS installieren
+-------------------------------
+Am PC den „Raspberry Pi Imager“ (raspberrypi.com/software) starten:
+  Gerät: Raspberry Pi 5 – System: „Raspberry Pi OS (64-bit)“ (mit Desktop)
+  Zahnrad/Einstellungen: Benutzername + Passwort, WLAN (oder LAN-Kabel),
+  Zeitzone Europe/Berlin, Tastatur de.
+Auf SSD/SD schreiben, in den Pi stecken, Monitor, Tastatur (nur zum Einrichten),
+Zebra (eingeschaltet, Etiketten eingelegt) anschließen, starten.
+
+2. Einrichten
+-------------
+ZIP auf den Pi kopieren (USB-Stick) und entpacken, z. B. in den Ordner
+„Step2Maestro-Pi“. Dann Terminal öffnen und:
+
+    cd ~/Step2Maestro-Pi
+    bash einrichten.sh --url https://www.deine-domain.de/step2maestro/ --test
+
+  --url ...      eure Adresse auf dem Webserver (mit Dekor-Bibliothek)
+  --offline      statt --url: Programm vom Pi selbst, ohne Internet
+                 (dann ohne Dekor-Bibliothek; Updates: neue ZIP, nochmal starten)
+  --etikett 40x60   Etikettgröße in mm (Breite x Höhe), Vorgabe 40x60
+  --dpi 203      Auflösung der Zebra (steht auf dem Typenschild: 203 oder 300)
+  --test         druckt am Ende ein Testetikett
+
+Das Skript fragt nach dem Passwort (für die Installation). Danach:
+
+    sudo reboot
+
+3. In Step2Maestro
+------------------
+Nach dem Neustart öffnet sich Step2Maestro im Vollbild. Einmal unter
+„Werkzeuge & Regeln -> Etiketten“ die gleiche Etikettgröße einstellen wie oben
+(z. B. 40 x 60 mm). Dann: Listen -> Sägen -> Vollbild. Nach jedem fertigen Teil
+erscheint „Fertig geschnitten“ – Tippen druckt das Etikett.
+
+Gut zu wissen
+-------------
+* Vollbild verlassen: Alt+F4 (Tastatur). Wieder starten: Pi neu starten oder
+  im Terminal  ~/.local/bin/step2maestro-kiosk.sh
+* Jeder Ausdruck aus diesem Fenster geht ohne Nachfrage auf die Zebra. Große
+  Pläne (Zuschnitt A4) daher am Büro-PC drucken oder als PDF speichern.
+* Updates macht der Pi nur, wenn man sie anstößt (sinnvoll ab und zu):
+      sudo apt update && sudo apt full-upgrade
+* Zebra später anschließen oder gewechselt:  bash einrichten.sh --nur-drucker
+* Adresse ändern: einrichten.sh nochmal mit neuer --url starten.
+* Autostart abschalten: Datei ~/.config/autostart/step2maestro.desktop löschen
+  (und die Zeile mit step2maestro in ~/.config/labwc/autostart).
+
+Probleme
+--------
+* „Keine Zebra an USB gefunden“: Drucker an? USB-Kabel direkt am Pi (nicht über
+  einen passiven Hub)? Im Terminal  lpinfo -v  zeigt alle erkannten Drucker.
+* Etikett zu blass / zu dunkel: Browser http://localhost:631 -> Drucker ->
+  Zebra -> Standardeinstellungen -> „Darkness“ anpassen.
+* Etikett verschoben oder über zwei Etiketten: an der Zebra einmal die
+  Etiketten einmessen (Kalibrieren – meist Taste FEED gedrückt halten, bis
+  sie zweimal blinkt) und prüfen, ob die Größe in Step2Maestro und im Skript
+  gleich ist.
+* Ältere Zebras, die nur EPL können (nicht ZPL): Modell durchgeben, dann
+  passen wir den Treiber an.

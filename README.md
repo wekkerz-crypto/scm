@@ -263,6 +263,8 @@ Dritte Seite oben (**Listen**):
   Mausrad) – die Beschriftung wächst um die Teilmitte und darf dann über kleine Teile hinausragen; gilt auch für Druck und PDF.
   **Übersicht** oben: je Material und Dicke Anzahl Platten, Format, Teile, Teilefläche und Ausnutzung, darunter die Summe
   („3 Platten zu schneiden · 10 Teile“) – auch als erste Seite im PDF und im Druck.
+  Die Anordnung beginnt immer **oben links** (an der hinteren Kante), die Schnittfolge entsprechend ab oben – in
+  *⚙ Schnittfolge* „Längs ab: oben (hinten) / unten (vorne)“; Plan, Sägemodus und PDF zeigen dieselbe Folge.
   **Plattenformat je Material:** im Kopf jeder Gruppe *Format L × B* (z. B. andere Plattengröße bei einem Dekor) – die Gruppe
   wird neu angeordnet, ↺ = wieder das allgemeine Format. **Je Platte:** an jeder Platte eigenes Format (z. B. ein Reststück:
   *+ Platte*, auf 1200 × 800 stellen, Teile darauf ziehen); verkleinern geht nur, wenn alle Teile darauf weiter passen.

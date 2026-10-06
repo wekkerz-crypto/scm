@@ -809,7 +809,7 @@ test('Web-Tool: Zuschnittplan von Hand verschieben, als PDF speichern; eigene Fa
     assert.strictEqual(ov.rows.reduce((a, b) => a + b, 0), +ov.sum);
     assert.match(ov.h, new RegExp('^Übersicht ' + ov.sum + ' Platten? zu schneiden'));
     assert.strictEqual(+ov.sum, await p.$$eval('#cutsheets svg.sheet', (x) => x.length));
-    // Platte ganz ins Bild holen (sie ist so groß wie das Fenster), dann ein Teil ziehen: an eine freie Stelle rechts oben
+    // Platte ganz ins Bild holen (sie ist so groß wie das Fenster), dann ein Teil ziehen: an eine freie Stelle rechts unten
     await p.$eval('svg.sheet', (e) => e.scrollIntoView({ block: 'end' }));
     const g = await p.$('svg.sheet g.cp');
     const uid = await g.getAttribute('data-uid');
@@ -818,7 +818,7 @@ test('Web-Tool: Zuschnittplan von Hand verschieben, als PDF speichern; eigene Fa
     const gb = await g.boundingBox();
     await p.mouse.move(gb.x + gb.width / 2, gb.y + gb.height / 2);
     await p.mouse.down();
-    await p.mouse.move(sb.x + sb.width - gb.width / 2 - 8, sb.y + gb.height / 2 + 8, { steps: 8 });
+    await p.mouse.move(sb.x + sb.width - gb.width / 2 - 8, sb.y + sb.height * 0.72, { steps: 8 }); // Teile beginnen oben links → unten rechts frei
     await p.mouse.up();
     await p.waitForSelector('[data-cutreset]');
     assert.match(await p.textContent('.cutgrp h3'), /von Hand angeordnet/);

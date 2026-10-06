@@ -1745,6 +1745,21 @@ test('Schnittfolge einstellbar: erst alle Streifen, Nachschnitte am Schluss, von
   for (const c of s3.cuts) assert.ok(c.c > 0 && c.c < (c.dir === 'h' ? sh.W : sh.L));
 });
 
+test('Zuschnitt fromTop: Anordnung beginnt oben links (hintere Kante), sonst gleich', () => {
+  const CP = require('../web/js/cutplan.js');
+  const items = [{ id: '1', label: 'Seite', L: 904, W: 454, qty: 2 }, { id: '2', label: 'Boden', L: 766, W: 436, qty: 3 }];
+  const a = CP.plan(items, { dir: 'long' });
+  const b = CP.plan(items, { dir: 'long', fromTop: true });
+  assert.strictEqual(b.sheets.length, a.sheets.length);
+  const sh = b.sheets[0];
+  // ein Teil liegt oben links an (Besäumen 10), keins mehr unten am Rand
+  assert.ok(sh.parts.some((p) => Math.abs(p.x - 10) < 0.01 && Math.abs(p.y + p.w - (sh.W - 10)) < 0.01));
+  assert.ok(!sh.parts.some((p) => Math.abs(p.y - 10) < 0.01));
+  // Schnittfolge ab oben: erster Schnitt trennt Teile ab (kein Abfall vorweg)
+  const q = CP.cutSequence(sh, { dir: 'long', flipY: true });
+  assert.ok(q.ok && q.cuts[0].parts.length > 0 && q.cuts[0].side === 'hi');
+});
+
 test('Streifen nummeriert: jedes Teil in genau einem Streifen, Nummern ab Anschlag, Schnitte kennen ihren Streifen', () => {
   const CP = require('../web/js/cutplan.js');
   const items = [{ id: '2', label: 'Seite', L: 904, W: 454, qty: 2 }, { id: '4', label: 'Boden', L: 766, W: 436, qty: 2 }, { id: '6', label: 'Einlegeboden', L: 765.6, W: 426, qty: 2 }];

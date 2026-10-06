@@ -2,7 +2,8 @@
  * Zuschnittplan: Teile (Rechtecke) auf Rohplatten verteilen – Guillotine-Schnitte (durchgehend, wie an der Plattensäge),
  * Schnittfuge und Besäumrand, Faserrichtung (Teil mit der langen Seite längs der Plattenlänge, nicht drehen).
  * plan(items, opts) → { sheets: [{ L, W, parts: [{ uid, id, label, x, y, l, w, rot, grain }], used }], unplaced: [items], waste }
- *   opts.dir 'auto' | 'long' | 'cross' (erster Schnitt längs/quer bevorzugt), opts.goal 'waste' | 'cuts' (Verschnitt oder Schnitte)
+ *   opts.dir 'auto' | 'long' | 'cross' (erster Schnitt längs/quer bevorzugt), opts.goal 'waste' | 'cuts' (Verschnitt oder Schnitte),
+ *   opts.fromTop = Teile oben links beginnen (in der Zeichnung; Plattenkoordinaten y nach oben → an der hinteren Kante)
  * fits(sheet, part, opts, skipUid) – passt das Teil dort (innerhalb Besäumen, Abstand Schnittfuge zu allen anderen)?
  *   items: [{ id, label, L, W, qty, orient }]  (orient 'long' | 'cross' | 'free'; alt: grain = true → 'long')
  *   opts:  { sheetL, sheetW, kerf, trim }
@@ -214,6 +215,8 @@
     const r = best.c;
     const usedAll = r.sheets.reduce((s2, sh) => s2 + sh.used, 0);
     const areaAll = r.sheets.length * o.sheetL * o.sheetW;
+    // fromTop: Anordnung beginnt oben links (an der hinteren Kante, y gespiegelt) statt unten links
+    if (o.fromTop) for (const sh of r.sheets) for (const p of sh.parts) p.y = sh.W - p.y - p.w;
     return { sheets: r.sheets, unplaced: r.unplaced, waste: areaAll ? 1 - usedAll / areaAll : 0, dir: r.dir, cuts: best.cuts };
   }
 

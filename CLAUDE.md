@@ -39,7 +39,7 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   `packFree` bzw. Streifen `packStrips`, `goal` waste/cuts wählt aus Varianten; `cutSequence` mit `dir`; `fits` beim Verschieben
   von Hand → `lst.manual[Gruppe] = {sig, sheets}`; Zoom `lst.cutZoom` → CSS `--cz` an `#cutsheets` (`setCutZoom`, `--ar` je Platte), Schrift `lst.cutFont`/`lst.sawFont`
   (`setCutFont`/`setSawFont` → 4. Parameter von `partLabelSvg`, skaliert um die Teilmitte), Sägemodus-Platte `lst.sawZoom` → `--sz`
-  an `#sawview` (Karte schmaler, große Zahl in `cqi` mit `--nl` = Zeichenzahl); Format je Gruppe `lst.groupSheet[key]` (`fmtOf`/`cutOptsOf`, `g.fmt`), je Platte `lst.manual[key].sheets[i].L/W`
+  an `#sawview` (Karte schmaler, große Zahl in `cqi` mit `--nl` = Zeichenzahl); Anordnung oben links `cutOpts().fromTop` (y gespiegelt in `plan`), `SAW_CFG.startY` 'back', `seqOf` nimmt die Säge-Einstellungen; Format je Gruppe `lst.groupSheet[key]` (`fmtOf`/`cutOptsOf`, `g.fmt`), je Platte `lst.manual[key].sheets[i].L/W`
   (`data-sfmt`, nur wenn alle Teile passen); Übersicht `cutOverview`/`cutOverviewHtml` (auch
   erste PDF-Seite), im Sägemodus `sawOverHtml` mit `lst.sawDone[key] = sawSig(x)`; Sägemodus `lst.tab` 'saw': `renderSaw`/`sawSteps`/`sawText`/`sawSvg`, Stand
   `lst.saw = {key, step}`, Einstellungen `lst.sawCfg` (`SAW_CFG`: trimLong/trimCross/trimFirst, primary, startX/startY → `flipX`/`flipY`,

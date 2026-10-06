@@ -2994,12 +2994,15 @@ table.fmt.one .onet { display: inline; }
 
   // Zuschnittplan je Material und Dicke; von Hand verschobene Pläne (lst.manual) gelten, solange Teile und Platte gleich bleiben
   let cutSel = null; // ausgewähltes Teil im Zuschnittplan { grp, uid }
-  const cutOpts = () => ({ sheetL: lst.sheetL, sheetW: lst.sheetW, kerf: lst.kerf, trim: lst.trim, dir: lst.dir, goal: lst.goal });
+  // Anordnung beginnt oben links in der Zeichnung (Werkstatt-Wunsch); Schnittfolge dann ab oben (SAW_CFG.startY 'back')
+  const cutOpts = () => ({ sheetL: lst.sheetL, sheetW: lst.sheetW, kerf: lst.kerf, trim: lst.trim, dir: lst.dir, goal: lst.goal, fromTop: true });
   // Plattenformat je Material/Dicke (lst.groupSheet[Gruppe] = { L, W }), sonst das allgemeine
   const fmtOf = (key) => { const f = lst.groupSheet && lst.groupSheet[key]; return f && f.L > 0 && f.W > 0 ? f : { L: lst.sheetL, W: lst.sheetW }; };
   const cutOptsOf = (key) => { const f = fmtOf(key); return Object.assign(cutOpts(), { sheetL: f.L, sheetW: f.W }); };
   // Schnittfolge einer Platte: automatisch angeordnet → Richtung des Plans, von Hand → Vorzugsrichtung der Einstellung
-  const seqOf = (s, g) => CutPlan.cutSequence(s, Object.assign(cutOpts(), { dir: g.plan.manual ? lst.dir : g.plan.dir }));
+  // Schnittfolge im Plan wie im Sägemodus (Beginn links/rechts, oben/unten, Reihenfolge, Nachschnitte)
+  const seqOf = (s, g) => { const cfg = sawCfg(); return CutPlan.cutSequence(s, Object.assign(cutOpts(), { dir: g.plan.manual ? lst.dir : g.plan.dir,
+    flipX: cfg.startX === 'right', flipY: cfg.startY === 'back', order: cfg.order, trims: cfg.trims, trimMax: cfg.trimMax, trimPct: cfg.trimPct })); };
   const dirText = (g) => ((d) => (d === 'long' ? ' · erst längs schneiden' : d === 'cross' ? ' · erst quer schneiden' : ''))(g.plan.manual ? lst.dir : g.plan.dir);
   function cutGroups() {
     const groups = new Map();
@@ -3570,7 +3573,7 @@ table.fmt.one .onet { display: inline; }
     return out;
   }
   // Schnittfolge-Einstellungen (Sägemodus), gemerkt in lst.sawCfg
-  const SAW_CFG = { primary: 'plan', trimLong: true, trimCross: true, trimFirst: 'long', startX: 'left', startY: 'front', order: 'depth', trims: 'now',
+  const SAW_CFG = { primary: 'plan', trimLong: true, trimCross: true, trimFirst: 'long', startX: 'left', startY: 'back', order: 'depth', trims: 'now',
     trimMax: 150, trimPct: 30, restMin: 300, measure: 'piece', labelPopup: true };
   const sawCfg = () => Object.assign({}, SAW_CFG, lst.sawCfg || {});
   function sawSteps(x) {
@@ -3595,7 +3598,7 @@ table.fmt.one .onet { display: inline; }
     const restTx = st.restParts === 0 && st.rest > 0 ? n1(st.rest) + ' mm ' + (st.rest >= (+cfg.restMin || 0) ? 'Reststück' : 'Abfall') : '';
     if (st.kind === 'anschnitt') {
       const far = st.dir === 'h' ? cfg.startY === 'back' : cfg.startX === 'right';
-      return { kind: 'Anschnitt', cls: 'anschnitt', dir: (st.dir === 'h' ? 'Längs' : 'Quer') + ' besäumen', tx: 'Fabrikkante ' + (st.dir === 'h' ? (far ? 'hinten' : 'vorne') : (far ? 'rechts' : 'links')) + ' abschneiden.', inn: '', rest: '' };
+      return { kind: 'Anschnitt', cls: 'anschnitt', dir: (st.dir === 'h' ? 'Längs' : 'Quer') + ' besäumen', tx: 'Fabrikkante ' + (st.dir === 'h' ? (far ? 'oben (hinten)' : 'unten (vorne)') : (far ? 'rechts' : 'links')) + ' abschneiden.', inn: '', rest: '' };
     }
     if (st.kind === 'strip') return { kind: 'Streifen', cls: 'strip', dir: dirName, tx: 'Streifen abtrennen, ' + len + ' mm lang.', inn: inPiece, rest: restTx };
     if (st.kind === 'cross') return { kind: st.level === 1 ? 'Querschnitt im Streifen' : 'Schnitt im Stück', cls: 'cross', dir: dirName, tx: 'Stück abtrennen.', inn: inPiece, rest: restTx };
@@ -3672,7 +3675,7 @@ table.fmt.one .onet { display: inline; }
       '<fieldset><legend>Schnitte</legend>' + sel('primary', [['plan', 'wie Zuschnittplan'], ['long', 'längs (Streifen über die Länge)'], ['cross', 'quer (Streifen über die Breite)']], cfg.primary, 'Erste Schnitte') +
         sel('order', [['depth', 'jeden Streifen gleich fertig'], ['strips', 'erst alle Streifen, dann quer']], cfg.order, 'Reihenfolge') + '</fieldset>' +
       '<fieldset><legend>Anschlag / Beginn</legend>' + sel('startX', [['left', 'links'], ['right', 'rechts']], cfg.startX, 'Quer ab') +
-        sel('startY', [['front', 'vorne'], ['back', 'hinten']], cfg.startY, 'Längs ab') +
+        sel('startY', [['back', 'oben (hinten)'], ['front', 'unten (vorne)']], cfg.startY, 'Längs ab') +
         sel('measure', [['piece', 'abgetrenntes Stück (Parallelanschlag)'], ['remain', 'Restmaß (Programmanschlag)']], cfg.measure, 'Maß zeigen') + '</fieldset>' +
       '<fieldset><legend>Nachschnitt</legend>' + sel('trims', [['now', 'sofort'], ['strip', 'nach jedem Streifen'], ['end', 'am Schluss gesammelt']], cfg.trims, 'Wann') +
         num('trimMax', cfg.trimMax, 'Überstand bis', 'mm', 'Ein Schnitt heißt Nachschnitt, wenn nur noch ein Teil im Stück ist und höchstens so viel abkommt') +

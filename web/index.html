@@ -1652,7 +1652,7 @@ table.fmt.one .onet { display: inline; }
       parts: parts.map((p) => ({ file: p.src.file, idx: p.src.idx, label: p.label, name: p.solid.name, orientation: p.orientation, field: p.field,
         fileName: p.fileName, side: p.side, profile: p.profile, board: p.board || null, qty: p.qty === undefined ? 1 : p.qty, grain: p.grain || null, edges: p.edges || null, overrides: p.overrides, overrides2: p.overrides2 })),
       // Maße aus „Möbel 3D“ (Bemaßen)
-      dims: typeof mdl !== 'undefined' ? (mdl.viewer ? mdl.viewer.exportDims() : mdl.dimsSaved || []) : [],
+      dims: typeof mdl !== 'undefined' ? (mdl.dimsSaved || (mdl.viewer ? mdl.viewer.exportDims() : [])) : [],
     };
   }
   function writeSession() {
@@ -1732,6 +1732,9 @@ table.fmt.one .onet { display: inline; }
     state.parts = [];
     anim.result = null;
     if (Array.isArray(data.dekore)) mergeDecors(data.dekore);
+    // Maße des alten Projekts in Möbel 3D verwerfen (die neuen setzt restoreFrom)
+    if (mdl.viewer) mdl.viewer.clearDims();
+    mdl.dimsSaved = null;
     restoreFrom(data.session);
     toast('Projekt geöffnet: ' + state.parts.length + ' Teile');
     render();
@@ -2128,7 +2131,7 @@ table.fmt.one .onet { display: inline; }
     $('zipall').addEventListener('click', downloadAll);
     $('labelall').addEventListener('click', () => openLabels(state.parts));
     $('pick').addEventListener('click', openPicker);
-    $('clear').addEventListener('click', () => { state.parts = []; state.sel = 0; anim.result = null; render(); });
+    $('clear').addEventListener('click', () => { state.parts = []; state.sel = 0; anim.result = null; if (mdl.viewer) mdl.viewer.clearDims(); mdl.dimsSaved = null; render(); });
   }
 
   function openPicker() { $('file').click(); }
@@ -2730,7 +2733,12 @@ table.fmt.one .onet { display: inline; }
     });
     $('dl').addEventListener('click', () => saveFiles(partFiles(part), part.fileName.replace(/\.xcs$/i, '') + '.zip'));
     $('label').addEventListener('click', () => openLabels([part]));
-    $('pqty').addEventListener('change', (e) => { part.qty = Math.max(0, Math.round(+e.target.value || 0)); render(); });
+    $('pqty').addEventListener('change', (e) => {
+      const v = parseFloat(String(e.target.value).replace(',', '.'));
+      if (!(v >= 0)) { e.target.value = qtyOf(part); return; } // leer / ungültig: nichts ändern
+      part.qty = Math.round(v);
+      render();
+    });
   }
 
   // ------------------------------------------------ Etiketten (Druck über den Browser, z. B. 40 × 60 mm)
@@ -2933,7 +2941,7 @@ table.fmt.one .onet { display: inline; }
       document.body.appendChild(dlg);
     }
     const cfg = state.settings;
-    dlg.innerHTML = '<h3>' + (list.length === 1 ? 'Etikett' : list.length + ' Etiketten') + ' · ' + esc(String(cfg.labelWidth)) + ' × ' + esc(String(cfg.labelHeight)) + ' mm</h3>' +
+    dlg.innerHTML = '<h3>' + (list.length === 1 ? 'Etikett' : list.length + ' Etiketten') + ' · ' + labelDims().LW + ' × ' + labelDims().LH + ' mm</h3>' +
       '<div class="lprev">' + ((lblNums = labelNums()), list.map(labelHtml).join('')) + '</div>' +
       '<p class="note">Im Druckdialog den Etikettendrucker wählen, Papiergröße ' + esc(String(cfg.labelWidth)) + ' × ' + esc(String(cfg.labelHeight)) +
       ' mm, Ränder „Keine“, Skalierung 100 %. Größe und Drehung unter <i>Werkzeuge &amp; Regeln → Etiketten</i>.</p>' +
@@ -2970,12 +2978,17 @@ table.fmt.one .onet { display: inline; }
         zoom: Math.max(4, Math.min(12, Math.round(Math.min((window.innerHeight * 0.6) / D.ch, (window.innerWidth * 0.3) / D.cw)))) };
       document.addEventListener('keydown', ldKey); // Pfeiltasten / Entf auf der Seite
     }
-    if (!ld.lay || ld.own !== !!own || (own && ld.lay !== state.settings.labelLayout && JSON.stringify(ld.lay) !== JSON.stringify(state.settings.labelLayout))) {
-      ld.lay = own ? LabelLayout.scaled(JSON.parse(JSON.stringify(state.settings.labelLayout)), D.cw, D.ch) : LabelLayout.layoutOf('standard', D.cw, D.ch);
+    // ld.base = gespeicherte Fassung (bzw. Vorlage), ld.lay = auf die aktuelle Größe gebracht – immer von base aus skalieren,
+    // sonst schrumpft die Schrift bei jedem Größenwechsel weiter
+    const stored = own ? JSON.stringify(state.settings.labelLayout) : null;
+    if (!ld.lay || ld.own !== !!own || (own && stored !== ld.baseJson)) {
+      ld.base = own ? JSON.parse(stored) : LabelLayout.layoutOf('standard', D.cw, D.ch);
+      ld.baseJson = stored;
       ld.own = !!own;
+      ld.lay = null;
     }
-    if (ld.lay.w !== D.cw || ld.lay.h !== D.ch) ld.lay = LabelLayout.scaled(ld.lay, D.cw, D.ch);
-    if (!parts.includes(ld.part)) ld.part = parts[Math.max(0, Math.min(parts.length - 1, state.sel))] || null;
+    if (!ld.lay || ld.lay.w !== D.cw || ld.lay.h !== D.ch) ld.lay = JSON.parse(JSON.stringify(LabelLayout.scaled(ld.base, D.cw, D.ch)));
+    if (!parts.includes(ld.part)) ld.part = parts.includes(state.parts[state.sel]) ? state.parts[state.sel] : parts[0] || null;
     lblNums = labelNums();
   }
   // Etiketten-Seite öffnen (aus der Vorschau oder den Einstellungen), optional mit einem Teil als Vorschau
@@ -2989,6 +3002,8 @@ table.fmt.one .onet { display: inline; }
   function ldSave() {
     ld.own = true;
     state.settings.labelLayout = JSON.parse(JSON.stringify(ld.lay));
+    ld.base = JSON.parse(JSON.stringify(ld.lay));
+    ld.baseJson = JSON.stringify(state.settings.labelLayout);
     saveSettings();
     const st = $('ldstate');
     if (st) st.textContent = 'eigenes Layout';
@@ -3048,9 +3063,11 @@ table.fmt.one .onet { display: inline; }
     return h;
   }
   // Druckliste: je Bauteil an/aus und Anzahl Etiketten (Vorgabe = Anzahl in der Stückliste)
+  // Druckliste: nur eigene Änderungen merken (an/aus, Anzahl) – ohne eigene Anzahl gilt die aktuelle aus der Stückliste
   function ldPrintOf(p) {
-    if (!ld.print.has(p)) ld.print.set(p, { on: true, n: Math.max(0, qtyOf(p)) });
-    return ld.print.get(p);
+    if (!ld.print.has(p)) ld.print.set(p, { on: true, own: null });
+    const q = ld.print.get(p);
+    return { get on() { return q.on; }, set on(v) { q.on = v; }, get n() { return q.own !== null ? q.own : Math.max(0, qtyOf(p)); }, set n(v) { q.own = v; } };
   }
   function ldPrintHtml(parts) {
     const tot = parts.reduce((a, p) => { const q = ldPrintOf(p); return a + (q.on ? q.n : 0); }, 0);
@@ -3072,6 +3089,7 @@ table.fmt.one .onet { display: inline; }
     const parts = ldParts();
     if (!parts.length) { host.innerHTML = '<p class="note">Keine Teile geladen – das Etikett wird an einem echten Teil gestaltet.</p>'; return; }
     ldInit();
+    for (const p of Array.from(ld.print.keys())) if (!parts.includes(p)) ld.print.delete(p); // entfernte Teile vergessen
     const D = labelDims();
     const scroll = host.querySelector('.ldside') ? host.querySelector('.ldside').scrollTop : 0;
     const scroll2 = host.querySelector('.ldplist') ? host.querySelector('.ldplist').scrollTop : 0;
@@ -3080,7 +3098,7 @@ table.fmt.one .onet { display: inline; }
       '<label><input type="checkbox" id="ldrot"' + (D.rot ? ' checked' : '') + '> Inhalt um 90° drehen</label>' +
       '<label>Vorlage <select id="ldtpl">' + LabelLayout.TEMPLATES.map(([k, t]) => '<option value="' + k + '">' + esc(t) + '</option>').join('') + '</select></label>' +
       '<button type="button" class="btn small" id="ldtplgo" title="Ersetzt das Layout durch die Vorlage">Laden</button>' +
-      '<span class="sp"></span><span class="ldmode">' + (ld.own ? 'Eigenes Layout' : 'Automatisch – die erste Änderung speichert ein eigenes Layout') + '</span>' +
+      '<span class="sp"></span><span class="ldmode">' + (ld.own ? 'Eigenes Layout' : 'Automatisch – gezeigt wird die Vorlage „Standard“ (ähnlich); die erste Änderung speichert sie als eigenes Layout') + '</span>' +
       (ld.own ? '<button type="button" class="btn ghost small" id="ldauto" title="Eigenes Layout verwerfen, wieder das automatische Etikett">Automatisch verwenden</button>' : '') + '</div>' +
       '<div class="ldmain">' + ldPrintHtml(parts) + '<div class="ldstage" id="ldstage">' + ldStageHtml() + '<div class="ldzoom"><button type="button" class="btn small" data-ldz="-1" aria-label="kleiner">−</button>' +
       '<button type="button" class="btn small" data-ldz="1" aria-label="größer">+</button></div></div><div class="ldside">' + ldInspector() + '</div></div>';
@@ -3122,6 +3140,8 @@ table.fmt.one .onet { display: inline; }
       state.settings.labelLayout = null;
       saveSettings();
       ld.own = false;
+      ld.lay = null; // Vorlage statt des verworfenen Layouts zeigen
+      ld.sel = null;
       const st = $('ldstate');
       if (st) st.textContent = 'automatisch';
       toast('Wieder das automatische Etikett.');
@@ -3134,11 +3154,11 @@ table.fmt.one .onet { display: inline; }
       state.settings.labelHeight = H;
       state.settings.labelRotate = $('ldrot').checked;
       const D = labelDims();
-      ld.lay = LabelLayout.scaled(ld.lay, D.cw, D.ch);
+      ld.lay = JSON.parse(JSON.stringify(LabelLayout.scaled(ld.base, D.cw, D.ch))); // aus der gespeicherten Fassung, nicht kumulativ
       for (const [k, v] of [['labelWidth', W], ['labelHeight', H]]) { const i = $('set-' + k); if (i) i.value = v; }
       const cb = $('set-labelRotate');
       if (cb) cb.checked = state.settings.labelRotate;
-      if (ld.own) ldSave(); else saveSettings();
+      saveSettings();
       renderLD();
     };
     $('ldW').addEventListener('change', size);
@@ -3225,10 +3245,12 @@ table.fmt.one .onet { display: inline; }
       const up = () => {
         window.removeEventListener('pointermove', mv);
         window.removeEventListener('pointerup', up);
+        window.removeEventListener('pointercancel', up);
         if (moved) ldChanged(true);
       };
       window.addEventListener('pointermove', mv);
       window.addEventListener('pointerup', up);
+      window.addEventListener('pointercancel', up); // Touch abgebrochen: Ziehen beenden
     });
   }
   function ldAct(a) {
@@ -3237,13 +3259,14 @@ table.fmt.one .onet { display: inline; }
     const items = ld.lay.items;
     const i = items.indexOf(e);
     if (a === 'del') { items.splice(i, 1); ld.sel = null; }
-    else if (a === 'dup') { const c = LabelLayout.newItem(Object.assign({}, e, { id: undefined, x: e.x + 1, y: e.y + 1 })); items.splice(i + 1, 0, c); ld.sel = c.id; }
+    else if (a === 'dup') { const o = Object.assign({}, e, { x: e.x + 1, y: e.y + 1 }); delete o.id; const c = LabelLayout.newItem(o); items.splice(i + 1, 0, c); ld.sel = c.id; }
     else if (a === 'up' && i < items.length - 1) { items.splice(i, 1); items.splice(i + 1, 0, e); }
     else if (a === 'down' && i > 0) { items.splice(i, 1); items.splice(i - 1, 0, e); }
     ldChanged(true);
   }
   function ldKey(ev) {
-    if (!ld || !ld.sel || state.page !== 'labels' || /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(ev.target.tagName) || ev.target.closest('dialog')) return;
+    if (!ld || !ld.sel || state.page !== 'labels' || ev.altKey || ev.target.isContentEditable || ev.target.closest('input, textarea, select, button, a, summary, dialog')) return;
+    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() !== 'd') return; // Browser-Kürzel nicht abfangen
     const e = ldItem();
     if (!e) return;
     const st = ev.shiftKey ? 2 : 0.5;
@@ -3412,7 +3435,7 @@ table.fmt.one .onet { display: inline; }
     area.innerHTML = html;
     let pg = $('labelpage');
     if (!pg) { pg = document.createElement('style'); pg.id = 'labelpage'; document.head.appendChild(pg); }
-    pg.textContent = '@page { size: ' + (+cfg.labelWidth || 40) + 'mm ' + (+cfg.labelHeight || 60) + 'mm; margin: 0; }';
+    pg.textContent = '@page { size: ' + labelDims().LW + 'mm ' + labelDims().LH + 'mm; margin: 0; }';
     window.print();
   }
   // Geschätzte Bearbeitungszeit eines Teils (s): Seite 1 (+ Seite 2), am Ergebnis zwischengespeichert
@@ -3600,8 +3623,11 @@ table.fmt.one .onet { display: inline; }
       if (!r || !r.panel) return;
       const name = p.solid ? p.solid.name : p.label;
       const board = boardKeyOf(p);
-      const prog = (r.xcs || '').split(name).join('§') + (r.side2 ? r.side2.xcs.split(name).join('§') : '');
-      const key = lst.group ? [Math.round(r.panel.L * 10), Math.round(r.panel.W * 10), Math.round(r.panel.T * 10), board, edgeSig(edgesOf(p)), prog].join('|') : 'p' + i;
+      // Programm ohne die Zeile mit dem Teilenamen (SetComment) – sonst würde ein kurzer Name („B“) auch in anderen Texten ersetzt
+      const noName = (x) => String(x || '').replace(/^SetComment\("STEP2XCS: .*$/m, '');
+      const prog = noName(r.xcs) + (r.side2 ? noName(r.side2.xcs) : '');
+      // Faserrichtung gehört dazu: sonst würden Teile mit anderer Faser zusammengefasst und im Zuschnitt gleich gelegt
+      const key = lst.group ? [Math.round(r.panel.L * 10), Math.round(r.panel.W * 10), Math.round(r.panel.T * 10), board, edgeSig(edgesOf(p)), grainOf(p), prog].join('|') : 'p' + i;
       let row = byKey.get(key);
       if (!row) {
         row = { parts: [], nums: [], names: [], qty: 0, L: r.panel.L, W: r.panel.W, T: r.panel.T, raw: rawDims(r, p), board: board, time: partTime(p),
@@ -3690,10 +3716,14 @@ table.fmt.one .onet { display: inline; }
     }));
     $('bomview').querySelectorAll('[data-bomqty]').forEach((inp) => inp.addEventListener('change', () => {
       const r = rows[+inp.dataset.bomqty];
-      const want = Math.max(0, Math.round(+inp.value || 0));
-      // Anzahl der Position: das erste Teil trägt den Rest (übrige je 1)
-      const others = r.parts.slice(1).reduce((a, p) => a + qtyOf(p), 0);
-      r.parts[0].qty = Math.max(0, want - others);
+      const v = parseFloat(String(inp.value).replace(',', '.'));
+      if (!(v >= 0)) { inp.value = r.qty; return; } // leer / ungültig: nichts ändern
+      // Anzahl der Position: das erste Teil trägt den Rest; reicht das nicht, werden die übrigen von hinten verringert
+      let rest = Math.round(v);
+      const others = r.parts.slice(1);
+      let oth = others.reduce((a, p) => a + qtyOf(p), 0);
+      for (let k = others.length - 1; k >= 0 && oth > rest; k--) { const q = qtyOf(others[k]); const cut = Math.min(q, oth - rest); others[k].qty = q - cut; oth -= cut; }
+      r.parts[0].qty = Math.max(0, rest - oth);
       render();
     }));
   }
@@ -3733,7 +3763,9 @@ table.fmt.one .onet { display: inline; }
   const cutOptsOf = (key) => { const f = fmtOf(key); return Object.assign(cutOpts(), { sheetL: f.L, sheetW: f.W }); };
   // Schnittfolge einer Platte: automatisch angeordnet → Richtung des Plans, von Hand → Vorzugsrichtung der Einstellung
   // Schnittfolge im Plan wie im Sägemodus (Beginn links/rechts, oben/unten, Reihenfolge, Nachschnitte)
-  const seqOf = (s, g) => { const cfg = sawCfg(); return CutPlan.cutSequence(s, Object.assign(cutOpts(), { dir: g.plan.manual ? lst.dir : g.plan.dir,
+  // Schnittfolge einer Platte – Plan, PDF, Sägemodus und Streifen-Etiketten rechnen gleich (Richtung auch aus „Erste Schnitte“)
+  const seqDir = (g, cfg) => (cfg.primary === 'plan' || !cfg.primary ? (g.plan.manual ? lst.dir : g.plan.dir) : cfg.primary);
+  const seqOf = (s, g) => { const cfg = sawCfg(); return CutPlan.cutSequence(s, Object.assign(cutOpts(), { dir: seqDir(g, cfg),
     flipX: cfg.startX === 'right', flipY: cfg.startY === 'back', order: cfg.order, trims: cfg.trims, trimMax: cfg.trimMax, trimPct: cfg.trimPct })); };
   const dirText = (g) => ((d) => (d === 'long' ? ' · erst längs schneiden' : d === 'cross' ? ' · erst quer schneiden' : ''))(g.plan.manual ? lst.dir : g.plan.dir);
   function cutGroups() {
@@ -3753,7 +3785,7 @@ table.fmt.one .onet { display: inline; }
       const fm = fmtOf(g.key);
       g.fmt = fm;
       const auto = CutPlan.plan(g.items, cutOptsOf(g.key));
-      g.sig = JSON.stringify([cutOptsOf(g.key), g.items.map((i) => [i.id, Math.round(i.L * 10), Math.round(i.W * 10), i.qty, i.orient])]);
+      g.sig = JSON.stringify([((o) => [o.sheetL, o.sheetW, o.kerf, o.trim, o.fromTop])(cutOptsOf(g.key)), g.items.map((i) => [i.id, Math.round(i.L * 10), Math.round(i.W * 10), i.qty, i.orient])]);
       const man = lst.manual && lst.manual[g.key];
       if (man && man.sig === g.sig) {
         // einzelne Platte mit eigenem Format (z. B. Reststück): s.L / s.W
@@ -3850,7 +3882,8 @@ table.fmt.one .onet { display: inline; }
     return { l: hasH ? M : 0, b: hasV ? M : 0, svg: o + '</g>' };
   }
   function sheetSvg(s, g, si, w) {
-    const hid = 'ht' + si + '-' + g.key.replace(/[^A-Za-z0-9]/g, '');
+    // eindeutige Muster-Kennung je Gruppe und Platte (Schlüssel gehasht – nur Buchstaben/Ziffern wären nicht eindeutig)
+    const hid = 'ht' + si + '-' + ((t) => { let h = 0; for (let i = 0; i < t.length; i++) h = (Math.imul(h, 31) + t.charCodeAt(i)) | 0; return (h >>> 0).toString(36); })(g.key);
     // mit Schnittfolge: Streifen-Nummern am Rand (Platz links / unten)
     const seq = lst.cuts ? seqOf(s, g) : null;
     const mk = stripMarks(seq && seq.strips, s, null);
@@ -3885,8 +3918,10 @@ table.fmt.one .onet { display: inline; }
         const x2 = c.dir === 'h' ? c.to : c.c + k2;
         const y1 = s.W - (c.dir === 'h' ? c.c + k2 : c.from);
         const y2 = s.W - (c.dir === 'h' ? c.c + k2 : c.to);
-        const lx = c.dir === 'h' ? x1 + 50 : x1;
-        const ly = c.dir === 'h' ? y1 : y1 - 50;
+        // Nummer am Schnittanfang (von rechts / hinten begonnen: am anderen Ende)
+        const atEnd = c.start !== undefined && Math.abs(c.start - c.to) < 1;
+        const lx = c.dir === 'h' ? (atEnd ? x2 - 50 : x1 + 50) : x1;
+        const ly = c.dir === 'h' ? y1 : atEnd ? y2 + 50 : y1 - 50;
         out += '<line class="cl" x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '"/><circle class="cn" cx="' + lx + '" cy="' + ly + '" r="40"/>' +
           '<text class="ct" x="' + lx + '" y="' + ly + '">' + c.n + '</text>';
       }
@@ -3913,9 +3948,11 @@ table.fmt.one .onet { display: inline; }
   // Übersicht: je Material und Dicke Anzahl Platten, Teile, Ausnutzung – und die Summe
   function cutOverview(groups) {
     const rows = groups.map((g) => {
-      const parts = g.plan.sheets.reduce((a, s) => a + s.parts.length, 0);
-      const used = g.plan.sheets.reduce((a, s) => a + s.used, 0);
-      return { g: g, n: g.plan.sheets.length, parts: parts, area: used / 1e6, util: Math.round((1 - g.plan.waste) * 100), miss: g.plan.unplaced.length };
+      const full = g.plan.sheets.filter((s) => s.parts.length); // leere Platten (z. B. „+ Platte“) zählen nicht
+      const parts = full.reduce((a, s) => a + s.parts.length, 0);
+      const used = full.reduce((a, s) => a + s.used, 0);
+      const area = full.reduce((a, s) => a + s.L * s.W, 0);
+      return { g: g, n: full.length, parts: parts, area: used / 1e6, util: area ? Math.round((used / area) * 100) : 0, miss: g.plan.unplaced.length };
     });
     const sum = rows.reduce((a, r) => ({ n: a.n + r.n, parts: a.parts + r.parts, area: a.area + r.area, miss: a.miss + r.miss }), { n: 0, parts: 0, area: 0, miss: 0 });
     return { rows: rows, sum: sum };
@@ -3950,6 +3987,7 @@ table.fmt.one .onet { display: inline; }
           !forPrint && cutSel && cutSel.grp === g.key ? pl.sheets.flatMap((x) => x.parts).find((q) => q.uid === cutSel.uid) : null) +
         (pl.unplaced.length ? '<p class="warn">Passt nicht auf die Platte: ' + pl.unplaced.map((x) => esc(x.label) + ' (' + n1(x.L) + ' × ' + n1(x.W) + ')').join(', ') + '</p>' : '') +
         pl.sheets.map((s, i) => {
+          if (forPrint && !s.parts.length) return ''; // leere Platte nicht drucken
           const seq = lst.cuts ? seqOf(s, g) : null;
           // Format dieser einen Platte (z. B. Reststück) – schaltet die Gruppe auf „von Hand“
           const sf = forPrint ? ' · ' + fmt(s.L) + ' × ' + fmt(s.W) : ' · <span class="sfmt' + (s.own ? ' own' : '') + '" title="Format nur dieser Platte (z. B. Reststück)">' +
@@ -3971,7 +4009,7 @@ table.fmt.one .onet { display: inline; }
     const date = new Date().toLocaleDateString('de-DE');
     const info = 'Schnittfuge ' + fmt(lst.kerf) + ' mm · Besäumen ' + fmt(lst.trim) + ' mm · ' + (lst.raw ? 'Rohmaß (mit Aufmaß)' : 'Fertigmaß') + ' · ' + date;
     let total = 0;
-    for (const g of groups) total += g.plan.sheets.length;
+    for (const g of groups) total += g.plan.sheets.filter((s) => s.parts.length).length;
     let page = 0;
     // erste Seite: Übersicht (Platten je Material, Summe)
     if (groups.length) {
@@ -3991,6 +4029,7 @@ table.fmt.one .onet { display: inline; }
     }
     for (const g of groups) {
       g.plan.sheets.forEach((s, i) => {
+        if (!s.parts.length) return; // leere Platte: keine Seite
         d.page();
         page++;
         d.text(12, 16, 'Zuschnittplan – ' + g.name + ' ' + fmt(g.T) + ' mm', { size: 15, bold: true });
@@ -4054,8 +4093,9 @@ table.fmt.one .onet { display: inline; }
             const y1 = Y(c.dir === 'h' ? c.c + k2 : c.from);
             const y2 = Y(c.dir === 'h' ? c.c + k2 : c.to);
             d.line(x1, y1, x2, y2, { lw: 0.35, stroke: red });
-            const lx = c.dir === 'h' ? x1 + 3.2 : x1;
-            const ly = c.dir === 'h' ? y1 : y1 - 3.2;
+            const atEnd = c.start !== undefined && Math.abs(c.start - c.to) < 1;
+            const lx = c.dir === 'h' ? (atEnd ? x2 - 3.2 : x1 + 3.2) : x1;
+            const ly = c.dir === 'h' ? y1 : atEnd ? y2 + 3.2 : y1 - 3.2;
             const bw = String(c.n).length * 1.6 + 2;
             d.rect(lx - bw / 2, ly - 1.8, bw, 3.6, { fill: [1, 1, 1], stroke: red, lw: 0.25 });
             d.text(lx, ly + 1.05, String(c.n), { size: 7.5, bold: true, align: 'center', color: red });
@@ -4205,14 +4245,17 @@ table.fmt.one .onet { display: inline; }
         const cur = g.plan.sheets[si];
         const L = inp.dataset.f === 'L' ? v : cur.L;
         const W = inp.dataset.f === 'W' ? v : cur.W;
-        const test = { L: L, W: W, parts: cur.parts };
-        const out = cur.parts.filter((p) => !CutPlan.fits(test, p, cutOpts(), p.uid));
+        const dW = W - cur.W; // Teile liegen oben: um die Änderung der Breite mitschieben
+        const moved = cur.parts.map((p) => Object.assign({}, p, { y: p.y + dW }));
+        const test = { L: L, W: W, parts: moved };
+        const out = moved.filter((p) => !CutPlan.fits(test, p, cutOpts(), p.uid));
         if (out.length) {
           toast('Passt nicht – ' + out.length + ' Teil' + (out.length === 1 ? '' : 'e') + ' ragen dann über den Rand. Erst verschieben (z. B. auf „+ Platte“).');
           renderLists();
           return;
         }
         const sh = manualOf(g).sheets[si];
+        if (dW) for (const p of sh.parts) p.y += dW;
         if (L === g.fmt.L && W === g.fmt.W) { delete sh.L; delete sh.W; } else { sh.L = L; sh.W = W; }
       }
       saveLst();
@@ -4315,9 +4358,7 @@ table.fmt.one .onet { display: inline; }
   const sawCfg = () => Object.assign({}, SAW_CFG, lst.sawCfg || {});
   function sawSteps(x) {
     const cfg = sawCfg();
-    const dir = cfg.primary === 'plan' ? (x.g.plan.manual ? lst.dir : x.g.plan.dir) : cfg.primary;
-    const seq = CutPlan.cutSequence(x.s, Object.assign(cutOpts(), { dir: dir, flipX: cfg.startX === 'right', flipY: cfg.startY === 'back', order: cfg.order,
-      trims: cfg.trims, trimMax: cfg.trimMax, trimPct: cfg.trimPct }));
+    const seq = seqOf(x.s, x.g);
     const steps = [];
     if (lst.trim > 0) {
       const ds = cfg.trimFirst === 'cross' ? ['v', 'h'] : ['h', 'v'];
@@ -4429,10 +4470,13 @@ table.fmt.one .onet { display: inline; }
     const xi = list.findIndex((x) => x.key === lst.saw.key);
     const x = list[xi];
     const { steps, ok, cfg, strips } = sawSteps(x);
+    // Plan dieser Platte geändert (Teile verschoben, Besäumen …): der alte Schritt passt nicht mehr – von vorn
+    const sg = sawSig(x);
+    if (lst.saw.sig !== sg) { if (lst.saw.sig) { lst.saw.step = 0; sawPop = null; } lst.saw.sig = sg; saveLst(); }
     const cur = Math.max(0, Math.min(steps.length, lst.saw.step | 0));
+    lst.saw.step = cur;
     const st = steps[cur];
     if (!lst.sawDone || typeof lst.sawDone !== 'object') lst.sawDone = {};
-    if (!st && steps.length && lst.sawDone[x.key] !== sawSig(x)) { lst.sawDone[x.key] = sawSig(x); saveLst(); }
     const t = st ? sawText(st, x, cfg) : null;
     const m = st ? sawMeasure(st, cfg) : null;
     const fin = st ? st.done.map((u) => x.s.parts.find((q) => q.uid === u)).filter(Boolean) : [];
@@ -4568,6 +4612,8 @@ table.fmt.one .onet { display: inline; }
     if (what === 'next') {
       const st = sawSteps(list[xi]).steps[lst.saw.step | 0];
       lst.saw.step = Math.min(n, (lst.saw.step | 0) + 1);
+      // letzter Schnitt gemacht: Platte als geschnitten merken
+      if (st && lst.saw.step === n) { if (!lst.sawDone || typeof lst.sawDone !== 'object') lst.sawDone = {}; lst.sawDone[list[xi].key] = sawSig(list[xi]); }
       const c = sawCfg();
       const mode = sawLabelMode(c);
       // Streifen abgetrennt (mehrere Teile darin): Streifen-Etikett; fertige Teile: Teil-Etiketten
@@ -4578,6 +4624,7 @@ table.fmt.one .onet { display: inline; }
         const x = list[xi];
         const parts = uids.map((u) => sawPart(x, u)).filter((q) => q && q.res && q.res.panel);
         const sp = strip ? stripsOf(x.g, x.i).find((q) => q.strip.n === strip) : null;
+        if (!parts.length && !sp) { saveLst(); renderSaw(); return; }
         lblNums = labelNums();
         printLabelHtml((sp ? stripLabelHtml(sp) : '') + parts.map(labelHtml).join(''));
         toast('🏷 ' + [sp ? 'Streifen ' + strip : '', parts.length ? parts.length + ' Etikett' + (parts.length === 1 ? '' : 'en') : ''].filter(Boolean).join(' + ') + ' gedruckt');
@@ -4912,7 +4959,7 @@ table.fmt.one .onet { display: inline; }
       '<label class="btn ghost small" title="Dekor-Datei (.json) laden">Importieren <input type="file" id="decimp" accept=".json,application/json" hidden></label>' +
       (decorBase ? '<a class="btn ghost small" href="' + esc(decorBase) + '" target="_blank" rel="noopener">Server-Bibliothek ↗</a>' : '') + '</h4>' +
       '<div class="decdrop" id="decdrop">Dekor-Bilder hierher ziehen – der Dateiname wird zum Code (z. B. „U708 ST9.jpg“). Teile mit dem Code im Namen bekommen das Bild in Möbel 3D.</div>' +
-      (localDecors.length ? '<div class="decgrid">' + localDecors.map((d, i) => '<div class="dectile"><i style="background:' + esc(d.color) + ' url(\'' + d.thumb + '\') center / cover"></i>' +
+      (localDecors.length ? '<div class="decgrid">' + localDecors.map((d, i) => '<div class="dectile"><i style="background:' + esc(d.color) + ' url(\'' + esc(d.thumb) + '\') center / cover"></i>' +
         '<div class="decf"><input type="text" data-decf="code" data-i="' + i + '" value="' + esc(d.code) + '" aria-label="Code" title="Code (wie im Bauteilnamen)">' +
         '<input type="text" data-decf="name" data-i="' + i + '" value="' + esc(d.name || '') + '" placeholder="Name (z. B. Schiefer)" aria-label="Name">' +
         '<span><label class="ck"><input type="checkbox" data-decf="grain" data-i="' + i + '"' + (d.grain ? ' checked' : '') + '> Maserung</label>' +
@@ -4952,7 +4999,9 @@ table.fmt.one .onet { display: inline; }
         const key = decorKey(code);
         if (!key || localDecors.some((x) => x !== d && x.key === key)) { toast('Den Code gibt es schon (oder er ist leer).'); renderMat(); return; }
         // Teile mit dem alten Dekor behalten es
-        for (const p of state.parts) if (p.board === 'dek:' + d.key) p.board = 'dek:' + key;
+        const ren = (b) => (typeof b === 'string' && b.split('|')[0] === 'dek:' + d.key ? 'dek:' + key + b.slice(('dek:' + d.key).length) : b);
+        for (const p of state.parts) p.board = ren(p.board);
+        if (ren(state.settings.boardMaterial) !== state.settings.boardMaterial) { state.settings.boardMaterial = ren(state.settings.boardMaterial); saveSettings(); }
         d.code = code;
         d.key = key;
       } else d.name = inp.value.trim().slice(0, 80);
@@ -4974,10 +5023,11 @@ table.fmt.one .onet { display: inline; }
   function mergeDecors(list) {
     let n = 0;
     for (const d of Array.isArray(list) ? list : []) {
-      if (!d || !d.key || !/^data:image\//.test(String(d.img || ''))) continue;
+      const okImg = (u) => /^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(String(u || ''));
+      if (!d || !d.key || !decorKey(d.key) || !okImg(d.img)) continue;
       const clean = { key: decorKey(d.key), code: String(d.code || d.key).slice(0, 40), name: String(d.name || '').slice(0, 80), grain: !!d.grain,
         scale: Math.max(50, Math.min(6000, +d.scale || 1000)), color: /^#[0-9a-f]{6}$/i.test(d.color) ? d.color : '#c8c8c4', img: d.img,
-        thumb: /^data:image\//.test(String(d.thumb || '')) ? d.thumb : d.img };
+        thumb: okImg(d.thumb) ? d.thumb : d.img };
       const i = localDecors.findIndex((x) => x.key === clean.key);
       if (i >= 0) localDecors[i] = clean; else localDecors.push(clean);
       n++;
@@ -6405,8 +6455,12 @@ table.fmt.one .onet { display: inline; }
     loadFiles(e.dataTransfer.files);
   });
   $('reset').addEventListener('click', () => {
+    if (!confirm('Alle Werkzeuge & Regeln auf Standard zurücksetzen?\n(Eigene Farben, Etikett-Layout und Werkstück-Profile bleiben.)')) return;
+    const keep = { customBoards: state.settings.customBoards, labelLayout: state.settings.labelLayout, profiles: state.settings.profiles };
     state.settings = Object.assign({}, XcsWriter.DEFAULTS, { orderRule: { on: true, seq: XcsWriter.DEFAULTS.orderRule.seq.slice() },
-      profiles: JSON.parse(JSON.stringify(XcsWriter.DEFAULTS.profiles)) });
+      profiles: keep.profiles || JSON.parse(JSON.stringify(XcsWriter.DEFAULTS.profiles)) });
+    if (keep.customBoards) state.settings.customBoards = keep.customBoards;
+    if (keep.labelLayout) state.settings.labelLayout = keep.labelLayout;
     saveSettings(); renderSettings(); renderRule(); renderProfileEditor(); state.parts.forEach(compute); applyBoards();
   });
 

@@ -198,15 +198,17 @@
     return { m: m, t: t };
   }
 
-  // tilt (Sonderteile, von Hand): 1 = auf die lange Kante gekippt (90° um X), 2 = auf die kurze Kante (90° um Y)
+  // tilt (Sonderteile, von Hand): 1 = auf die lange Kante gekippt, 2 = auf die kurze Kante (je 90° um die passende Achse)
   function frame(prep, rot, flip, tilt) {
     let tf = prep.base;
     let [L, W, T] = prep.dims;
-    if (tilt === 1) {
+    // lange Kante = Kante längs der längeren Seite (die Grundlage hat nicht immer die längere Seite in X)
+    const axis = tilt === 1 || tilt === 2 ? ((tilt === 1) === (L >= W - TOL) ? 'x' : 'y') : null;
+    if (axis === 'x') {
       // um X: Rückseite (y = W) liegt auf, Vorderkante zeigt nach oben – Breite und Dicke tauschen
       tf = compose({ m: [[1, 0, 0], [0, 0, 1], [0, -1, 0]], t: [0, 0, W] }, tf);
       [W, T] = [T, W];
-    } else if (tilt === 2) {
+    } else if (axis === 'y') {
       // um Y: rechte Stirnseite (x = L) liegt auf – Länge und Dicke tauschen
       tf = compose({ m: [[0, 0, 1], [0, 1, 0], [-1, 0, 0]], t: [0, 0, L] }, tf);
       [L, T] = [T, L];
@@ -1510,6 +1512,37 @@
     }
 
     // --- Böden (Nut, Falz, Tasche)
+    // Eine waagerechte Fläche ist nur ein Boden, wenn über ihr (bzw. bei „von unten“ unter ihr) kein Material liegt – sonst ist
+    // sie eine Wand, z. B. die Wand einer Nut in der Schmalfläche oder (gekippt) die Wand eines Falzes der großen Fläche.
+    const hFaces = new Map();
+    const loopPoly = (segs) => { const pts = []; for (const q of segs) for (const t of segPoints(q)) pts.push(t); return pts; };
+    for (const f of faces) {
+      if (f.surf.type !== 'plane' || Math.abs(Math.abs(f.surf.n[2]) - 1) > ATOL) continue;
+      const ob = f.bounds.find((b) => b.outer) || f.bounds[0];
+      hFaces.set(f, { up: f.surf.n[2] > 0, z: f.surf.p[2], poly: loopPoly(ob.edges.flatMap(segs2DFromEdge)),
+        holes: f.bounds.filter((b) => b !== ob).map((b) => loopPoly(b.edges.flatMap(segs2DFromEdge))) });
+    }
+    const onFace = (h, p) => h.poly.length > 2 && pointInPoly(p, h.poly) && !h.holes.some((q) => q.length > 2 && pointInPoly(p, q));
+    const innerPoint = (h) => {
+      const xs = h.poly.map((q) => q[0]);
+      const ys = h.poly.map((q) => q[1]);
+      const x0 = Math.min(...xs); const x1 = Math.max(...xs); const y0 = Math.min(...ys); const y1 = Math.max(...ys);
+      for (let i = 0; i < 9; i++) for (let j = 0; j < 9; j++) {
+        const p = [x0 + ((i + 0.5) / 9) * (x1 - x0), y0 + ((j + 0.5) / 9) * (y1 - y0)];
+        if (onFace(h, p)) return p;
+      }
+      return null;
+    };
+    const isWall = (f) => {
+      const h = hFaces.get(f);
+      const p = h && innerPoint(h);
+      if (!p) return false;
+      for (const [g, k] of hFaces) {
+        if (g === f || k.up === h.up) continue;
+        if ((h.up ? k.z > h.z + TOL : k.z < h.z - TOL) && onFace(k, p)) return true;
+      }
+      return false;
+    };
     const floors = [];
     for (const f of faces) {
       if (f.surf.type !== 'plane') continue;
@@ -1519,6 +1552,7 @@
       const ob = f.bounds.find((b) => b.outer) || f.bounds[0];
       const segs = ob.edges.flatMap(segs2DFromEdge);
       if (segs.every((s) => s.type === 'arc')) continue; // Bohrungsgrund
+      if (isWall(f)) continue; // Material darüber/darunter: Wand, kein Boden
       const bb = loopBBox(segs);
       if (n[2] < 0) {
         res.bottom.push({ kind: 'Boden', text: 'Bearbeitung von unten (Boden auf Z=' + fmt(z) + ', ' + fmt(bb.x1 - bb.x0) + '×' + fmt(bb.y1 - bb.y0) + ')' });

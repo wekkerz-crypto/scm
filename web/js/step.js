@@ -143,7 +143,7 @@
     throw new Error('STEP: unerwartetes Zeichen "' + c + '"');
   };
 
-  // \X2\00FC\X0\ (UTF-16-Hex) und \X\FC (ISO-8859-1) dekodieren.
+  // \X2\00FC\X0\ (UTF-16-Hex), \X\FC (ISO-8859-1) und \S\c (Zeichen + 128, ältere Programme) dekodieren.
   function decodeStepString(str) {
     if (str.indexOf('\\') < 0) return str;
     return str
@@ -153,6 +153,7 @@
         return out;
       })
       .replace(/\\X\\([0-9A-Fa-f]{2})/g, function (_, hex) { return String.fromCharCode(parseInt(hex, 16)); })
+      .replace(/\\S\\(.)/g, function (_, c) { return String.fromCharCode(c.charCodeAt(0) + 128); })
       .replace(/\\\\/g, '\\');
   }
 

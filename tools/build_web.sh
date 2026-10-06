@@ -13,6 +13,8 @@ cp tools/webserver/.htaccess "$OUT/step2maestro/.htaccess"
 # Dekor-Bibliothek (PHP): nur Programm, keine Daten – bilder/, vorschau/, daten/ legt api.php auf dem Server an
 mkdir -p "$OUT/step2maestro/dekore"
 cp tools/webserver/dekore/index.html tools/webserver/dekore/api.php tools/webserver/dekore/.htaccess "$OUT/step2maestro/dekore/"
+# Freigabe für das erste Passwort (api.php löscht sie nach dem Einrichten)
+: > "$OUT/step2maestro/dekore/EINRICHTEN"
 # Google Fonts -> lokale Schriften (keine Anfrage an fremde Server)
 python3 - "$OUT/step2maestro/index.html" <<'PY'
 import re, sys

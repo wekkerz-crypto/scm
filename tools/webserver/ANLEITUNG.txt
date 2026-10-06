@@ -19,8 +19,8 @@ Wichtig zu wissen
   Datenbank, nichts zu installieren. Nur die Dekor-Bibliothek (Ordner
   "dekore") nutzt PHP – bei Strato Webhosting immer dabei.
 * Alles läuft im Browser des Benutzers. STEP-/DXF-Dateien und .xcs-Programme
-  werden NICHT auf den Server hochgeladen. Es werden keine Cookies gesetzt und
-  keine fremden Server angefragt.
+  werden NICHT auf den Server hochgeladen. Es werden keine fremden Server
+  angefragt. Ein Cookie gibt es nur für die Anmeldung in der Dekor-Verwaltung.
 * Einstellungen, Profile, die geladene Werkzeugdatei (.tlgx) und die Teileliste
   (mit allen Änderungen je Teil) speichert der Browser automatisch – je Gerät,
   Browser und Adresse. Nach dem Neuladen ist alles wieder da. Auf dem Server gelten also andere
@@ -65,8 +65,10 @@ sinngemäß suchen.)
    Kunden-Login -> Webspace/Hosting -> "Verzeichnisschutz" (Schutz für den
    Ordner "step2maestro" mit Benutzer und Passwort einrichten).
 
-Update auf eine neue Version: Ordner "step2maestro" einfach komplett durch den
-neuen ersetzen (alle Dateien überschreiben). Einstellungen im Browser bleiben
+Update auf eine neue Version: den neuen Ordner "step2maestro" hochladen und
+alle Dateien ÜBERSCHREIBEN – den alten Ordner NICHT vorher löschen (sonst sind
+die Dekore in dekore/daten, dekore/bilder, dekore/vorschau weg). Die Datei
+dekore/EINRICHTEN aus der neuen ZIP dabei weglassen bzw. danach löschen. Einstellungen im Browser bleiben
 erhalten. Falls der Browser noch die alte Version zeigt: Strg + F5.
 
 
@@ -127,7 +129,11 @@ Auch von Hand in jeder Plattenauswahl unter "Dekore (Bibliothek)".
 1. Aufrufen:  https://www.deine-domain.de/step2maestro/dekore/
    (oder in Step2Maestro: Plattenfarbe -> "Dekore verwalten").
 2. Beim ersten Aufruf ein Passwort festlegen (mind. 8 Zeichen). Ansehen
-   kann jeder, hochladen/ändern/löschen nur mit Passwort.
+   kann jeder, hochladen/ändern/löschen nur mit Passwort. Das Festlegen geht
+   nur, solange die (leere) Datei dekore/EINRICHTEN da ist – sie liegt in der
+   ZIP und wird danach automatisch gelöscht. So kann kein Fremder zuerst ein
+   Passwort setzen. Nach 5 falschen Passwörtern ist die Anmeldung von dieser
+   Adresse 15 Minuten gesperrt.
 3. Bilder hochladen: hineinziehen oder anklicken, mehrere auf einmal.
    DATEINAME = DEKOR-CODE:  U708_ST9.jpg -> "U708 ST9",  H1145_ST10.jpg
    -> "H1145 ST10". Gleicher Code nochmal hochladen = Bild ersetzen.
@@ -142,7 +148,8 @@ Gespeichert wird in dekore/bilder, dekore/vorschau und dekore/daten (legt
 das Programm selbst an). Ein Update von Step2Maestro (Ordner neu hochladen)
 überschreibt diese Ordner NICHT – die Dekore bleiben. Zum Sichern diese drei
 Ordner per FileZilla herunterladen. Passwort vergessen: die Datei
-dekore/daten/passwort.php per FileZilla löschen, dann neu festlegen.
+dekore/daten/passwort.php per FileZilla löschen UND eine leere Datei
+EINRICHTEN in den Ordner dekore/ hochladen, dann neu festlegen.
 Upload-Grenze: Bilder bis 25 MB (falls der Server weniger erlaubt, im
 Strato-Kunden-Login bei den PHP-Einstellungen erhöhen oder Bilder kleiner
 speichern). In der .exe (ohne Server) gibt es die Bibliothek nicht – dort

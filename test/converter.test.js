@@ -1677,8 +1677,8 @@ test('Zuschnittplan: erster Schnitt längs/quer bevorzugt, Ziel Verschnitt oder 
       const seq = CP.cutSequence(s, { dir: dir });
       assert.ok(seq.ok, 'durchgehend trennbar');
       assert.strictEqual(seq.cuts[0].dir, dir === 'long' ? 'h' : 'v');
-      // Streifen: der erste Schnitt geht über die ganze besäumte Platte
-      assert.strictEqual(seq.cuts[0].to - seq.cuts[0].from, dir === 'long' ? s.L - 20 : s.W - 20);
+      // Streifen: der erste Schnitt geht vom besäumten Anfang bis an die ferne Plattenkante (dort wird erst am Stück besäumt)
+      assert.strictEqual(seq.cuts[0].to - seq.cuts[0].from, dir === 'long' ? s.L - 10 : s.W - 10);
     }
   }
   // optimale Schnitte: nicht mehr Schnitte als bei minimalem Verschnitt
@@ -1760,6 +1760,24 @@ test('Zuschnitt fromTop: Anordnung beginnt oben links (hintere Kante), sonst gle
   assert.ok(q.ok && q.cuts[0].parts.length > 0 && q.cuts[0].side === 'hi');
 });
 
+test('Schnittfolge: Teil bis an den fernen Besäumrand bekommt dort einen Schnitt (keine Fabrikkante am fertigen Teil)', () => {
+  const CP = require('../web/js/cutplan.js');
+  // 1000 × 500, Besäumen 10: zwei Teile füllen die besäumte Fläche ganz
+  const sheet = { L: 1000, W: 500, parts: [{ uid: 'a#1', id: 'a', x: 10, y: 10, l: 980, w: 200 }, { uid: 'b#1', id: 'b', x: 10, y: 214.4, l: 980, w: 275.6 }] };
+  for (const o of [{}, { flipY: true }, { flipX: true, flipY: true }]) {
+    const q = CP.cutSequence(sheet, Object.assign({ dir: 'long', kerf: 4.4, trim: 10 }, o));
+    assert.ok(q.ok);
+    // jedes Teil fertig, und an der fernen Längs- und Querkante wird geschnitten
+    assert.deepStrictEqual(q.cuts.flatMap((c) => c.done).sort(), ['a#1', 'b#1']);
+    const far = o.flipY ? 10 : 490;
+    assert.ok(q.cuts.some((c) => c.dir === 'h' && Math.abs((o.flipY ? c.c + 4.4 : c.c) - far) < 0.01), JSON.stringify(o) + ' längs');
+    assert.ok(q.cuts.some((c) => c.dir === 'v'), JSON.stringify(o) + ' quer');
+  }
+  // ein einziges Teil genau so groß wie die besäumte Platte: wird mit Schnitten fertig
+  const one = CP.cutSequence({ L: 1000, W: 500, parts: [{ uid: 'c#1', id: 'c', x: 10, y: 10, l: 980, w: 480 }] }, { dir: 'long', trim: 10 });
+  assert.deepStrictEqual(one.cuts.flatMap((c) => c.done), ['c#1']);
+});
+
 test('Streifen nummeriert: jedes Teil in genau einem Streifen, Nummern ab Anschlag, Schnitte kennen ihren Streifen', () => {
   const CP = require('../web/js/cutplan.js');
   const items = [{ id: '2', label: 'Seite', L: 904, W: 454, qty: 2 }, { id: '4', label: 'Boden', L: 766, W: 436, qty: 2 }, { id: '6', label: 'Einlegeboden', L: 765.6, W: 426, qty: 2 }];
@@ -1802,4 +1820,26 @@ test('Etiketten-Layout: Felder einsetzen, Vorlagen, Skalieren, Strichcode Code 1
   assert.strictEqual(LL.itemHtml(two, { two: '' }), '');
   assert.match(LL.itemHtml(two, { two: 'two' }), /2-SEITIG/);
   assert.match(LL.itemHtml(two, { two: 'warn' }), /Unterseite/);
+});
+
+test('STEP-Namen mit \\S\\ (ältere Programme: Zeichen + 128) und .bat mit % in Pfaden', () => {
+  const C = require('../web/js/convert.js');
+  const t = read('test/fixtures/schrank3.step').split("'KP_1_ RW (U708 ST9)'").join("'Seitenw\\S\\dnd (U708 ST9)'");
+  const names = C.readParts(t, 'schrank3.step').map((p) => p.name);
+  assert.ok(names.some((n) => /^Seitenwaend/.test(n)), names.join(', '));
+  const bat = C.makeBatch({ pgmxDir: 'D:\\100%\\out' }).split('\r\n');
+  assert.ok(bat.includes('set "OUT=D:\\100%%\\out"'));
+  assert.ok(bat.includes('echo Ausgabe: "%OUT%"'));
+});
+
+test('Gekippt (Sonderteile): Wände werden nicht zu Falz/Nut/Tasche, flach bleibt alles gleich', () => {
+  const C = require('../web/js/convert.js');
+  const s = C.readParts(read('test/fixtures/schrank3.step'), 'schrank3.step').find((p) => /SW_L/.test(p.name));
+  const r = C.convertSolid(s, {}, { orientation: { rot: 0, flip: false, tilt: 1 } });
+  assert.ok(!r.error, r.error);
+  assert.strictEqual(Math.round(r.panel.T), 450);
+  assert.strictEqual(r.panel.rebates.length, 0); // früher: Falz 5 × 440 über die ganze Länge
+  const z = C.readParts(read('test/fixtures/zweiseitig.step'), 'zweiseitig.step')[0];
+  const rz = C.convertSolid(z, {}, { orientation: { rot: 0, flip: false, tilt: 1 } });
+  assert.strictEqual(rz.panel.rebates.length + rz.panel.grooves.length, 0);
 });

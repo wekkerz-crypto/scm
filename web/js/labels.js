@@ -44,7 +44,8 @@
 
   // Felder einsetzen; leere Teile zwischen „ · “ fallen weg
   function fill(tpl, data) {
-    const t = String(tpl || '').replace(/\{([A-Za-z]+)\}/g, (m, k) => (data[k] === undefined || data[k] === null ? '' : String(data[k])));
+    const own = (k) => Object.prototype.hasOwnProperty.call(data || {}, k) && data[k] !== undefined && data[k] !== null && typeof data[k] !== 'function';
+    const t = String(tpl || '').replace(/\{([A-Za-z]+)\}/g, (m, k) => (own(k) ? String(data[k]) : ''));
     return t.split('\n').map((line) => line.split(' · ').map((x) => x.trim()).filter(Boolean).join(' · ')).join('\n').trim();
   }
 
@@ -99,12 +100,14 @@
 
   // Layout auf eine andere Größe bringen (Lage und Größe anteilig, Schrift mit dem kleineren Faktor)
   function scaled(layout, cw, ch) {
-    if (!layout || (Math.abs(layout.w - cw) < 0.01 && Math.abs(layout.h - ch) < 0.01)) return layout;
+    if (!layout || !Array.isArray(layout.items)) return layout;
+    if (!(layout.w > 0 && layout.h > 0)) return { w: cw, h: ch, items: layout.items }; // kaputte Größe: ungeskaliert
+    if (Math.abs(layout.w - cw) < 0.01 && Math.abs(layout.h - ch) < 0.01) return layout;
     const fx = cw / layout.w;
     const fy = ch / layout.h;
     const fs = Math.min(fx, fy);
     return { w: cw, h: ch, items: layout.items.map((e) => Object.assign({}, e, { x: r2(e.x * fx), y: r2(e.y * fy), w: r2(e.w * fx), h: r2(e.h * fy),
-      size: e.size ? r2(e.size * fs) : e.size, border: e.border ? r2(e.border * fs) : e.border })) };
+      size: e.size ? r2(e.size * fs) : e.size, border: e.border ? r2(e.border * fs) : e.border, radius: e.radius ? r2(e.radius * fs) : e.radius })) };
   }
 
   // ungefähre Zeichenbreite (Anteil der Schriftgröße) je Schrift – im Browser genau gemessen (Canvas, Schrift der Seite)
@@ -144,8 +147,11 @@
     '314111 221411 431111 111224 111422 121124 121421 141122 141221 112214 112412 122114 122411 142112 142211 241211 221114 413111 241112 134111 ' +
     '111242 121142 121241 114212 124112 124211 411212 421112 421211 212141 214121 412121 111143 111341 131141 114113 114311 411113 411311 113141 ' +
     '114131 311141 411131 211412 211214 211232 2331112').split(' ');
+  // Code 128 B kennt nur ASCII: Umlaute und Zeichen wie × · umschreiben (auch für den Klartext darunter, damit beides gleich ist)
+  const TRANS = { 'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'Ä': 'Ae', 'Ö': 'Oe', 'Ü': 'Ue', 'ß': 'ss', '×': 'x', '·': '-', '–': '-', '—': '-', '„': '"', '“': '"', '”': '"', '’': "'", '²': '2', '³': '3', '€': 'EUR', 'é': 'e', 'è': 'e', 'á': 'a', 'à': 'a' };
+  const ascii = (t) => String(t).replace(/[^\x20-\x7e]/g, (c) => (TRANS[c] !== undefined ? TRANS[c] : '?'));
   function code128(text) {
-    const s = String(text).replace(/[^\x20-\x7e]/g, '?');
+    const s = ascii(text);
     const codes = [104];
     for (const ch of s) codes.push(ch.charCodeAt(0) - 32);
     let sum = 104;
@@ -154,6 +160,7 @@
     return codes.map((c) => C128[c]).join('');
   }
   function barcodeSvg(text, w, h, human, size) {
+    text = ascii(text);
     const widths = code128(text);
     const mods = widths.split('').reduce((a, c) => a + +c, 0) + 20; // 10 Module Ruhezone je Seite
     const th = human ? (size || 1.8) * 1.2 : 0;
@@ -211,5 +218,5 @@
   }
 
   return { FIELDS: FIELDS, TEMPLATES: TEMPLATES, layoutOf: layoutOf, template: template, scaled: scaled, fill: fill, render: render, itemHtml: itemHtml,
-    code128: code128, barcodeSvg: barcodeSvg, newItem: el };
+    code128: code128, barcodeSvg: barcodeSvg, ascii: ascii, newItem: el };
 });

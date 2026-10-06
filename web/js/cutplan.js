@@ -331,7 +331,7 @@
         // Ebene 0: dieser Schnitt trennt einen Streifen ab; geht es am Rest nur noch quer weiter, ist der Rest der letzte Streifen
         const strip = lv === 0 || (level === 0 && d !== dir) ? i : ctx.strip;
         if (lv === 0 && inFirst.length) addStrip(i, first, d);
-        else if (level === 0 && d !== dir) addStrip(i, r, dir);
+        else if (level === 0 && d !== dir && depth > 0) addStrip(i, r, dir); // Rest nur noch quer: letzter Streifen (nicht die ganze Platte)
         const tg = kind === 'trim' && ctx.tg < 0 ? i : ctx.tg;
         cuts.push({ n: i + 1, dir: d, c: c, from: d === 'h' ? r.x0 : r.y0, to: d === 'h' ? r.x1 : r.y1, start: d === 'h' ? r.x0 : r.y0, side: 'lo', level: lv, kind: kind,
           size: c - lo, rest: restLen, restParts: parts.length - inFirst.length, parts: inFirst, done: [], region: r, strip: strip, tg: tg });
@@ -347,7 +347,9 @@
       strips.length = 0;
       later.length = 0;
       ok = true;
-      run({ x0: o.trim, y0: o.trim, x1: sheet.L - o.trim, y1: sheet.W - o.trim }, d, 0, 0, -1);
+      // Besäumt (Anschnitt) wird an der Anfangsseite; an der fernen Seite reicht das Stück bis an die Plattenkante, damit ein
+      // Teil am Besäumrand dort auch einen Schnitt bekommt (sonst bliebe die Fabrikkante dran)
+      run({ x0: o.trim, y0: o.trim, x1: sheet.L, y1: sheet.W }, d, 0, 0, -1);
       while (later.length) later.shift()();
       // Nachschnitte (mit allem, was danach am selben Stück geschnitten wird) nach dem Streifen bzw. ans Ende
       let out = cuts.slice();

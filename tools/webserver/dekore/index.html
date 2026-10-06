@@ -173,13 +173,16 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
       st.dekore = j.dekore || [];
       st.login = !!j.login;
       st.setup = !!j.setup;
+      st.noPw = !!j.ohnePasswort;
       if (j.csrf) st.csrf = j.csrf;
     } catch (e) { msg('Liste kann nicht geladen werden: ' + e.message); }
     render();
   }
   function render() {
     $('setup').hidden = !st.setup;
-    $('login').hidden = st.setup || st.login;
+    $('login').hidden = st.setup || st.login || st.noPw;
+    // noch kein Passwort, aber Einrichten gesperrt (Schutz: sonst könnte ein Fremder zuerst eins setzen)
+    if (st.noPw) msg('Noch kein Passwort. Zum Einrichten die leere Datei EINRICHTEN (liegt in der ZIP) per FileZilla in den Ordner dekore/ hochladen und die Seite neu laden.');
     $('upload').hidden = !st.login;
     $('newbtn').hidden = !st.login;
     $('logout').hidden = !st.login;

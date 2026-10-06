@@ -5,6 +5,8 @@ AddDefaultCharset UTF-8
 AddType text/javascript .js
 AddCharset UTF-8 .js .css .html
 DirectoryIndex index.html
+# keine Dateilisten von Ordnern (js/, fonts/ …)
+Options -Indexes
 
 # Testserver: nicht in Suchmaschinen aufnehmen
 <IfModule mod_headers.c>

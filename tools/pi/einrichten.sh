@@ -53,6 +53,12 @@ if [ "$NUR_DRUCKER" -eq 0 ] && [ -z "$URL" ] && [ "$OFFLINE" -eq 0 ]; then
   read -r -p "Adresse: " URL
   [ -z "$URL" ] && OFFLINE=1
 fi
+# Adresse landet im Startskript: nur gewöhnliche http(s)-Adressen (keine Anführungszeichen, $, ` oder Leerzeichen)
+if [ -n "$URL" ] && [ "$OFFLINE" -eq 0 ] && ! [[ "$URL" =~ ^https?://[A-Za-z0-9._~:/?#@!\&\'()*+,\;=%-]+$ ]] || [[ "$URL" == *[\"\$\`\'\ ]* ]]; then
+  echo "Die Adresse sieht nicht richtig aus: $URL"
+  echo "Bitte so angeben: https://www.deine-domain.de/step2maestro/"
+  exit 1
+fi
 if [ "$OFFLINE" -eq 1 ]; then
   if [ ! -f "$HIER/step2maestro/index.html" ]; then
     echo "Für --offline muss der Ordner step2maestro neben diesem Skript liegen (aus der ZIP)."; exit 1
@@ -69,7 +75,7 @@ BROWSER_PKG=""
 command -v chromium-browser >/dev/null || command -v chromium >/dev/null || BROWSER_PKG="chromium-browser"
 sudo apt-get install -y -qq cups cups-client $BROWSER_PKG >/dev/null && ok "installiert" || warn "apt-get meldet einen Fehler – Internetverbindung prüfen"
 sudo usermod -aG lpadmin "$USER"
-sudo systemctl enable --now cups >/dev/null 2>&1 && ok "CUPS läuft"
+sudo systemctl enable --now cups >/dev/null 2>&1 && ok "CUPS läuft" || warn "CUPS startet nicht – „sudo systemctl status cups“ zeigt den Grund"
 
 # ---------------------------------------------------------------- Zebra an USB
 step "Zebra-Etikettendrucker (USB) einrichten"
@@ -86,14 +92,20 @@ else
   fi
   W="${ETIKETT%x*}"
   H="${ETIKETT#*x}"
-  sudo lpadmin -p Zebra -E -v "$URI" -m "$MODEL" -D "Zebra Etiketten" -L "Sägeplatz"
-  if [ "$MODEL" != "raw" ]; then
-    # Etikettgröße, Auflösung, Etiketten mit Lücke (Web = Gap), etwas dunkler für gut lesbare Schrift
-    sudo lpadmin -p Zebra -o PageSize="Custom.${W}x${H}mm" -o Resolution="${DPI}dpi" -o zeMediaTracking=Web -o Darkness=20 2>/dev/null
+  if ! sudo lpadmin -p Zebra -E -v "$URI" -m "$MODEL" -D "Zebra Etiketten" -L "Sägeplatz"; then
+    warn "Drucker konnte nicht angelegt werden (lpadmin) – Meldung oben beachten."
+    exit 1
   fi
-  sudo lpadmin -d Zebra
+  if [ "$MODEL" != "raw" ]; then
+    # Etikettgröße, Auflösung, Etiketten mit Lücke (Web = Gap), etwas dunkler für gut lesbare Schrift – jede Einstellung einzeln,
+    # damit eine unbekannte Option (anderes Modell) die übrigen nicht verhindert
+    for o in "PageSize=Custom.${W}x${H}mm" "Resolution=${DPI}dpi" "zeMediaTracking=Web" "Darkness=20"; do
+      sudo lpadmin -p Zebra -o "$o" 2>/dev/null || warn "Einstellung $o nicht übernommen (anderes Zebra-Modell?)"
+    done
+  fi
+  sudo lpadmin -d Zebra || warn "Zebra nicht als Standarddrucker gesetzt"
   sudo cupsenable Zebra 2>/dev/null; sudo cupsaccept Zebra 2>/dev/null
-  ok "Zebra ist Standarddrucker – Etikett ${W} × ${H} mm, ${DPI} dpi"
+  if lpstat -p Zebra >/dev/null 2>&1; then ok "Zebra ist Standarddrucker – Etikett ${W} × ${H} mm, ${DPI} dpi"; else warn "Zebra ist in CUPS nicht zu sehen – lpstat -p prüfen"; fi
   if [ "$TEST" -eq 1 ]; then
     printf 'Step2Maestro\nTestetikett\n%s\n' "$(date '+%d.%m.%Y %H:%M')" | lp -d Zebra -o media="Custom.${W}x${H}mm" >/dev/null && ok "Testetikett gedruckt"
   fi

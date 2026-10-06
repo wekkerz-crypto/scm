@@ -1310,6 +1310,7 @@ test('Dekor-Bibliothek: Passwort, Hochladen, Bearbeiten – Step2Maestro überni
   fs.cpSync(path.join(root, 'web'), path.join(dir, 'app'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'app', 'dekore'));
   for (const f of ['api.php', 'index.html']) fs.copyFileSync(path.join(root, 'tools', 'webserver', 'dekore', f), path.join(dir, 'app', 'dekore', f));
+  fs.writeFileSync(path.join(dir, 'app', 'dekore', 'EINRICHTEN'), ''); // Freigabe für das erste Passwort (wie in der ZIP)
   // kleines PNG (einfarbig grau, 64 × 32) als Dekorbild U708_ST9.png
   const crc = (b) => { let c = ~0; for (const x of b) { c ^= x; for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1)); } return (~c) >>> 0; };
   const chunk = (t, d) => { const l = Buffer.alloc(4); l.writeUInt32BE(d.length); const td = Buffer.concat([Buffer.from(t), d]); const c = Buffer.alloc(4); c.writeUInt32BE(crc(td)); return Buffer.concat([l, td, c]); };

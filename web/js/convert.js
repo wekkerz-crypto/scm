@@ -172,7 +172,8 @@
   // die Konsole auf UTF-8 um (chcp 65001), sonst bleibt sie reines ASCII.
   function makeBatch(settings) {
     const cfg = Object.assign({}, XcsWriter.DEFAULTS, settings || {});
-    const ascii = (s) => String(s).replace(/[\r\n"]/g, '');
+    // in „set "X=…"“ ist % ein Variablenzeichen: verdoppeln (Pfad mit „100%“ o. Ä.)
+    const ascii = (s) => String(s).replace(/[\r\n"]/g, '').replace(/%/g, '%%');
     const out = cfg.pgmxDir ? ascii(cfg.pgmxDir) : '%~dp0pgmx';
     const utf8 = /[^\x20-\x7e]/.test([cfg.xconverterPath, cfg.toolsFile, cfg.pgmxDir].join(''));
     const lines = [
@@ -196,7 +197,7 @@
       '',
       'echo.',
       'echo Fertig: %OK% umgewandelt, %ERR% mit Fehler.',
-      'echo Ausgabe: %OUT%',
+      'echo Ausgabe: "%OUT%"',
       'pause',
       'exit /b %ERR%',
       '',
@@ -214,14 +215,14 @@
       '',
       ':noconv',
       'echo X-Konverter nicht gefunden:',
-      'echo %XCONV%',
+      'echo "%XCONV%"',
       'echo Bitte den Pfad oben in dieser Datei (XCONV) anpassen.',
       'pause',
       'exit /b 1',
       '',
       ':notools',
       'echo Werkzeugdatei nicht gefunden:',
-      'echo %TOOLS%',
+      'echo "%TOOLS%"',
       'echo Bitte den Pfad oben in dieser Datei (TOOLS) anpassen.',
       'pause',
       'exit /b 1',

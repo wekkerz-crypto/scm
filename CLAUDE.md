@@ -21,7 +21,9 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   (Sitzung), `boardPicker` in `index.html`, `Viewer.setBoards`.
   Material aus dem Namen: `StepToXcs.materialOf` → `solid.material`, Farbe `solid.color` (`colorsByItem` in `step.js`)
   → `nameBoard` in `index.html` (Einstellung `boardFromName`), Reihenfolge `part.board` < Name < Einstellung.
-  Dekor-Bibliothek: `tools/webserver/dekore/` (`api.php` PHP 8 + GD: list offen, setup/login/save/upload/delete mit Sitzung + X-CSRF,
+  Dekor-Bibliothek: `tools/webserver/dekore/` (`api.php` PHP 8 + GD: list offen (Sitzung nur mit Cookie), setup nur mit Datei `EINRICHTEN`
+  (in der ZIP, danach gelöscht), Login mit Sperre je Adresse (`daten/fehlversuche.json`), Ändern unter `lockDb()` + `loadDb(true)`,
+  save/upload/delete mit Sitzung + X-CSRF,
   Daten `daten/dekore.json`, Bilder `bilder/KEY.jpg` + `vorschau/`; `index.html` = Verwaltung) → `loadDecors` in `index.html` (nur http/https)
   → `View3D.setDecors`, Schlüssel 'dek:KEY' (`boardOf` mit tex/thumb/scale, `surfMaterial` Bildtextur), `nameBoard` per `decorKey`.
   Schnitt `setSection` (clippingPlanes in `applyLook`), Bild `snapshot()` (Leinwand + Schilder/Maße nachgezeichnet).
@@ -35,7 +37,8 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   (`boardUV`: Gruppe 2 = Schmalflächen mit Dekor 1, 3 = Dekor 2, Seite nach der Normalen in Plattenkoordinaten; hervorheben
   `#medgehl`/`#medgecol`/`#medgecol2` = `modelEdgeHl`/`modelEdgeColor`/`modelEdgeColor2`, eigene Materialfarbe in `userData.tint` –
   `applyLook` lässt sie stehen), `Viewer.setBoards(boards, bands)`.
-  Zuschnittplan `web/js/cutplan.js` (`CutPlan.plan`, Guillotine, Schnittfuge/Besäumen/Maserung; `dir` auto/long/cross =
+  Zuschnittplan `web/js/cutplan.js` (`CutPlan.plan`, Guillotine, Schnittfuge/Besäumen/Maserung; `cutSequence` rechnet von der
+  besäumten Anfangsseite bis an die ferne Plattenkante (dort Schnitt am Stück); manueller Plan `sig` ohne dir/goal; `dir` auto/long/cross =
   `packFree` bzw. Streifen `packStrips`, `goal` waste/cuts wählt aus Varianten; `cutSequence` mit `dir`; `fits` beim Verschieben
   von Hand → `lst.manual[Gruppe] = {sig, sheets}`; Zoom `lst.cutZoom` → CSS `--cz` an `#cutsheets` (`setCutZoom`, `--ar` je Platte), Schrift `lst.cutFont`/`lst.sawFont`
   (`setCutFont`/`setSawFont` → 4. Parameter von `partLabelSvg`, skaliert um die Teilmitte), Sägemodus-Platte `lst.sawZoom` → `--sz`
@@ -88,6 +91,7 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   `clamex_korpus.step`); sonst `clamexPlan` (Ebene Top bzw. Kante, Bahn), Op `clamex-i`.
 - Kippen (Sonderteile): `orientation.tilt` 1 = lange Kante (90° um X, W ↔ T), 2 = kurze Kante (90° um Y, L ↔ T) – in `frame(prep, rot,
   flip, tilt)` vor Wenden/Drehen, auch `turnOverY`; Knopf `#tilt` (nur von Hand, nie automatisch), Hinweis in `warnings`.
+- Böden (Nut, Falz, Tasche, „von unten“) nur, wenn über (unter) der Fläche kein Material liegt (`isWall` in `extract`) – sonst Wand.
 - Drehlage: `orientRule` 'model' (Standard, Werkstatt) – X = Modell-X (Korpusbreite), sonst Z, sonst Y, Y positiv
   (`modelRot` in `panel.js`), nicht wenn W dadurch > `fieldWidth`; 'long' = lange Seite in X (Tests setzen 'long').
 - Sägeschnitt wie Werkstatt: Linie Oberkante von Kante zu Kante (`bladeOverrun` 0), `CreateSectioningMillingStrategy(2, 50, 0)`,

@@ -241,6 +241,9 @@ Dritte Seite oben (**Listen**):
   CUPS mit Treiber „Zebra ZPL Label Printer“ als Standarddrucker in Etikettgröße, Bildschirm bleibt an, Chromium startet beim
   Anmelden im Vollbild mit `--kiosk-printing` → Etiketten ohne Druckdialog), `ANLEITUNG-PI.txt` (Einkaufsliste, Schritte,
   Probleme) und `step2maestro/` für den Offline-Betrieb (`--offline`, ohne Dekor-Bibliothek).
+- **Dekor-Bibliothek – Sicherheit:** Das erste Passwort lässt sich nur festlegen, solange die (leere) Datei `dekore/EINRICHTEN`
+  da ist (liegt in der ZIP, wird danach gelöscht); nach 5 Fehlversuchen ist die Anmeldung von dieser Adresse 15 Minuten
+  gesperrt; Änderungen laufen unter einer Sperre, eine beschädigte Liste wird nie überschrieben; beim reinen Lesen kein Cookie.
 - **Dekor-Bibliothek (Webserver):** Im Webserver-Paket liegt `dekore/` – eine Verwaltung im Browser (PHP, Passwort) zum
   Hochladen, Benennen und Pflegen eurer Standard-Dekore (Bild, Code, Name, Hersteller, Maserung, Farbe, Bildbreite in mm).
   Dateiname = Code (`U708_ST9.jpg` → „U708 ST9“). Step2Maestro lädt die Liste beim Start: Bauteile mit diesem Code im
@@ -315,6 +318,8 @@ Dritte Seite oben (**Listen**):
   erst Streifen über die ganze Plattenbreite, darin längs; *automatisch* = was am besten passt. **Ziel:** *minimaler
   Verschnitt* (wenig Platten, möglichst großes Reststück) oder *optimale Schnitte* (wenig Schnitte, gleich breite Teile im
   selben Streifen, einfach zu sägen). Es werden mehrere Anordnungen gerechnet und die beste nach dem Ziel genommen.
+  Besäumt (*Anschnitt*) wird an der Anfangsseite; an der fernen Seite bekommt ein Teil, das bis an den Besäumrand reicht, einen
+  eigenen Schnitt (sonst bliebe die Fabrikkante dran). Die Nummer eines Schnitts steht an seinem Anfang.
   **Schnittfolge** (abschaltbar): nummerierte, durchgehende Schnitte wie an der Plattensäge – zuerst in der gewählten Richtung einen Streifen ab,
   diesen quer dazu fertig schneiden, dann weiter am Rest; Abfall wird mit abgetrennt. Ist eine Anordnung von Hand nicht durchgehend
   trennbar, kommt ein Hinweis. **Teileliste je Platte** (☐ zum Abhaken, Nr., Bezeichnung, Maß, Stück) neben der Zeichnung,

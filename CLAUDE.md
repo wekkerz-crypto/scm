@@ -93,6 +93,9 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
 - Etiketten (Browser-Druck): `labelHtml`/`labelSketch`/`openLabels` in `index.html`, Einstellungen `label*` (40 × 60 mm);
   Kopf `.hd` (Nr. aus `lblNums` = `labelNums()` je Druck, Material), Hinweis `.two` (side2) / `.two.warn` (canTwoSided),
   Kanten-Legende `.eg`, Fußzeile `.ft`; breit: `.wrow` (Text links, Draufsicht rechts);
+  Etiketten-Konfigurator: `web/js/labels.js` (`LabelLayout`: `FIELDS`, `TEMPLATES`/`layoutOf`, `scaled`, `fill`, `render`/`itemHtml`,
+  `code128`; Elemente text/two/sketch/edges/barcode/box in mm) → Einstellung `labelLayout` ({w, h, items}, null = automatisch),
+  `labelData(part)` (Felder, `sketch`, `edgeList`, `two`), Editor `openLabelDesigner`/`renderLD`/`ldWire` (`ld`, Dialog `#labeldes`);
   gedruckt wird nur `#printarea` mit `@page` in Etikettgröße (`#labelpage`), schwarz-weiß für Thermodrucker.
 - `exe/` – kleine Windows-.exe (Go), bettet `web/` ein und öffnet es im Browser; bauen mit `npm run build:exe` → `dist/`.
   Webserver-Paket: `npm run build:web` → `dist/Step2Maestro-Webserver.zip` (`tools/webserver/`: ANLEITUNG.txt für Strato,

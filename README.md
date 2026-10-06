@@ -20,7 +20,21 @@ dieselbe) und **Material**, Teilename (= Dateiname), Maße L × B × D groß, be
 (in der Draufsicht dicke Striche an den Seiten – Dekor 1 durchgezogen, Dekor 2 gestrichelt – und darunter je Dekor Name und
 Seiten bzw. „ringsum“), Fußzeile mit Datum, Profil und Anzahl der Bearbeitungen; Draufsicht schwarz-weiß mit Länge/Breite,
 Nullpunkt, Bohrungen (Kantenbohrungen als Striche), Durchbrüchen und Taschen. Breite Etiketten (z. B. 60 × 40): Kopf
-oben, Text links, Draufsicht rechts. Größe (Vorgabe 40 × 60 mm), Drehung um 90° (wenn der
+oben, Text links, Draufsicht rechts.
+
+**Etiketten-Konfigurator** (*✎ Gestalten …* in der Etiketten-Vorschau oder *Werkzeuge & Regeln → Etiketten → Etikett
+gestalten*): das Etikett selbst aufbauen – an einem echten Teil als Vorschau.
+- **Elemente:** Text (mit Feldern), Draufsicht, Kanten-Legende, Hinweis 2-seitig, Strichcode (Code 128), Linie, Rahmen.
+- **Felder** in Texten: `{nr}` `{name}` `{masse}` `{L}` `{B}` `{D}` `{material}` `{kanten}` `{kantentext}` `{zuschnitt}`
+  `{anzahl}` `{seiten}` `{bearbeitung}` `{zeit}` `{profil}` `{datum}` `{auftrag}` (= Zusatzzeile) `{datei}` – leere Felder fallen
+  samt Trenner „ · “ weg.
+- **Bedienen:** Element ziehen (Raster 0,5 mm, mit Alt frei), Griff unten rechts = Größe, Pfeiltasten ±0,5 mm (Umschalt ±2 mm),
+  Entf löscht, Strg + D dupliziert. Rechts: Lage/Größe in mm, Schriftgröße, Schriftart, fett/kursiv, Ausrichtung, *weiß auf
+  schwarz*, *verkleinern bis es passt*, *umbrechen*; Ebenen nach vorn/hinten.
+- **Vorlagen:** Standard (wie automatisch), Kompakt (große Schrift), mit Strichcode, leer. Größe und Drehung oben; bei anderer
+  Etikettgröße wird das Layout anteilig mitskaliert. Strichcode: Hinweis, wenn der schmalste Strich unter 0,25 mm (zu fein
+  für 203 dpi) liegt.
+- Jede Änderung wird sofort gespeichert (eigenes Layout); *Automatisch verwenden* schaltet zurück auf das automatische Etikett. Größe (Vorgabe 40 × 60 mm), Drehung um 90° (wenn der
 Drucker das Etikett quer einzieht), Draufsicht an/aus und eine Zusatzzeile (Auftrag, Kunde …) unter *Werkzeuge & Regeln →
 Etiketten*. Im Druckdialog den Etikettendrucker wählen, Papier = Etikettgröße, Ränder „Keine“, Skalierung 100 %.
 

@@ -1779,3 +1779,27 @@ test('Streifen nummeriert: jedes Teil in genau einem Streifen, Nummern ab Anschl
     }
   }
 });
+
+test('Etiketten-Layout: Felder einsetzen, Vorlagen, Skalieren, Strichcode Code 128', () => {
+  const LL = require('../web/js/labels.js');
+  // leere Felder samt Trenner weglassen
+  assert.strictEqual(LL.fill('{datum} · {profil} · {bearbeitung}', { datum: '06.10.26', profil: '', bearbeitung: '2 Bohrungen' }), '06.10.26 · 2 Bohrungen');
+  assert.strictEqual(LL.fill('Nr. {nr}', { nr: 12 }), 'Nr. 12');
+  assert.strictEqual(LL.fill('{gibtsnicht}', {}), '');
+  // Vorlagen liegen im Etikett
+  for (const [k] of LL.TEMPLATES) for (const [w, h] of [[40, 60], [60, 40], [100, 50]]) {
+    const L = LL.layoutOf(k, w, h);
+    for (const e of L.items) assert.ok(e.x >= -0.01 && e.y >= -0.01 && e.x + e.w <= w + 0.01 && e.y + e.h <= h + 0.01, k + ' ' + w + '×' + h + ' ' + e.type);
+  }
+  // Skalieren auf eine andere Größe
+  const s = LL.scaled(LL.layoutOf('standard', 40, 60), 80, 120);
+  assert.strictEqual(s.w, 80);
+  assert.ok(s.items.every((e) => e.x + e.w <= 80.01 && e.y + e.h <= 120.01));
+  // Code 128 B: Start B, Daten, Prüfzeichen (104 + 33·1 + 34·2) mod 103 = 102, Stopp
+  assert.strictEqual(LL.code128('AB'), '211214' + '111323' + '131123' + '411131' + '2331112'); // A = 33, B = 34
+  // Darstellung: Text weg, wenn leer; Hinweis nur bei zweiseitig
+  const two = LL.layoutOf('standard', 40, 60).items.find((e) => e.type === 'two');
+  assert.strictEqual(LL.itemHtml(two, { two: '' }), '');
+  assert.match(LL.itemHtml(two, { two: 'two' }), /2-SEITIG/);
+  assert.match(LL.itemHtml(two, { two: 'warn' }), /Unterseite/);
+});

@@ -91,6 +91,52 @@ header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: 
 .lbl { position: relative; overflow: hidden; background: #fff; color: #000; flex: none; }
 .lbl .lin { position: absolute; left: 0; top: 0; transform-origin: 0 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 0.8mm; font-family: var(--font-body); }
 .lbl .wrow { flex: 1; min-height: 0; display: flex; gap: 1.8mm; }
+/* eigenes Layout (LabelLayout): Elemente absolut in mm */
+.lbl .lin.free { display: block; padding: 0; }
+.lbl .li, .ldlabel .li { position: absolute; box-sizing: border-box; overflow: hidden; color: #000; }
+.li-sk { display: flex; align-items: center; justify-content: center; }
+.li-eg { display: flex; flex-direction: column; gap: 0.3mm; line-height: 1.2; font-family: var(--font-body); }
+.li-eg span { display: flex; align-items: center; gap: 0.8mm; white-space: nowrap; overflow: hidden; }
+.li-eg svg { flex: none; }
+.li-bc { display: flex; flex-direction: column; }
+/* Etiketten-Konfigurator */
+.labeldes { max-width: min(97vw, 1320px); width: min(97vw, 1320px); }
+.labeldes .ldhead { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 12px; font-size: 0.9rem; }
+.labeldes .ldhead h3 { margin: 0 8px 0 0; }
+.labeldes .ldhead input[type=number] { width: 4.5em; font-family: var(--font-mono); }
+.labeldes .ldhead .sp { flex: 1; }
+.labeldes .ldmode { font-size: 0.82rem; color: var(--muted); }
+.labeldes .ldmain { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .labeldes .ldmain { grid-template-columns: 1fr; } }
+.ldstage { position: relative; background: var(--sunken); border-radius: var(--r); padding: 28px; min-height: 360px; display: flex; align-items: flex-start; justify-content: center; overflow: auto; max-height: 76vh; }
+.ldlabel { position: relative; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.3); flex: none; touch-action: none; user-select: none;
+  background-image: radial-gradient(circle, rgba(0,0,0,0.12) 0.12mm, transparent 0.13mm); background-size: 1mm 1mm; }
+.ldlabel .li { cursor: move; outline: 0.12mm dashed rgba(31, 95, 191, 0.45); }
+.ldlabel .li:hover { outline-color: rgba(31, 95, 191, 0.9); }
+.ldlabel .li.sel { outline: 0.25mm solid #1f5fbf; overflow: visible; z-index: 5; }
+.ldlabel .li .lh { position: absolute; right: -0.9mm; bottom: -0.9mm; width: 1.8mm; height: 1.8mm; background: #1f5fbf; border: 0.2mm solid #fff; cursor: nwse-resize; }
+.ldzoom { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 4px; }
+.ldside { display: grid; gap: 14px; max-height: 76vh; overflow: auto; padding-right: 4px; font-size: 0.88rem; }
+.ldside h4 { margin: 0 0 6px; font-size: 0.85rem; }
+.ldside h4 small { font-weight: 400; color: var(--muted); }
+.ldbtns, .ldrow, .ldchips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ldbtns select { max-width: 14em; }
+.ldlist ol { margin: 0; padding-left: 1.6em; display: grid; gap: 2px; max-height: 200px; overflow: auto; }
+.ldlist button { all: unset; cursor: pointer; display: block; padding: 2px 6px; border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px; }
+.ldlist button:hover { background: var(--sunken); }
+.ldlist button[aria-current="true"] { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.ldprops { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
+.ldgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+.ldgrid label { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.ldgrid input { width: 5.5em; font-family: var(--font-mono); }
+.ldprops label.stack { display: grid; gap: 4px; }
+.ldprops textarea, .ldprops input[type=text] { width: 100%; box-sizing: border-box; font: 0.9rem var(--font-mono); }
+.ldchips button { font: 0.75rem var(--font-mono); padding: 2px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.ldchips button:hover { border-color: var(--accent); color: var(--accent); }
+.ldrow label.ck { display: inline-flex; align-items: center; gap: 4px; }
+.btn.danger { color: var(--err); }
+.ldprops .note { margin: 0; font-size: 0.8rem; color: var(--muted); }
+.ldprops .note.warn { color: var(--err); font-weight: 600; }
 .lbl .tx { display: flex; flex-direction: column; min-width: 0; }
 .lbl .ln { line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lbl .nm { font-family: var(--font-display); font-weight: 700; text-overflow: clip; }
@@ -1003,6 +1049,7 @@ table.fmt.one .onet { display: inline; }
 <script src="js/model3d.js"></script>
 <script src="js/cutplan.js"></script>
 <script src="js/pdf.js"></script>
+<script src="js/labels.js"></script>
 <script src="js/occtmesh.js"></script>
 <script src="js/view3d.js"></script>
 <script>
@@ -1156,7 +1203,8 @@ table.fmt.one .onet { display: inline; }
       ['labelHeight', 'Etikett: Höhe', 'number', 'mm'],
       ['labelRotate', 'Inhalt um 90° drehen (Etikett läuft quer ein)', 'bool'],
       ['labelSketch', 'Draufsicht mit Bemaßung', 'bool'],
-      ['labelExtra', 'Zusatzzeile (Auftrag, Kunde …)', 'text', 'leer = ohne']] },
+      ['labelExtra', 'Zusatzzeile (Auftrag, Kunde …)', 'text', 'leer = ohne'],
+      ['labelLayout', 'Etikett gestalten', 'labeldesign']] },
     { title: 'X-Konverter (konvertieren.bat)', c: '--muted', wide: true, fields: [
       ['xconverterPath', 'X-Konverter (XConverter.exe)', 'path'],
       ['toolsFile', 'Werkzeugdatei (.tlgx)', 'path'],
@@ -1396,6 +1444,12 @@ table.fmt.one .onet { display: inline; }
           state.parts.forEach(compute);
           render();
         });
+        continue;
+      }
+      if (type === 'labeldesign') {
+        l.innerHTML = cap + '<span><small id="ldstate">' + (v && v.items ? 'eigenes Layout' : 'automatisch') + '</small> <button type="button" class="btn small" id="' + id + '">✎ Etikett gestalten …</button></span>';
+        g.appendChild(l);
+        l.querySelector('button').addEventListener('click', (ev) => { ev.preventDefault(); openLabelDesigner(); });
         continue;
       }
       if (type === 'board') {
@@ -2627,8 +2681,60 @@ table.fmt.one .onet { display: inline; }
    * (━ Dekor 1, ┅ Dekor 2 mit Seiten), Fußzeile (Datum, Profil, Anzahl Bearbeitungen, Zusatzzeile).
    */
   let lblNums = null;
-  const labelNums = () => { const m = new Map(); for (const row of bomRows()) for (const q of row.parts) m.set(q, row.nums[0]); return m; };
+  const labelNums = () => { const m = new Map(); for (const row of bomRows()) for (const q of row.parts) m.set(q, row); return m; };
+  // Werte für ein eigenes Etikett (LabelLayout): Felder, Draufsicht, Kanten-Legende, Hinweis Seiten
+  function labelData(part) {
+    const r = part.res;
+    const p = r.panel;
+    const cfg = state.settings;
+    const row = lblNums && lblNums.get(part);
+    const board = boardKeyOf(part);
+    const edges = edgesOf(part);
+    const c = counts(r);
+    if (r.side2) { const c2 = counts(r.side2); c.drills += c2.drills; c.mill += c2.mill; c.saw += c2.saw; }
+    const d = new Date();
+    const byDeco = new Map();
+    for (const [k, t] of EDGE_SIDES) if (edges[k]) { if (!byDeco.has(edges[k])) byDeco.set(edges[k], []); byDeco.get(edges[k]).push(t); }
+    const edgeList = Array.from(byDeco.keys()).sort().map((v) => ({ name: decoName(v, board), sides: byDeco.get(v).length === 4 ? 'ringsum' : byDeco.get(v).join(' '), dash: v === 2 }));
+    const tm = row ? row.time : partTime(part);
+    return {
+      nr: row ? row.nums[0] : state.parts.indexOf(part) + 1,
+      name: part.fileName.replace(/\.xcs$/i, ''),
+      datei: part.fileName,
+      masse: n1(p.L) + ' × ' + n1(p.W) + ' × ' + n1(p.T), L: n1(p.L), B: n1(p.W), D: n1(p.T),
+      material: View3D.boardOf(board).name,
+      kanten: edgeText(edges),
+      kantentext: edgeList.map((q) => q.name + ': ' + q.sides).join(' · '),
+      zuschnitt: row ? n1(row.raw.L) + ' × ' + n1(row.raw.W) : '',
+      anzahl: row ? row.qty : qtyOf(part),
+      seiten: r.side2 ? '2-seitig' : '',
+      bearbeitung: [[c.drills, 'Bohrung', 'Bohrungen'], [c.mill, 'Fräsung', 'Fräsungen'], [c.saw, 'Sägeschnitt', 'Sägeschnitte']]
+        .filter((x) => x[0]).map((x) => x[0] + ' ' + (x[0] === 1 ? x[1] : x[2])).join(' · '),
+      zeit: tm ? Toolpath.fmtTime(tm.total) : '',
+      profil: part.profile !== null && part.profile !== undefined ? profName(part.profile) : '',
+      datum: String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getFullYear()).slice(2),
+      auftrag: cfg.labelExtra || '',
+      sketch: (w, h) => labelSketch(p, w, h, edges),
+      edgeList: edgeList,
+      two: r.side2 ? 'two' : r.canTwoSided ? 'warn' : '',
+    };
+  }
+  // Etikett-Größe: Etikett (W × H) und Inhalt in Leserichtung (cw × ch; gedreht = vertauscht)
+  function labelDims() {
+    const cfg = state.settings;
+    const LW = cfg.labelWidth > 0 ? +cfg.labelWidth : 40;
+    const LH = cfg.labelHeight > 0 ? +cfg.labelHeight : 60;
+    const rot = !!cfg.labelRotate;
+    return { LW: LW, LH: LH, rot: rot, cw: rot ? LH : LW, ch: rot ? LW : LH };
+  }
   function labelHtml(part) {
+    const lay = state.settings.labelLayout;
+    if (lay && Array.isArray(lay.items)) {
+      // eigenes Layout aus dem Etiketten-Konfigurator
+      const D = labelDims();
+      return '<div class="lbl" style="width:' + D.LW + 'mm;height:' + D.LH + 'mm"><div class="lin free" style="width:' + D.cw + 'mm;height:' + D.ch + 'mm;' +
+        (D.rot ? 'transform:translate(' + D.LW + 'mm,0) rotate(90deg);' : '') + '">' + LabelLayout.render(lay, labelData(part), D.cw, D.ch) + '</div></div>';
+    }
     const r = part.res;
     const p = r.panel;
     const cfg = state.settings;
@@ -2640,7 +2746,7 @@ table.fmt.one .onet { display: inline; }
     const pad = 1.6;
     const name = part.fileName.replace(/\.xcs$/i, '');
     // Nr. wie im Zuschnittplan (erste Nummer der Stücklisten-Position – gleiche Teile tragen dieselbe)
-    const no = (lblNums && lblNums.get(part)) || state.parts.indexOf(part) + 1;
+    const no = (lblNums && lblNums.get(part) && lblNums.get(part).nums[0]) || state.parts.indexOf(part) + 1;
     const board = boardKeyOf(part);
     const c = counts(r);
     if (r.side2) { const c2 = counts(r.side2); c.drills += c2.drills; c.mill += c2.mill; c.saw += c2.saw; }
@@ -2701,9 +2807,11 @@ table.fmt.one .onet { display: inline; }
       '<p class="note">Im Druckdialog den Etikettendrucker wählen, Papiergröße ' + esc(String(cfg.labelWidth)) + ' × ' + esc(String(cfg.labelHeight)) +
       ' mm, Ränder „Keine“, Skalierung 100 %. Größe und Drehung unter <i>Werkzeuge &amp; Regeln → Etiketten</i>.</p>' +
       '<div class="row"><button class="btn ghost" type="button" id="lrot">Inhalt drehen: ' + (cfg.labelRotate ? 'an' : 'aus') + '</button>' +
+      '<button class="btn ghost" type="button" id="ldes" title="Etikett selbst gestalten: Elemente, Felder, Schrift, Lage">✎ Gestalten …</button>' +
       '<span class="sp"></span><button class="btn ghost" type="button" id="lclose">Schließen</button><button class="btn primary" type="button" id="lprint">' + ICON_PRINT + ' Drucken</button></div>';
     if (!dlg.open) dlg.showModal();
     $('lclose').addEventListener('click', () => dlg.close());
+    $('ldes').addEventListener('click', () => { dlg.close(); openLabelDesigner(list[0], () => openLabels(parts)); });
     $('lrot').addEventListener('click', () => {
       state.settings.labelRotate = !state.settings.labelRotate;
       saveSettings();
@@ -2712,6 +2820,268 @@ table.fmt.one .onet { display: inline; }
       openLabels(parts);
     });
     $('lprint').addEventListener('click', () => { dlg.close(); printLabels(list); });
+  }
+  /*
+   * Etiketten-Konfigurator: eigenes Layout (state.settings.labelLayout = { w, h, items }, LabelLayout) frei gestalten –
+   * Elemente ziehen (Raster 0,5 mm, Alt = frei), Größe am Griff unten rechts, Pfeiltasten verschieben, Entf löscht;
+   * rechts Elemente hinzufügen, Liste (Reihenfolge = Ebenen) und Eigenschaften. Jede Änderung wird gleich gespeichert.
+   */
+  let ld = null; // { lay, sel, part, onClose }
+  const LD_TYPES = { text: 'Text', two: 'Hinweis 2-seitig', sketch: 'Draufsicht', edges: 'Kanten-Legende', barcode: 'Strichcode', box: 'Linie / Rahmen' };
+  function openLabelDesigner(part, onClose) {
+    const parts = state.parts.filter((x) => x.res && x.res.panel);
+    if (!parts.length) { toast('Erst Teile laden – das Etikett wird an einem echten Teil gezeigt.'); return; }
+    const D = labelDims();
+    lblNums = labelNums();
+    const own = state.settings.labelLayout && Array.isArray(state.settings.labelLayout.items);
+    ld = { lay: own ? LabelLayout.scaled(JSON.parse(JSON.stringify(state.settings.labelLayout)), D.cw, D.ch) : LabelLayout.layoutOf('standard', D.cw, D.ch),
+      own: own, sel: null, part: part && parts.includes(part) ? part : parts[Math.max(0, Math.min(parts.length - 1, state.sel))], onClose: onClose || null,
+      zoom: Math.max(4, Math.min(14, Math.round(Math.min((window.innerHeight * 0.64) / D.ch, (window.innerWidth * 0.5) / D.cw)))) };
+    let dlg = $('labeldes');
+    if (!dlg) {
+      dlg = document.createElement('dialog');
+      dlg.id = 'labeldes';
+      dlg.className = 'labeldlg labeldes';
+      document.body.appendChild(dlg);
+      dlg.addEventListener('close', () => { const f = ld && ld.onClose; ld = null; renderSoon(); if (f) f(); });
+      document.addEventListener('keydown', ldKey); // Fokus kann nach dem Neuzeichnen auf der Seite liegen
+    }
+    renderLD();
+    if (!dlg.open) dlg.showModal();
+  }
+  // Layout speichern (eigenes Layout ab der ersten Änderung)
+  function ldSave() {
+    ld.own = true;
+    state.settings.labelLayout = JSON.parse(JSON.stringify(ld.lay));
+    saveSettings();
+    const st = $('ldstate');
+    if (st) st.textContent = 'eigenes Layout';
+  }
+  const ldItem = () => ld && ld.lay.items.find((e) => e.id === ld.sel);
+  const snapMm = (v, free) => (free ? Math.round(v * 10) / 10 : Math.round(v * 2) / 2);
+  function ldStageHtml() {
+    const D = labelDims();
+    const data = labelData(ld.part);
+    if (!data.two) data.two = 'two'; // Hinweis im Editor immer zeigen
+    const lay = { w: ld.lay.w, h: ld.lay.h, items: ld.lay.items };
+    return '<div class="ldlabel" id="ldlabel" style="width:' + D.cw + 'mm;height:' + D.ch + 'mm;zoom:' + (ld.zoom / 3.7795).toFixed(4) + '">' +
+      LabelLayout.render(lay, data, D.cw, D.ch, { edit: true }) + '</div>';
+  }
+  function ldInspector() {
+    const e = ldItem();
+    const fieldOpts = LabelLayout.FIELDS.map(([k, t]) => '<option value="' + k + '">{' + k + '} – ' + esc(t) + '</option>').join('');
+    let h = '<div class="ldadd"><h4>Hinzufügen</h4><div class="ldbtns">' +
+      '<button type="button" class="btn small" data-ldadd="text">Text</button>' +
+      '<select id="ldfield" aria-label="Feld als Text hinzufügen"><option value="">Feld …</option>' + fieldOpts + '</select>' +
+      '<button type="button" class="btn small" data-ldadd="sketch">Draufsicht</button><button type="button" class="btn small" data-ldadd="edges">Kanten</button>' +
+      '<button type="button" class="btn small" data-ldadd="two">Hinweis 2-seitig</button><button type="button" class="btn small" data-ldadd="barcode">Strichcode</button>' +
+      '<button type="button" class="btn small" data-ldadd="line">Linie</button><button type="button" class="btn small" data-ldadd="box">Rahmen</button></div></div>';
+    h += '<div class="ldlist"><h4>Elemente <small>(unten = vorne)</small></h4><ol>' + ld.lay.items.map((x) => '<li><button type="button" data-ldsel="' + esc(x.id) + '"' +
+      (x.id === ld.sel ? ' aria-current="true"' : '') + '><b>' + esc(LD_TYPES[x.type] || x.type) + '</b> ' + esc(String(x.text || '').slice(0, 28)) + '</button></li>').join('') + '</ol></div>';
+    if (!e) return h + '<p class="note">Element anklicken (in der Vorschau oder in der Liste), um es zu ändern. Ziehen verschiebt, der Griff unten rechts ändert die Größe; Pfeiltasten ±0,5 mm (mit Umschalt ±2 mm), Entf löscht.</p>';
+    const num = (k, label, step) => '<label><span>' + label + '</span><input type="number" step="' + (step || 0.5) + '" data-ldp="' + k + '" value="' + esc(e[k] === undefined ? '' : e[k]) + '"></label>';
+    const chk = (k, label) => '<label class="ck"><input type="checkbox" data-ldp="' + k + '"' + (e[k] ? ' checked' : '') + '> ' + label + '</label>';
+    const seg = (k, opts) => '<span class="seg" role="group">' + opts.map(([v, t]) => '<button type="button" data-ldseg="' + k + '" data-v="' + v + '" aria-pressed="' + ((e[k] || opts[0][0]) === v) + '">' + t + '</button>').join('') + '</span>';
+    h += '<div class="ldprops"><h4>' + esc(LD_TYPES[e.type] || e.type) + '</h4><div class="ldgrid">' + num('x', 'X') + num('y', 'Y') + num('w', 'Breite') + num('h', 'Höhe') + '</div>';
+    if (e.type === 'text' || e.type === 'two' || e.type === 'barcode') {
+      h += '<label class="stack"><span>' + (e.type === 'two' ? 'Text bei 2-seitig' : 'Text') + ' <small>– Felder in { }</small></span><textarea rows="2" data-ldp="text">' + esc(e.text || '') + '</textarea></label>';
+      if (e.type === 'two') h += '<label class="stack"><span>Text bei Bearbeitung von unten (einseitig) <small>– leer = nichts</small></span><input type="text" data-ldp="text2" value="' + esc(e.text2 || '') + '"></label>';
+      h += '<div class="ldchips">' + LabelLayout.FIELDS.slice(0, 12).map(([k, t]) => '<button type="button" data-ldins="{' + k + '}" title="' + esc(t) + '">{' + k + '}</button>').join('') + '</div>';
+    }
+    if (e.type === 'text' || e.type === 'two') {
+      h += '<div class="ldgrid">' + num('size', 'Schrift mm', 0.1) + '<label><span>Schriftart</span><select data-ldp="font">' + [['body', 'Normal'], ['display', 'Titel'], ['mono', 'Ziffern (fest)']]
+        .map(([v, t]) => '<option value="' + v + '"' + ((e.font || 'body') === v ? ' selected' : '') + '>' + t + '</option>').join('') + '</select></label></div>' +
+        '<div class="ldrow">' + seg('align', [['l', 'links'], ['c', 'Mitte'], ['r', 'rechts']]) + seg('valign', [['t', 'oben'], ['m', 'Mitte'], ['b', 'unten']]) + '</div>' +
+        '<div class="ldrow">' + chk('bold', 'fett') + chk('italic', 'kursiv') + chk('inv', 'weiß auf schwarz') + chk('fit', 'verkleinern bis es passt') + chk('wrap', 'umbrechen') + '</div>';
+    }
+    if (e.type === 'edges') h += '<div class="ldgrid">' + num('size', 'Schrift mm', 0.1) + '</div>';
+    if (e.type === 'barcode') {
+      // Strichbreite: unter 0,25 mm (2 Punkte bei 203 dpi) lässt sich der Code kaum drucken und lesen
+      const t = LabelLayout.fill(e.text, labelData(ld.part));
+      const mods = LabelLayout.code128(t).split('').reduce((a, c) => a + +c, 0) + 20;
+      const mw = e.w / mods;
+      h += '<div class="ldrow">' + chk('human', 'Klartext darunter') + '</div><div class="ldgrid">' + num('size', 'Klartext mm', 0.1) + '</div>' +
+        '<p class="note' + (mw < 0.25 ? ' warn' : '') + '">Schmalster Strich ' + n1(mw) + ' mm' + (mw < 0.25 ? ' – zu fein für 203 dpi: kürzerer Text (z. B. {nr}) oder breiter machen.' : ' – gut lesbar.') + '</p>';
+    }
+    if (e.type === 'box') h += '<div class="ldgrid">' + num('border', 'Rahmen mm', 0.05) + num('radius', 'Ecken mm', 0.1) + '</div><div class="ldrow">' + chk('fill', 'schwarz gefüllt') + '</div>';
+    h += '<div class="ldrow"><button type="button" class="btn small" data-ldact="dup">Duplizieren</button><button type="button" class="btn small" data-ldact="up" title="eine Ebene nach vorn">▼ nach vorn</button>' +
+      '<button type="button" class="btn small" data-ldact="down" title="eine Ebene nach hinten">▲ nach hinten</button><button type="button" class="btn small danger" data-ldact="del">Löschen</button></div></div>';
+    return h;
+  }
+  function renderLD() {
+    const dlg = $('labeldes');
+    if (!dlg || !ld) return;
+    const D = labelDims();
+    const parts = state.parts.filter((x) => x.res && x.res.panel);
+    const scroll = dlg.querySelector('.ldside') ? dlg.querySelector('.ldside').scrollTop : 0;
+    dlg.innerHTML = '<div class="ldhead"><h3>Etikett gestalten</h3>' +
+      '<label>Etikett <input type="number" min="10" step="1" id="ldW" value="' + D.LW + '" aria-label="Etikett Breite"> × <input type="number" min="10" step="1" id="ldH" value="' + D.LH + '" aria-label="Etikett Höhe"> mm</label>' +
+      '<label><input type="checkbox" id="ldrot"' + (D.rot ? ' checked' : '') + '> Inhalt um 90° drehen</label>' +
+      '<label>Vorlage <select id="ldtpl">' + LabelLayout.TEMPLATES.map(([k, t]) => '<option value="' + k + '">' + esc(t) + '</option>').join('') + '</select></label>' +
+      '<button type="button" class="btn small" id="ldtplgo" title="Ersetzt das Layout durch die Vorlage">Laden</button>' +
+      '<label>Vorschau <select id="ldpart">' + parts.map((x, i) => '<option value="' + i + '"' + (x === ld.part ? ' selected' : '') + '>' + esc((i + 1) + ' · ' + x.fileName.replace(/\.xcs$/i, '')) + '</option>').join('') + '</select></label>' +
+      '<span class="sp"></span><span class="ldmode">' + (ld.own ? 'Eigenes Layout' : 'Automatisch – die erste Änderung speichert ein eigenes Layout') + '</span>' +
+      (ld.own ? '<button type="button" class="btn ghost small" id="ldauto" title="Eigenes Layout verwerfen, wieder das automatische Etikett">Automatisch verwenden</button>' : '') +
+      '<button type="button" class="btn primary small" id="ldclose">Fertig</button></div>' +
+      '<div class="ldmain"><div class="ldstage" id="ldstage">' + ldStageHtml() + '<div class="ldzoom"><button type="button" class="btn small" data-ldz="-1" aria-label="kleiner">−</button>' +
+      '<button type="button" class="btn small" data-ldz="1" aria-label="größer">+</button></div></div><div class="ldside">' + ldInspector() + '</div></div>';
+    dlg.querySelector('.ldside').scrollTop = scroll;
+    ldWire(dlg);
+  }
+  // nur die Vorschau neu (beim Tippen in den Eigenschaften, Fokus bleibt)
+  function ldRefreshStage() {
+    const st = $('ldstage');
+    if (!st || !ld) return;
+    const lab = $('ldlabel');
+    if (lab) lab.outerHTML = ldStageHtml();
+    ldMarkSel();
+  }
+  function ldMarkSel() {
+    const lab = $('ldlabel');
+    if (!lab) return;
+    lab.querySelectorAll('[data-li]').forEach((n) => {
+      n.classList.toggle('sel', n.dataset.li === ld.sel);
+      if (n.dataset.li === ld.sel && !n.querySelector('.lh')) { const hd = document.createElement('span'); hd.className = 'lh'; n.appendChild(hd); }
+    });
+  }
+  function ldChanged(full) { ldSave(); if (full) renderLD(); else ldRefreshStage(); }
+  function ldWire(dlg) {
+    ldMarkSel();
+    $('ldclose').addEventListener('click', () => dlg.close());
+    if ($('ldauto')) $('ldauto').addEventListener('click', () => {
+      state.settings.labelLayout = null;
+      saveSettings();
+      ld.own = false;
+      const st = $('ldstate');
+      if (st) st.textContent = 'automatisch';
+      toast('Wieder das automatische Etikett.');
+      renderLD();
+    });
+    const size = () => {
+      const W = Math.max(10, +$('ldW').value || 40);
+      const H = Math.max(10, +$('ldH').value || 60);
+      state.settings.labelWidth = W;
+      state.settings.labelHeight = H;
+      state.settings.labelRotate = $('ldrot').checked;
+      const D = labelDims();
+      ld.lay = LabelLayout.scaled(ld.lay, D.cw, D.ch);
+      for (const [k, v] of [['labelWidth', W], ['labelHeight', H]]) { const i = $('set-' + k); if (i) i.value = v; }
+      const cb = $('set-labelRotate');
+      if (cb) cb.checked = state.settings.labelRotate;
+      if (ld.own) ldSave(); else saveSettings();
+      renderLD();
+    };
+    $('ldW').addEventListener('change', size);
+    $('ldH').addEventListener('change', size);
+    $('ldrot').addEventListener('change', size);
+    $('ldpart').addEventListener('change', (e) => { ld.part = state.parts.filter((x) => x.res && x.res.panel)[+e.target.value]; renderLD(); });
+    $('ldtplgo').addEventListener('click', () => {
+      const D = labelDims();
+      ld.lay = LabelLayout.layoutOf($('ldtpl').value, D.cw, D.ch);
+      ld.sel = null;
+      ldChanged(true);
+    });
+    dlg.querySelectorAll('[data-ldz]').forEach((b) => b.addEventListener('click', () => { ld.zoom = Math.max(3, Math.min(14, ld.zoom + +b.dataset.ldz)); renderLD(); }));
+    // hinzufügen
+    const add = (o) => {
+      const D = labelDims();
+      const e = LabelLayout.newItem(Object.assign({ x: Math.max(0, D.cw / 2 - 10), y: Math.max(0, D.ch / 2 - 3), w: Math.min(20, D.cw), h: 6 }, o));
+      ld.lay.items.push(e);
+      ld.sel = e.id;
+      ldChanged(true);
+    };
+    dlg.querySelectorAll('[data-ldadd]').forEach((b) => b.addEventListener('click', () => {
+      const D = labelDims();
+      const t = b.dataset.ldadd;
+      if (t === 'text') add({ type: 'text', text: 'Text', size: 3, fit: true });
+      else if (t === 'sketch') add({ type: 'sketch', x: 2, y: 2, w: D.cw - 4, h: D.ch / 2 });
+      else if (t === 'edges') add({ type: 'edges', h: 6, w: D.cw - 4, x: 2, size: 2.2 });
+      else if (t === 'two') add({ type: 'two', text: '⇅ 2-SEITIG · WENDEN', text2: '! Unterseite beachten', size: 2.4, bold: true, inv: true, align: 'c', valign: 'm', fit: true, h: 4, w: D.cw - 4, x: 2 });
+      else if (t === 'barcode') add({ type: 'barcode', text: '{nr}', human: true, size: 1.8, h: 9, w: D.cw - 4, x: 2 });
+      else if (t === 'line') add({ type: 'box', fill: true, h: 0.3, w: D.cw - 4, x: 2 });
+      else if (t === 'box') add({ type: 'box', border: 0.3, w: D.cw - 4, x: 2, h: 10 });
+    }));
+    $('ldfield').addEventListener('change', (ev) => { const k = ev.target.value; if (k) add({ type: 'text', text: '{' + k + '}', size: 3, fit: true, bold: k === 'nr' || k === 'masse' }); });
+    dlg.querySelectorAll('[data-ldsel]').forEach((b) => b.addEventListener('click', () => { ld.sel = b.dataset.ldsel; renderLD(); }));
+    // Eigenschaften
+    const e = ldItem();
+    dlg.querySelectorAll('[data-ldp]').forEach((inp) => {
+      const k = inp.dataset.ldp;
+      const apply = () => {
+        if (!e) return;
+        if (inp.type === 'checkbox') e[k] = inp.checked;
+        else if (inp.type === 'number') { const v = parseFloat(String(inp.value).replace(',', '.')); if (isNaN(v)) return; e[k] = Math.max(k === 'x' || k === 'y' ? -50 : 0, v); }
+        else e[k] = inp.value;
+        ldChanged(false);
+      };
+      inp.addEventListener(inp.type === 'checkbox' || inp.tagName === 'SELECT' ? 'change' : 'input', apply);
+    });
+    dlg.querySelectorAll('[data-ldseg]').forEach((b) => b.addEventListener('click', () => { if (!e) return; e[b.dataset.ldseg] = b.dataset.v; ldChanged(true); }));
+    dlg.querySelectorAll('[data-ldins]').forEach((b) => b.addEventListener('click', () => {
+      const ta = dlg.querySelector('textarea[data-ldp="text"]');
+      if (!ta || !e) return;
+      const a = ta.selectionStart;
+      ta.value = ta.value.slice(0, a) + b.dataset.ldins + ta.value.slice(ta.selectionEnd);
+      e.text = ta.value;
+      ldChanged(false);
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = a + b.dataset.ldins.length;
+    }));
+    dlg.querySelectorAll('[data-ldact]').forEach((b) => b.addEventListener('click', () => ldAct(b.dataset.ldact)));
+    // Ziehen / Größe ändern
+    const lab = $('ldlabel');
+    lab.addEventListener('pointerdown', (ev) => {
+      const n = ev.target.closest('[data-li]');
+      if (!n) { if (ld.sel) { ld.sel = null; renderLD(); } return; }
+      ev.preventDefault();
+      const it = ld.lay.items.find((x) => x.id === n.dataset.li);
+      if (!it) return;
+      if (ld.sel !== it.id) { ld.sel = it.id; renderLD(); }
+      const lab2 = $('ldlabel');
+      const node = lab2.querySelector('[data-li="' + it.id + '"]');
+      const rect = lab2.getBoundingClientRect();
+      const D = labelDims();
+      const k = rect.width / D.cw; // px je mm
+      const res = ev.target.classList.contains('lh');
+      const s0 = { x: ev.clientX, y: ev.clientY, ex: it.x, ey: it.y, ew: it.w, eh: it.h };
+      let moved = false;
+      const mv = (m) => {
+        const dx = (m.clientX - s0.x) / k;
+        const dy = (m.clientY - s0.y) / k;
+        if (Math.abs(dx) + Math.abs(dy) > 0.2) moved = true;
+        if (res) { it.w = Math.max(0.2, snapMm(s0.ew + dx, m.altKey)); it.h = Math.max(0.2, snapMm(s0.eh + dy, m.altKey)); }
+        else { it.x = snapMm(s0.ex + dx, m.altKey); it.y = snapMm(s0.ey + dy, m.altKey); }
+        node.style.left = it.x + 'mm'; node.style.top = it.y + 'mm'; node.style.width = it.w + 'mm'; node.style.height = it.h + 'mm';
+      };
+      const up = () => {
+        window.removeEventListener('pointermove', mv);
+        window.removeEventListener('pointerup', up);
+        if (moved) ldChanged(true);
+      };
+      window.addEventListener('pointermove', mv);
+      window.addEventListener('pointerup', up);
+    });
+  }
+  function ldAct(a) {
+    const e = ldItem();
+    if (!e) return;
+    const items = ld.lay.items;
+    const i = items.indexOf(e);
+    if (a === 'del') { items.splice(i, 1); ld.sel = null; }
+    else if (a === 'dup') { const c = LabelLayout.newItem(Object.assign({}, e, { id: undefined, x: e.x + 1, y: e.y + 1 })); items.splice(i + 1, 0, c); ld.sel = c.id; }
+    else if (a === 'up' && i < items.length - 1) { items.splice(i, 1); items.splice(i + 1, 0, e); }
+    else if (a === 'down' && i > 0) { items.splice(i, 1); items.splice(i - 1, 0, e); }
+    ldChanged(true);
+  }
+  function ldKey(ev) {
+    if (!ld || !ld.sel || !$('labeldes').open || /^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName)) return;
+    const e = ldItem();
+    if (!e) return;
+    const st = ev.shiftKey ? 2 : 0.5;
+    const mv = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, -st], ArrowDown: [0, st] }[ev.key];
+    if (mv) { ev.preventDefault(); e.x = Math.round((e.x + mv[0]) * 10) / 10; e.y = Math.round((e.y + mv[1]) * 10) / 10; ldChanged(true); }
+    else if (ev.key === 'Delete' || ev.key === 'Backspace') { ev.preventDefault(); ldAct('del'); }
+    else if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'd') { ev.preventDefault(); ldAct('dup'); }
   }
   // Etiketten direkt drucken (Druckbereich in Etikettgröße, schwarz-weiß) – auch aus dem Sägemodus
   function printLabels(list) {

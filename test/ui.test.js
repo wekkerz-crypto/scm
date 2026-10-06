@@ -653,6 +653,74 @@ test('Web-Tool: Etiketten 40 × 60 (Vorschau, Druckbereich, Seitengröße)', { s
   }
 });
 
+test('Web-Tool: Etiketten-Konfigurator (Elemente ziehen, Felder, Vorlage, Druck, wieder automatisch)', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1440, height: 950 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    await p.evaluate(() => { window.__printed = 0; window.print = () => { window.__printed++; }; });
+    await p.click('#label');
+    await p.waitForSelector('#labeldlg[open]');
+    await p.click('#ldes');
+    await p.waitForSelector('#labeldes[open] #ldlabel');
+    assert.match(await p.textContent('.ldmode'), /Automatisch/);
+    const n0 = await p.$$eval('#ldlabel [data-li]', (x) => x.length);
+    assert.ok(n0 >= 8);
+    // Element ziehen: Lage in mm (Raster 0,5) gespeichert
+    const sel = '#ldlabel [data-li] >> nth=2';
+    const id = await p.getAttribute(sel, 'data-li');
+    const bb = await p.locator(sel).boundingBox();
+    await p.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2);
+    await p.mouse.down();
+    await p.mouse.move(bb.x + bb.width / 2 + 40, bb.y + bb.height / 2 + 60, { steps: 6 });
+    await p.mouse.up();
+    const stored = () => p.evaluate(() => {
+      const k = Object.keys(localStorage).find((x) => { try { return 'labelLayout' in JSON.parse(localStorage.getItem(x)); } catch (e) { return false; } });
+      return k ? JSON.parse(localStorage.getItem(k)).labelLayout : undefined;
+    });
+    let lay = await stored();
+    const it = lay.items.find((e) => e.id === id);
+    assert.ok(it.y > 10 && (it.x * 2) % 1 === 0, JSON.stringify(it));
+    assert.match(await p.textContent('.ldmode'), /Eigenes Layout/);
+    // Feld als Text hinzufügen, Text ändern, fett
+    await p.selectOption('#ldfield', 'material');
+    lay = await stored();
+    assert.strictEqual(lay.items.length, n0 + 1);
+    await p.fill('textarea[data-ldp="text"]', 'Material: {material}');
+    await p.check('input[data-ldp="bold"]');
+    assert.match(await p.textContent('#ldlabel'), /Material: /);
+    // Vorlage mit Strichcode
+    await p.selectOption('#ldtpl', 'barcode');
+    await p.click('#ldtplgo');
+    assert.ok(await p.$('#ldlabel .li-bc svg rect'));
+    // Löschen per Taste
+    await p.click('#ldlabel [data-li] >> nth=0');
+    const n1 = await p.$$eval('#ldlabel [data-li]', (x) => x.length);
+    await p.keyboard.press('Delete');
+    assert.strictEqual(await p.$$eval('#ldlabel [data-li]', (x) => x.length), n1 - 1);
+    // fertig → Vorschau und Druck mit eigenem Layout
+    await p.click('#ldclose');
+    await p.waitForSelector('#labeldlg[open] .lbl .lin.free');
+    await p.click('#lprint');
+    assert.strictEqual(await p.evaluate(() => window.__printed), 1);
+    assert.ok(await p.$('#printarea .lbl .lin.free .li-bc'));
+    // wieder automatisch
+    await p.click('#label');
+    await p.click('#ldes');
+    await p.click('#ldauto');
+    assert.strictEqual(await stored(), null);
+    await p.click('#ldclose');
+    await p.waitForSelector('#labeldlg[open] .lbl');
+    assert.strictEqual(await p.$('#labeldlg .lbl .lin.free'), null);
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});
+
 test('Web-Tool: Vorschub/Drehzahl je Bearbeitung (Untermenü)', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
   const browser = await chromium.launch();
   try {

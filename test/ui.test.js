@@ -694,6 +694,14 @@ test('Web-Tool: Spalten Etiketten (Konfigurator, Druckliste) und Material', { sk
     await p.fill('textarea[data-ldp="text"]', 'Material: {material}');
     await p.check('input[data-ldp="bold"]');
     assert.match(await p.textContent('#ldlabel'), /Material: /);
+    // Draufsicht mit Zuschnittmaß neben der mit Fertigmaß: andere Zahlen an der Bemaßung
+    const dimsOf = (i) => p.$$eval('#ldlabel .li-sk', (x, k) => Array.from(x[k].querySelectorAll('text')).map((t) => t.textContent).join('/'), i);
+    await p.click('[data-ldadd="sketchcut"]');
+    const nSk = await p.$$eval('#ldlabel .li-sk', (x) => x.length);
+    assert.notStrictEqual(await dimsOf(nSk - 1), await dimsOf(0));
+    assert.match(await p.textContent('.ldlist [aria-current="true"]'), /Zuschnittmaß/);
+    await p.click('[data-ldseg="dims"][data-v="fertig"]');
+    assert.strictEqual(await dimsOf(nSk - 1), await dimsOf(0));
     // Vorlage mit Strichcode
     await p.selectOption('#ldtpl', 'barcode');
     await p.click('#ldtplgo');

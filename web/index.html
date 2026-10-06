@@ -1262,6 +1262,7 @@ table.fmt.one .onet { display: inline; }
       ['labelHeight', 'Etikett: Höhe', 'number', 'mm'],
       ['labelRotate', 'Inhalt um 90° drehen (Etikett läuft quer ein)', 'bool'],
       ['labelSketch', 'Draufsicht mit Bemaßung', 'bool'],
+      ['labelSketchDims', 'Bemaßung der Draufsicht', 'choice', [['fertig', 'Fertigmaß'], ['zuschnitt', 'Zuschnittmaß (wie im Zuschnittplan)']]],
       ['labelExtra', 'Zusatzzeile (Auftrag, Kunde …)', 'text', 'leer = ohne'],
       ['labelLayout', 'Etikett gestalten', 'labeldesign']] },
     { title: 'X-Konverter (konvertieren.bat)', c: '--muted', wide: true, fields: [
@@ -2675,7 +2676,8 @@ table.fmt.one .onet { display: inline; }
     'fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><rect x="4" y="9.5" width="8" height="5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>';
   const n1 = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
   // Draufsicht in mm (w × h), schwarz-weiß für Thermodrucker: Kontur, Durchbrüche, Taschen, Bohrungen, Nullpunkt, Länge und Breite
-  function labelSketch(p, w, h, edges) {
+  // dims = { L, W }: andere Zahlen an der Bemaßung (Zuschnittmaß), Zeichnung bleibt das Teil
+  function labelSketch(p, w, h, edges, dims) {
     const fs = 2.3;
     // Platz für die Maße: an Seiten mit Kantenband (vorne L1, links B1) etwas mehr
     const gl = edges && edges.b1 ? 1 : 0;
@@ -2735,9 +2737,9 @@ table.fmt.one .onet { display: inline; }
     s += tick(X(0), yb) + tick(X(p.L), yb) + tick(xl, Y(0)) + tick(xl, Y(p.W));
     const tx = (x, y, t, rot) => '<text x="' + x + '" y="' + y + '" font-size="' + fs + '" font-weight="600" text-anchor="middle" dominant-baseline="' + (rot ? 'auto' : 'hanging') + '"' +
       (rot ? ' transform="rotate(-90 ' + x + ' ' + y + ')"' : '') + ' paint-order="stroke" stroke="#fff" stroke-width="0.6">' + t + '</text>';
-    // Fertigmaße (aus dem Modell, nicht Zuschnitt) – nur die Zahl
-    s += tx((X(0) + X(p.L)) / 2, yb + 0.35, n1(p.L));
-    s += tx(xl - 0.35, (Y(0) + Y(p.W)) / 2, n1(p.W), true);
+    // Fertigmaß (aus dem Modell) bzw. Zuschnittmaß – nur die Zahl
+    s += tx((X(0) + X(p.L)) / 2, yb + 0.35, n1(dims ? dims.L : p.L));
+    s += tx(xl - 0.35, (Y(0) + Y(p.W)) / 2, n1(dims ? dims.W : p.W), true);
     return s + '</svg>';
   }
   /*
@@ -2770,7 +2772,7 @@ table.fmt.one .onet { display: inline; }
       material: View3D.boardOf(board).name,
       kanten: edgeText(edges),
       kantentext: edgeList.map((q) => q.name + ': ' + q.sides).join(' · '),
-      zuschnitt: row ? n1(row.raw.L) + ' × ' + n1(row.raw.W) : '',
+      zuschnitt: ((z) => n1(z.L) + ' × ' + n1(z.W))(cutDimsOf(part)),
       anzahl: row ? row.qty : qtyOf(part),
       seiten: r.side2 ? '2-seitig' : '',
       bearbeitung: [[c.drills, 'Bohrung', 'Bohrungen'], [c.mill, 'Fräsung', 'Fräsungen'], [c.saw, 'Sägeschnitt', 'Sägeschnitte']]
@@ -2779,7 +2781,7 @@ table.fmt.one .onet { display: inline; }
       profil: part.profile !== null && part.profile !== undefined ? profName(part.profile) : '',
       datum: String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getFullYear()).slice(2),
       auftrag: cfg.labelExtra || '',
-      sketch: (w, h) => labelSketch(p, w, h, edges),
+      sketch: (w, h, dm) => labelSketch(p, w, h, edges, (dm || cfg.labelSketchDims) === 'zuschnitt' ? cutDimsOf(part) : null),
       edgeList: edgeList,
       two: r.side2 ? 'two' : r.canTwoSided ? 'warn' : '',
     };
@@ -2849,7 +2851,7 @@ table.fmt.one .onet { display: inline; }
     if (cfg.labelSketch !== false) {
       const sw = wide ? cw - tw - 3 * pad : cw - 2 * pad;
       const sh = wide ? ch - 2 * pad - 6.2 : ch - 2 * pad - lines;
-      if (sw > 8 && sh > 8) sketch = '<div class="sk">' + labelSketch(p, +sw.toFixed(2), +sh.toFixed(2), edges) + '</div>';
+      if (sw > 8 && sh > 8) sketch = '<div class="sk">' + labelSketch(p, +sw.toFixed(2), +sh.toFixed(2), edges, cfg.labelSketchDims === 'zuschnitt' ? cutDimsOf(part) : null) + '</div>';
     }
     return '<div class="lbl" style="width:' + LW + 'mm;height:' + LH + 'mm"><div class="lin' + (wide ? ' wide' : '') + '" style="width:' + cw + 'mm;height:' + ch + 'mm;padding:' + pad + 'mm;' +
       (rot ? 'transform:translate(' + LW + 'mm,0) rotate(90deg);' : '') + '">' +
@@ -2943,11 +2945,13 @@ table.fmt.one .onet { display: inline; }
     let h = '<div class="ldadd"><h4>Hinzufügen</h4><div class="ldbtns">' +
       '<button type="button" class="btn small" data-ldadd="text">Text</button>' +
       '<select id="ldfield" aria-label="Feld als Text hinzufügen"><option value="">Feld …</option>' + fieldOpts + '</select>' +
-      '<button type="button" class="btn small" data-ldadd="sketch">Draufsicht</button><button type="button" class="btn small" data-ldadd="edges">Kanten</button>' +
+      '<button type="button" class="btn small" data-ldadd="sketch">Draufsicht Fertigmaß</button><button type="button" class="btn small" data-ldadd="sketchcut">Draufsicht Zuschnitt</button>' +
+      '<button type="button" class="btn small" data-ldadd="edges">Kanten</button>' +
       '<button type="button" class="btn small" data-ldadd="two">Hinweis 2-seitig</button><button type="button" class="btn small" data-ldadd="barcode">Strichcode</button>' +
       '<button type="button" class="btn small" data-ldadd="line">Linie</button><button type="button" class="btn small" data-ldadd="box">Rahmen</button></div></div>';
     h += '<div class="ldlist"><h4>Elemente <small>(unten = vorne)</small></h4><ol>' + ld.lay.items.map((x) => '<li><button type="button" data-ldsel="' + esc(x.id) + '"' +
-      (x.id === ld.sel ? ' aria-current="true"' : '') + '><b>' + esc(LD_TYPES[x.type] || x.type) + '</b> ' + esc(String(x.text || '').slice(0, 28)) + '</button></li>').join('') + '</ol></div>';
+      (x.id === ld.sel ? ' aria-current="true"' : '') + '><b>' + esc(LD_TYPES[x.type] || x.type) + '</b> ' +
+      esc(x.type === 'sketch' ? (x.dims === 'zuschnitt' ? 'Zuschnittmaß' : 'Fertigmaß') : String(x.text || '').slice(0, 28)) + '</button></li>').join('') + '</ol></div>';
     if (!e) return h + '<p class="note">Element anklicken (in der Vorschau oder in der Liste), um es zu ändern. Ziehen verschiebt, der Griff unten rechts ändert die Größe; Pfeiltasten ±0,5 mm (mit Umschalt ±2 mm), Entf löscht.</p>';
     const num = (k, label, step) => '<label><span>' + label + '</span><input type="number" step="' + (step || 0.5) + '" data-ldp="' + k + '" value="' + esc(e[k] === undefined ? '' : e[k]) + '"></label>';
     const chk = (k, label) => '<label class="ck"><input type="checkbox" data-ldp="' + k + '"' + (e[k] ? ' checked' : '') + '> ' + label + '</label>';
@@ -2965,6 +2969,7 @@ table.fmt.one .onet { display: inline; }
         '<div class="ldrow">' + chk('bold', 'fett') + chk('italic', 'kursiv') + chk('inv', 'weiß auf schwarz') + chk('fit', 'verkleinern bis es passt') + chk('wrap', 'umbrechen') + '</div>';
     }
     if (e.type === 'edges') h += '<div class="ldgrid">' + num('size', 'Schrift mm', 0.1) + '</div>';
+    if (e.type === 'sketch') h += '<div class="ldrow"><span>Bemaßung</span>' + seg('dims', [['fertig', 'Fertigmaß'], ['zuschnitt', 'Zuschnittmaß']]) + '</div>';
     if (e.type === 'barcode') {
       // Strichbreite: unter 0,25 mm (2 Punkte bei 203 dpi) lässt sich der Code kaum drucken und lesen
       const t = LabelLayout.fill(e.text, labelData(ld.part));
@@ -3094,7 +3099,7 @@ table.fmt.one .onet { display: inline; }
       const D = labelDims();
       const t = b.dataset.ldadd;
       if (t === 'text') add({ type: 'text', text: 'Text', size: 3, fit: true });
-      else if (t === 'sketch') add({ type: 'sketch', x: 2, y: 2, w: D.cw - 4, h: D.ch / 2 });
+      else if (t === 'sketch' || t === 'sketchcut') add({ type: 'sketch', dims: t === 'sketchcut' ? 'zuschnitt' : 'fertig', x: 2, y: 2, w: D.cw - 4, h: D.ch / 2 });
       else if (t === 'edges') add({ type: 'edges', h: 6, w: D.cw - 4, x: 2, size: 2.2 });
       else if (t === 'two') add({ type: 'two', text: '⇅ 2-SEITIG · WENDEN', text2: '! Unterseite beachten', size: 2.4, bold: true, inv: true, align: 'c', valign: 'm', fit: true, h: 4, w: D.cw - 4, x: 2 });
       else if (t === 'barcode') add({ type: 'barcode', text: '{nr}', human: true, size: 1.8, h: 9, w: D.cw - 4, x: 2 });
@@ -3436,6 +3441,13 @@ table.fmt.one .onet { display: inline; }
   // Abzug der Kantendicke vom Zuschnitt (Einstellung): Länge um B1 + B2, Breite um L1 + L2
   const edgeDeduct = (e) => (lst.edgeDeduct ? { L: edgeMm(e.b1) + edgeMm(e.b2), W: edgeMm(e.l1) + edgeMm(e.l2) } : { L: 0, W: 0 });
   // Rohmaß (Zuschnitt) eines Teils: Fertigmaß + Rohteil-Aufmaß (Profil mit gesägten Stirnseiten: nur in der Länge), ggf. ohne Kantendicke
+  // Zuschnittmaß eines Teils wie im Zuschnittplan: Rohmaß (mit Aufmaß) oder Fertigmaß, jeweils ohne Kantendicke wenn eingestellt
+  function cutDimsOf(part) {
+    const r = part.res || part.result;
+    if (lst.raw) return rawDims(r, part);
+    const dd = edgeDeduct(edgesOf(part));
+    return { L: r.panel.L - dd.L, W: r.panel.W - dd.W };
+  }
   function rawDims(r, p) {
     const o = state.settings.rawOversize || 0;
     const prof = r.panel.profile && state.settings.profileRule !== 'off';

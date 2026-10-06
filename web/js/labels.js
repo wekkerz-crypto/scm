@@ -4,7 +4,7 @@
  *   text    – Text mit Feldern {nr} {name} … (FIELDS), size (mm), bold, italic, font body|mono|display, align l|c|r, valign t|m|b,
  *             inv (weiß auf schwarz), fit (verkleinern, bis es passt), wrap (umbrechen)
  *   two     – Hinweis zweiseitig: text (2-seitig, wenden), text2 (Bearbeitung von unten ohne Seite 2; leer = nichts), Stil wie text
- *   sketch  – Draufsicht mit Bemaßung und Kantenband (data.sketch(w, h))
+ *   sketch  – Draufsicht mit Bemaßung und Kantenband (data.sketch(w, h, dims)), dims 'fertig' (Fertigmaß) | 'zuschnitt'
  *   edges   – Kanten-Legende (data.edgeList: [{ name, sides, dash }]), size
  *   barcode – Strichcode Code 128 aus text (Felder erlaubt), human = Klartext darunter, size
  *   box     – Rahmen / Linie / Fläche: border (mm, 0 = keiner), fill (schwarz gefüllt), radius (mm)
@@ -83,10 +83,10 @@
       items.push(el({ type: 'edges', x: pad, y: top + 14, w: tw, h: Math.max(4, ch - top - 18.5 - foot), size: 2.2 }));
       items.push(el({ type: 'box', x: pad, y: ch - 4 - foot, w: tw, h: 0.25, fill: true }));
       items.push(el({ type: 'text', x: pad, y: ch - 3.7 - foot, w: tw, h: 3.4, text: '{datum} · {profil} · {bearbeitung} · {auftrag}', size: 1.9, wrap: true, fit: true }));
-      items.push(el({ type: 'sketch', x: cw * 0.5 + pad / 2, y: top, w: cw * 0.5 - pad * 1.5, h: ch - top - pad - foot }));
+      items.push(el({ type: 'sketch', dims: 'fertig', x: cw * 0.5 + pad / 2, y: top, w: cw * 0.5 - pad * 1.5, h: ch - top - pad - foot }));
     } else {
       const sk = top + 14;
-      items.push(el({ type: 'sketch', x: pad, y: sk, w: cw - 2 * pad, h: Math.max(6, ch - sk - 10.5 - foot) }));
+      items.push(el({ type: 'sketch', dims: 'fertig', x: pad, y: sk, w: cw - 2 * pad, h: Math.max(6, ch - sk - 10.5 - foot) }));
       items.push(el({ type: 'edges', x: pad, y: ch - 10.2 - foot, w: cw - 2 * pad, h: 6, size: 2.2 }));
       items.push(el({ type: 'box', x: pad, y: ch - 4.1 - foot, w: cw - 2 * pad, h: 0.25, fill: true }));
       items.push(el({ type: 'text', x: pad, y: ch - 3.8 - foot, w: cw - 2 * pad, h: 3.6, text: '{datum} · {profil} · {bearbeitung} · {auftrag}', size: 1.9, wrap: true, fit: true }));
@@ -174,7 +174,7 @@
       return '<div class="li li-box"' + attr + ' style="' + box + ';' + (e.fill ? 'background:#000;' : '') + (b ? 'border:' + r2(b) + 'mm solid #000;' : '') +
         (e.radius ? 'border-radius:' + r2(e.radius) + 'mm;' : '') + '"></div>';
     }
-    if (e.type === 'sketch') return '<div class="li li-sk"' + attr + ' style="' + box + '">' + (e.w > 6 && e.h > 6 && data.sketch ? data.sketch(r2(e.w), r2(e.h)) : '') + '</div>';
+    if (e.type === 'sketch') return '<div class="li li-sk"' + attr + ' style="' + box + '">' + (e.w > 6 && e.h > 6 && data.sketch ? data.sketch(r2(e.w), r2(e.h), e.dims) : '') + '</div>';
     if (e.type === 'edges') {
       const list = data.edgeList || [];
       const s = +e.size || 2.2;

@@ -19,8 +19,10 @@ dieselbe) und **Material**, Teilename (= Dateiname), Maße L × B × D groß, be
 **„⇅ 2-SEITIG · WENDEN“** (Bearbeitung von unten ohne zweite Seite: gestrichelt „! Unterseite beachten“), **Kantenbelegung**
 (in der Draufsicht dicke Striche an den Seiten – Dekor 1 durchgezogen, Dekor 2 gestrichelt – und darunter je Dekor Name und
 Seiten bzw. „ringsum“), Fußzeile mit Datum, Profil und Anzahl der Bearbeitungen; Draufsicht schwarz-weiß mit Länge/Breite,
-Nullpunkt, Bohrungen (Kantenbohrungen als Striche), Durchbrüchen und Taschen; an der Bemaßung stehen die **Fertigmaße**
-(aus dem Modell, nicht das Zuschnittmaß). Breite Etiketten (z. B. 60 × 40): Kopf
+Nullpunkt, Bohrungen (Kantenbohrungen als Striche), Durchbrüchen und Taschen; an der Bemaßung wahlweise das **Fertigmaß** (aus dem Modell)
+oder das **Zuschnittmaß** (wie im Zuschnittplan: Rohmaß mit Aufmaß bzw. Fertigmaß, ggf. ohne Kantendicke) – für das
+automatische Etikett unter *Werkzeuge & Regeln → Etiketten → Bemaßung der Draufsicht*, im Konfigurator je Draufsicht
+(*Draufsicht Fertigmaß* / *Draufsicht Zuschnitt*, umschaltbar am Element; auch beide auf einem Etikett). Breite Etiketten (z. B. 60 × 40): Kopf
 oben, Text links, Draufsicht rechts.
 
 **Etiketten** (eigene Spalte oben neben *Listen*; auch über *✎ Gestalten …* in der Etiketten-Vorschau oder *Werkzeuge &

@@ -72,6 +72,7 @@
     labelHeight: 60,           // Etikett: Höhe in mm
     labelRotate: false,        // Inhalt um 90° drehen (Drucker zieht das Etikett quer ein)
     labelSketch: true,         // Draufsicht mit Bemaßung aufs Etikett
+    labelSketchDims: 'fertig', // Bemaßung der Draufsicht: 'fertig' (Fertigmaß) oder 'zuschnitt' (Zuschnittmaß wie im Zuschnittplan)
     labelExtra: '',            // Zusatzzeile (Auftrag, Kunde …)
     labelLayout: null,         // eigenes Etikett aus dem Etiketten-Konfigurator ({ w, h, items } – LabelLayout), null = automatisch
     dxfThickness: 19,          // DXF-Import: Plattendicke, solange im Teil keine andere eingetragen ist

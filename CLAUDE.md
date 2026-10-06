@@ -95,7 +95,8 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   Kanten-Legende `.eg`, Fußzeile `.ft`; breit: `.wrow` (Text links, Draufsicht rechts);
   Etiketten-Konfigurator: `web/js/labels.js` (`LabelLayout`: `FIELDS`, `TEMPLATES`/`layoutOf`, `scaled`, `fill`, `render`/`itemHtml`,
   `code128`; Elemente text/two/sketch/edges/barcode/box in mm) → Einstellung `labelLayout` ({w, h, items}, null = automatisch),
-  `labelData(part)` (Felder, `sketch`, `edgeList`, `two`), Seite `state.page` 'labels' (`#lblpage` – nicht `labelpage`, das ist der
+  `labelData(part)` (Felder, `sketch(w, h, dims)` – dims 'fertig'|'zuschnitt' am Element, sonst Einstellung `labelSketchDims`;
+  Zuschnitt = `cutDimsOf(part)` wie im Zuschnittplan, `edgeList`, `two`), Seite `state.page` 'labels' (`#lblpage` – nicht `labelpage`, das ist der
   @page-Stil): `ldInit`/`renderLD`/`ldWire` (`ld`, Druckliste `ld.print` je Teil {on, n}, `ldPrintHtml`), `openLabelDesigner(part)` wechselt dorthin;
   Seite 'material' (`#matpage`, `renderMat`): Materialien im Projekt, Standard, Kantenband, Rohplatten, eigene Farben, Dekore – Felder
   gekoppelt an `lst`/`settings` (Zwillinge in Stückliste/Zuschnitt werden nachgezogen); Dekor-Bilder lokal: `localDecors`

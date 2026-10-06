@@ -273,6 +273,10 @@ Dritte Seite oben (**Listen**):
   Stück, der Überstand kommt als Abfall ab) und Abfall-Schnitte. Groß das Maß ab Anschlag, dazu was im Stück liegt, welche
   Teile danach fertig sind und was als Reststück übrig bleibt. In der Zeichnung: das abzutrennende Stück blau, der Schnitt
   rot mit Pfeil, fertige Teile grau mit ✓. Weiter/Zurück mit den Knöpfen oder → / Leertaste / ←; Platte wählbar.
+  **Etiketten beim Sägen** (Umschalter oben in der Leiste, auch im Vollbild): *Aus* – keine Etiketten; *Fenster* – nach
+  jedem fertigen Teil bzw. Streifen ein Fenster zum Antippen; *Automatisch* – ein Klick auf *Weiter* druckt die Etiketten der
+  eben fertig gewordenen Teile (und das Streifen-Etikett) sofort, ohne Fenster, in einem Druckauftrag (am Pi im Kiosk ohne
+  Druckdialog). Streifen-Etiketten mit dazu oder nicht: *⚙ Schnittfolge → Etikett*.
   **Streifen-Etiketten** zum Zuordnen: groß „Streifen 1 / 4“, Material + Dicke, „Platte 1 / 5“, Breite × Länge, Bauteil-Nr.
   im Streifen und eine kleine Skizze der Platte (dieser Streifen schwarz) – im Sägemodus nach jedem abgetrennten Streifen als
   Fenster (abschaltbar unter *⚙ Schnittfolge*) und als Knopf auf der Karte, im Zuschnittplan je Platte *🏷 Streifen-Etiketten*.

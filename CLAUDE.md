@@ -48,7 +48,8 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   `sawPart` (uid id#n → Bauteil über `items[].pp`) → `printLabels`;
   Schnitte mit `level`/`kind`/`size`/`rest`/`side`/`done`/`strip`/`tg`/`sn` aus `cutSequence`, dazu `strips` [{n, region, dir, parts}]
   → Nummern am Rand `stripMarks` (Zuschnittplan, Sägemodus, PDF); Streifen-Etikett `stripLabelHtml`/`stripsOf`/`printStripLabels`
-  (Sägemodus `sawPop.strip`, `SAW_CFG.stripPopup`, `data-saw="striplbl"`; Zuschnittplan `data-striplbl`), Druck allgemein `printLabelHtml`), PDF-Datei über `web/js/pdf.js` (`MiniPdf`, ohne Druckdialog) in `cutPdf`.
+  (Etiketten-Modus `sawLabelMode(cfg)` = `SAW_CFG.labelMode` off|popup|auto, alt `labelPopup`; Umschalter `data-lmode`; auto druckt in `sawGo('next')`
+  per `printLabelHtml`; Sägemodus `sawPop.strip`, `SAW_CFG.stripPopup`, `data-saw="striplbl"`; Zuschnittplan `data-striplbl`), Druck allgemein `printLabelHtml`), PDF-Datei über `web/js/pdf.js` (`MiniPdf`, ohne Druckdialog) in `cutPdf`.
   Teil von Hand (Stückliste `#bomnew`, `renderBomNew`/`addManualPart`): Rechteck als DXF (`rectDxf`) über `addDxf(text, name,
   {T, board, qty})` → nur Formatfräsen; Löschen `data-bomdel` (zweiter Klick).
   Eigene Farben mit Namen: Schlüssel `#rrggbb[/u]~Name`, gemerkt in `settings.customBoards`. Programmläufe `progRuns()` (Teil → Stücklisten-Position, `row.qty` × Zeit; `#pqty` oben im Teil, `.chip.runs`, `.runsum`). Zeit: `Toolpath.estimate`

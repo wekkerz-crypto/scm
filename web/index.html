@@ -544,6 +544,7 @@ svg.sheet .cuts { pointer-events: none; }
 #sawview.sawfull .sawcard .tx { font-size: 1.25rem; }
 /* Vollbild an der Säge: Platten-Umschalter, Auswahl und Weiter/Zurück groß (Touch) */
 #sawview.sawfull .sawbar select { font-size: 1.15rem; padding: 8px 10px; }
+#sawview.sawfull .seg.lmode button { font-size: 1rem; padding: 7px 14px; }
 #sawview.sawfull .so-s { min-width: 54px; height: 54px; font-size: 1.35rem; border-radius: 12px; border-width: 2px; }
 #sawview.sawfull .sawover { gap: 10px 18px; padding: 10px 14px; font-size: 1.05rem; }
 #sawview.sawfull .sawover .so-g { gap: 8px; }
@@ -4308,7 +4309,9 @@ table.fmt.one .onet { display: inline; }
   }
   // Schnittfolge-Einstellungen (Sägemodus), gemerkt in lst.sawCfg
   const SAW_CFG = { primary: 'plan', trimLong: true, trimCross: true, trimFirst: 'long', startX: 'left', startY: 'back', order: 'depth', trims: 'now',
-    trimMax: 150, trimPct: 30, restMin: 300, measure: 'piece', labelPopup: true, stripPopup: true };
+    trimMax: 150, trimPct: 30, restMin: 300, measure: 'piece', labelPopup: true, stripPopup: true, labelMode: null };
+  // Etiketten beim Sägen: 'off' (keine), 'popup' (Fenster zum Antippen), 'auto' (bei „Weiter“ gleich drucken); alt: labelPopup
+  const sawLabelMode = (c) => (['off', 'popup', 'auto'].includes(c.labelMode) ? c.labelMode : c.labelPopup === false ? 'off' : 'popup');
   const sawCfg = () => Object.assign({}, SAW_CFG, lst.sawCfg || {});
   function sawSteps(x) {
     const cfg = sawCfg();
@@ -4414,8 +4417,8 @@ table.fmt.one .onet { display: inline; }
       '<fieldset><legend>Nachschnitt</legend>' + sel('trims', [['now', 'sofort'], ['strip', 'nach jedem Streifen'], ['end', 'am Schluss gesammelt']], cfg.trims, 'Wann') +
         num('trimMax', cfg.trimMax, 'Überstand bis', 'mm', 'Ein Schnitt heißt Nachschnitt, wenn nur noch ein Teil im Stück ist und höchstens so viel abkommt') +
         num('trimPct', cfg.trimPct, 'oder bis', '% vom Maß') + num('restMin', cfg.restMin, 'Reststück ab', 'mm', 'Größere Reste heißen Reststück, kleinere Abfall') + '</fieldset>' +
-      '<fieldset><legend>Etikett</legend>' + chk('labelPopup', cfg.labelPopup, 'nach jedem fertigen Teil Fenster „Etikett drucken“') +
-        chk('stripPopup', cfg.stripPopup, 'nach jedem Streifen „Streifen-Etikett“ anbieten') + '</fieldset>' +
+      '<fieldset><legend>Etikett</legend>' + sel('labelMode', [['off', 'aus'], ['popup', 'Fenster zum Antippen'], ['auto', 'automatisch bei „Weiter“ drucken']], sawLabelMode(cfg), 'Etiketten') +
+        chk('stripPopup', cfg.stripPopup, 'Streifen-Etikett nach jedem Streifen') + '</fieldset>' +
       '</div><div class="row"><button type="button" class="btn ghost small" data-saw="cfgreset">Standard</button><button type="button" class="btn small" data-saw="cfgclose">Fertig</button></div></div>';
   }
   function renderSaw() {
@@ -4446,6 +4449,9 @@ table.fmt.one .onet { display: inline; }
         '<output id="szoomv">' + Math.round((lst.sawZoom || 1) * 100) + ' %</output><button type="button" class="btn small" data-szoom="1" aria-label="Platte größer">+</button></span>' +
       '<span class="czoom" role="group" aria-label="Zoom Schrift" title="Schrift im Plan – auch Strg + Umschalt + Mausrad"><span>Schrift</span><button type="button" class="btn small" data-sfont="-1" aria-label="Schrift kleiner">−</button>' +
         '<output id="sfontv">' + Math.round((lst.sawFont || 1) * 100) + ' %</output><button type="button" class="btn small" data-sfont="1" aria-label="Schrift größer">+</button></span>' +
+      ((m) => '<span class="seg lmode" role="group" aria-label="Etiketten beim Sägen" title="Etiketten beim Sägen: aus, Fenster zum Antippen oder automatisch bei „Weiter“ drucken">' +
+        '<span class="lab">🏷 Etiketten</span>' + [['off', 'Aus'], ['popup', 'Fenster'], ['auto', 'Automatisch']].map(([k, t]) =>
+        '<button type="button" data-lmode="' + k + '" aria-pressed="' + (m === k) + '">' + t + '</button>').join('') + '</span>')(sawLabelMode(cfg)) +
       '<button type="button" class="btn ghost small" data-saw="cfg" aria-expanded="' + String(!!lst.sawCfgOpen) + '">⚙ Schnittfolge</button>' +
       '<button type="button" class="btn ghost small" data-saw="reset">Von vorn</button>' +
       '<button type="button" class="btn small" data-saw="full" aria-pressed="' + full + '">' + (full ? '✕ Vollbild beenden' : '⛶ Vollbild') + '</button></div>' +
@@ -4472,6 +4478,11 @@ table.fmt.one .onet { display: inline; }
       '<div class="sn">' + Object.entries(kindTot).map(([k2, v]) => v + ' × ' + SAW_KIND[k2]).join(' · ') + '</div></div></div>' + sawPopHtml(x);
     $('sawsheet').addEventListener('change', (e) => { lst.saw = { key: e.target.value, step: 0 }; sawPop = null; saveLst(); renderSaw(); });
     host.querySelectorAll('[data-saw]').forEach((b) => b.addEventListener('click', () => sawGo(b.dataset.saw)));
+    host.querySelectorAll('[data-lmode]').forEach((b) => b.addEventListener('click', () => {
+      lst.sawCfg = Object.assign({}, lst.sawCfg || {}, { labelMode: b.dataset.lmode });
+      saveLst();
+      renderSaw(); // Schnittfolge bleibt, nur die Etiketten ändern sich
+    }));
     host.querySelectorAll('[data-szoom]').forEach((b) => b.addEventListener('click', () => setSawZoom((lst.sawZoom || 1) + 0.1 * +b.dataset.szoom)));
     host.querySelectorAll('[data-sfont]').forEach((b) => b.addEventListener('click', () => setSawFont((lst.sawFont || 1) + 0.1 * +b.dataset.sfont)));
     host.querySelectorAll('[data-sawgo]').forEach((b) => b.addEventListener('click', () => { lst.saw = { key: b.dataset.sawgo, step: 0 }; sawPop = null; saveLst(); renderSaw(); }));
@@ -4487,7 +4498,7 @@ table.fmt.one .onet { display: inline; }
       const k2 = inp.dataset.sawcfg;
       c[k2] = inp.type === 'checkbox' ? inp.checked : inp.type === 'number' ? Math.max(0, +inp.value || 0) : inp.value;
       lst.sawCfg = c;
-      lst.saw.step = 0; // andere Folge: von vorn
+      if (!['labelMode', 'stripPopup'].includes(k2)) lst.saw.step = 0; // andere Folge: von vorn (Etiketten ändern die Folge nicht)
       saveLst();
       renderSaw();
     }));
@@ -4558,10 +4569,19 @@ table.fmt.one .onet { display: inline; }
       const st = sawSteps(list[xi]).steps[lst.saw.step | 0];
       lst.saw.step = Math.min(n, (lst.saw.step | 0) + 1);
       const c = sawCfg();
-      // Streifen abgetrennt (mehrere Teile darin): Streifen-Etikett anbieten
-      const strip = st && st.kind === 'strip' && st.sn && st.parts.length > 1 && c.stripPopup ? st.sn : 0;
-      const uids = st && c.labelPopup ? st.done.slice() : [];
-      if (uids.length || strip) sawPop = { uids: uids, printed: new Set(), strip: strip };
+      const mode = sawLabelMode(c);
+      // Streifen abgetrennt (mehrere Teile darin): Streifen-Etikett; fertige Teile: Teil-Etiketten
+      const strip = mode !== 'off' && st && st.kind === 'strip' && st.sn && st.parts.length > 1 && c.stripPopup ? st.sn : 0;
+      const uids = mode !== 'off' && st ? st.done.slice() : [];
+      if (mode === 'auto' && (uids.length || strip)) {
+        // Automatik: gleich drucken, ohne Fenster (ein Druckauftrag)
+        const x = list[xi];
+        const parts = uids.map((u) => sawPart(x, u)).filter((q) => q && q.res && q.res.panel);
+        const sp = strip ? stripsOf(x.g, x.i).find((q) => q.strip.n === strip) : null;
+        lblNums = labelNums();
+        printLabelHtml((sp ? stripLabelHtml(sp) : '') + parts.map(labelHtml).join(''));
+        toast('🏷 ' + [sp ? 'Streifen ' + strip : '', parts.length ? parts.length + ' Etikett' + (parts.length === 1 ? '' : 'en') : ''].filter(Boolean).join(' + ') + ' gedruckt');
+      } else if (uids.length || strip) sawPop = { uids: uids, printed: new Set(), strip: strip };
     }
     else if (what === 'prev') lst.saw.step = Math.max(0, (lst.saw.step | 0) - 1);
     else if (what === 'reset') { lst.saw.step = 0; sawPop = null; }

@@ -1153,8 +1153,9 @@ test('Web-Tool: Kanten nach Regeln vorbelegen und Sägemodus Schritt für Schrit
     // Schnittfolge einstellen: ohne Anschnitt quer, erst alle Streifen, Restmaß zeigen
     await p.click('[data-saw="cfg"]');
     await p.uncheck('[data-sawcfg="trimCross"]');
-    await p.uncheck('[data-sawcfg="labelPopup"]');
-    await p.uncheck('[data-sawcfg="stripPopup"]');
+    // Etiketten aus (Umschalter in der Leiste): kein Fenster mehr
+    await p.click('[data-lmode="off"]');
+    assert.strictEqual(await p.getAttribute('[data-lmode="off"]', 'aria-pressed'), 'true');
     await p.selectOption('[data-sawcfg="order"]', 'strips');
     await p.selectOption('[data-sawcfg="measure"]', 'remain');
     const seq = [];
@@ -1163,6 +1164,13 @@ test('Web-Tool: Kanten nach Regeln vorbelegen und Sägemodus Schritt für Schrit
     const lastStrip = seq.lastIndexOf('Streifen');
     const firstCross = seq.findIndex((x) => /Querschnitt/.test(x));
     assert.ok(lastStrip >= 0 && firstCross > lastStrip, seq.join(', '));
+    await p.click('[data-saw="reset"]');
+    // Automatik: Weiter druckt die Etiketten gleich, ohne Fenster
+    await p.click('[data-lmode="auto"]');
+    const pr0 = await p.evaluate(() => window.__printed);
+    for (let n = 0; n < 40 && !(await p.isDisabled('[data-saw="next"]')); n++) { await p.click('[data-saw="next"]'); assert.strictEqual(await p.$('.sawpop'), null); }
+    assert.ok((await p.evaluate(() => window.__printed)) > pr0 + 2, 'automatisch gedruckt');
+    await p.click('[data-lmode="popup"]');
     await p.click('[data-saw="reset"]');
     // Zoom Platte (CSS) und Schrift (neu gezeichnet)
     const sh = () => p.$eval('#sawview svg.sheet', (e) => e.getBoundingClientRect().height);

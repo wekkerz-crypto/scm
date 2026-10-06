@@ -1207,6 +1207,18 @@ test('Web-Tool: Anzahl je Programm und Gesamtzeit (Teil oben, Karte, Summe)', { 
     assert.match(await p.textContent('.part[aria-current="true"] .chip.runs'), /^3× = ≈ /);
     const n = (t) => +t.match(/^(\d+) Programmläufe/)[1];
     assert.strictEqual(n(await p.textContent('.runsum')), n(sum0) + 2);
+    // Sonderteile: Kippen 90° – lange Kante, kurze Kante, wieder flach (Maße tauschen)
+    const dims = async () => (await p.textContent('.dhead .dims')).match(/^([\d,.]+) × ([\d,.]+) × ([\d,.]+)/).slice(1).map((v) => +v.replace(',', '.'));
+    const [L0, W0, T0] = await dims();
+    await p.click('#tilt');
+    assert.match(await p.textContent('#tilt'), /lange Kante/);
+    assert.deepStrictEqual((await dims()).slice().sort((a, b) => a - b), [L0, W0, T0].sort((a, b) => a - b));
+    assert.strictEqual((await dims())[2], W0);
+    await p.click('#tilt');
+    assert.match(await p.textContent('#tilt'), /kurze Kante/);
+    await p.click('#tilt');
+    assert.doesNotMatch(await p.textContent('#tilt'), /Kante/);
+    assert.strictEqual((await dims())[2], T0);
     // in der Stückliste dieselbe Anzahl
     await p.click('.pagetabs [data-page="lists"]');
     await p.click('[data-ltab="bom"]');

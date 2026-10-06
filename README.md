@@ -325,6 +325,9 @@ Dritte Seite oben (**Listen**):
   oder Plattenformat, wird ohnehin neu angeordnet). **PDF speichern** schreibt Stückliste bzw. Zuschnittplan direkt als
   PDF-Datei (eine Platte je Seite, ohne Druckdialog); **Drucken** über den Browser. In der Online-Version (claude.ai) sperrt
   der Browser den Druckdialog – dort speichern alle Druck-Knöpfe gleich ein PDF.
+- **Kippen 90°** (Sonder-Knopf neben *Wenden*, nur für Sonderteile): Teil auf die lange Kante (Breite ↔ Dicke), beim zweiten Druck
+  auf die kurze Kante (Länge ↔ Dicke), beim dritten wieder flach; *Drehen 90°* und *Wenden* gehen in jeder Lage. Solange
+  gekippt, ist der Knopf orange und am Teil steht „Sonderlage – Spannmittel/Sauger von Hand prüfen“ (Sauger passen meist nicht).
 - **Wie oft läuft ein Programm:** oben im Teil *Anzahl* (dieses Bauteils, wie in der Stückliste) und „Programm läuft 4×
   (gleiches Programm: Nr. 2, 3) · gesamt ≈ 5:06 min“ – Bauteile mit gleichem Programm werden zusammengezählt. Auf der Teilekarte
   ein grüner Hinweis „3× = ≈ …“ (bei 0× grau), oben in der Teileliste die Summe „12 Programmläufe · ≈ 10:58 min gesamt“.

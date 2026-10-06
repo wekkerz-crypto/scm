@@ -85,6 +85,8 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   Standard `clamexMode: 'macro'` → `clamexMacros` (je Kante/Linie ein Makro, Anzahl) und `CreateMacro(…, "SawCut_Lamello", …)`
   nach Position mit `clamexTplEdge/Miter/Face` – gleich den Werkstatt-Programmen `maestro/beispiele/5_`–`10_` (Test
   `clamex_korpus.step`); sonst `clamexPlan` (Ebene Top bzw. Kante, Bahn), Op `clamex-i`.
+- Kippen (Sonderteile): `orientation.tilt` 1 = lange Kante (90° um X, W ↔ T), 2 = kurze Kante (90° um Y, L ↔ T) – in `frame(prep, rot,
+  flip, tilt)` vor Wenden/Drehen, auch `turnOverY`; Knopf `#tilt` (nur von Hand, nie automatisch), Hinweis in `warnings`.
 - Drehlage: `orientRule` 'model' (Standard, Werkstatt) – X = Modell-X (Korpusbreite), sonst Z, sonst Y, Y positiv
   (`modelRot` in `panel.js`), nicht wenn W dadurch > `fieldWidth`; 'long' = lange Seite in X (Tests setzen 'long').
 - Sägeschnitt wie Werkstatt: Linie Oberkante von Kante zu Kante (`bladeOverrun` 0), `CreateSectioningMillingStrategy(2, 50, 0)`,

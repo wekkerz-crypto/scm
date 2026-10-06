@@ -198,9 +198,19 @@
     return { m: m, t: t };
   }
 
-  function frame(prep, rot, flip) {
+  // tilt (Sonderteile, von Hand): 1 = auf die lange Kante gekippt (90° um X), 2 = auf die kurze Kante (90° um Y)
+  function frame(prep, rot, flip, tilt) {
     let tf = prep.base;
     let [L, W, T] = prep.dims;
+    if (tilt === 1) {
+      // um X: Rückseite (y = W) liegt auf, Vorderkante zeigt nach oben – Breite und Dicke tauschen
+      tf = compose({ m: [[1, 0, 0], [0, 0, 1], [0, -1, 0]], t: [0, 0, W] }, tf);
+      [W, T] = [T, W];
+    } else if (tilt === 2) {
+      // um Y: rechte Stirnseite (x = L) liegt auf – Länge und Dicke tauschen
+      tf = compose({ m: [[0, 0, 1], [0, 1, 0], [-1, 0, 0]], t: [0, 0, L] }, tf);
+      [L, T] = [T, L];
+    }
     if (flip) {
       // Platte um die X-Achse wenden
       tf = compose({ m: [[1, 0, 0], [0, -1, 0], [0, 0, -1]], t: [0, W, T] }, tf);
@@ -1670,9 +1680,11 @@
     const prep = prepare(solid);
     let rot;
     let flip;
+    let tilt = 0;
     if (orientation) {
       rot = orientation.rot || 0;
       flip = !!orientation.flip;
+      tilt = orientation.tilt | 0;
     } else {
       rot = prep.dims[1] > prep.dims[0] + TOL ? 1 : 0;
       const a = extract(prep, frame(prep, rot, false));
@@ -1685,21 +1697,22 @@
         if (mr !== null && !(frame(prep, mr, flip).W > lim + TOL && frame(prep, rot, flip).W <= lim + TOL)) rot = mr;
       }
     }
-    let fr = frame(prep, rot, flip);
+    let fr = frame(prep, rot, flip, tilt);
     let res = extract(prep, fr);
+    if (tilt) res.warnings.push('Sonderlage: Teil ' + (tilt === 1 ? 'auf die lange Kante' : 'auf die kurze Kante') + ' gekippt – Spannmittel/Sauger von Hand prüfen.');
     // Profil: volle Kante vorne an den Anschlägen, Stufen hinten
     if (!orientation && res.profile && !(opts && opts.profileRule === 'off')) {
       const front = res.rebates.filter((r) => r.edge === 'Front').length;
       const back = res.rebates.filter((r) => r.edge === 'Back').length;
       if (front > back) {
         rot = (rot + 2) % 4;
-        fr = frame(prep, rot, flip);
+        fr = frame(prep, rot, flip, tilt);
         res = extract(prep, fr);
       }
     }
     res.tf = fr.tf; // Modell (mm) → Plattenkoordinaten, für die 3D-Ansicht
     res.name = solid.name;
-    res.orientation = { rot: rot, flip: flip };
+    res.orientation = tilt ? { rot: rot, flip: flip, tilt: tilt } : { rot: rot, flip: flip };
     return res;
   }
 
@@ -1707,17 +1720,18 @@
   // Sucht unter den acht Lagen (Drehen/Wenden) die, deren Abbildung genau dieser Wendung entspricht.
   function turnOverY(solid, orientation) {
     const prep = prepare(solid);
-    const f1 = frame(prep, orientation.rot || 0, !!orientation.flip);
+    const tilt = orientation.tilt | 0;
+    const f1 = frame(prep, orientation.rot || 0, !!orientation.flip, tilt);
     const want = compose({ m: [[-1, 0, 0], [0, 1, 0], [0, 0, -1]], t: [f1.L, 0, f1.T] }, f1.tf);
     for (let r = 0; r < 4; r++) {
       for (const fl of [false, true]) {
-        const f2 = frame(prep, r, fl);
+        const f2 = frame(prep, r, fl, tilt);
         let d = Math.abs(f2.L - f1.L) + Math.abs(f2.W - f1.W);
         for (let i = 0; i < 3; i++) {
           d += Math.abs(f2.tf.t[i] - want.t[i]);
           for (let j = 0; j < 3; j++) d += Math.abs(f2.tf.m[i][j] - want.m[i][j]);
         }
-        if (d < 1e-6) return { rot: r, flip: fl };
+        if (d < 1e-6) return tilt ? { rot: r, flip: fl, tilt: tilt } : { rot: r, flip: fl };
       }
     }
     throw new Error('Lage für Seite 2 nicht gefunden.');

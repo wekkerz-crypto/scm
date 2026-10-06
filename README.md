@@ -225,6 +225,10 @@ Dritte Seite oben (**Listen**):
   Stück, der Überstand kommt als Abfall ab) und Abfall-Schnitte. Groß das Maß ab Anschlag, dazu was im Stück liegt, welche
   Teile danach fertig sind und was als Reststück übrig bleibt. In der Zeichnung: das abzutrennende Stück blau, der Schnitt
   rot mit Pfeil, fertige Teile grau mit ✓. Weiter/Zurück mit den Knöpfen oder → / Leertaste / ←; Platte wählbar.
+  Oben auf der Karte riesig die Zahl, die **am Anschlag einzustellen** ist; fertig geschnittene Teile verschwinden aus der
+  Zeichnung. Jedes Teil ist mit **Nr., Maß und Name** beschriftet (passend in die Fläche, schmale Teile gedreht – auch im
+  Zuschnittplan). Sobald Teile fertig sind, öffnet sich ein großes Fenster **„Fertig geschnitten“**: Tippen auf ein Teil druckt
+  sein Etikett (wie unter *Etiketten*, über den Druckdialog des Browsers; abschaltbar in der Schnittfolge).
   **⛶ Vollbild** (oder Taste F, zurück mit Esc) für den Bildschirm an der Säge. **⚙ Schnittfolge** stellt ein, wie geschnitten
   wird: Anschnitt längs/quer einzeln und welcher zuerst; erste Schnitte wie im Zuschnittplan, längs oder quer; Reihenfolge
   *jeden Streifen gleich fertig* oder *erst alle Streifen, dann quer*; Anschlag/Beginn links oder rechts, vorne oder hinten;

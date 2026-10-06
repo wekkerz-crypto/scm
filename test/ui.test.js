@@ -932,21 +932,41 @@ test('Web-Tool: Kanten nach Regeln vorbelegen und Sägemodus Schritt für Schrit
     await p.keyboard.press('ArrowRight');
     await p.keyboard.press('ArrowRight');
     assert.match(await p.textContent('.sawcard .sk'), /Streifen/);
-    assert.match(await p.textContent('.sawcard .big'), /mm Stück/);
-    const total = await p.$$eval('#sawview svg.sheet rect.pt, #sawview svg.sheet rect.sdone', (x) => x.length);
+    assert.match(await p.textContent('.sawcard .fl'), /Anschlag einstellen/);
+    assert.match(await p.textContent('.sawcard .big'), /^\d+(,\d)?mm$/);
+    // Beschriftung: Nr., Maß und Name an jedem Teil
+    assert.ok((await p.$$eval('#sawview .plab', (x) => x.map((g) => g.textContent))).every((t) => /^Nr\. \d+/.test(t) && /×/.test(t)));
+    await p.evaluate(() => { window.__printed = 0; window.print = () => { window.__printed++; }; });
     let kinds = new Set();
-    for (let n = 0; n < 40 && !(await p.isDisabled('[data-saw="next"]')); n++) {
+    let pops = 0;
+    for (let n = 0; n < 60 && !(await p.isDisabled('[data-saw="next"]')); n++) {
+      if (await p.$('.sawpop')) {
+        // fertiges Teil: Etikett-Fenster, Tippen druckt das Etikett
+        pops++;
+        if (pops === 1) {
+          await p.click('.sawtile');
+          assert.strictEqual(await p.evaluate(() => window.__printed), 1);
+          assert.match(await p.textContent('#printarea'), /KP_1_/);
+          assert.match(await p.textContent('.sawtile'), /gedruckt/);
+        }
+        await p.click('[data-saw="popclose"]');
+        continue;
+      }
       kinds.add(await p.textContent('.sawcard .sk'));
       await p.click('[data-saw="next"]');
     }
+    if (await p.$('.sawpop')) await p.click('[data-saw="popclose"]');
+    assert.ok(pops >= 3, 'Etikett-Fenster ' + pops);
     assert.ok(kinds.has('Nachschnitt'), [...kinds].join(', '));
     assert.match(await p.textContent('.sawcard'), /ist geschnitten/);
-    assert.strictEqual(await p.$$eval('#sawview svg.sheet rect.sdone', (x) => x.length), total);
+    // fertige Teile sind aus der Zeichnung verschwunden
+    assert.strictEqual(await p.$$eval('#sawview svg.sheet rect.pt', (x) => x.length), 0);
     await p.keyboard.press('ArrowLeft');
     assert.ok(!(await p.isDisabled('[data-saw="next"]')));
     // Schnittfolge einstellen: ohne Anschnitt quer, erst alle Streifen, Restmaß zeigen
     await p.click('[data-saw="cfg"]');
     await p.uncheck('[data-sawcfg="trimCross"]');
+    await p.uncheck('[data-sawcfg="labelPopup"]');
     await p.selectOption('[data-sawcfg="order"]', 'strips');
     await p.selectOption('[data-sawcfg="measure"]', 'remain');
     const seq = [];
@@ -957,7 +977,7 @@ test('Web-Tool: Kanten nach Regeln vorbelegen und Sägemodus Schritt für Schrit
     assert.ok(lastStrip >= 0 && firstCross > lastStrip, seq.join(', '));
     await p.click('[data-saw="reset"]');
     await p.keyboard.press('ArrowRight');
-    assert.match(await p.textContent('.sawcard .big'), /mm Restmaß/);
+    assert.match(await p.textContent('.sawcard .fl'), /Restmaß/);
     // Vollbild mit F, zurück mit Esc
     await p.keyboard.press('f');
     assert.ok(await p.$eval('#sawview', (e) => e.classList.contains('sawfull')));

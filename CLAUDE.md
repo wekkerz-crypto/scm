@@ -36,7 +36,9 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   `packFree` bzw. Streifen `packStrips`, `goal` waste/cuts wählt aus Varianten; `cutSequence` mit `dir`; `fits` beim Verschieben
   von Hand → `lst.manual[Gruppe] = {sig, sheets}`; Sägemodus `lst.tab` 'saw': `renderSaw`/`sawSteps`/`sawText`/`sawSvg`, Stand
   `lst.saw = {key, step}`, Einstellungen `lst.sawCfg` (`SAW_CFG`: trimLong/trimCross/trimFirst, primary, startX/startY → `flipX`/`flipY`,
-  order depth|strips, trims now|strip|end, trimMax/trimPct, restMin, measure piece|remain), Vollbild `sawFull` (Klasse `sawfull`);
+  order depth|strips, trims now|strip|end, trimMax/trimPct, restMin, measure piece|remain, labelPopup), Vollbild `sawFull` (Klasse `sawfull`);
+  fertige Teile nicht mehr gezeichnet, Beschriftung `partLabelSvg` (auch `sheetSvg`), Etikett-Fenster `sawPop`/`sawPopHtml` →
+  `sawPart` (uid id#n → Bauteil über `items[].pp`) → `printLabels`;
   Schnitte mit `level`/`kind`/`size`/`rest`/`side`/`done`/`strip`/`tg` aus `cutSequence`), PDF-Datei über `web/js/pdf.js` (`MiniPdf`, ohne Druckdialog) in `cutPdf`.
   Eigene Farben mit Namen: Schlüssel `#rrggbb[/u]~Name`, gemerkt in `settings.customBoards`. Zeit: `Toolpath.estimate`
   (Einstellungen `est*`), `partTime` in `index.html`. Projektdatei .s2m: `saveProject`/`openProject` (= `sessionData`/`restoreFrom`).

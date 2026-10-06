@@ -323,7 +323,7 @@ table.sheetlist .r { text-align: right; font-family: var(--font-mono); white-spa
 table.sheetlist .ck { color: var(--muted); font-size: 1rem; line-height: 1; }
 svg.sheet .cuts { pointer-events: none; }
 /* Sägemodus */
-.saw { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 20px; align-items: start; }
+.saw { display: grid; grid-template-columns: minmax(0, 1fr) minmax(440px, 36%); gap: 22px; align-items: start; }
 @media (max-width: 1100px) { .saw { grid-template-columns: 1fr; } }
 .sawbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 12px; }
 .sawbar select { font-size: 0.95rem; padding: 5px 8px; }
@@ -344,8 +344,11 @@ svg.sheet .cuts { pointer-events: none; }
 .sawcard .sk.done { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
 .sawcard .dir { font-size: 1.35rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
 .sawcard .darr { font-size: 1.6rem; color: var(--cutc, #d2451e); }
-.sawcard .big { font: 700 4.4rem/1 var(--font-mono); color: var(--ink); letter-spacing: -0.02em; }
-.sawcard .big small { font-size: 1.15rem; color: var(--muted); font-weight: 600; letter-spacing: 0; }
+.sawcard .fence { display: grid; gap: 2px; padding: 14px 16px 10px; border-radius: 12px; background: color-mix(in srgb, var(--cutc, #d2451e) 9%, var(--surface));
+  border: 2px solid color-mix(in srgb, var(--cutc, #d2451e) 45%, transparent); }
+.sawcard .fl { font-size: 0.85rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.sawcard .big { font: 800 clamp(5rem, 8.5vw, 9.5rem)/0.95 var(--font-mono); color: var(--ink); letter-spacing: -0.03em; display: flex; align-items: baseline; gap: 10px; }
+.sawcard .big small { font-size: 1.6rem; color: var(--muted); font-weight: 600; letter-spacing: 0; }
 .sawcard .sub2 { font: 600 1rem var(--font-mono); color: var(--muted); margin-top: -6px; }
 .sawcard .tx { font-size: 1.1rem; line-height: 1.45; }
 .sawcard .inn { display: grid; gap: 2px; font-size: 1rem; }
@@ -368,11 +371,29 @@ svg.sheet .cuts { pointer-events: none; }
 .sawcfg .row { display: flex; gap: 8px; justify-content: flex-end; }
 /* Vollbild */
 #sawview.sawfull { position: fixed; inset: 0; z-index: 900; background: var(--bg); padding: 16px 22px; overflow: auto; }
-#sawview.sawfull .saw { grid-template-columns: minmax(0, 1fr) 500px; }
+#sawview.sawfull .saw { grid-template-columns: minmax(0, 1fr) minmax(520px, 40%); }
 #sawview.sawfull .sawdraw svg { max-height: calc(100vh - 110px); }
-#sawview.sawfull .sawcard .big { font-size: 6rem; }
+#sawview.sawfull .sawcard .big { font-size: clamp(8rem, 13vw, 17rem); }
+#sawview.sawfull .sawcard .dir { font-size: 1.7rem; }
+#sawview.sawfull .sawcard .inn, #sawview.sawfull .sawcard .fin { font-size: 1.2rem; }
 #sawview.sawfull .sawcard .tx { font-size: 1.25rem; }
 body.sawlock { overflow: hidden; }
+.sawcard .tx { font-size: 1.15rem; }
+/* Etikett-Fenster */
+.sawpop { position: fixed; inset: 0; z-index: 950; background: color-mix(in srgb, var(--ink) 45%, transparent); display: grid; place-items: center; padding: 20px; }
+.sawpopin { background: var(--surface); border-radius: 18px; padding: 26px 28px; width: min(980px, 96vw); max-height: 92vh; overflow: auto; display: grid; gap: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35); }
+.sawpopin h3 { margin: 0; font-size: 1.8rem; color: var(--ok); }
+.sawtiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.sawtile { display: grid; gap: 6px; text-align: left; padding: 20px 22px; border-radius: 14px; border: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  color: var(--ink); cursor: pointer; font: inherit; min-height: 170px; }
+.sawtile:hover, .sawtile:focus-visible { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); outline: none; }
+.sawtile .s-tn { font: 800 2.6rem/1 var(--font-mono); }
+.sawtile .s-tl { font-size: 1.25rem; font-weight: 600; word-break: break-word; }
+.sawtile .s-td { font: 600 1.3rem var(--font-mono); color: var(--muted); }
+.sawtile .s-tp { margin-top: 6px; font-size: 1.2rem; font-weight: 700; color: var(--accent); }
+.sawtile.printed { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, var(--surface)); }
+.sawtile.printed .s-tp { color: var(--ok); }
 svg.sheet .sdone { fill: var(--sunken); stroke: var(--line); stroke-width: 4; }
 svg.sheet .sdt { fill: var(--muted); font: 600 40px var(--font-body); text-anchor: middle; dominant-baseline: central; }
 svg.sheet .scur { fill: var(--accent); fill-opacity: 0.16; stroke: var(--accent); stroke-width: 8; }
@@ -2227,7 +2248,7 @@ table.fmt.one .onet { display: inline; }
       '<div class="v3bar"><button type="button" data-v3="iso">Iso</button><button type="button" data-v3="top">Oben</button>' +
       '<button type="button" data-v3="front">Vorne</button><button type="button" data-v3="raw" aria-pressed="' + v3.showRaw + '">Rohteil</button></div>' +
       '<div class="v3msg" id="v3msg" hidden></div></div>' +
-      '<div class="tl" id="tl" aria-label="Zeitleiste der Bearbeitungen"></div>' +
+      '<div class="s-tl" id="tl" aria-label="Zeitleiste der Bearbeitungen"></div>' +
       '<div class="hud" id="hud" aria-live="polite"></div>' +
       '<div class="anim"><button class="btn primary" id="aplay" type="button">▶ Werkzeugbahn abspielen</button>' +
       '<button class="btn ghost" id="areset" type="button">⟲ Neustart</button>' +
@@ -2595,16 +2616,20 @@ table.fmt.one .onet { display: inline; }
       if (cb) cb.checked = state.settings.labelRotate;
       openLabels(parts);
     });
-    $('lprint').addEventListener('click', () => {
-      let area = $('printarea');
-      if (!area) { area = document.createElement('div'); area.id = 'printarea'; document.body.appendChild(area); }
-      area.innerHTML = list.map(labelHtml).join('');
-      let pg = $('labelpage');
-      if (!pg) { pg = document.createElement('style'); pg.id = 'labelpage'; document.head.appendChild(pg); }
-      pg.textContent = '@page { size: ' + (+cfg.labelWidth || 40) + 'mm ' + (+cfg.labelHeight || 60) + 'mm; margin: 0; }';
-      dlg.close();
-      window.print();
-    });
+    $('lprint').addEventListener('click', () => { dlg.close(); printLabels(list); });
+  }
+  // Etiketten direkt drucken (Druckbereich in Etikettgröße, schwarz-weiß) – auch aus dem Sägemodus
+  function printLabels(list) {
+    const cfg = state.settings;
+    list = list.filter((x) => x.res && x.res.panel);
+    if (!list.length) { toast('Kein Teil mit Programm zum Beschriften.'); return; }
+    let area = $('printarea');
+    if (!area) { area = document.createElement('div'); area.id = 'printarea'; document.body.appendChild(area); }
+    area.innerHTML = list.map(labelHtml).join('');
+    let pg = $('labelpage');
+    if (!pg) { pg = document.createElement('style'); pg.id = 'labelpage'; document.head.appendChild(pg); }
+    pg.textContent = '@page { size: ' + (+cfg.labelWidth || 40) + 'mm ' + (+cfg.labelHeight || 60) + 'mm; margin: 0; }';
+    window.print();
   }
   // Geschätzte Bearbeitungszeit eines Teils (s): Seite 1 (+ Seite 2), am Ergebnis zwischengespeichert
   function timeOfResult(r, ov) {
@@ -2903,7 +2928,10 @@ table.fmt.one .onet { display: inline; }
       if (!groups.has(key)) groups.set(key, { key: key, name: b.name, T: row.T, board: row.board, grain: b.grain > 0, items: [] });
       const dd = edgeDeduct(row.edges);
       const dims = lst.raw ? row.raw : { L: row.L - dd.L, W: row.W - dd.W };
-      groups.get(key).items.push({ id: row.nums[0], label: row.names[0], L: dims.L, W: dims.W, qty: row.qty, orient: orientOf(row.parts[0], row.board) });
+      // Stück n (uid id#n) → Bauteil: Teile der Position nach ihrer Anzahl aufgereiht
+      const pp = [];
+      for (const q of row.parts) for (let c = 0; c < qtyOf(q); c++) pp.push(q);
+      groups.get(key).items.push({ id: row.nums[0], label: row.names[0], L: dims.L, W: dims.W, qty: row.qty, orient: orientOf(row.parts[0], row.board), pp: pp });
     }
     return Array.from(groups.values()).map((g) => {
       const auto = CutPlan.plan(g.items, cutOpts());
@@ -2930,6 +2958,43 @@ table.fmt.one .onet { display: inline; }
   }
   // Schraffur eines Teils: Holz mit Maserung → Linien in Faserrichtung (längs der langen Seite), Dekor → schräg
   const hatchDir = (g, p) => (g.grain ? (p.l >= p.w ? 'h' : 'v') : 'd');
+  /*
+   * Beschriftung eines Teils in der Zeichnung (Plattenkoordinaten, yTop = SVG-Oberkante): immer Nr., Name und Maß, so groß wie
+   * es in die Fläche passt – hohe, schmale Teile gedreht; wird es zu eng, erst zwei Zeilen, dann eine („Nr. 4 · 766 × 436“).
+   */
+  function partLabelSvg(p, yTop, bg) {
+    const cx = p.x + p.l / 2;
+    const cy = yTop + p.w / 2;
+    const rot = p.w > p.l * 1.25;
+    const W = Math.max(10, ((rot ? p.w : p.l) - 24) * 0.94);
+    const H = Math.max(10, (rot ? p.l : p.w) - 14);
+    const num = 'Nr. ' + p.id;
+    const dims = n1(p.l) + ' × ' + n1(p.w);
+    const CW = 0.6;
+    const fitW = (t, f) => W / (Math.max(3, t.length) * CW * f);
+    const name = (fs, f) => { const n = Math.max(3, Math.floor(W / (fs * f * CW))); return p.label.length > n ? p.label.slice(0, n - 1) + '…' : p.label; };
+    let lines;
+    let fs = Math.min(140, fitW(num, 1.2), fitW(dims, 1), H / (1.2 * 1.2 + 1.2 + 0.72 * 1.2));
+    if (fs >= 24) lines = [[num, 1.2, 'pl'], [dims, 1, 'pl'], [name(fs, 0.72), 0.72, 'pn']];
+    else {
+      const t = num + ' · ' + dims;
+      fs = Math.min(140, fitW(t, 1), H / (1.2 + 0.85 * 1.2));
+      if (fs >= 18) lines = [[t, 1, 'pl'], [name(fs, 0.85), 0.85, 'pn']];
+      else { fs = Math.max(12, Math.min(fitW(t, 1), H / 1.2)); lines = [[t, 1, 'pl']]; }
+    }
+    const tot = lines.reduce((a, l) => a + l[1] * fs * 1.2, 0);
+    let y = cy - tot / 2;
+    let o = '<g class="plab"' + (rot ? ' transform="rotate(-90 ' + cx + ' ' + cy + ')"' : '') + '>';
+    if (bg) {
+      const bw = Math.min(W + 10, Math.max(...lines.map((l) => l[0].length * CW * l[1] * fs)) + fs * 0.8);
+      o += '<rect class="lb" x="' + (cx - bw / 2) + '" y="' + (y - fs * 0.15) + '" width="' + bw + '" height="' + (tot + fs * 0.3) + '" rx="' + fs * 0.25 + '"/>';
+    }
+    for (const [t, f, c] of lines) {
+      o += '<text x="' + cx + '" y="' + (y + f * fs * 0.6) + '" font-size="' + (f * fs).toFixed(1) + '" class="' + c + '">' + esc(t) + '</text>';
+      y += f * fs * 1.2;
+    }
+    return o + '</g>';
+  }
   function sheetSvg(s, g, si, w) {
     const hid = 'ht' + si + '-' + g.key.replace(/[^A-Za-z0-9]/g, '');
     // Bildschirm: Breite in px; Druck (w = 0): feste Größe in mm, passt mit Überschrift auf A4 quer
@@ -2945,17 +3010,10 @@ table.fmt.one .onet { display: inline; }
     for (const p of s.parts) {
       // Plattenkoordinaten: y nach oben → SVG y nach unten spiegeln
       const y = s.W - p.y - p.w;
-      const fs = Math.max(24, Math.min(60, Math.min(p.l, p.w) / 5));
-      const t1 = p.l > 3 * fs && p.w > 1.4 * fs ? p.id + ' · ' + n1(p.l) + ' × ' + n1(p.w) : '';
-      const t2 = p.l > 3 * fs && p.w > 2.6 * fs ? p.label : '';
       // ruhiges Feld hinter der Schrift (Schraffur nur außerhalb)
-      const bw = Math.min(p.l - 8, Math.max(t1.length * fs * 0.62, t2.length * fs * 0.8 * 0.56) + fs * 0.9);
-      const bh = t2 ? fs * 2.75 : fs * 1.45;
       out += '<g class="cp' + (cutSel && cutSel.grp === g.key && cutSel.uid === p.uid ? ' sel' : '') + '" data-uid="' + esc(p.uid) + '"><rect x="' + p.x + '" y="' + y + '" width="' + p.l + '" height="' + p.w + '" class="pt"/>' +
         '<rect x="' + p.x + '" y="' + y + '" width="' + p.l + '" height="' + p.w + '" class="hatch" fill="url(#' + hid + hatchDir(g, p) + ')"/>' +
-        (t1 ? '<rect class="lb" x="' + (p.x + p.l / 2 - bw / 2) + '" y="' + (y + p.w / 2 - fs * 0.75) + '" width="' + bw + '" height="' + bh + '" rx="' + fs * 0.3 + '"/>' : '') +
-        (p.l > 3 * fs && p.w > 1.4 * fs ? '<text x="' + (p.x + p.l / 2) + '" y="' + (y + p.w / 2) + '" font-size="' + fs + '" class="pl">' + esc(p.id + ' · ' + n1(p.l) + ' × ' + n1(p.w)) + '</text>' : '') +
-        (p.l > 3 * fs && p.w > 2.6 * fs ? '<text x="' + (p.x + p.l / 2) + '" y="' + (y + p.w / 2 + fs * 1.2) + '" font-size="' + (fs * 0.8) + '" class="pn">' + esc(p.label) + '</text>' : '') +
+        partLabelSvg(p, y, true) +
         '<title>' + esc(p.label + ' – ' + n1(p.l) + ' × ' + n1(p.w) + (p.rot ? ' (gedreht)' : '') + ' · ziehen = verschieben, Doppelklick = drehen') + '</title></g>';
     }
     // Schnittfolge: Linien in der Mitte der Schnittfuge, Nummer am Anfang des Schnitts
@@ -3248,7 +3306,7 @@ table.fmt.one .onet { display: inline; }
   }
   // Schnittfolge-Einstellungen (Sägemodus), gemerkt in lst.sawCfg
   const SAW_CFG = { primary: 'plan', trimLong: true, trimCross: true, trimFirst: 'long', startX: 'left', startY: 'front', order: 'depth', trims: 'now',
-    trimMax: 150, trimPct: 30, restMin: 300, measure: 'piece' };
+    trimMax: 150, trimPct: 30, restMin: 300, measure: 'piece', labelPopup: true };
   const sawCfg = () => Object.assign({}, SAW_CFG, lst.sawCfg || {});
   function sawSteps(x) {
     const cfg = sawCfg();
@@ -3280,7 +3338,7 @@ table.fmt.one .onet { display: inline; }
     return { kind: 'Nachschnitt', cls: 'trim', dir: dirName, tx: 'Auf Maß schneiden – Überstand ab.', inn: st.parts.length ? pn(st.parts[0]) : '', rest: n1(st.rest) + ' mm Überstand (Abfall)' };
   }
   // Maß für den Anschlag: abgetrenntes Stück (Parallelanschlag) oder Restmaß (Programmanschlag der Aufteilsäge)
-  const sawMeasure = (st, cfg) => (st.kind !== 'anschnitt' && cfg.measure === 'remain' ? { v: st.rest, u: 'mm Restmaß' } : { v: st.size, u: st.kind === 'anschnitt' ? 'mm' : 'mm Stück' });
+  const sawMeasure = (st, cfg) => (st.kind !== 'anschnitt' && cfg.measure === 'remain' ? { v: st.rest, u: 'mm Restmaß' } : { v: st.size, u: 'mm' });
   function sawSvg(x, steps, cur, cfg) {
     const sh = x.s;
     const k = Math.max(0, lst.kerf);
@@ -3290,12 +3348,10 @@ table.fmt.one .onet { display: inline; }
     let o = '<svg class="sheet sawsheet" viewBox="-40 -40 ' + (sh.L + 80) + ' ' + (sh.W + 80) + '" role="img" aria-label="Platte ' + (x.i + 1) + ' Sägeschritt ' + (cur + 1) + '">' +
       '<rect x="0" y="0" width="' + sh.L + '" height="' + sh.W + '" class="sh"/>' +
       '<rect x="' + lst.trim + '" y="' + lst.trim + '" width="' + (sh.L - 2 * lst.trim) + '" height="' + (sh.W - 2 * lst.trim) + '" class="trim"/>';
+    // fertige Teile sind weg (abgestapelt) – es bleiben die noch zu schneidenden
     for (const p of sh.parts) {
-      const d = done.has(p.uid);
-      const fs = Math.max(26, Math.min(64, Math.min(p.l, p.w) / 5));
-      o += '<rect x="' + p.x + '" y="' + Y(p.y + p.w) + '" width="' + p.l + '" height="' + p.w + '" class="' + (d ? 'sdone' : 'pt') + '"/>' +
-        (p.l > 3 * fs && p.w > 1.4 * fs ? '<text x="' + (p.x + p.l / 2) + '" y="' + Y(p.y + p.w / 2) + '" font-size="' + fs + '" class="' + (d ? 'sdt' : 'pl') + '">' +
-          (d ? '✓ ' : '') + esc(p.id + ' · ' + n1(p.l) + ' × ' + n1(p.w)) + '</text>' : '');
+      if (done.has(p.uid)) continue;
+      o += '<rect x="' + p.x + '" y="' + Y(p.y + p.w) + '" width="' + p.l + '" height="' + p.w + '" class="pt"/>' + partLabelSvg(p, Y(p.y + p.w), false);
     }
     const line = (st) => {
       if (st.kind === 'anschnitt') {
@@ -3352,6 +3408,7 @@ table.fmt.one .onet { display: inline; }
       '<fieldset><legend>Nachschnitt</legend>' + sel('trims', [['now', 'sofort'], ['strip', 'nach jedem Streifen'], ['end', 'am Schluss gesammelt']], cfg.trims, 'Wann') +
         num('trimMax', cfg.trimMax, 'Überstand bis', 'mm', 'Ein Schnitt heißt Nachschnitt, wenn nur noch ein Teil im Stück ist und höchstens so viel abkommt') +
         num('trimPct', cfg.trimPct, 'oder bis', '% vom Maß') + num('restMin', cfg.restMin, 'Reststück ab', 'mm', 'Größere Reste heißen Reststück, kleinere Abfall') + '</fieldset>' +
+      '<fieldset><legend>Etikett</legend>' + chk('labelPopup', cfg.labelPopup, 'nach jedem fertigen Teil Fenster „Etikett drucken“') + '</fieldset>' +
       '</div><div class="row"><button type="button" class="btn ghost small" data-saw="cfgreset">Standard</button><button type="button" class="btn small" data-saw="cfgclose">Fertig</button></div></div>';
   }
   function renderSaw() {
@@ -3383,8 +3440,9 @@ table.fmt.one .onet { display: inline; }
       (ok ? '' : '<p class="warn">Diese Anordnung ist nicht ganz mit durchgehenden Schnitten trennbar – im Zuschnittplan prüfen.</p>') +
       '<div class="saw"><div class="sawdraw">' + sawSvg(x, steps, cur, cfg) + '</div><div class="sawcard" aria-live="polite">' +
       (st ? '<div class="sawhead"><span class="sk ' + t.cls + '">' + esc(t.kind) + '</span><span class="snum">' + (cur + 1) + '<small>/' + steps.length + '</small></span></div>' +
+        '<div class="fence"><span class="fl">' + (st.kind === 'anschnitt' ? 'Abschneiden' : cfg.measure === 'remain' ? 'Anschlag einstellen · Restmaß' : 'Anschlag einstellen') + '</span>' +
+        '<span class="big">' + n1(m.v) + '<small>mm</small></span></div>' +
         '<div class="dir"><span class="darr" aria-hidden="true">' + (st.dir === 'h' ? '⟷' : '↕') + '</span> ' + esc(t.dir) + '</div>' +
-        '<div class="big">' + n1(m.v) + ' <small>' + m.u + '</small></div>' +
         (st.kind !== 'anschnitt' && cfg.measure === 'remain' ? '<div class="sub2">Stück ' + n1(st.size) + ' mm</div>' : st.kind !== 'anschnitt' && st.rest > 0 && !t.rest ? '<div class="sub2">Rest ' + n1(st.rest) + ' mm</div>' : '') +
         '<div class="tx">' + esc(t.tx) + '</div>' +
         (t.inn ? '<div class="inn"><span>Im Stück</span>' + esc(t.inn) + '</div>' : '') +
@@ -3396,9 +3454,16 @@ table.fmt.one .onet { display: inline; }
       '<div class="sawnav"><button type="button" class="btn ghost" data-saw="prev"' + (cur ? '' : ' disabled') + '>◀ Zurück</button>' +
       '<button type="button" class="btn" data-saw="next"' + (st ? '' : ' disabled') + '>Weiter ▶</button></div>' +
       '<div class="sn keys">Tasten: → oder Leertaste = weiter · ← = zurück · F = Vollbild</div>' +
-      '<div class="sn">' + Object.entries(kindTot).map(([k2, v]) => v + ' × ' + SAW_KIND[k2]).join(' · ') + '</div></div></div>';
-    $('sawsheet').addEventListener('change', (e) => { lst.saw = { key: e.target.value, step: 0 }; saveLst(); renderSaw(); });
+      '<div class="sn">' + Object.entries(kindTot).map(([k2, v]) => v + ' × ' + SAW_KIND[k2]).join(' · ') + '</div></div></div>' + sawPopHtml(x);
+    $('sawsheet').addEventListener('change', (e) => { lst.saw = { key: e.target.value, step: 0 }; sawPop = null; saveLst(); renderSaw(); });
     host.querySelectorAll('[data-saw]').forEach((b) => b.addEventListener('click', () => sawGo(b.dataset.saw)));
+    host.querySelectorAll('[data-sawlbl]').forEach((b) => b.addEventListener('click', () => {
+      const part = sawPart(x, b.dataset.sawlbl);
+      if (!part) return;
+      sawPop.printed.add(b.dataset.sawlbl);
+      printLabels([part]);
+      renderSaw();
+    }));
     host.querySelectorAll('[data-sawcfg]').forEach((inp) => inp.addEventListener('change', () => {
       const c = Object.assign({}, lst.sawCfg || {});
       const k2 = inp.dataset.sawcfg;
@@ -3408,6 +3473,24 @@ table.fmt.one .onet { display: inline; }
       saveLst();
       renderSaw();
     }));
+  }
+  // Bauteil zu einem Stück im Plan (uid id#n)
+  function sawPart(x, uid) {
+    const [id, n] = String(uid).split('#');
+    const it = x.g.items.find((q) => String(q.id) === id);
+    return it && it.pp ? it.pp[(+n || 1) - 1] || it.pp[0] : null;
+  }
+  // Fenster „Teil fertig – Etikett drucken“ (nach einem Schnitt, der Teile fertig macht)
+  let sawPop = null; // { uids, printed: Set }
+  function sawPopHtml(x) {
+    if (!sawPop) return '';
+    const ps = sawPop.uids.map((u) => [u, x.s.parts.find((q) => q.uid === u)]).filter((q) => q[1]);
+    if (!ps.length) return '';
+    return '<div class="sawpop" role="dialog" aria-modal="true" aria-label="Etikett drucken"><div class="sawpopin"><h3>✓ Fertig geschnitten</h3>' +
+      '<p class="sn">Auf das Teil tippen – das Etikett wird gedruckt.</p><div class="sawtiles">' +
+      ps.map(([u, p]) => '<button type="button" class="sawtile' + (sawPop.printed.has(u) ? ' printed' : '') + '" data-sawlbl="' + esc(u) + '"><span class="s-tn">Nr. ' + esc(String(p.id)) + '</span>' +
+        '<span class="s-tl">' + esc(p.label) + '</span><span class="s-td">' + n1(p.l) + ' × ' + n1(p.w) + ' mm</span><span class="s-tp">' + (sawPop.printed.has(u) ? '✓ gedruckt – nochmal' : '🏷 Etikett drucken') + '</span></button>').join('') +
+      '</div><button type="button" class="btn sawbig" data-saw="popclose">Weiter sägen ▶</button></div></div>';
   }
   // Vollbild: echtes Vollbild, wo der Browser es erlaubt, sonst über die ganze Seite
   function sawFull(on) {
@@ -3427,9 +3510,15 @@ table.fmt.one .onet { display: inline; }
     const xi = list.findIndex((x) => x.key === lst.saw.key);
     if (xi < 0) return;
     const n = sawSteps(list[xi]).steps.length;
-    if (what === 'next') lst.saw.step = Math.min(n, (lst.saw.step | 0) + 1);
+    if (what === 'popclose') { sawPop = null; renderSaw(); return; }
+    if (sawPop && (what === 'next' || what === 'prev')) { sawPop = null; renderSaw(); return; } // erst das Fenster schließen
+    if (what === 'next') {
+      const st = sawSteps(list[xi]).steps[lst.saw.step | 0];
+      lst.saw.step = Math.min(n, (lst.saw.step | 0) + 1);
+      if (st && st.done.length && sawCfg().labelPopup) sawPop = { uids: st.done.slice(), printed: new Set() };
+    }
     else if (what === 'prev') lst.saw.step = Math.max(0, (lst.saw.step | 0) - 1);
-    else if (what === 'reset') lst.saw.step = 0;
+    else if (what === 'reset') { lst.saw.step = 0; sawPop = null; }
     else if (what === 'nextsheet' && list[xi + 1]) lst.saw = { key: list[xi + 1].key, step: 0 };
     else if (what === 'full') { sawFull(!$('sawview').classList.contains('sawfull')); return; }
     else if (what === 'cfg') lst.sawCfgOpen = !lst.sawCfgOpen;
@@ -3442,6 +3531,7 @@ table.fmt.one .onet { display: inline; }
     if (state.page !== 'lists' || lst.tab !== 'saw' || e.altKey || e.ctrlKey || e.metaKey) return;
     if (e.target && /^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(e.target.tagName) && e.key === ' ') return;
     if (e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+    if (e.key === 'Escape' && sawPop) { sawGo('popclose'); return; }
     if (e.key === 'Escape' && $('sawview').classList.contains('sawfull')) { sawFull(false); return; }
     if (e.key === 'f' || e.key === 'F') { e.preventDefault(); sawGo('full'); return; }
     if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); sawGo('next'); }

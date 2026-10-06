@@ -39,7 +39,8 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   `packFree` bzw. Streifen `packStrips`, `goal` waste/cuts wählt aus Varianten; `cutSequence` mit `dir`; `fits` beim Verschieben
   von Hand → `lst.manual[Gruppe] = {sig, sheets}`; Zoom `lst.cutZoom` → CSS `--cz` an `#cutsheets` (`setCutZoom`, `--ar` je Platte), Schrift `lst.cutFont`/`lst.sawFont`
   (`setCutFont`/`setSawFont` → 4. Parameter von `partLabelSvg`, skaliert um die Teilmitte), Sägemodus-Platte `lst.sawZoom` → `--sz`
-  an `#sawview` (Karte schmaler, große Zahl in `cqi` mit `--nl` = Zeichenzahl); Übersicht `cutOverview`/`cutOverviewHtml` (auch
+  an `#sawview` (Karte schmaler, große Zahl in `cqi` mit `--nl` = Zeichenzahl); Format je Gruppe `lst.groupSheet[key]` (`fmtOf`/`cutOptsOf`, `g.fmt`), je Platte `lst.manual[key].sheets[i].L/W`
+  (`data-sfmt`, nur wenn alle Teile passen); Übersicht `cutOverview`/`cutOverviewHtml` (auch
   erste PDF-Seite), im Sägemodus `sawOverHtml` mit `lst.sawDone[key] = sawSig(x)`; Sägemodus `lst.tab` 'saw': `renderSaw`/`sawSteps`/`sawText`/`sawSvg`, Stand
   `lst.saw = {key, step}`, Einstellungen `lst.sawCfg` (`SAW_CFG`: trimLong/trimCross/trimFirst, primary, startX/startY → `flipX`/`flipY`,
   order depth|strips, trims now|strip|end, trimMax/trimPct, restMin, measure piece|remain, labelPopup), Vollbild `sawFull` (Klasse `sawfull`);
@@ -47,6 +48,8 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   `sawPart` (uid id#n → Bauteil über `items[].pp`) → `printLabels`;
   Schnitte mit `level`/`kind`/`size`/`rest`/`side`/`done`/`strip`/`tg`/`sn` aus `cutSequence`, dazu `strips` [{n, region, dir, parts}]
   → Nummern am Rand `stripMarks` (Zuschnittplan, Sägemodus, PDF)), PDF-Datei über `web/js/pdf.js` (`MiniPdf`, ohne Druckdialog) in `cutPdf`.
+  Teil von Hand (Stückliste `#bomnew`, `renderBomNew`/`addManualPart`): Rechteck als DXF (`rectDxf`) über `addDxf(text, name,
+  {T, board, qty})` → nur Formatfräsen; Löschen `data-bomdel` (zweiter Klick).
   Eigene Farben mit Namen: Schlüssel `#rrggbb[/u]~Name`, gemerkt in `settings.customBoards`. Zeit: `Toolpath.estimate`
   (Einstellungen `est*`), `partTime` in `index.html`. Projektdatei .s2m: `saveProject`/`openProject` (= `sessionData`/`restoreFrom`).
 - Gekrümmte Flächen (je Teil `overrides.curved = {slant, surface}`, Schalter nur sichtbar, wenn erkannt):

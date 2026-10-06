@@ -1039,6 +1039,66 @@ test('Web-Tool: Kanten nach Regeln vorbelegen und Sägemodus Schritt für Schrit
   }
 });
 
+test('Web-Tool: Teil in der Stückliste anlegen und löschen, Plattenformat je Material und je Platte', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1440, height: 950 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    const n0 = await p.$$eval('.part', (x) => x.length);
+    await p.click('[data-page="lists"]');
+    await p.click('[data-ltab="bom"]');
+    // neues Teil: Rechteck als Platte, mit Anzahl und Material → Programm nur Formatfräsen
+    await p.click('#bomnewbtn');
+    await p.fill('#np-name', 'Fachboden extra');
+    await p.fill('#np-L', '700');
+    await p.fill('#np-W', '350');
+    await p.fill('#np-T', '19');
+    await p.fill('#np-qty', '3');
+    await p.click('#np-add');
+    assert.strictEqual(await p.$$eval('.part', (x) => x.length), n0 + 1);
+    const row = await p.$$eval('table.bom tbody tr', (rs) => rs.map((r) => r.textContent).find((t) => /Fachboden_extra/.test(t)));
+    assert.match(row, /700\s*350\s*19/);
+    assert.strictEqual(await p.$eval('table.bom tbody tr:last-child [data-bomqty]', (e) => e.value), '3');
+    // löschen: erster Klick fragt, zweiter löscht
+    const k = await p.$$eval('table.bom tbody tr', (rs) => rs.findIndex((r) => /Fachboden_extra/.test(r.textContent)));
+    await p.click(`[data-bomdel="${k}"]`);
+    assert.match(await p.textContent(`[data-bomdel="${k}"]`), /Löschen\?/);
+    assert.strictEqual(await p.$$eval('.part', (x) => x.length), n0 + 1);
+    await p.click(`[data-bomdel="${k}"]`);
+    assert.strictEqual(await p.$$eval('.part', (x) => x.length), n0);
+    assert.ok(!(await p.textContent('table.bom')).includes('Fachboden_extra'));
+    // Plattenformat je Material: neu angeordnet, in der Übersicht
+    await p.click('[data-ltab="cut"]');
+    await p.waitForSelector('svg.sheet');
+    await p.fill('[data-gfmt][data-f="L"] >> nth=0', '2500');
+    await p.press('[data-gfmt][data-f="L"] >> nth=0', 'Enter');
+    assert.match(await p.textContent('.cutover tbody tr'), /2500 × 2070/);
+    assert.ok(await p.$('[data-gfmtreset]'));
+    // einzelne Platte: leere Platte anhängen und als Reststück 1200 × 800 – Teile, die nicht passen, verhindern das Verkleinern
+    await p.click('[data-cutadd] >> nth=0');
+    const last = await p.$$eval('#cutsheets .cutover + .cutgrp .sheetfig', (x) => x.length - 1);
+    const inp = (f, i) => `#cutsheets .cutover + .cutgrp [data-sfmt][data-si="${i}"][data-f="${f}"]`;
+    await p.fill(inp('L', last), '1200');
+    await p.press(inp('L', last), 'Enter');
+    await p.fill(inp('W', last), '800');
+    await p.press(inp('W', last), 'Enter');
+    assert.match(await p.textContent('.cutover tbody tr'), /2500 × 2070, 1200 × 800/);
+    assert.strictEqual(await p.$eval(`#cutsheets .cutover + .cutgrp .sheetfig >> nth=${last}`, (e) => e.querySelector('svg.sheet').getAttribute('aria-label')), 'Platte ' + (last + 1) + ' 1200 × 800');
+    await p.fill(inp('W', 0), '200');
+    await p.press(inp('W', 0), 'Enter');
+    assert.match(await p.textContent('#toast'), /Passt nicht/);
+    assert.strictEqual(await p.$eval(inp('W', 0), (e) => e.value), '2070');
+    await p.click('[data-gfmtreset]');
+    assert.ok(!(await p.$('[data-gfmtreset]')));
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});
+
 // Dekor-Bibliothek (PHP auf dem Webspace): eingebauter PHP-Server mit web/ + tools/webserver/dekore in einem Testordner
 const { execFileSync, spawn } = require('child_process');
 let hasPhp = false;

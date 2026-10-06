@@ -198,6 +198,10 @@ Dritte Seite oben (**Listen**):
   Rohteil-Aufmaß), Fläche, geschätzter Zeit und Programmname. *Gleiche Teile zusammenfassen* (gleiche Maße, Farbe und
   gleiches Programm). **Anzahl** je Position änderbar (wird mit der Teileliste bzw. im Projekt gespeichert). Summen: Teile,
   m² je Material und Dicke, Bearbeitungszeit gesamt. **CSV / Excel** (Semikolon, deutsche Kommazahlen) und **Drucken / PDF**.
+  **+ Teil anlegen:** Name, Länge, Breite, Dicke, Anzahl, Material – das Teil wird als Rechteck-Platte gerechnet (wie eine
+  DXF) und landet mit **Formatfräsen** (umfräst) in den Programmen, in Zuschnitt, Sägen und Etiketten; Kanten danach in der
+  Liste setzen, gespeichert mit der Projektdatei. **Löschen** je Position (Papierkorb, zweimal klicken) entfernt die Bauteile
+  ganz – auch aus den Programmen.
 - **Sägeplatz mit Raspberry Pi 5:** `npm run build:pi` → `dist/Step2Maestro-Pi.zip` mit `einrichten.sh` (Zebra an USB über
   CUPS mit Treiber „Zebra ZPL Label Printer“ als Standarddrucker in Etikettgröße, Bildschirm bleibt an, Chromium startet beim
   Anmelden im Vollbild mit `--kiosk-printing` → Etiketten ohne Druckdialog), `ANLEITUNG-PI.txt` (Einkaufsliste, Schritte,
@@ -259,6 +263,9 @@ Dritte Seite oben (**Listen**):
   Mausrad) – die Beschriftung wächst um die Teilmitte und darf dann über kleine Teile hinausragen; gilt auch für Druck und PDF.
   **Übersicht** oben: je Material und Dicke Anzahl Platten, Format, Teile, Teilefläche und Ausnutzung, darunter die Summe
   („3 Platten zu schneiden · 10 Teile“) – auch als erste Seite im PDF und im Druck.
+  **Plattenformat je Material:** im Kopf jeder Gruppe *Format L × B* (z. B. andere Plattengröße bei einem Dekor) – die Gruppe
+  wird neu angeordnet, ↺ = wieder das allgemeine Format. **Je Platte:** an jeder Platte eigenes Format (z. B. ein Reststück:
+  *+ Platte*, auf 1200 × 800 stellen, Teile darauf ziehen); verkleinern geht nur, wenn alle Teile darauf weiter passen.
   **Erster Schnitt:** *längs bevorzugt* = erst Streifen über die ganze Plattenlänge, darin quer ablängen; *quer bevorzugt* =
   erst Streifen über die ganze Plattenbreite, darin längs; *automatisch* = was am besten passt. **Ziel:** *minimaler
   Verschnitt* (wenig Platten, möglichst großes Reststück) oder *optimale Schnitte* (wenig Schnitte, gleich breite Teile im

@@ -285,6 +285,11 @@ table.bom input[type=number] { width: 4.2em; text-align: right; }
 .erpanel td { padding: 3px 6px; }
 .erpanel td input[type=text] { width: 22em; max-width: 60vw; }
 .erpanel .note { font-size: 0.8rem; color: var(--muted); margin: 0; }
+.bomnew input[type=text] { width: 16em; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.bomnew input[type=number] { width: 6em; font-family: var(--font-mono); }
+.bomdel { padding: 3px 6px; color: var(--muted); }
+.bomdel.arm { color: #fff; background: var(--err); border-color: var(--err); }
 .edgecell .eauto { font-size: 0.7rem; color: var(--accent); border: 1px solid currentColor; border-radius: 99px; padding: 0 6px; }
 .bomsum { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-top: 12px; font-size: 0.9rem; }
 .bomsum small { color: var(--muted); }
@@ -324,6 +329,9 @@ svg.sheet .cp.bad .pt { fill: color-mix(in srgb, var(--err) 35%, var(--board)); 
 .czoom { display: inline-flex; align-items: center; gap: 4px; }
 .czoom output { min-width: 3.4em; text-align: center; font-family: var(--font-mono); font-size: 0.85rem; }
 #cutsheets .sheetrow > table.sheetlist { flex: 0 1 340px; font-size: 0.92rem; }
+.gfmt, .sfmt { display: inline-flex; align-items: center; gap: 4px; font-weight: 400; font-size: 0.85rem; color: var(--muted); }
+.gfmt input, .sfmt input { width: 5.2em; font: 0.85rem var(--font-mono); padding: 2px 4px; }
+.sfmt.own input { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
 .cutover { margin: 0 0 20px; }
 .cutover h3 { font-size: 1.05rem; margin: 4px 0 8px; color: var(--ink); text-transform: none; letter-spacing: 0.01em; }
 .cutover h3 small { font-weight: 400; color: var(--muted); font-size: 0.85rem; }
@@ -852,7 +860,8 @@ table.fmt.one .onet { display: inline; }
         <label title="Dekor 2 – zweites Kantendekor, Farbe für Möbel 3D">Dekor 2 <input type="text" id="ename2" placeholder="Dekor 2" aria-label="Name Dekor 2"> <input type="color" id="ecol2" aria-label="Farbe Dekor 2"></label>
         <label title="Zugabe je Kante für die Laufmeter (Überstand zum Kappen)">Zugabe <input type="number" id="eextra" min="0" step="1" aria-label="Zugabe je Kante"> mm</label>
         <label><input type="checkbox" id="ededuct"> Kantendicke vom Zuschnitt abziehen</label>
-        <button type="button" class="btn small" id="erules" aria-expanded="false" aria-controls="erpanel" title="Kanten automatisch nach Bauteilnamen vorbelegen">Kanten-Regeln …</button></span>
+        <button type="button" class="btn small" id="erules" aria-expanded="false" aria-controls="erpanel" title="Kanten automatisch nach Bauteilnamen vorbelegen">Kanten-Regeln …</button>
+        <button type="button" class="btn small" id="bomnewbtn" aria-expanded="false" aria-controls="bomnew" title="Teil von Hand anlegen – wird als Platte mit Formatfräsen (umfräst) zum Programm">+ Teil anlegen</button></span>
       <span id="cutopts" hidden>
         <label>Platte <input type="number" id="csheetL" min="100" step="1" aria-label="Plattenlänge"> × <input type="number" id="csheetW" min="100" step="1" aria-label="Plattenbreite"> mm</label>
         <label>Schnittfuge <input type="number" id="ckerf" min="0" step="0.1"> mm</label>
@@ -875,6 +884,7 @@ table.fmt.one .onet { display: inline; }
       <button type="button" class="btn small" id="lprintbtn">Drucken</button>
     </div>
     <div id="erpanel" class="erpanel" hidden></div>
+    <div id="bomnew" class="erpanel bomnew" hidden></div>
     <div id="bomview"></div>
     <div id="sawview" hidden></div>
     <div id="cutview" hidden><div id="cutsheets"></div>
@@ -1586,14 +1596,16 @@ table.fmt.one .onet { display: inline; }
     }
   }
   // DXF: ein Teil je Datei (größte Kontur), Dicke und Art je Erkennung im Teil änderbar (overrides.dxf)
-  function addDxf(text, label) {
+  function addDxf(text, label, extra) {
     const taken = new Set(state.parts.filter((p) => p.solid).map((p) => p.solid.name.toLowerCase()));
     const base = StepToXcs.partName(label.replace(/^.*[\\/]/, '').replace(/\.dxf$/i, ''));
     let name = base;
     for (let j = 2; taken.has(name.toLowerCase()); j++) name = base + '_' + j;
     const part = { label: label, src: { file: srcFile(label, 'dxf', text), idx: 0 }, solid: { name: name }, dxfText: text, orientation: null, field: null,
       fileName: null, result: null, side: 1,
-      profile: state.newProfile, overrides: { tools: {}, steps: {}, depths: {}, dxf: { T: state.settings.dxfThickness || 19, features: {} } } };
+      profile: state.newProfile, overrides: { tools: {}, steps: {}, depths: {}, dxf: { T: (extra && extra.T) || state.settings.dxfThickness || 19, features: {} } } };
+    // von Hand angelegt (Stückliste): Material, Anzahl
+    if (extra) { if (extra.board) part.board = extra.board; if (extra.qty) part.qty = extra.qty; }
     compute(part);
     state.parts.push(part);
   }
@@ -2893,7 +2905,7 @@ table.fmt.one .onet { display: inline; }
     const tot = bomTotals(rows);
     if (!rows.length) { $('bomview').innerHTML = '<p class="note">Keine Teile geladen.</p>'; return; }
     $('bomview').innerHTML = '<div class="tblwrap"><table class="bom"><thead><tr><th>Pos.</th><th class="r">Anzahl</th><th>Bezeichnung</th><th class="r">Länge</th><th class="r">Breite</th>' +
-      '<th class="r">Dicke</th><th>Material / Kanten</th><th title="Kantenband je Seite: L1 vorne, L2 hinten (lange Seiten), B1 links, B2 rechts – Klick: keine → Dekor 1 (schwarz) → Dekor 2 (gestreift); Mitte = ringsum">Kantenband</th><th class="r">Zuschnitt (roh)</th><th class="r">m²</th><th class="r">Zeit je Stück</th><th title="Faserrichtung im Zuschnitt: Auto = nach Material (Maserung längs), längs, quer (gedreht) oder frei">Faser</th><th>Programm</th></tr></thead><tbody>' +
+      '<th class="r">Dicke</th><th>Material / Kanten</th><th title="Kantenband je Seite: L1 vorne, L2 hinten (lange Seiten), B1 links, B2 rechts – Klick: keine → Dekor 1 (schwarz) → Dekor 2 (gestreift); Mitte = ringsum">Kantenband</th><th class="r">Zuschnitt (roh)</th><th class="r">m²</th><th class="r">Zeit je Stück</th><th title="Faserrichtung im Zuschnitt: Auto = nach Material (Maserung längs), längs, quer (gedreht) oder frei">Faser</th><th>Programm</th><th><span class="sr">Löschen</span></th></tr></thead><tbody>' +
       rows.map((r, k) => '<tr><td class="no">' + (k + 1) + '</td>' +
         '<td class="r"><input type="number" min="0" step="1" value="' + r.qty + '" data-bomqty="' + k + '" aria-label="Anzahl Position ' + (k + 1) + '"></td>' +
         '<td><b>' + r.names.map(esc).join(', ') + '</b><div class="sub">Bauteil ' + r.nums.join(', ') + '</div></td>' +
@@ -2905,7 +2917,8 @@ table.fmt.one .onet { display: inline; }
         '<td class="r">' + (r.time ? '<span title="' + esc(timeTitle(r.time)) + '">' + Toolpath.fmtTime(r.time.total) + '</span>' : '–') + '</td>' +
         '<td><select data-bomgrain="' + k + '" aria-label="Faserrichtung Position ' + (k + 1) + '">' + Object.entries(GRAIN_NAMES).map(([v, t]) => '<option value="' + v + '"' +
           (grainOf(r.parts[0]) === v ? ' selected' : '') + '>' + t + (v === 'auto' ? ' (' + GRAIN_NAMES[orientOf(r.parts[0], r.board)] + ')' : '') + '</option>').join('') + '</select></td>' +
-        '<td class="files">' + r.files.map(esc).join('<br>') + '</td></tr>').join('') +
+        '<td class="files">' + r.files.map(esc).join('<br>') + '</td>' +
+        '<td><button type="button" class="btn ghost small bomdel" data-bomdel="' + k + '" title="Position löschen (' + r.parts.length + ' Bauteil' + (r.parts.length === 1 ? '' : 'e') + ') – zweimal klicken" aria-label="Position ' + (k + 1) + ' löschen">' + ICON_TRASH + '</button></td></tr>').join('') +
       '</tbody></table></div>' +
       '<div class="bomsum"><span><b>' + tot.qty + '</b> Teile</span>' +
       Array.from(tot.byMat).map(([k, v]) => '<span>' + esc(k) + ': <b>' + fmt(Math.round(v * 100) / 100) + ' m²</b></span>').join('') +
@@ -2920,6 +2933,24 @@ table.fmt.one .onet { display: inline; }
       const v = sd === 'all' ? (vals.every((x) => x === vals[0]) ? (vals[0] + 1) % 3 : 1) : (cur[sd] + 1) % 3;
       for (const p of r.parts) { p.edges = edgesOf(p); for (const [k2] of EDGE_SIDES) if (sd === 'all' || sd === k2) p.edges[k2] = v; }
       applyBoards();
+    }));
+    // Löschen: erster Klick fragt („Löschen?“), zweiter löscht alle Bauteile der Position (auch aus den Programmen)
+    $('bomview').querySelectorAll('[data-bomdel]').forEach((b) => b.addEventListener('click', () => {
+      if (!b.classList.contains('arm')) {
+        b.classList.add('arm');
+        b.innerHTML = 'Löschen?';
+        setTimeout(() => { if (b.isConnected) { b.classList.remove('arm'); b.innerHTML = ICON_TRASH; } }, 4000);
+        return;
+      }
+      const r = rows[+b.dataset.bomdel];
+      const cur = state.parts[state.sel];
+      state.parts = state.parts.filter((p) => !r.parts.includes(p));
+      const at = state.parts.indexOf(cur);
+      state.sel = at >= 0 ? at : Math.min(state.sel, Math.max(0, state.parts.length - 1));
+      anim.result = null;
+      anim.playing = false;
+      toast(r.names.join(', ') + ' gelöscht.');
+      render();
     }));
     $('bomview').querySelectorAll('[data-bomgrain]').forEach((sel) => sel.addEventListener('change', () => {
       for (const p of rows[+sel.dataset.bomgrain].parts) p.grain = sel.value === 'auto' ? undefined : sel.value;
@@ -2964,6 +2995,9 @@ table.fmt.one .onet { display: inline; }
   // Zuschnittplan je Material und Dicke; von Hand verschobene Pläne (lst.manual) gelten, solange Teile und Platte gleich bleiben
   let cutSel = null; // ausgewähltes Teil im Zuschnittplan { grp, uid }
   const cutOpts = () => ({ sheetL: lst.sheetL, sheetW: lst.sheetW, kerf: lst.kerf, trim: lst.trim, dir: lst.dir, goal: lst.goal });
+  // Plattenformat je Material/Dicke (lst.groupSheet[Gruppe] = { L, W }), sonst das allgemeine
+  const fmtOf = (key) => { const f = lst.groupSheet && lst.groupSheet[key]; return f && f.L > 0 && f.W > 0 ? f : { L: lst.sheetL, W: lst.sheetW }; };
+  const cutOptsOf = (key) => { const f = fmtOf(key); return Object.assign(cutOpts(), { sheetL: f.L, sheetW: f.W }); };
   // Schnittfolge einer Platte: automatisch angeordnet → Richtung des Plans, von Hand → Vorzugsrichtung der Einstellung
   const seqOf = (s, g) => CutPlan.cutSequence(s, Object.assign(cutOpts(), { dir: g.plan.manual ? lst.dir : g.plan.dir }));
   const dirText = (g) => ((d) => (d === 'long' ? ' · erst längs schneiden' : d === 'cross' ? ' · erst quer schneiden' : ''))(g.plan.manual ? lst.dir : g.plan.dir);
@@ -2981,13 +3015,17 @@ table.fmt.one .onet { display: inline; }
       groups.get(key).items.push({ id: row.nums[0], label: row.names[0], L: dims.L, W: dims.W, qty: row.qty, orient: orientOf(row.parts[0], row.board), pp: pp });
     }
     return Array.from(groups.values()).map((g) => {
-      const auto = CutPlan.plan(g.items, cutOpts());
-      g.sig = JSON.stringify([cutOpts(), g.items.map((i) => [i.id, Math.round(i.L * 10), Math.round(i.W * 10), i.qty, i.orient])]);
+      const fm = fmtOf(g.key);
+      g.fmt = fm;
+      const auto = CutPlan.plan(g.items, cutOptsOf(g.key));
+      g.sig = JSON.stringify([cutOptsOf(g.key), g.items.map((i) => [i.id, Math.round(i.L * 10), Math.round(i.W * 10), i.qty, i.orient])]);
       const man = lst.manual && lst.manual[g.key];
       if (man && man.sig === g.sig) {
-        const sheets = man.sheets.map((s) => ({ L: lst.sheetL, W: lst.sheetW, parts: s.parts, used: s.parts.reduce((a, p) => a + p.l * p.w, 0) }));
+        // einzelne Platte mit eigenem Format (z. B. Reststück): s.L / s.W
+        const sheets = man.sheets.map((s) => ({ L: s.L || fm.L, W: s.W || fm.W, own: !!s.L, parts: s.parts, used: s.parts.reduce((a, p) => a + p.l * p.w, 0) }));
         const used = sheets.reduce((a, s) => a + s.used, 0);
-        g.plan = { sheets: sheets, unplaced: auto.unplaced, waste: sheets.length ? 1 - used / (sheets.length * lst.sheetL * lst.sheetW) : 0, manual: true };
+        const area = sheets.reduce((a, s) => a + s.L * s.W, 0);
+        g.plan = { sheets: sheets, unplaced: auto.unplaced, waste: area ? 1 - used / area : 0, manual: true };
       } else {
         if (man) delete lst.manual[g.key]; // Teile oder Platte geändert: wieder automatisch
         g.plan = auto;
@@ -2999,7 +3037,7 @@ table.fmt.one .onet { display: inline; }
   function manualOf(g) {
     if (!lst.manual) lst.manual = {};
     if (!lst.manual[g.key] || lst.manual[g.key].sig !== g.sig) {
-      lst.manual[g.key] = { sig: g.sig, sheets: g.plan.sheets.map((s) => ({ parts: s.parts.map((p) => Object.assign({}, p)) })) };
+      lst.manual[g.key] = { sig: g.sig, sheets: g.plan.sheets.map((s) => Object.assign(s.own ? { L: s.L, W: s.W } : {}, { parts: s.parts.map((p) => Object.assign({}, p)) })) };
     }
     return lst.manual[g.key];
   }
@@ -3147,12 +3185,14 @@ table.fmt.one .onet { display: inline; }
     const sum = rows.reduce((a, r) => ({ n: a.n + r.n, parts: a.parts + r.parts, area: a.area + r.area, miss: a.miss + r.miss }), { n: 0, parts: 0, area: 0, miss: 0 });
     return { rows: rows, sum: sum };
   }
+  // Formate einer Gruppe („2800 × 2070“, bei eigenen Einzelplatten mehrere)
+  const fmtList = (g) => Array.from(new Set(g.plan.sheets.map((s) => fmt(s.L) + ' × ' + fmt(s.W)))).join(', ') || fmt(g.fmt.L) + ' × ' + fmt(g.fmt.W);
   function cutOverviewHtml(groups) {
     const o = cutOverview(groups);
     const m2 = (v) => v.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     return '<section class="cutover"><h3>Übersicht <small>' + o.sum.n + ' Platte' + (o.sum.n === 1 ? '' : 'n') + ' zu schneiden · ' + o.sum.parts + ' Teile</small></h3>' +
       '<table class="cuttot"><thead><tr><th>Material</th><th class="r">Dicke</th><th class="r">Platten</th><th class="r">Format</th><th class="r">Teile</th><th class="r">Teilefläche</th><th class="r">Ausnutzung</th></tr></thead><tbody>' +
-      o.rows.map((r) => '<tr><td>' + boardSwatch(r.g.board) + ' ' + esc(r.g.name) + '</td><td class="r">' + fmt(r.g.T) + ' mm</td><td class="r big">' + r.n + '</td><td class="r">' + fmt(lst.sheetL) + ' × ' + fmt(lst.sheetW) +
+      o.rows.map((r) => '<tr><td>' + boardSwatch(r.g.board) + ' ' + esc(r.g.name) + '</td><td class="r">' + fmt(r.g.T) + ' mm</td><td class="r big">' + r.n + '</td><td class="r">' + fmtList(r.g) +
         '</td><td class="r">' + r.parts + (r.miss ? ' <span class="warn" title="passt nicht auf die Platte">+' + r.miss + ' !</span>' : '') + '</td><td class="r">' + m2(r.area) + ' m²</td><td class="r">' + r.util + ' %</td></tr>').join('') +
       '</tbody><tfoot><tr><td>Summe</td><td></td><td class="r big">' + o.sum.n + '</td><td></td><td class="r">' + o.sum.parts + '</td><td class="r">' + m2(o.sum.area) + ' m²</td><td></td></tr></tfoot></table></section>';
   }
@@ -3162,8 +3202,12 @@ table.fmt.one .onet { display: inline; }
     return cutOverviewHtml(groups) + groups.map((g) => {
       const pl = g.plan;
       return '<section class="cutgrp"><h3>' + boardSwatch(g.board) + ' ' + esc(g.name) + ' ' + fmt(g.T) + ' mm <small>' + pl.sheets.length + ' Platte' + (pl.sheets.length === 1 ? '' : 'n') +
-        ' ' + fmt(lst.sheetL) + ' × ' + fmt(lst.sheetW) + ' · Ausnutzung ' + Math.round((1 - pl.waste) * 100) + ' %' + (g.grain && lst.grain ? ' · Maserung längs' : '') + dirText(g) +
+        (forPrint ? ' ' + fmt(g.fmt.L) + ' × ' + fmt(g.fmt.W) : '') + ' · Ausnutzung ' + Math.round((1 - pl.waste) * 100) + ' %' + (g.grain && lst.grain ? ' · Maserung längs' : '') + dirText(g) +
         (pl.manual ? ' · von Hand angeordnet' : '') + '</small>' +
+        (forPrint ? '' : '<span class="gfmt" title="Plattenformat für ' + esc(g.name + ' ' + fmt(g.T)) + ' mm – ↺ = wieder das allgemeine Format">Format ' +
+          '<input type="number" min="100" step="1" data-gfmt="' + esc(g.key) + '" data-f="L" value="' + g.fmt.L + '" aria-label="Plattenlänge ' + esc(g.name) + '"> × ' +
+          '<input type="number" min="100" step="1" data-gfmt="' + esc(g.key) + '" data-f="W" value="' + g.fmt.W + '" aria-label="Plattenbreite ' + esc(g.name) + '"> mm' +
+          (lst.groupSheet && lst.groupSheet[g.key] ? ' <button type="button" class="btn ghost small" data-gfmtreset="' + esc(g.key) + '" title="Wieder das allgemeine Format ' + fmt(lst.sheetL) + ' × ' + fmt(lst.sheetW) + '">↺</button>' : '') + '</span>') +
         (forPrint ? '' : '<span class="cutact"><button type="button" class="btn ghost small" data-cutadd="' + esc(g.key) + '" title="Leere Platte anhängen, um Teile darauf zu verschieben">+ Platte</button>' +
           (pl.manual ? '<button type="button" class="btn ghost small" data-cutreset="' + esc(g.key) + '" title="Eigene Anordnung verwerfen">Automatisch anordnen</button>' : '') + '</span>') + '</h3>' +
         ((sp) => sp ? '<div class="cutsel"><span>Ausgewählt: <b>' + esc(sp.id + ' · ' + sp.label) + '</b> ' + n1(sp.l) + ' × ' + n1(sp.w) + (sp.rot ? ' (gedreht)' : '') + '</span>' +
@@ -3172,7 +3216,11 @@ table.fmt.one .onet { display: inline; }
         (pl.unplaced.length ? '<p class="warn">Passt nicht auf die Platte: ' + pl.unplaced.map((x) => esc(x.label) + ' (' + n1(x.L) + ' × ' + n1(x.W) + ')').join(', ') + '</p>' : '') +
         pl.sheets.map((s, i) => {
           const seq = lst.cuts ? seqOf(s, g) : null;
-          return '<figure class="sheetfig"><figcaption>Platte ' + (i + 1) + ' · ' + s.parts.length + ' Teile · genutzt ' + Math.round((s.used / (s.L * s.W)) * 100) + ' %' +
+          // Format dieser einen Platte (z. B. Reststück) – schaltet die Gruppe auf „von Hand“
+          const sf = forPrint ? ' · ' + fmt(s.L) + ' × ' + fmt(s.W) : ' · <span class="sfmt' + (s.own ? ' own' : '') + '" title="Format nur dieser Platte (z. B. Reststück)">' +
+            '<input type="number" min="100" step="1" data-sfmt="' + esc(g.key) + '" data-si="' + i + '" data-f="L" value="' + s.L + '" aria-label="Länge Platte ' + (i + 1) + '"> × ' +
+            '<input type="number" min="100" step="1" data-sfmt="' + esc(g.key) + '" data-si="' + i + '" data-f="W" value="' + s.W + '" aria-label="Breite Platte ' + (i + 1) + '"></span>';
+          return '<figure class="sheetfig"><figcaption>Platte ' + (i + 1) + sf + ' · ' + s.parts.length + ' Teile · genutzt ' + Math.round((s.used / (s.L * s.W)) * 100) + ' %' +
             (seq ? ' · ' + seq.cuts.length + ' Schnitte' : '') + '</figcaption>' +
             (seq && !seq.ok ? '<p class="warn">Nicht alle Teile sind mit durchgehenden Schnitten trennbar – Anordnung prüfen.</p>' : '') +
             '<div class="sheetrow">' + sheetSvg(s, g, i, forPrint ? 0 : 620) + (s.parts.length ? sheetListHtml(s) : '') + '</div></figure>';
@@ -3200,7 +3248,7 @@ table.fmt.one .onet { display: inline; }
       const m2 = (v) => v.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' m²';
       const y = d.table(12, 32, [{ t: 'Material', w: 90 }, { t: 'Dicke', w: 20, align: 'right' }, { t: 'Platten', w: 22, align: 'right' }, { t: 'Format', w: 32, align: 'right' },
         { t: 'Teile', w: 20, align: 'right' }, { t: 'Teilefläche', w: 30, align: 'right' }, { t: 'Ausnutzung', w: 26, align: 'right' }],
-        o.rows.map((r) => [r.g.name, fmt(r.g.T) + ' mm', String(r.n), fmt(lst.sheetL) + ' × ' + fmt(lst.sheetW), String(r.parts) + (r.miss ? ' (+' + r.miss + ' passt nicht)' : ''), m2(r.area), r.util + ' %'])
+        o.rows.map((r) => [r.g.name, fmt(r.g.T) + ' mm', String(r.n), fmtList(r.g), String(r.parts) + (r.miss ? ' (+' + r.miss + ' passt nicht)' : ''), m2(r.area), r.util + ' %'])
           .concat([['Summe', '', String(o.sum.n), '', String(o.sum.parts), m2(o.sum.area), '']]), { size: 10 });
       d.line(12, y - 6.2, 252, y - 6.2, { lw: 0.35 }); // über der Summe (Zeilenhöhe bei Schrift 10)
       d.text(285, 203, info + ' · Seite 1/' + total, { size: 7.5, align: 'right', color: [0.35, 0.35, 0.35] });
@@ -3389,6 +3437,8 @@ table.fmt.one .onet { display: inline; }
       renderLists();
     }
     host.addEventListener('click', (e) => {
+      const gr = e.target.closest('[data-gfmtreset]');
+      if (gr) { delete lst.groupSheet[gr.dataset.gfmtreset]; saveLst(); renderLists(); return; }
       const add = e.target.closest('[data-cutadd]');
       const rst = e.target.closest('[data-cutreset]');
       if (add) { const g = groupOf(add.dataset.cutadd); manualOf(g).sheets.push({ parts: [] }); saveLst(); renderLists(); }
@@ -3397,7 +3447,82 @@ table.fmt.one .onet { display: inline; }
       if (rot && cutSel) rotatePart(cutSel.grp, cutSel.uid);
       if (e.target.closest('[data-cutunsel]')) { cutSel = null; renderLists(); }
     });
+    // Plattenformat: je Material/Dicke (neu anordnen) oder nur für eine Platte (Teile müssen weiter passen)
+    host.addEventListener('change', (e) => {
+      const inp = e.target.closest('[data-gfmt], [data-sfmt]');
+      if (!inp) return;
+      const v = Math.round(parseFloat(String(inp.value).replace(',', '.')) || 0);
+      if (v < 100) { toast('Format bitte mindestens 100 mm.'); renderLists(); return; }
+      if (inp.dataset.gfmt !== undefined) {
+        const key = inp.dataset.gfmt;
+        const f = Object.assign({}, fmtOf(key));
+        f[inp.dataset.f] = v;
+        if (!lst.groupSheet) lst.groupSheet = {};
+        if (f.L === lst.sheetL && f.W === lst.sheetW) delete lst.groupSheet[key];
+        else lst.groupSheet[key] = { L: f.L, W: f.W };
+      } else {
+        const g = groupOf(inp.dataset.sfmt);
+        const si = +inp.dataset.si;
+        if (!g || !g.plan.sheets[si]) return;
+        const cur = g.plan.sheets[si];
+        const L = inp.dataset.f === 'L' ? v : cur.L;
+        const W = inp.dataset.f === 'W' ? v : cur.W;
+        const test = { L: L, W: W, parts: cur.parts };
+        const out = cur.parts.filter((p) => !CutPlan.fits(test, p, cutOpts(), p.uid));
+        if (out.length) {
+          toast('Passt nicht – ' + out.length + ' Teil' + (out.length === 1 ? '' : 'e') + ' ragen dann über den Rand. Erst verschieben (z. B. auf „+ Platte“).');
+          renderLists();
+          return;
+        }
+        const sh = manualOf(g).sheets[si];
+        if (L === g.fmt.L && W === g.fmt.W) { delete sh.L; delete sh.W; } else { sh.L = L; sh.W = W; }
+      }
+      saveLst();
+      renderLists();
+    });
   })();
+  /*
+   * Teil von Hand anlegen (Stückliste): Rechteck L × B als kleine DXF – wird wie ein DXF-Teil gerechnet, also nur die Platte
+   * mit Formatfräsen (umfräst). Material, Anzahl, Dicke am Teil; mit der Projektdatei gespeichert.
+   */
+  const rectDxf = (L, W) => ['0', 'SECTION', '2', 'HEADER', '9', '$INSUNITS', '70', '4', '0', 'ENDSEC', '0', 'SECTION', '2', 'ENTITIES',
+    '0', 'LWPOLYLINE', '8', 'Kontur', '90', '4', '70', '1', '10', '0', '20', '0', '10', String(L), '20', '0', '10', String(L), '20', String(W), '10', '0', '20', String(W),
+    '0', 'ENDSEC', '0', 'EOF'].join('\n') + '\n';
+  function addManualPart(o) {
+    addDxf(rectDxf(o.L, o.W), o.name, { T: o.T, board: o.board || null, qty: o.qty });
+  }
+  function renderBomNew() {
+    const el = $('bomnew');
+    if (el.hidden) return;
+    const boards = [];
+    for (const r of bomRows()) if (!boards.some((b) => b[0] === r.board)) boards.push([r.board, r.T]);
+    const def = boardKeyOf(null);
+    if (!boards.some((b) => b[0] === def)) boards.push([def, 19]);
+    const last = lst.newPart || {};
+    const bsel = last.board && boards.some((b) => b[0] === last.board) ? last.board : boards[0][0];
+    el.innerHTML = '<h4>Teil von Hand anlegen</h4><p class="note">Wird als Platte mit Formatfräsen (umfräst) zum Programm – auch in Zuschnitt, Sägen und Etiketten. ' +
+      'Kanten danach in der Liste setzen.</p><div class="row">' +
+      '<label>Name <input type="text" id="np-name" value="' + esc(last.name || '') + '" placeholder="z. B. Fachboden" aria-label="Name des Teils"></label>' +
+      '<label>Länge <input type="number" id="np-L" min="10" step="0.1" value="' + esc(last.L || '') + '" aria-label="Länge"> mm</label>' +
+      '<label>Breite <input type="number" id="np-W" min="10" step="0.1" value="' + esc(last.W || '') + '" aria-label="Breite"> mm</label>' +
+      '<label>Dicke <input type="number" id="np-T" min="1" step="0.1" value="' + esc(last.T || 19) + '" aria-label="Dicke"> mm</label>' +
+      '<label>Anzahl <input type="number" id="np-qty" min="1" step="1" value="1" aria-label="Anzahl"></label>' +
+      '<label>Material <select id="np-board" aria-label="Material">' + boards.map(([k, T]) => '<option value="' + esc(k) + '" data-t="' + T + '"' + (k === bsel ? ' selected' : '') + '>' + esc(boardName(k)) + '</option>').join('') + '</select></label>' +
+      '</div><div class="row"><button type="button" class="btn" id="np-add">Anlegen</button><button type="button" class="btn ghost small" id="np-close">Schließen</button></div>';
+    $('np-board').addEventListener('change', (e) => { const t = e.target.selectedOptions[0].dataset.t; if (t) $('np-T').value = t; });
+    $('np-close').addEventListener('click', () => { el.hidden = true; $('bomnewbtn').setAttribute('aria-expanded', 'false'); });
+    $('np-add').addEventListener('click', () => {
+      const num = (id) => parseFloat(String($(id).value).replace(',', '.'));
+      const o = { name: $('np-name').value.trim() || 'Teil', L: num('np-L'), W: num('np-W'), T: num('np-T'), qty: Math.max(1, Math.round(num('np-qty') || 1)), board: $('np-board').value };
+      if (!(o.L >= 10 && o.W >= 10 && o.T > 0)) { toast('Bitte Länge, Breite (ab 10 mm) und Dicke eingeben.'); return; }
+      lst.newPart = { name: '', L: o.L, W: o.W, T: o.T, board: o.board };
+      saveLst();
+      addManualPart(o);
+      render();
+      toast(o.qty + ' × „' + o.name + '“ ' + n1(o.L) + ' × ' + n1(o.W) + ' × ' + n1(o.T) + ' angelegt.');
+    });
+  }
+  $('bomnewbtn').addEventListener('click', () => { const el = $('bomnew'); el.hidden = !el.hidden; $('bomnewbtn').setAttribute('aria-expanded', String(!el.hidden)); renderBomNew(); });
   // Kanten-Regeln bearbeiten (Feld unter der Leiste der Stückliste)
   function renderEdgeRules() {
     const el = $('erpanel');
@@ -3717,7 +3842,7 @@ table.fmt.one .onet { display: inline; }
     $('bomview').hidden = lst.tab !== 'bom';
     $('cutview').hidden = lst.tab !== 'cut';
     $('sawview').hidden = lst.tab !== 'saw';
-    if (lst.tab !== 'bom') $('erpanel').hidden = true;
+    if (lst.tab !== 'bom') { $('erpanel').hidden = true; $('bomnew').hidden = true; }
     $('bomopts').hidden = lst.tab !== 'bom';
     $('cutopts').hidden = lst.tab === 'bom';
     $('czoomg').hidden = $('cfontg').hidden = lst.tab !== 'cut'; // Sägemodus: eigene Regler oben in der Leiste

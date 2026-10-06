@@ -92,6 +92,18 @@ header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: 
 .lbl { position: relative; overflow: hidden; background: #fff; color: #000; flex: none; }
 .lbl .lin { position: absolute; left: 0; top: 0; transform-origin: 0 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 0.8mm; font-family: var(--font-body); }
 .lbl .wrow { flex: 1; min-height: 0; display: flex; gap: 1.8mm; }
+.slb .lin { gap: 1.2mm; }
+.slb .hd { display: flex; align-items: baseline; gap: 1.2mm; background: #000; color: #fff; }
+.slb .hd .st { font-size: 2.4mm; font-weight: 800; letter-spacing: 0.08em; }
+.slb .hd .sn { font: 800 9mm/1 var(--font-mono); }
+.slb .hd .of { font: 700 3.2mm var(--font-mono); }
+.slb .mt { font-weight: 800; font-family: var(--font-display); white-space: nowrap; overflow: hidden; }
+.slb .pl { font-size: 4mm; } .slb .pl b { font: 800 5mm var(--font-mono); }
+.slb .ms { font: 700 3.4mm var(--font-mono); }
+.slb .ids { font-size: 2.6mm; line-height: 1.25; } .slb .ids span { font-weight: 700; }
+.slb .sskw { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.slb .ssk { width: 100%; height: 100%; max-height: 100%; }
+.slb .ft { font-size: 1.9mm; border-top: 0.25mm solid #000; padding-top: 0.4mm; }
 /* eigenes Layout (LabelLayout): Elemente absolut in mm */
 .lbl .lin.free { display: block; padding: 0; }
 .lbl .li, .ldlabel .li { position: absolute; box-sizing: border-box; overflow: hidden; color: #000; }
@@ -529,6 +541,17 @@ svg.sheet .cuts { pointer-events: none; }
 #sawview.sawfull .sawcard .dir { font-size: 1.7rem; }
 #sawview.sawfull .sawcard .inn, #sawview.sawfull .sawcard .fin { font-size: 1.2rem; }
 #sawview.sawfull .sawcard .tx { font-size: 1.25rem; }
+/* Vollbild an der Säge: Platten-Umschalter, Auswahl und Weiter/Zurück groß (Touch) */
+#sawview.sawfull .sawbar select { font-size: 1.15rem; padding: 8px 10px; }
+#sawview.sawfull .so-s { min-width: 54px; height: 54px; font-size: 1.35rem; border-radius: 12px; border-width: 2px; }
+#sawview.sawfull .sawover { gap: 10px 18px; padding: 10px 14px; font-size: 1.05rem; }
+#sawview.sawfull .sawover .so-g { gap: 8px; }
+#sawview.sawfull .sawnav .btn { min-height: 92px; font-size: 1.7rem; font-weight: 700; border-radius: 14px; }
+#sawview.sawfull .sawnav { gap: 14px; position: sticky; bottom: 0; z-index: 3; background: var(--surface); padding: 8px 0 4px; }
+.sawcard .sstriplbl { justify-self: start; }
+#sawview.sawfull .sawcard .sstriplbl { font-size: 1.05rem; padding: 8px 14px; }
+.sawtile.stile { border-color: var(--on, #1e8a3e); background: color-mix(in srgb, var(--on, #1e8a3e) 8%, var(--surface)); }
+.sawtile .s-tn small { font-size: 1.4rem; color: var(--muted); }
 body.sawlock { overflow: hidden; }
 .sawcard .tx { font-size: 1.15rem; }
 /* Etikett-Fenster */
@@ -3292,13 +3315,64 @@ table.fmt.one .onet { display: inline; }
   }
   // Etiketten direkt drucken (Druckbereich in Etikettgröße, schwarz-weiß) – auch aus dem Sägemodus
   function printLabels(list) {
-    const cfg = state.settings;
     list = list.filter((x) => x.res && x.res.panel);
     if (!list.length) { toast('Kein Teil mit Programm zum Beschriften.'); return; }
+    lblNums = labelNums();
+    printLabelHtml(list.map(labelHtml).join(''));
+  }
+  /*
+   * Streifen-Etikett zum Zuordnen (Sägen): „Streifen 1/4“, Material + Dicke, „Platte 1/5“, Breite × Länge des Streifens und die
+   * Bauteil-Nr. darin. o = { g: Gruppe, si: Platte (Index), strip: { n, region, dir, parts }, nStrips, sheet }
+   */
+  function stripLabelHtml(o) {
+    const D = labelDims();
+    const r = o.strip.region;
+    const h = o.strip.dir === 'h';
+    const wid = h ? r.y1 - r.y0 : r.x1 - r.x0;
+    const len = h ? r.x1 - r.x0 : r.y1 - r.y0;
+    const cnt = new Map();
+    for (const u of o.strip.parts) { const p = o.sheet.parts.find((q) => q.uid === u); if (p) cnt.set(p.id, (cnt.get(p.id) || 0) + 1); }
+    const ids = Array.from(cnt).map(([id, n]) => id + (n > 1 ? ' ×' + n : '')).join(', ');
+    const d = new Date();
+    const date = String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getFullYear()).slice(2);
+    const mat = o.g.name + ' · ' + fmt(o.g.T) + ' mm';
+    const ms = Math.max(2.2, Math.min(4.2, (D.cw - 3.2) / (mat.length * 0.74)));
+    // kleine Skizze der Platte: dieser Streifen schwarz, die anderen umrandet, Teile darin hell
+    const sh = o.sheet;
+    const all = stripsOf(o.g, o.si);
+    const sk = '<svg class="ssk" viewBox="-10 -10 ' + (sh.L + 20) + ' ' + (sh.W + 20) + '" preserveAspectRatio="xMidYMid meet" aria-hidden="true">' +
+      '<rect x="0" y="0" width="' + sh.L + '" height="' + sh.W + '" fill="#fff" stroke="#000" stroke-width="' + sh.L / 120 + '"/>' +
+      all.map((q) => { const g = q.strip.region; const me = q.strip.n === o.strip.n;
+        return '<rect x="' + g.x0 + '" y="' + (sh.W - g.y1) + '" width="' + (g.x1 - g.x0) + '" height="' + (g.y1 - g.y0) + '" fill="' + (me ? '#000' : 'none') +
+          '" stroke="#000" stroke-width="' + sh.L / (me ? 160 : 260) + '"' + (me ? '' : ' stroke-dasharray="' + sh.L / 60 + ' ' + sh.L / 90 + '"') + '/>' +
+          (me ? '' : '<text x="' + (g.x0 + g.x1) / 2 + '" y="' + (sh.W - (g.y0 + g.y1) / 2) + '" font-size="' + Math.min(g.x1 - g.x0, g.y1 - g.y0) * 0.6 + '" text-anchor="middle" dominant-baseline="central" font-weight="700">' + q.strip.n + '</text>'); }).join('') +
+      '</svg>';
+    return '<div class="lbl slb" style="width:' + D.LW + 'mm;height:' + D.LH + 'mm"><div class="lin" style="width:' + D.cw + 'mm;height:' + D.ch + 'mm;padding:1.6mm;' +
+      (D.rot ? 'transform:translate(' + D.LW + 'mm,0) rotate(90deg);' : '') + '">' +
+      '<div class="hd" style="margin:-1.6mm -1.6mm 0;padding:0.8mm 1.6mm"><span class="st">STREIFEN</span><span class="sn">' + o.strip.n + '</span><span class="of">/ ' + o.nStrips + '</span></div>' +
+      '<div class="mt" style="font-size:' + ms.toFixed(2) + 'mm">' + esc(mat) + '</div>' +
+      '<div class="pl">Platte <b>' + (o.si + 1) + '</b> / ' + o.g.plan.sheets.length + '</div>' +
+      '<div class="ms">' + n1(wid) + ' × ' + n1(len) + ' mm</div>' +
+      (ids ? '<div class="ids"><span>Teile Nr.</span> ' + esc(ids) + '</div>' : '') +
+      '<div class="sskw">' + sk + '</div>' +
+      '<div class="ln ft">' + date + '</div></div></div>';
+  }
+  // Streifen einer Platte (Schnittfolge wie im Sägemodus)
+  function stripsOf(g, si) {
+    const sheet = g.plan.sheets[si];
+    const seq = seqOf(sheet, g);
+    return seq.strips.map((st) => ({ g: g, si: si, strip: st, nStrips: seq.strips.length, sheet: sheet }));
+  }
+  function printStripLabels(list) {
+    if (!list.length) { toast('Keine Streifen auf dieser Platte.'); return; }
+    printLabelHtml(list.map(stripLabelHtml).join(''));
+  }
+  // Etiketten-HTML drucken: nur #printarea, @page in Etikettgröße
+  function printLabelHtml(html) {
+    const cfg = state.settings;
     let area = $('printarea');
     if (!area) { area = document.createElement('div'); area.id = 'printarea'; document.body.appendChild(area); }
-    lblNums = labelNums();
-    area.innerHTML = list.map(labelHtml).join('');
+    area.innerHTML = html;
     let pg = $('labelpage');
     if (!pg) { pg = document.createElement('style'); pg.id = 'labelpage'; document.head.appendChild(pg); }
     pg.textContent = '@page { size: ' + (+cfg.labelWidth || 40) + 'mm ' + (+cfg.labelHeight || 60) + 'mm; margin: 0; }';
@@ -3845,7 +3919,8 @@ table.fmt.one .onet { display: inline; }
             '<input type="number" min="100" step="1" data-sfmt="' + esc(g.key) + '" data-si="' + i + '" data-f="L" value="' + s.L + '" aria-label="Länge Platte ' + (i + 1) + '"> × ' +
             '<input type="number" min="100" step="1" data-sfmt="' + esc(g.key) + '" data-si="' + i + '" data-f="W" value="' + s.W + '" aria-label="Breite Platte ' + (i + 1) + '"></span>';
           return '<figure class="sheetfig"><figcaption>Platte ' + (i + 1) + sf + ' · ' + s.parts.length + ' Teile · genutzt ' + Math.round((s.used / (s.L * s.W)) * 100) + ' %' +
-            (seq ? ' · ' + seq.cuts.length + ' Schnitte' : '') + '</figcaption>' +
+            (seq ? ' · ' + seq.cuts.length + ' Schnitte' : '') + (seq && !forPrint && seq.strips.length ? ' <button type="button" class="btn ghost small" data-striplbl="' + esc(g.key) + '" data-si="' + i +
+              '" title="Je Streifen ein Etikett zum Zuordnen (Streifen-Nr., Material, Platte)">🏷 ' + seq.strips.length + ' Streifen-Etiketten</button>' : '') + '</figcaption>' +
             (seq && !seq.ok ? '<p class="warn">Nicht alle Teile sind mit durchgehenden Schnitten trennbar – Anordnung prüfen.</p>' : '') +
             '<div class="sheetrow">' + sheetSvg(s, g, i, forPrint ? 0 : 620) + (s.parts.length ? sheetListHtml(s) : '') + '</div></figure>';
         }).join('') + '</section>';
@@ -4061,6 +4136,8 @@ table.fmt.one .onet { display: inline; }
       renderLists();
     }
     host.addEventListener('click', (e) => {
+      const sl = e.target.closest('[data-striplbl]');
+      if (sl) { const g = groupOf(sl.dataset.striplbl); if (g) printStripLabels(stripsOf(g, +sl.dataset.si)); return; }
       const gr = e.target.closest('[data-gfmtreset]');
       if (gr) { delete lst.groupSheet[gr.dataset.gfmtreset]; saveLst(); renderLists(); return; }
       const add = e.target.closest('[data-cutadd]');
@@ -4195,7 +4272,7 @@ table.fmt.one .onet { display: inline; }
   }
   // Schnittfolge-Einstellungen (Sägemodus), gemerkt in lst.sawCfg
   const SAW_CFG = { primary: 'plan', trimLong: true, trimCross: true, trimFirst: 'long', startX: 'left', startY: 'back', order: 'depth', trims: 'now',
-    trimMax: 150, trimPct: 30, restMin: 300, measure: 'piece', labelPopup: true };
+    trimMax: 150, trimPct: 30, restMin: 300, measure: 'piece', labelPopup: true, stripPopup: true };
   const sawCfg = () => Object.assign({}, SAW_CFG, lst.sawCfg || {});
   function sawSteps(x) {
     const cfg = sawCfg();
@@ -4301,7 +4378,8 @@ table.fmt.one .onet { display: inline; }
       '<fieldset><legend>Nachschnitt</legend>' + sel('trims', [['now', 'sofort'], ['strip', 'nach jedem Streifen'], ['end', 'am Schluss gesammelt']], cfg.trims, 'Wann') +
         num('trimMax', cfg.trimMax, 'Überstand bis', 'mm', 'Ein Schnitt heißt Nachschnitt, wenn nur noch ein Teil im Stück ist und höchstens so viel abkommt') +
         num('trimPct', cfg.trimPct, 'oder bis', '% vom Maß') + num('restMin', cfg.restMin, 'Reststück ab', 'mm', 'Größere Reste heißen Reststück, kleinere Abfall') + '</fieldset>' +
-      '<fieldset><legend>Etikett</legend>' + chk('labelPopup', cfg.labelPopup, 'nach jedem fertigen Teil Fenster „Etikett drucken“') + '</fieldset>' +
+      '<fieldset><legend>Etikett</legend>' + chk('labelPopup', cfg.labelPopup, 'nach jedem fertigen Teil Fenster „Etikett drucken“') +
+        chk('stripPopup', cfg.stripPopup, 'nach jedem Streifen „Streifen-Etikett“ anbieten') + '</fieldset>' +
       '</div><div class="row"><button type="button" class="btn ghost small" data-saw="cfgreset">Standard</button><button type="button" class="btn small" data-saw="cfgclose">Fertig</button></div></div>';
   }
   function renderSaw() {
@@ -4345,6 +4423,7 @@ table.fmt.one .onet { display: inline; }
         '<div class="dir"><span class="darr" aria-hidden="true">' + (st.dir === 'h' ? '⟷' : '↕') + '</span> ' + esc(t.dir) + '</div>' +
         (st.kind !== 'anschnitt' && cfg.measure === 'remain' ? '<div class="sub2">Stück ' + n1(st.size) + ' mm</div>' : st.kind !== 'anschnitt' && st.rest > 0 && !t.rest ? '<div class="sub2">Rest ' + n1(st.rest) + ' mm</div>' : '') +
         '<div class="tx">' + esc(t.tx) + '</div>' +
+        (st.sn ? '<button type="button" class="btn ghost small sstriplbl" data-saw="striplbl" title="Etikett für diesen Streifen (Nr., Material, Platte)">🏷 Streifen ' + st.sn + ' – Etikett</button>' : '') +
         (t.inn ? '<div class="inn"><span>Im Stück</span>' + esc(t.inn) + '</div>' : '') +
         (t.rest ? '<div class="inn"><span>Übrig</span>' + esc(t.rest) + '</div>' : '') +
         (fin.length ? '<div class="fin">' + fin.map((p) => '<div>✓ ' + esc('Teil ' + p.id + ' · ' + p.label) + ' <b>' + n1(p.l) + ' × ' + n1(p.w) + '</b></div>').join('') + '</div>' : '') +
@@ -4407,9 +4486,14 @@ table.fmt.one .onet { display: inline; }
   function sawPopHtml(x) {
     if (!sawPop) return '';
     const ps = sawPop.uids.map((u) => [u, x.s.parts.find((q) => q.uid === u)]).filter((q) => q[1]);
-    if (!ps.length) return '';
-    return '<div class="sawpop" role="dialog" aria-modal="true" aria-label="Etikett drucken"><div class="sawpopin"><h3>✓ Fertig geschnitten</h3>' +
-      '<p class="sn">Auf das Teil tippen – das Etikett wird gedruckt.</p><div class="sawtiles">' +
+    if (!ps.length && !sawPop.strip) return '';
+    const sp = sawPop.strip ? stripsOf(x.g, x.i).find((q) => q.strip.n === sawPop.strip) : null;
+    const done = sawPop.printed.has('strip');
+    return '<div class="sawpop" role="dialog" aria-modal="true" aria-label="Etikett drucken"><div class="sawpopin"><h3>' + (ps.length ? '✓ Fertig geschnitten' : '✓ Streifen ' + sawPop.strip + ' abgetrennt') + '</h3>' +
+      '<p class="sn">Antippen – das Etikett wird gedruckt.</p><div class="sawtiles">' +
+      (sp ? '<button type="button" class="sawtile stile' + (done ? ' printed' : '') + '" data-saw="striplbl"><span class="s-tn">Streifen ' + sp.strip.n + '<small> / ' + sp.nStrips + '</small></span>' +
+        '<span class="s-tl">' + esc(x.g.name + ' · ' + fmt(x.g.T) + ' mm') + '</span><span class="s-td">Platte ' + (x.i + 1) + ' / ' + x.g.plan.sheets.length + '</span>' +
+        '<span class="s-tp">' + (done ? '✓ gedruckt – nochmal' : '🏷 Streifen-Etikett drucken') + '</span></button>' : '') +
       ps.map(([u, p]) => '<button type="button" class="sawtile' + (sawPop.printed.has(u) ? ' printed' : '') + '" data-sawlbl="' + esc(u) + '"><span class="s-tn">Nr. ' + esc(String(p.id)) + '</span>' +
         '<span class="s-tl">' + esc(p.label) + '</span><span class="s-td">' + n1(p.l) + ' × ' + n1(p.w) + ' mm</span><span class="s-tp">' + (sawPop.printed.has(u) ? '✓ gedruckt – nochmal' : '🏷 Etikett drucken') + '</span></button>').join('') +
       '</div><button type="button" class="btn sawbig" data-saw="popclose">Weiter sägen ▶</button></div></div>';
@@ -4437,10 +4521,25 @@ table.fmt.one .onet { display: inline; }
     if (what === 'next') {
       const st = sawSteps(list[xi]).steps[lst.saw.step | 0];
       lst.saw.step = Math.min(n, (lst.saw.step | 0) + 1);
-      if (st && st.done.length && sawCfg().labelPopup) sawPop = { uids: st.done.slice(), printed: new Set() };
+      const c = sawCfg();
+      // Streifen abgetrennt (mehrere Teile darin): Streifen-Etikett anbieten
+      const strip = st && st.kind === 'strip' && st.sn && st.parts.length > 1 && c.stripPopup ? st.sn : 0;
+      const uids = st && c.labelPopup ? st.done.slice() : [];
+      if (uids.length || strip) sawPop = { uids: uids, printed: new Set(), strip: strip };
     }
     else if (what === 'prev') lst.saw.step = Math.max(0, (lst.saw.step | 0) - 1);
     else if (what === 'reset') { lst.saw.step = 0; sawPop = null; }
+    else if (what === 'striplbl') {
+      // aktueller Streifen (bzw. der eben im Fenster gezeigte)
+      const x = list[xi];
+      const st = sawSteps(x).steps[lst.saw.step | 0];
+      const sn = sawPop && sawPop.strip ? sawPop.strip : st && st.sn;
+      const all = stripsOf(x.g, x.i);
+      const one = all.find((q) => q.strip.n === sn);
+      if (one) { printStripLabels([one]); if (sawPop && sawPop.strip) sawPop.printed.add('strip'); }
+      renderSaw();
+      return;
+    }
     else if (what === 'nextsheet' && list[xi + 1]) lst.saw = { key: list[xi + 1].key, step: 0 };
     else if (what === 'full') { sawFull(!$('sawview').classList.contains('sawfull')); return; }
     else if (what === 'cfg') lst.sawCfgOpen = !lst.sawCfgOpen;

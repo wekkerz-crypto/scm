@@ -273,6 +273,10 @@ Dritte Seite oben (**Listen**):
   Stück, der Überstand kommt als Abfall ab) und Abfall-Schnitte. Groß das Maß ab Anschlag, dazu was im Stück liegt, welche
   Teile danach fertig sind und was als Reststück übrig bleibt. In der Zeichnung: das abzutrennende Stück blau, der Schnitt
   rot mit Pfeil, fertige Teile grau mit ✓. Weiter/Zurück mit den Knöpfen oder → / Leertaste / ←; Platte wählbar.
+  **Streifen-Etiketten** zum Zuordnen: groß „Streifen 1 / 4“, Material + Dicke, „Platte 1 / 5“, Breite × Länge, Bauteil-Nr.
+  im Streifen und eine kleine Skizze der Platte (dieser Streifen schwarz) – im Sägemodus nach jedem abgetrennten Streifen als
+  Fenster (abschaltbar unter *⚙ Schnittfolge*) und als Knopf auf der Karte, im Zuschnittplan je Platte *🏷 Streifen-Etiketten*.
+  Im **Vollbild** sind Platten-Umschalter, Auswahl und *Weiter / Zurück* groß für Touch; Weiter/Zurück bleiben unten stehen.
   **Streifen nummeriert:** am Plattenrand (Längsstreifen links, Querstreifen vorne) steht die Nummer jedes Streifens mit
   einer Klammer über seine Breite – der aktuelle blau gefüllt, fertige blass; auf der Karte „Streifen 2/4“, in der Liste
   *Danach* „S2“. Auch im Zuschnittplan (mit *Schnittfolge*), im Druck und im PDF – so lassen sich viele Platten

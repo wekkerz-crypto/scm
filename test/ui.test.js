@@ -935,6 +935,12 @@ test('Web-Tool: Zuschnittplan von Hand verschieben, als PDF speichern; eigene Fa
     assert.ok(!(await p.$eval('#cutsheets .plab', (g) => g.getAttribute('transform') || '')).includes('scale'));
     // Schnittfolge an: Streifen-Nummern am Rand der Platten
     assert.ok((await p.$$eval('#cutsheets .strips .sm', (x) => x.length)) >= 1);
+    // je Platte alle Streifen-Etiketten drucken
+    await p.evaluate(() => { window.__sp = 0; window.print = () => { window.__sp++; }; });
+    const nStrips = await p.$eval('#cutsheets .sheetfig svg.sheet', (svg) => svg.querySelectorAll('.strips .sm').length);
+    await p.click('#cutsheets .sheetfig [data-striplbl]');
+    assert.strictEqual(await p.evaluate(() => window.__sp), 1);
+    assert.strictEqual(await p.$$eval('#printarea .slb', (x) => x.length), nStrips);
     // Übersicht: Platten insgesamt = Summe der Gruppen
     const ov = await p.$eval('.cutover', (e) => ({ h: e.querySelector('h3').textContent, sum: e.querySelector('tfoot .big').textContent,
       rows: Array.from(e.querySelectorAll('tbody .big')).map((x) => +x.textContent) }));
@@ -1103,15 +1109,27 @@ test('Web-Tool: Kanten nach Regeln vorbelegen und Sägemodus Schritt für Schrit
     await p.evaluate(() => { window.__printed = 0; window.print = () => { window.__printed++; }; });
     let kinds = new Set();
     let pops = 0;
+    let stripPrinted = false;
     for (let n = 0; n < 60 && !(await p.isDisabled('[data-saw="next"]')); n++) {
       if (await p.$('.sawpop')) {
+        // Streifen abgetrennt: Streifen-Etikett (Streifen-Nr., Material, Platte)
+        if (await p.$('.sawpop .stile') && !stripPrinted) {
+          const before = await p.evaluate(() => window.__printed);
+          await p.click('.sawpop .stile');
+          assert.strictEqual(await p.evaluate(() => window.__printed), before + 1);
+          assert.match(await p.textContent('#printarea .slb'), /STREIFEN\s*1\s*\/\s*\d+U708 ST9 · 19 mmPlatte 1 \/ 1/);
+          stripPrinted = true;
+        }
         // fertiges Teil: Etikett-Fenster, Tippen druckt das Etikett
-        pops++;
-        if (pops === 1) {
-          await p.click('.sawtile');
-          assert.strictEqual(await p.evaluate(() => window.__printed), 1);
-          assert.match(await p.textContent('#printarea'), /KP_1_/);
-          assert.match(await p.textContent('.sawtile'), /gedruckt/);
+        if (await p.$('.sawpop .sawtile:not(.stile)')) {
+          pops++;
+          if (pops === 1) {
+            const before = await p.evaluate(() => window.__printed);
+            await p.click('.sawpop .sawtile:not(.stile)');
+            assert.strictEqual(await p.evaluate(() => window.__printed), before + 1);
+            assert.match(await p.textContent('#printarea'), /KP_1_/);
+            assert.match(await p.textContent('.sawpop .sawtile:not(.stile)'), /gedruckt/);
+          }
         }
         await p.click('[data-saw="popclose"]');
         continue;
@@ -1121,6 +1139,7 @@ test('Web-Tool: Kanten nach Regeln vorbelegen und Sägemodus Schritt für Schrit
     }
     if (await p.$('.sawpop')) await p.click('[data-saw="popclose"]');
     assert.ok(pops >= 3, 'Etikett-Fenster ' + pops);
+    assert.ok(stripPrinted, 'Streifen-Etikett');
     assert.ok(kinds.has('Nachschnitt'), [...kinds].join(', '));
     assert.match(await p.textContent('.sawcard'), /ist geschnitten/);
     // Übersicht: diese Platte abgehakt
@@ -1135,6 +1154,7 @@ test('Web-Tool: Kanten nach Regeln vorbelegen und Sägemodus Schritt für Schrit
     await p.click('[data-saw="cfg"]');
     await p.uncheck('[data-sawcfg="trimCross"]');
     await p.uncheck('[data-sawcfg="labelPopup"]');
+    await p.uncheck('[data-sawcfg="stripPopup"]');
     await p.selectOption('[data-sawcfg="order"]', 'strips');
     await p.selectOption('[data-sawcfg="measure"]', 'remain');
     const seq = [];

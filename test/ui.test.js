@@ -782,7 +782,8 @@ test('Web-Tool: Zuschnittplan von Hand verschieben, als PDF speichern; eigene Fa
     await p.click('[data-page="lists"]');
     await p.click('[data-ltab="cut"]');
     await p.waitForSelector('svg.sheet g.cp');
-    // Teil ziehen: an eine freie Stelle rechts oben
+    // Platte ganz ins Bild holen (sie ist so groß wie das Fenster), dann ein Teil ziehen: an eine freie Stelle rechts oben
+    await p.$eval('svg.sheet', (e) => e.scrollIntoView({ block: 'end' }));
     const g = await p.$('svg.sheet g.cp');
     const uid = await g.getAttribute('data-uid');
     const svg = await p.$('svg.sheet');

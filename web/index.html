@@ -316,6 +316,11 @@ svg.sheet .cp.sel .pt { stroke: var(--accent); stroke-width: 10; fill: color-mix
 svg.sheet .cp.bad .pt { fill: color-mix(in srgb, var(--err) 35%, var(--board)); stroke: var(--err); }
 .cutact { display: inline-flex; gap: 6px; margin-left: auto; }
 .sheetrow { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+/* Bildschirm: Platte so groß wie Platz ist (höchstens fast Fensterhöhe), Teileliste daneben bzw. darunter */
+#cutsheets .sheetfig { display: block; margin: 0 0 26px; }
+#cutsheets .sheetfig figcaption { font-size: 0.95rem; margin-bottom: 6px; }
+#cutsheets .sheetrow > svg.sheet { flex: 1 1 820px; min-width: 0; width: 100%; height: auto; }
+#cutsheets .sheetrow > table.sheetlist { flex: 0 1 340px; font-size: 0.92rem; }
 table.sheetlist { border-collapse: collapse; font-size: 0.82rem; min-width: 260px; }
 table.sheetlist th { text-align: left; font-size: 0.75rem; color: var(--muted); font-weight: 600; padding: 3px 6px; border-bottom: 1.5px solid var(--line); }
 table.sheetlist td { padding: 3px 6px; border-bottom: 1px solid var(--line); }
@@ -2974,10 +2979,13 @@ table.fmt.one .onet { display: inline; }
     const dims = n1(p.l) + ' × ' + n1(p.w);
     const CW = 0.6;
     const fitW = (t, f) => W / (Math.max(3, t.length) * CW * f);
-    const name = (fs, f) => { const n = Math.max(3, Math.floor(W / (fs * f * CW))); return p.label.length > n ? p.label.slice(0, n - 1) + '…' : p.label; };
+    // Name in Grundschrift (breiter als die Ziffernschrift) – lieber früher kürzen als über den Rand
+    const name = (fs, f) => { const n = Math.max(3, Math.floor((W * 0.9) / (fs * f * 0.66))); return p.label.length > n ? p.label.slice(0, n - 1) + '…' : p.label; };
     let lines;
     let fs = Math.min(140, fitW(num, 1.2), fitW(dims, 1), H / (1.2 * 1.2 + 1.2 + 0.72 * 1.2));
-    if (fs >= 24) lines = [[num, 1.2, 'pl'], [dims, 1, 'pl'], [name(fs, 0.72), 0.72, 'pn']];
+    // Name: so groß wie er ganz passt (höchstens 0,72 der Maßschrift), erst unter 0,42 gekürzt
+    const nf = (fs2) => Math.max(0.42, Math.min(0.72, (W * 0.9) / (Math.max(3, p.label.length) * 0.66 * fs2)));
+    if (fs >= 24) lines = [[num, 1.2, 'pl'], [dims, 1, 'pl'], [name(fs, nf(fs)), nf(fs), 'pn']];
     else {
       const t = num + ' · ' + dims;
       fs = Math.min(140, fitW(t, 1), H / (1.2 + 0.85 * 1.2));
@@ -3001,7 +3009,8 @@ table.fmt.one .onet { display: inline; }
     const hid = 'ht' + si + '-' + g.key.replace(/[^A-Za-z0-9]/g, '');
     // Bildschirm: Breite in px; Druck (w = 0): feste Größe in mm, passt mit Überschrift auf A4 quer
     const mm = Math.min(185 / s.L, 140 / s.W); // daneben die Teileliste
-    let out = '<svg class="sheet" viewBox="0 0 ' + s.L + ' ' + s.W + '"' + (w ? ' width="' + w + '" height="' + Math.round((s.W * w) / s.L) + '"'
+    // Bildschirm: Breite höchstens so, dass die Höhe ins Fenster passt (sonst leere Ränder neben der Platte)
+    let out = '<svg class="sheet" viewBox="0 0 ' + s.L + ' ' + s.W + '"' + (w ? ' width="' + w + '" height="' + Math.round((s.W * w) / s.L) + '" style="max-width:calc(82vh * ' + (s.L / s.W).toFixed(4) + ')"'
       : ' width="' + (s.L * mm).toFixed(1) + 'mm" height="' + (s.W * mm).toFixed(1) + 'mm"') +
       ' data-grp="' + esc(g.key) + '" data-sheet="' + si + '" role="img" aria-label="Platte ' + (si + 1) + ' ' + fmt(s.L) + ' × ' + fmt(s.W) + '">' +
       '<rect x="0" y="0" width="' + s.L + '" height="' + s.W + '" class="sh"/>' +

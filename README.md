@@ -20,7 +20,7 @@ dieselbe) und **Material**, Teilename (= Dateiname), Maße L × B × D groß, be
 (in der Draufsicht dicke Striche an den Seiten – Dekor 1 durchgezogen, Dekor 2 gestrichelt – und darunter je Dekor Name und
 Seiten bzw. „ringsum“), Fußzeile mit Datum, Profil und Anzahl der Bearbeitungen; Draufsicht schwarz-weiß mit Länge/Breite,
 Nullpunkt, Bohrungen (Kantenbohrungen als Striche), Durchbrüchen und Taschen; an der Bemaßung stehen die **Fertigmaße**
-(„762 fertig“ – aus dem Modell, nicht das Zuschnittmaß; bei sehr schmalen Teilen nur die Zahl). Breite Etiketten (z. B. 60 × 40): Kopf
+(aus dem Modell, nicht das Zuschnittmaß). Breite Etiketten (z. B. 60 × 40): Kopf
 oben, Text links, Draufsicht rechts.
 
 **Etiketten** (eigene Spalte oben neben *Listen*; auch über *✎ Gestalten …* in der Etiketten-Vorschau oder *Werkzeuge &

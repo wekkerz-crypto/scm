@@ -2735,10 +2735,9 @@ table.fmt.one .onet { display: inline; }
     s += tick(X(0), yb) + tick(X(p.L), yb) + tick(xl, Y(0)) + tick(xl, Y(p.W));
     const tx = (x, y, t, rot) => '<text x="' + x + '" y="' + y + '" font-size="' + fs + '" font-weight="600" text-anchor="middle" dominant-baseline="' + (rot ? 'auto' : 'hanging') + '"' +
       (rot ? ' transform="rotate(-90 ' + x + ' ' + y + ')"' : '') + ' paint-order="stroke" stroke="#fff" stroke-width="0.6">' + t + '</text>';
-    // Fertigmaße (aus dem Modell, nicht Zuschnitt): „fertig“ dahinter, wo Platz ist
-    const lab = (v, len) => { const t = n1(v) + ' fertig'; return t.length * fs * 0.62 <= len ? t : n1(v); };
-    s += tx((X(0) + X(p.L)) / 2, yb + 0.35, lab(p.L, X(p.L) - X(0)));
-    s += tx(xl - 0.35, (Y(0) + Y(p.W)) / 2, lab(p.W, Y(0) - Y(p.W)), true);
+    // Fertigmaße (aus dem Modell, nicht Zuschnitt) – nur die Zahl
+    s += tx((X(0) + X(p.L)) / 2, yb + 0.35, n1(p.L));
+    s += tx(xl - 0.35, (Y(0) + Y(p.W)) / 2, n1(p.W), true);
     return s + '</svg>';
   }
   /*

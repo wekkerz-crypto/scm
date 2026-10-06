@@ -516,9 +516,19 @@ test('Web-Tool: zweiseitig (Seite 1/2) und Bearbeitung löschen/wiederherstellen
     assert.strictEqual(await rows(), n0);
     assert.strictEqual(await p.$('.suppressed'), null);
     assert.strictEqual(await p.$('#view svg .suppressed-ops'), null);
+    // Etikett: Hinweis „2-seitig – wenden“
+    await p.click('#label');
+    await p.waitForSelector('#labeldlg[open] .lbl');
+    assert.match(await p.textContent('#labeldlg .lbl .two'), /2-SEITIG · WENDEN/);
+    await p.click('#lclose');
     // zurück auf einseitig
     await p.click('[data-two="0"]');
     assert.strictEqual(await p.inputValue('#fname'), 'zweiseitig.xcs');
+    // einseitig mit Bearbeitung von unten: Etikett warnt
+    await p.click('#label');
+    await p.waitForSelector('#labeldlg[open] .lbl');
+    assert.match(await p.textContent('#labeldlg .lbl .two.warn'), /Unterseite beachten/);
+    await p.click('#lclose');
     assert.deepStrictEqual(errors, []);
   } finally {
     await browser.close();
@@ -622,6 +632,11 @@ test('Web-Tool: Etiketten 40 × 60 (Vorschau, Druckbereich, Seitengröße)', { s
     const txt = await p.textContent('#labeldlg .lbl');
     assert.match(txt, /\d+ × \d+ × \d+/);
     assert.ok(await p.$('#labeldlg .lbl svg text'));
+    // Kopf mit Nr. und Material, Kanten-Legende, Fußzeile
+    assert.match(await p.textContent('#labeldlg .lbl .hd .no'), /^\d+$/);
+    assert.ok((await p.textContent('#labeldlg .lbl .hd .mt')).length > 0);
+    assert.ok(await p.$('#labeldlg .lbl .eg'));
+    assert.match(await p.textContent('#labeldlg .lbl .ft'), /\d\d\.\d\d\.\d\d/);
     await p.click('#lprint');
     assert.strictEqual(await p.evaluate(() => window.__printed), 1);
     assert.match(await p.textContent('#labelpage'), /size: 40mm 60mm; margin: 0/);

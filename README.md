@@ -14,9 +14,13 @@ STEP-Dateien hineinziehen, Draufsicht und Bearbeitungen prüfen, ggf. *Drehen 90
 dann *Speichern* (einzeln) oder *Alle als ZIP*.
 
 **Etiketten:** *Etikett* (am Teil) bzw. *Etiketten* (alle Teile) öffnet eine Vorschau, *Drucken* druckt über den Browser
-auf den Etikettendrucker – je Teil ein Etikett mit Teilename (= Dateiname), Maßen L × B × D, Profil, „Seite 1 + 2“ bei
-zweiseitigen Teilen, Datum, Anzahl der Bearbeitungen und einer schwarz-weißen Draufsicht mit Länge/Breite, Nullpunkt,
-Bohrungen (Kantenbohrungen als Striche), Durchbrüchen und Taschen. Größe (Vorgabe 40 × 60 mm), Drehung um 90° (wenn der
+auf den Etikettendrucker – je Teil ein Etikett: schwarzer Kopf mit **Bauteil-Nr.** (wie im Zuschnittplan, gleiche Teile
+dieselbe) und **Material**, Teilename (= Dateiname), Maße L × B × D groß, bei zweiseitigen Teilen ein schwarzer Balken
+**„⇅ 2-SEITIG · WENDEN“** (Bearbeitung von unten ohne zweite Seite: gestrichelt „! Unterseite beachten“), **Kantenbelegung**
+(in der Draufsicht dicke Striche an den Seiten – Dekor 1 durchgezogen, Dekor 2 gestrichelt – und darunter je Dekor Name und
+Seiten bzw. „ringsum“), Fußzeile mit Datum, Profil und Anzahl der Bearbeitungen; Draufsicht schwarz-weiß mit Länge/Breite,
+Nullpunkt, Bohrungen (Kantenbohrungen als Striche), Durchbrüchen und Taschen. Breite Etiketten (z. B. 60 × 40): Kopf
+oben, Text links, Draufsicht rechts. Größe (Vorgabe 40 × 60 mm), Drehung um 90° (wenn der
 Drucker das Etikett quer einzieht), Draufsicht an/aus und eine Zusatzzeile (Auftrag, Kunde …) unter *Werkzeuge & Regeln →
 Etiketten*. Im Druckdialog den Etikettendrucker wählen, Papier = Etikettgröße, Ränder „Keine“, Skalierung 100 %.
 

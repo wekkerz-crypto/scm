@@ -91,6 +91,8 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
 - Schnittwerte: `tools.js` liest je Werkzeug `tech = {feed, rot, descent}` (je [Standard, min, max]); je Teil/Seite
   `overrides.tech = {Gruppe: {feed, rot, descent}}` → `S3`/`SD` in `xcs.js` (sonst `-1` = Werkzeugdatei).
 - Etiketten (Browser-Druck): `labelHtml`/`labelSketch`/`openLabels` in `index.html`, Einstellungen `label*` (40 × 60 mm);
+  Kopf `.hd` (Nr. aus `lblNums` = `labelNums()` je Druck, Material), Hinweis `.two` (side2) / `.two.warn` (canTwoSided),
+  Kanten-Legende `.eg`, Fußzeile `.ft`; breit: `.wrow` (Text links, Draufsicht rechts);
   gedruckt wird nur `#printarea` mit `@page` in Etikettgröße (`#labelpage`), schwarz-weiß für Thermodrucker.
 - `exe/` – kleine Windows-.exe (Go), bettet `web/` ein und öffnet es im Browser; bauen mit `npm run build:exe` → `dist/`.
   Webserver-Paket: `npm run build:web` → `dist/Step2Maestro-Webserver.zip` (`tools/webserver/`: ANLEITUNG.txt für Strato,

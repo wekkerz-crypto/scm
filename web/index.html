@@ -90,14 +90,26 @@ header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: 
 .labeldlg .note { font-size: 0.82rem; color: var(--muted); margin: 10px 0 0; max-width: 70ch; }
 .lbl { position: relative; overflow: hidden; background: #fff; color: #000; flex: none; }
 .lbl .lin { position: absolute; left: 0; top: 0; transform-origin: 0 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 0.8mm; font-family: var(--font-body); }
-.lbl .lin.wide { flex-direction: row; gap: 1.8mm; }
+.lbl .wrow { flex: 1; min-height: 0; display: flex; gap: 1.8mm; }
 .lbl .tx { display: flex; flex-direction: column; min-width: 0; }
 .lbl .ln { line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lbl .nm { font-family: var(--font-display); font-weight: 700; text-overflow: clip; }
-.lbl .nm.wrap { white-space: normal; overflow-wrap: anywhere; max-height: 2.5em; }
+.lbl .nm.nmw { white-space: normal; overflow-wrap: anywhere; max-height: 2.5em; }
 .lbl .dm { font-weight: 700; font-variant-numeric: tabular-nums; }
 .lbl .in { font-size: 2.3mm; }
 .lbl .ct { font-size: 2.1mm; white-space: normal; }
+.lbl .hd { display: flex; align-items: baseline; gap: 1.4mm; background: #000; color: #fff; }
+.lbl .hd .no { font: 800 5mm/1 var(--font-mono); letter-spacing: -0.02em; }
+.lbl .hd .no::before { content: 'Nr.'; font-size: 2.2mm; font-weight: 700; margin-right: 0.6mm; letter-spacing: 0; }
+.lbl .hd .mt { flex: 1; min-width: 0; text-align: right; font-size: 2.3mm; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lbl .two { margin-top: 0.4mm; padding: 0.5mm 0.8mm; background: #000; color: #fff; font-size: 2.2mm; font-weight: 800; letter-spacing: 0.02em; text-align: center; border-radius: 0.6mm;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lbl .two.warn { background: #fff; color: #000; border: 0.35mm dashed #000; }
+.lbl .eg { display: flex; flex-direction: column; gap: 0.3mm; font-size: 2.2mm; line-height: 1.2; }
+.lbl .eg span { display: flex; align-items: center; gap: 0.8mm; white-space: nowrap; overflow: hidden; }
+.lbl .eg svg { flex: none; }
+.lbl .eg.none { color: #000; font-style: italic; }
+.lbl .ft { font-size: 1.9mm; border-top: 0.25mm solid #000; padding-top: 0.4mm; white-space: normal; }
 .lbl .sk { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
 .lbl svg text { font-family: var(--font-body); }
 #printarea { display: none; }
@@ -2547,8 +2559,11 @@ table.fmt.one .onet { display: inline; }
   // Draufsicht in mm (w × h), schwarz-weiß für Thermodrucker: Kontur, Durchbrüche, Taschen, Bohrungen, Nullpunkt, Länge und Breite
   function labelSketch(p, w, h, edges) {
     const fs = 2.3;
-    const ml = 4;
-    const mb = 4;
+    // Platz für die Maße: an Seiten mit Kantenband (vorne L1, links B1) etwas mehr
+    const gl = edges && edges.b1 ? 1 : 0;
+    const gb = edges && edges.l1 ? 1 : 0;
+    const ml = 4 + gl;
+    const mb = 4 + gb;
     const k = Math.min((w - ml - 0.6) / p.L, (h - mb - 0.6) / p.W);
     const dw = p.L * k;
     const dh = p.W * k;
@@ -2582,20 +2597,20 @@ table.fmt.one .onet { display: inline; }
     }
     // Kantenband: Strich außen an der Seite – Dekor 1 durchgezogen, Dekor 2 gestrichelt
     if (edges) {
-      const o2 = 0.55;
+      const o2 = 0.75;
       const side = { l1: [0, 0, p.L, 0, 0, o2], l2: [0, p.W, p.L, p.W, 0, -o2], b1: [0, 0, 0, p.W, -o2, 0], b2: [p.L, 0, p.L, p.W, o2, 0] };
       for (const [k] of EDGE_SIDES) {
         if (!edges[k]) continue;
         const q = side[k];
         s += '<path d="M' + (X(q[0]) + q[4]).toFixed(3) + ' ' + (Y(q[1]) + q[5]).toFixed(3) + ' L' + (X(q[2]) + q[4]).toFixed(3) + ' ' + (Y(q[3]) + q[5]).toFixed(3) +
-          '" stroke="#000" stroke-width="0.8" stroke-linecap="butt"' + (edges[k] === 2 ? ' stroke-dasharray="1.2 0.7"' : '') + '/>';
+          '" stroke="#000" stroke-width="1.1" stroke-linecap="butt"' + (edges[k] === 2 ? ' stroke-dasharray="1.4 0.8"' : '') + '/>';
       }
     }
     // Nullpunkt vorne links
     s += '<circle cx="' + X(0) + '" cy="' + Y(0) + '" r="0.7" fill="#fff" stroke="#000" stroke-width="0.3"/>';
     // Bemaßung: Länge unten, Breite links
-    const yb = Y(0) + 1.6;
-    const xl = X(0) - 1.6;
+    const yb = Y(0) + 1.6 + gb;
+    const xl = X(0) - 1.6 - gl;
     const tick = (x, y) => '<path d="M' + (x - 0.5) + ' ' + (y + 0.5) + ' L' + (x + 0.5) + ' ' + (y - 0.5) + '" stroke="#000" stroke-width="0.22"/>';
     s += '<path d="M' + X(0) + ' ' + yb + ' H' + X(p.L) + ' M' + X(0) + ' ' + (Y(0) + 0.3) + ' V' + (yb + 0.5) + ' M' + X(p.L) + ' ' + (Y(0) + 0.3) + ' V' + (yb + 0.5) +
       ' M' + xl + ' ' + Y(0) + ' V' + Y(p.W) + ' M' + (X(0) - 0.3) + ' ' + Y(0) + ' H' + (xl - 0.5) + ' M' + (X(0) - 0.3) + ' ' + Y(p.W) + ' H' + (xl - 0.5) + '" stroke="#000" stroke-width="0.15" fill="none"/>';
@@ -2606,6 +2621,13 @@ table.fmt.one .onet { display: inline; }
     s += tx(xl - 0.35, (Y(0) + Y(p.W)) / 2, n1(p.W), true);
     return s + '</svg>';
   }
+  /*
+   * Etikett (schwarz-weiß für Thermodrucker): schwarzer Kopf mit Bauteil-Nr. und Material, Name, Maße groß, Hinweis bei
+   * zweiseitiger Bearbeitung (wenden) bzw. Bearbeitung von unten ohne Programm, Draufsicht mit Kantenband, Kanten-Legende
+   * (━ Dekor 1, ┅ Dekor 2 mit Seiten), Fußzeile (Datum, Profil, Anzahl Bearbeitungen, Zusatzzeile).
+   */
+  let lblNums = null;
+  const labelNums = () => { const m = new Map(); for (const row of bomRows()) for (const q of row.parts) m.set(q, row.nums[0]); return m; };
   function labelHtml(part) {
     const r = part.res;
     const p = r.panel;
@@ -2615,38 +2637,52 @@ table.fmt.one .onet { display: inline; }
     const rot = !!cfg.labelRotate;
     const cw = rot ? LH : LW; // Inhalt in Leserichtung
     const ch = rot ? LW : LH;
-    const pad = 1.8;
+    const pad = 1.6;
     const name = part.fileName.replace(/\.xcs$/i, '');
+    // Nr. wie im Zuschnittplan (erste Nummer der Stücklisten-Position – gleiche Teile tragen dieselbe)
+    const no = (lblNums && lblNums.get(part)) || state.parts.indexOf(part) + 1;
+    const board = boardKeyOf(part);
     const c = counts(r);
     if (r.side2) { const c2 = counts(r.side2); c.drills += c2.drills; c.mill += c2.mill; c.saw += c2.saw; }
     const cnt = [[c.drills, 'Bohrung', 'Bohrungen'], [c.mill, 'Fräsung', 'Fräsungen'], [c.saw, 'Sägeschnitt', 'Sägeschnitte']]
       .filter((x) => x[0]).map((x) => x[0] + ' ' + (x[0] === 1 ? x[1] : x[2])).join(' · ');
     const d = new Date();
     const date = String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getFullYear()).slice(2);
-    const et = edgeText(edgesOf(part));
-    const info = [part.profile !== null && part.profile !== undefined ? profName(part.profile) : '', r.side2 ? 'Seite 1 + 2' : '', date].filter(Boolean).join(' · ');
+    const edges = edgesOf(part);
     const wide = cw >= ch * 1.25; // quer: Text links, Draufsicht rechts
-    const tw = wide ? cw * 0.42 : cw - 2 * pad; // Breite der Textspalte
+    const tw = wide ? cw * 0.5 : cw - 2 * pad; // Breite der Textspalte
     // Name in einer Zeile, so groß wie es passt; nur sehr lange Namen umbrechen
-    const nameSize = Math.max(2.2, Math.min(3.6, tw / (Math.max(6, name.length) * 0.62)));
+    const nameSize = Math.max(2.2, Math.min(3.4, tw / (Math.max(6, name.length) * 0.7)));
     const dims = n1(p.L) + ' × ' + n1(p.W) + ' × ' + n1(p.T);
-    const dimSize = Math.max(2.2, Math.min(3.4, tw / (dims.length * 0.72)));
-    let text = '<div class="ln nm' + (nameSize <= 2.2 ? ' wrap' : '') + '" style="font-size:' + nameSize.toFixed(2) + 'mm">' + esc(name) + '</div>' +
-      '<div class="ln dm" style="font-size:' + dimSize.toFixed(2) + 'mm">' + dims + '</div>' +
-      '<div class="ln in">' + esc(info) + '</div>' +
-      (et ? '<div class="ln in">Kante ' + esc(et) + '</div>' : '') +
-      (cfg.labelExtra ? '<div class="ln in">' + esc(cfg.labelExtra) + '</div>' : '') +
-      (cnt ? '<div class="ln ct">' + esc(cnt) + '</div>' : '');
-    const lines = 4.6 + 4.4 + 3 + (et ? 3 : 0) + (cfg.labelExtra ? 3 : 0) + (cnt ? 2.8 : 0);
+    const dimSize = Math.max(2.4, Math.min(4.2, tw / (dims.length * 0.66)));
+    // Hinweis Seiten: zweiseitig = wenden; Bearbeitung von unten ohne Programm = Achtung
+    const two = r.side2 ? '<div class="two" title="Seite 1 bearbeiten, wenden, Seite 2">⇅ 2-SEITIG · WENDEN</div>'
+      : r.canTwoSided ? '<div class="two warn" title="Bearbeitungen von unten sind nicht im Programm">! Unterseite beachten</div>' : '';
+    // Kanten-Legende je Dekor mit Seiten
+    const byDeco = new Map();
+    for (const [k, t] of EDGE_SIDES) if (edges[k]) { if (!byDeco.has(edges[k])) byDeco.set(edges[k], []); byDeco.get(edges[k]).push(t); }
+    const all4 = (v) => byDeco.get(v).length === 4;
+    const eg = byDeco.size ? '<div class="eg">' + Array.from(byDeco.keys()).sort().map((v) => '<span><svg viewBox="0 0 6 2" width="4.2mm" height="1.4mm" aria-hidden="true">' +
+      '<path d="M0 1 H6" stroke="#000" stroke-width="1.3"' + (v === 2 ? ' stroke-dasharray="1.4 0.8"' : '') + '/></svg>' +
+      esc(decoName(v, board)) + ' <b>' + (all4(v) ? 'ringsum' : byDeco.get(v).join(' ')) + '</b></span>').join('') + '</div>'
+      : '<div class="eg none">ohne Kante</div>';
+    const foot = [date, part.profile !== null && part.profile !== undefined ? profName(part.profile) : '', cnt].filter(Boolean).join(' · ');
+    const head = '<div class="hd" style="margin:' + -pad + 'mm ' + -pad + 'mm 0;padding:0.7mm ' + pad + 'mm"><span class="no">' + no + '</span>' +
+      '<span class="mt">' + esc(View3D.boardOf(board).name) + '</span></div>';
+    const text = '<div class="ln nm' + (nameSize <= 2.2 ? ' nmw' : '') + '" style="font-size:' + nameSize.toFixed(2) + 'mm">' + esc(name) + '</div>' +
+      '<div class="ln dm" style="font-size:' + dimSize.toFixed(2) + 'mm">' + dims + '</div>' + two;
+    const tail = eg + (cfg.labelExtra ? '<div class="ln in">' + esc(cfg.labelExtra) + '</div>' : '') + '<div class="ln ft">' + esc(foot) + '</div>';
+    // Höhe der Textzeilen (mm) für die Draufsicht darunter
+    const lines = 6.2 + nameSize * 1.25 + dimSize * 1.2 + (two ? 4.4 : 0) + 3.4 * Math.max(1, byDeco.size) + (cfg.labelExtra ? 3 : 0) + 2.8 + 4 * 0.7;
     let sketch = '';
     if (cfg.labelSketch !== false) {
       const sw = wide ? cw - tw - 3 * pad : cw - 2 * pad;
-      const sh = wide ? ch - 2 * pad : ch - 2 * pad - lines - 0.8;
-      if (sw > 8 && sh > 8) sketch = '<div class="sk">' + labelSketch(p, +sw.toFixed(2), +sh.toFixed(2), edgesOf(part)) + '</div>';
+      const sh = wide ? ch - 2 * pad - 6.2 : ch - 2 * pad - lines;
+      if (sw > 8 && sh > 8) sketch = '<div class="sk">' + labelSketch(p, +sw.toFixed(2), +sh.toFixed(2), edges) + '</div>';
     }
     return '<div class="lbl" style="width:' + LW + 'mm;height:' + LH + 'mm"><div class="lin' + (wide ? ' wide' : '') + '" style="width:' + cw + 'mm;height:' + ch + 'mm;padding:' + pad + 'mm;' +
       (rot ? 'transform:translate(' + LW + 'mm,0) rotate(90deg);' : '') + '">' +
-      (wide ? '<div class="tx" style="width:' + tw + 'mm">' + text + '</div>' + sketch : '<div class="tx">' + text + '</div>' + sketch) + '</div></div>';
+      (wide ? head + '<div class="wrow"><div class="tx" style="width:' + tw + 'mm">' + text + tail + '</div>' + sketch + '</div>' : head + '<div class="tx">' + text + '</div>' + sketch + '<div class="tx">' + tail + '</div>') + '</div></div>';
   }
   // Vorschau mit Druckknopf; gedruckt wird nur der Etikettenbereich (@page = Etikettgröße, ohne Rand)
   function openLabels(parts) {
@@ -2661,7 +2697,7 @@ table.fmt.one .onet { display: inline; }
     }
     const cfg = state.settings;
     dlg.innerHTML = '<h3>' + (list.length === 1 ? 'Etikett' : list.length + ' Etiketten') + ' · ' + esc(String(cfg.labelWidth)) + ' × ' + esc(String(cfg.labelHeight)) + ' mm</h3>' +
-      '<div class="lprev">' + list.map(labelHtml).join('') + '</div>' +
+      '<div class="lprev">' + ((lblNums = labelNums()), list.map(labelHtml).join('')) + '</div>' +
       '<p class="note">Im Druckdialog den Etikettendrucker wählen, Papiergröße ' + esc(String(cfg.labelWidth)) + ' × ' + esc(String(cfg.labelHeight)) +
       ' mm, Ränder „Keine“, Skalierung 100 %. Größe und Drehung unter <i>Werkzeuge &amp; Regeln → Etiketten</i>.</p>' +
       '<div class="row"><button class="btn ghost" type="button" id="lrot">Inhalt drehen: ' + (cfg.labelRotate ? 'an' : 'aus') + '</button>' +
@@ -2684,6 +2720,7 @@ table.fmt.one .onet { display: inline; }
     if (!list.length) { toast('Kein Teil mit Programm zum Beschriften.'); return; }
     let area = $('printarea');
     if (!area) { area = document.createElement('div'); area.id = 'printarea'; document.body.appendChild(area); }
+    lblNums = labelNums();
     area.innerHTML = list.map(labelHtml).join('');
     let pg = $('labelpage');
     if (!pg) { pg = document.createElement('style'); pg.id = 'labelpage'; document.head.appendChild(pg); }

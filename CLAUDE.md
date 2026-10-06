@@ -45,7 +45,8 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   order depth|strips, trims now|strip|end, trimMax/trimPct, restMin, measure piece|remain, labelPopup), Vollbild `sawFull` (Klasse `sawfull`);
   fertige Teile nicht mehr gezeichnet, Beschriftung `partLabelSvg` (auch `sheetSvg`), Etikett-Fenster `sawPop`/`sawPopHtml` →
   `sawPart` (uid id#n → Bauteil über `items[].pp`) → `printLabels`;
-  Schnitte mit `level`/`kind`/`size`/`rest`/`side`/`done`/`strip`/`tg` aus `cutSequence`), PDF-Datei über `web/js/pdf.js` (`MiniPdf`, ohne Druckdialog) in `cutPdf`.
+  Schnitte mit `level`/`kind`/`size`/`rest`/`side`/`done`/`strip`/`tg`/`sn` aus `cutSequence`, dazu `strips` [{n, region, dir, parts}]
+  → Nummern am Rand `stripMarks` (Zuschnittplan, Sägemodus, PDF)), PDF-Datei über `web/js/pdf.js` (`MiniPdf`, ohne Druckdialog) in `cutPdf`.
   Eigene Farben mit Namen: Schlüssel `#rrggbb[/u]~Name`, gemerkt in `settings.customBoards`. Zeit: `Toolpath.estimate`
   (Einstellungen `est*`), `partTime` in `index.html`. Projektdatei .s2m: `saveProject`/`openProject` (= `sessionData`/`restoreFrom`).
 - Gekrümmte Flächen (je Teil `overrides.curved = {slant, surface}`, Schalter nur sichtbar, wenn erkannt):

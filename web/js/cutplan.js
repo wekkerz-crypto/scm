@@ -241,7 +241,8 @@
    *   (vorn liegt nur Abfall); size = Maß des abgetrennten Stücks ab Anschlag (c − Stückanfang), rest = was danach übrig bleibt
    *   (restParts = Teile darin; 0 = Reststück/Abfall),
    *   parts = Teile im abgetrennten Stück (uid), done = Teile, die mit diesem Schnitt fertig sind, side 'lo' | 'hi' = Lage des
-   *   abgetrennten Stücks (hi = bei höheren Koordinaten, wenn von rechts/hinten begonnen wird).
+   *   abgetrennten Stücks (hi = bei höheren Koordinaten, wenn von rechts/hinten begonnen wird), sn = Nummer des Streifens.
+   *   strips: [{ n, region, dir, parts }] = Streifen von der Platte (Ebene 0) in Schnittreihenfolge.
    * Einstellbar (Sägemodus): flipX / flipY = am rechten / hinteren Rand beginnen; order 'depth' (jeden Streifen gleich fertig) |
    * 'strips' (erst alle Streifen abtrennen, dann quer); trims 'now' | 'strip' (Nachschnitte nach dem Streifen) | 'end' (am Schluss);
    * trimMax (mm) / trimPct (%) = bis zu welchem Überstand ein Schnitt Nachschnitt heißt.
@@ -267,11 +268,18 @@
         const r = c.region;
         c.region = { x0: fx ? sheet.L - r.x1 : r.x0, x1: fx ? sheet.L - r.x0 : r.x1, y0: fy ? sheet.W - r.y1 : r.y0, y1: fy ? sheet.W - r.y0 : r.y1 };
       }
+      for (const st of res.strips) {
+        const r = st.region;
+        st.region = { x0: fx ? sheet.L - r.x1 : r.x0, x1: fx ? sheet.L - r.x0 : r.x1, y0: fy ? sheet.W - r.y1 : r.y0, y1: fy ? sheet.W - r.y0 : r.y1 };
+      }
       return res;
     }
     const k = Math.max(0, o.kerf);
     const e = 0.5;
     const cuts = [];
+    // Streifen = Stücke, die direkt von der Platte kommen (Ebene 0), in Schnittreihenfolge; id = Schnitt, der ihn abtrennt
+    const strips = [];
+    const addStrip = (id, r, d) => strips.push({ id: id, region: r, dir: d, parts: sheet.parts.filter((p) => inside(p, r)).map((p) => p.uid) });
     let ok = true;
     const inside = (p, r) => p.x >= r.x0 - e && p.y >= r.y0 - e && p.x + p.l <= r.x1 + e && p.y + p.w <= r.y1 + e;
     // gültige Schnittlagen in Richtung dir ('h' = Linie y = c)
@@ -298,6 +306,7 @@
         const p = parts[0];
         if (Math.abs(p.x - r.x0) < e && Math.abs(p.y - r.y0) < e && Math.abs(p.x + p.l - r.x1) < e && Math.abs(p.y + p.w - r.y1) < e) {
           if (by >= 0) cuts[by].done.push(p.uid);
+          if (level === 0 && depth > 0) addStrip('r' + by, r, dir); // letzter Streifen passt genau – kein eigener Schnitt
           return;
         }
       }
@@ -316,19 +325,23 @@
         // Nachschnitt: nur noch ein Teil im Stück und wenig Überstand (bis 150 mm bzw. 30 % des Maßes)
         const kind = !inFirst.length ? 'waste' : parts.length === 1 && restLen <= Math.max(+o.trimMax || 0, ((+o.trimPct || 0) / 100) * (c - lo)) ? 'trim' : lv === 0 ? 'strip' : 'cross';
         const i = cuts.length;
-        const strip = lv === 0 ? i : ctx.strip;
+        // Ebene 0: dieser Schnitt trennt einen Streifen ab; geht es am Rest nur noch quer weiter, ist der Rest der letzte Streifen
+        const strip = lv === 0 || (level === 0 && d !== dir) ? i : ctx.strip;
+        if (lv === 0 && inFirst.length) addStrip(i, first, d);
+        else if (level === 0 && d !== dir) addStrip(i, r, dir);
         const tg = kind === 'trim' && ctx.tg < 0 ? i : ctx.tg;
         cuts.push({ n: i + 1, dir: d, c: c, from: d === 'h' ? r.x0 : r.y0, to: d === 'h' ? r.x1 : r.y1, start: d === 'h' ? r.x0 : r.y0, side: 'lo', level: lv, kind: kind,
           size: c - lo, rest: restLen, restParts: parts.length - inFirst.length, parts: inFirst, done: [], region: r, strip: strip, tg: tg });
         const sub = () => run(first, d === 'h' ? 'v' : 'h', depth + 1, lv + 1, i, { strip: strip, tg: tg }); // abgetrenntes Stück fertig schneiden (quer dazu)
         if (o.order === 'strips' && lv === 0) later.push(sub); else sub();
-        run(rest, d, depth + 1, lv, i, { strip: ctx.strip, tg: tg }); // dann am Rest weiter in derselben Richtung
+        run(rest, d, depth + 1, lv, i, { strip: lv === 0 ? ctx.strip : strip, tg: tg }); // dann am Rest weiter in derselben Richtung
         return;
       }
       if (parts.length > 1) ok = false; // nicht durchgehend trennbar
     }
     const go = (d) => {
       cuts.length = 0;
+      strips.length = 0;
       later.length = 0;
       ok = true;
       run({ x0: o.trim, y0: o.trim, x1: sheet.L - o.trim, y1: sheet.W - o.trim }, d, 0, 0, -1);
@@ -349,7 +362,11 @@
         out = res;
       }
       out.forEach((c, k) => { c.n = k + 1; });
-      return { cuts: out, ok: ok, dir: d === 'h' ? 'long' : 'cross' };
+      // Streifen nummerieren (1, 2, … ab Anschlag), jeder Schnitt kennt seinen Streifen (sn; 0 = keiner)
+      const sl = strips.map((st, k) => ({ n: k + 1, id: st.id, region: st.region, dir: st.dir, parts: st.parts }));
+      const byId = new Map(sl.map((st) => [st.id, st.n]));
+      for (const c of out) c.sn = byId.get(c.strip) || 0;
+      return { cuts: out, ok: ok, dir: d === 'h' ? 'long' : 'cross', strips: sl };
     };
     // Vorzugsrichtung: 'long' = erst Längsschnitte, 'cross' = erst Querschnitte, sonst die mit weniger Schnitten
     if (o.dir === 'long' || o.dir === 'cross') return go(o.dir === 'long' ? 'h' : 'v');

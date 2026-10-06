@@ -801,6 +801,8 @@ test('Web-Tool: Zuschnittplan von Hand verschieben, als PDF speichern; eigene Fa
     await p.click('[data-cfont="-1"]');
     await p.click('[data-cfont="-1"]');
     assert.ok(!(await p.$eval('#cutsheets .plab', (g) => g.getAttribute('transform') || '')).includes('scale'));
+    // Schnittfolge an: Streifen-Nummern am Rand der Platten
+    assert.ok((await p.$$eval('#cutsheets .strips .sm', (x) => x.length)) >= 1);
     // Übersicht: Platten insgesamt = Summe der Gruppen
     const ov = await p.$eval('.cutover', (e) => ({ h: e.querySelector('h3').textContent, sum: e.querySelector('tfoot .big').textContent,
       rows: Array.from(e.querySelectorAll('tbody .big')).map((x) => +x.textContent) }));
@@ -960,6 +962,10 @@ test('Web-Tool: Kanten nach Regeln vorbelegen und Sägemodus Schritt für Schrit
     assert.match(await p.textContent('.sawcard .sk'), /Streifen/);
     assert.match(await p.textContent('.sawcard .fl'), /Anschlag einstellen/);
     assert.match(await p.textContent('.sawcard .big'), /^\d+(,\d)?mm$/);
+    // Streifen: Nummern am Plattenrand, aktueller hervorgehoben, auf der Karte „Streifen n/N“
+    assert.ok((await p.$$eval('#sawview .strips .sm', (x) => x.length)) >= 2);
+    assert.match(await p.textContent('.sawcard .sstrip'), /^Streifen 1\/\d+$/);
+    assert.strictEqual(await p.textContent('#sawview .strips .sm.cur .st'), '1');
     // Beschriftung: Nr., Maß und Name an jedem Teil
     assert.ok((await p.$$eval('#sawview .plab', (x) => x.map((g) => g.textContent))).every((t) => /^Nr\. \d+/.test(t) && /×/.test(t)));
     await p.evaluate(() => { window.__printed = 0; window.print = () => { window.__printed++; }; });

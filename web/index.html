@@ -361,6 +361,9 @@ svg.sheet .cuts { pointer-events: none; }
 .sawcard .sn, .sawbar .sn { font-size: 0.85rem; color: var(--muted); }
 .sawcard .keys { font-size: 0.78rem; }
 .sawhead { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.sawcard .sstrip { margin-left: auto; font-size: 1.05rem; color: var(--muted); white-space: nowrap; }
+.sawcard .sstrip b { font: 800 1.6rem var(--font-mono); color: var(--accent); }
+.sawcard .sn2 { font: 700 0.85em var(--font-mono); color: var(--accent); }
 .sawcard .snum { font: 700 1.6rem var(--font-mono); color: var(--ink); }
 .sawcard .snum small { font-size: 1rem; color: var(--muted); font-weight: 500; }
 .sawcard .sk { display: inline-block; font-size: 0.95rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 6px 14px; border-radius: 99px;
@@ -428,6 +431,14 @@ svg.sheet .scur { fill: var(--accent); fill-opacity: 0.16; stroke: var(--accent)
 svg.sheet .spast { stroke: var(--muted); stroke-width: 4; }
 svg.sheet .snow { stroke: var(--cutc, #d2451e); stroke-width: 14; stroke-linecap: round; }
 svg.sheet .sarr { fill: var(--cutc, #d2451e); }
+/* Streifen-Nummern am Plattenrand */
+svg.sheet .sm .sc { fill: var(--surface); stroke: var(--accent); stroke-width: 6; }
+svg.sheet .sm .st { fill: var(--accent); font-family: var(--font-mono); font-weight: 800; text-anchor: middle; dominant-baseline: central; }
+svg.sheet .sm .sbr { fill: none; stroke: var(--accent); stroke-width: 6; }
+svg.sheet .sm.cur .sc { fill: var(--accent); }
+svg.sheet .sm.cur .st { fill: var(--surface); }
+svg.sheet .sm.done .sc, svg.sheet .sm.done .sbr { stroke: var(--line); }
+svg.sheet .sm.done .st { fill: var(--muted); }
 svg.sheet .cl { stroke: var(--cutc, #d2451e); stroke-width: 4; stroke-dasharray: 28 14; }
 svg.sheet .cn { fill: var(--surface); stroke: var(--cutc, #d2451e); stroke-width: 4; }
 svg.sheet .ct { fill: var(--cutc, #d2451e); font: 700 46px var(--font-mono); text-anchor: middle; dominant-baseline: central; }
@@ -3036,13 +3047,47 @@ table.fmt.one .onet { display: inline; }
     }
     return o + '</g>';
   }
+  /*
+   * Streifen-Nummern am Rand der Platte (Plattenkoordinaten, SVG y = W − y): Längsstreifen links, Querstreifen vorne (unten),
+   * mit Klammer über die Breite des Streifens. st = { cur: Nummer des aktuellen Streifens, done: Set fertiger } (Sägemodus).
+   * → { l, b: Rand links / unten, svg }
+   */
+  function stripMarks(strips, sh, st) {
+    if (!strips || !strips.length) return { l: 0, b: 0, svg: '' };
+    const M = Math.round(Math.max(sh.L, sh.W) * 0.075);
+    const hasH = strips.some((q) => q.dir === 'h');
+    const hasV = strips.some((q) => q.dir === 'v');
+    let o = '<g class="strips">';
+    for (const q of strips) {
+      const r = q.region;
+      const h = q.dir === 'h';
+      const a0 = h ? sh.W - r.y1 : r.x0;
+      const a1 = h ? sh.W - r.y0 : r.x1;
+      const mid = (a0 + a1) / 2;
+      const rad = Math.max(30, Math.min(M * 0.4, (a1 - a0) * 0.42));
+      const cls = 'sm' + (st && st.cur === q.n ? ' cur' : '') + (st && st.done.has(q.n) ? ' done' : '');
+      const bx = h ? -M * 0.12 : null;
+      // Klammer über die Breite des Streifens, daneben die Nummer
+      o += '<g class="' + cls + '">' + (h ? '<path class="sbr" d="M' + bx + ' ' + (a0 + 8) + 'h' + -M * 0.1 + 'V' + (a1 - 8) + 'h' + M * 0.1 + '"/>'
+        : '<path class="sbr" d="M' + (a0 + 8) + ' ' + (sh.W + M * 0.12) + 'v' + M * 0.1 + 'H' + (a1 - 8) + 'v' + -M * 0.1 + '"/>') +
+        '<circle class="sc" cx="' + (h ? -M * 0.58 : mid) + '" cy="' + (h ? mid : sh.W + M * 0.58) + '" r="' + rad.toFixed(1) + '"/>' +
+        '<text class="st" x="' + (h ? -M * 0.58 : mid) + '" y="' + (h ? mid : sh.W + M * 0.58) + '" font-size="' + (rad * 1.15).toFixed(1) + '">' + q.n + '</text>' +
+        '<title>Streifen ' + q.n + ' · ' + q.parts.length + ' Teil' + (q.parts.length === 1 ? '' : 'e') + '</title></g>';
+    }
+    return { l: hasH ? M : 0, b: hasV ? M : 0, svg: o + '</g>' };
+  }
   function sheetSvg(s, g, si, w) {
     const hid = 'ht' + si + '-' + g.key.replace(/[^A-Za-z0-9]/g, '');
+    // mit Schnittfolge: Streifen-Nummern am Rand (Platz links / unten)
+    const seq = lst.cuts ? seqOf(s, g) : null;
+    const mk = stripMarks(seq && seq.strips, s, null);
+    const VL = s.L + mk.l;
+    const VW = s.W + mk.b;
     // Bildschirm: Breite in px; Druck (w = 0): feste Größe in mm, passt mit Überschrift auf A4 quer
-    const mm = Math.min(185 / s.L, 140 / s.W); // daneben die Teileliste
+    const mm = Math.min(185 / VL, 140 / VW); // daneben die Teileliste
     // Bildschirm: Breite höchstens so, dass die Höhe ins Fenster passt (sonst leere Ränder neben der Platte)
-    let out = '<svg class="sheet" viewBox="0 0 ' + s.L + ' ' + s.W + '"' + (w ? ' width="' + w + '" height="' + Math.round((s.W * w) / s.L) + '" style="--ar:' + (s.L / s.W).toFixed(4) + '"'
-      : ' width="' + (s.L * mm).toFixed(1) + 'mm" height="' + (s.W * mm).toFixed(1) + 'mm"') +
+    let out = '<svg class="sheet" viewBox="' + -mk.l + ' 0 ' + VL + ' ' + VW + '"' + (w ? ' width="' + w + '" height="' + Math.round((VW * w) / VL) + '" style="--ar:' + (VL / VW).toFixed(4) + '"'
+      : ' width="' + (VL * mm).toFixed(1) + 'mm" height="' + (VW * mm).toFixed(1) + 'mm"') +
       ' data-grp="' + esc(g.key) + '" data-sheet="' + si + '" role="img" aria-label="Platte ' + (si + 1) + ' ' + fmt(s.L) + ' × ' + fmt(s.W) + '">' +
       '<rect x="0" y="0" width="' + s.L + '" height="' + s.W + '" class="sh"/>' +
       '<rect x="' + lst.trim + '" y="' + lst.trim + '" width="' + (s.L - 2 * lst.trim) + '" height="' + (s.W - 2 * lst.trim) + '" class="trim"/>' +
@@ -3059,10 +3104,10 @@ table.fmt.one .onet { display: inline; }
         '<title>' + esc(p.label + ' – ' + n1(p.l) + ' × ' + n1(p.w) + (p.rot ? ' (gedreht)' : '') + ' · ziehen = verschieben, Doppelklick = drehen') + '</title></g>';
     }
     // Schnittfolge: Linien in der Mitte der Schnittfuge, Nummer am Anfang des Schnitts
-    if (lst.cuts) {
+    if (seq) {
       const k2 = lst.kerf / 2;
-      out += '<g class="cuts">';
-      for (const c of seqOf(s, g).cuts) {
+      out += mk.svg + '<g class="cuts">';
+      for (const c of seq.cuts) {
         const x1 = c.dir === 'h' ? c.from : c.c + k2;
         const x2 = c.dir === 'h' ? c.to : c.c + k2;
         const y1 = s.W - (c.dir === 'h' ? c.c + k2 : c.from);
@@ -3169,12 +3214,30 @@ table.fmt.one .onet { display: inline; }
           Math.round((s.used / (s.L * s.W)) * 100) + ' %' + (g.grain && lst.grain ? ' · Maserung längs' : '') + dirText(g), { size: 9.5, color: [0.25, 0.25, 0.25] });
         d.text(285, 203, info + ' · Seite ' + page + '/' + total, { size: 7.5, align: 'right', color: [0.35, 0.35, 0.35] });
         // links die Platte, rechts die Teileliste zum Abhaken
-        const sc = Math.min(190 / s.L, 168 / s.W);
-        const ox = 12;
+        // mit Schnittfolge: Streifen-Nummern links (Längsstreifen) bzw. unten (Querstreifen)
+        const strips = lst.cuts ? seqOf(s, g).strips : [];
+        const ml = strips.some((q) => q.dir === 'h') ? 9 : 0;
+        const mb = strips.some((q) => q.dir === 'v') ? 9 : 0;
+        const sc = Math.min((190 - ml) / s.L, (168 - mb) / s.W);
+        const ox = 12 + ml;
         const oy = 30;
         const X = (x) => ox + x * sc;
         const Y = (y) => oy + (s.W - y) * sc; // Plattenkoordinaten (y nach oben) → Seite (y nach unten)
         d.rect(ox, oy, s.L * sc, s.W * sc, { stroke: [0, 0, 0], lw: 0.4 });
+        const blue = [0.12, 0.37, 0.75];
+        for (const q of strips) {
+          const r = q.region;
+          const h = q.dir === 'h';
+          const a0 = h ? Y(r.y1) : X(r.x0);
+          const a1 = h ? Y(r.y0) : X(r.x1);
+          const m = (a0 + a1) / 2;
+          if (h) d.line(ox - 1.5, a0 + 0.6, ox - 1.5, a1 - 0.6, { lw: 0.5, stroke: blue });
+          else d.line(a0 + 0.6, oy + s.W * sc + 1.5, a1 - 0.6, oy + s.W * sc + 1.5, { lw: 0.5, stroke: blue });
+          const cx = h ? ox - 5.5 : m;
+          const cy = h ? m : oy + s.W * sc + 5.5;
+          d.rect(cx - 3, cy - 3, 6, 6, { fill: [1, 1, 1], stroke: blue, lw: 0.4 });
+          d.text(cx, cy + 1.3, String(q.n), { size: 10, bold: true, align: 'center', color: blue });
+        }
         d.rect(X(lst.trim), Y(s.W - lst.trim), (s.L - 2 * lst.trim) * sc, (s.W - 2 * lst.trim) * sc, { stroke: [0.5, 0.5, 0.5], lw: 0.2, dash: [1.5, 1] });
         for (const p of s.parts) {
           const pw = p.l * sc;
@@ -3396,7 +3459,7 @@ table.fmt.one .onet { display: inline; }
       for (const d of ds) if (d === 'h' ? cfg.trimLong : cfg.trimCross) steps.push({ kind: 'anschnitt', dir: d, size: lst.trim, parts: [], done: [] });
     }
     for (const c of seq.cuts) steps.push(c);
-    return { steps: steps, ok: seq.ok, cfg: cfg };
+    return { steps: steps, ok: seq.ok, cfg: cfg, strips: seq.strips };
   }
   const SAW_KIND = { anschnitt: 'Anschnitt', strip: 'Streifen', cross: 'Querschnitt', trim: 'Nachschnitt', waste: 'Abfall' };
   function sawText(st, x, cfg) {
@@ -3416,13 +3479,17 @@ table.fmt.one .onet { display: inline; }
   }
   // Maß für den Anschlag: abgetrenntes Stück (Parallelanschlag) oder Restmaß (Programmanschlag der Aufteilsäge)
   const sawMeasure = (st, cfg) => (st.kind !== 'anschnitt' && cfg.measure === 'remain' ? { v: st.rest, u: 'mm Restmaß' } : { v: st.size, u: 'mm' });
-  function sawSvg(x, steps, cur, cfg) {
+  function sawSvg(x, steps, cur, cfg, strips) {
     const sh = x.s;
     const k = Math.max(0, lst.kerf);
     const done = new Set();
     steps.slice(0, cur).forEach((st) => st.done.forEach((u) => done.add(u)));
     const Y = (y) => sh.W - y;
-    let o = '<svg class="sheet sawsheet" viewBox="-40 -40 ' + (sh.L + 80) + ' ' + (sh.W + 80) + '" role="img" aria-label="Platte ' + (x.i + 1) + ' Sägeschritt ' + (cur + 1) + '">' +
+    // Streifen: aktueller hervorgehoben, fertige (alle Teile ab) blass
+    const mk = stripMarks(strips, sh, { cur: steps[cur] ? steps[cur].sn : 0, done: new Set((strips || []).filter((q) => q.parts.every((u) => done.has(u))).map((q) => q.n)) });
+    const ml = Math.max(40, mk.l);
+    const mb = Math.max(40, mk.b);
+    let o = '<svg class="sheet sawsheet" viewBox="' + -ml + ' -40 ' + (sh.L + ml + 40) + ' ' + (sh.W + 40 + mb) + '" role="img" aria-label="Platte ' + (x.i + 1) + ' Sägeschritt ' + (cur + 1) + '">' + mk.svg +
       '<rect x="0" y="0" width="' + sh.L + '" height="' + sh.W + '" class="sh"/>' +
       '<rect x="' + lst.trim + '" y="' + lst.trim + '" width="' + (sh.L - 2 * lst.trim) + '" height="' + (sh.W - 2 * lst.trim) + '" class="trim"/>';
     // fertige Teile sind weg (abgestapelt) – es bleiben die noch zu schneidenden
@@ -3495,7 +3562,7 @@ table.fmt.one .onet { display: inline; }
     if (!lst.saw || !list.some((x) => x.key === lst.saw.key)) lst.saw = { key: list[0].key, step: 0 };
     const xi = list.findIndex((x) => x.key === lst.saw.key);
     const x = list[xi];
-    const { steps, ok, cfg } = sawSteps(x);
+    const { steps, ok, cfg, strips } = sawSteps(x);
     const cur = Math.max(0, Math.min(steps.length, lst.saw.step | 0));
     const st = steps[cur];
     if (!lst.sawDone || typeof lst.sawDone !== 'object') lst.sawDone = {};
@@ -3521,8 +3588,9 @@ table.fmt.one .onet { display: inline; }
       '<button type="button" class="btn small" data-saw="full" aria-pressed="' + full + '">' + (full ? '✕ Vollbild beenden' : '⛶ Vollbild') + '</button></div>' +
       (lst.sawCfgOpen ? sawCfgHtml(cfg) : '') + sawOverHtml(list, xi) +
       (ok ? '' : '<p class="warn">Diese Anordnung ist nicht ganz mit durchgehenden Schnitten trennbar – im Zuschnittplan prüfen.</p>') +
-      '<div class="saw"><div class="sawdraw">' + sawSvg(x, steps, cur, cfg) + '</div><div class="sawcard" aria-live="polite">' +
-      (st ? '<div class="sawhead"><span class="sk ' + t.cls + '">' + esc(t.kind) + '</span><span class="snum">' + (cur + 1) + '<small>/' + steps.length + '</small></span></div>' +
+      '<div class="saw"><div class="sawdraw">' + sawSvg(x, steps, cur, cfg, strips) + '</div><div class="sawcard" aria-live="polite">' +
+      (st ? '<div class="sawhead"><span class="sk ' + t.cls + '">' + esc(t.kind) + '</span>' +
+        (st.sn ? '<span class="sstrip" title="Streifen – Nummer am Rand der Platte">Streifen <b>' + st.sn + '</b>/' + strips.length + '</span>' : '') + '<span class="snum">' + (cur + 1) + '<small>/' + steps.length + '</small></span></div>' +
         '<div class="fence"><span class="fl">' + (st.kind === 'anschnitt' ? 'Abschneiden' : cfg.measure === 'remain' ? 'Anschlag einstellen · Restmaß' : 'Anschlag einstellen') + '</span>' +
         '<span class="big" style="--nl:' + n1(m.v).length + '">' + n1(m.v) + '<small>mm</small></span></div>' +
         '<div class="dir"><span class="darr" aria-hidden="true">' + (st.dir === 'h' ? '⟷' : '↕') + '</span> ' + esc(t.dir) + '</div>' +
@@ -3531,7 +3599,7 @@ table.fmt.one .onet { display: inline; }
         (t.inn ? '<div class="inn"><span>Im Stück</span>' + esc(t.inn) + '</div>' : '') +
         (t.rest ? '<div class="inn"><span>Übrig</span>' + esc(t.rest) + '</div>' : '') +
         (fin.length ? '<div class="fin">' + fin.map((p) => '<div>✓ ' + esc('Teil ' + p.id + ' · ' + p.label) + ' <b>' + n1(p.l) + ' × ' + n1(p.w) + '</b></div>').join('') + '</div>' : '') +
-        '<div class="nx"><span>Danach</span>' + (next.length ? '<ol start="' + (cur + 2) + '">' + next.map((q) => { const tq = sawText(q, x, cfg); const mq = sawMeasure(q, cfg); return '<li><b>' + esc(tq.kind) + '</b> ' + (q.dir === 'h' ? 'längs' : 'quer') + ' · ' + n1(mq.v) + ' mm</li>'; }).join('') + '</ol>' : '<p>Danach ist die Platte fertig.</p>') + '</div>'
+        '<div class="nx"><span>Danach</span>' + (next.length ? '<ol start="' + (cur + 2) + '">' + next.map((q) => { const tq = sawText(q, x, cfg); const mq = sawMeasure(q, cfg); return '<li><b>' + esc(tq.kind) + '</b>' + (q.sn ? ' <span class="sn2">S' + q.sn + '</span>' : '') + ' ' + (q.dir === 'h' ? 'längs' : 'quer') + ' · ' + n1(mq.v) + ' mm</li>'; }).join('') + '</ol>' : '<p>Danach ist die Platte fertig.</p>') + '</div>'
         : '<div class="sawhead"><span class="sk done">Fertig</span></div><div class="dir">Platte ' + (x.i + 1) + ' ist geschnitten – ' + x.s.parts.length + ' Teile.</div>' +
           (list[xi + 1] ? '<button type="button" class="btn sawbig" data-saw="nextsheet">Nächste Platte ▶</button>' : '<div class="tx">Alle Platten fertig.</div>')) +
       '<div class="sawnav"><button type="button" class="btn ghost" data-saw="prev"' + (cur ? '' : ' disabled') + '>◀ Zurück</button>' +

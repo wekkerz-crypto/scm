@@ -1744,3 +1744,23 @@ test('Schnittfolge einstellbar: erst alle Streifen, Nachschnitte am Schluss, von
   assert.ok(s3.cuts.every((c) => c.side === 'hi'));
   for (const c of s3.cuts) assert.ok(c.c > 0 && c.c < (c.dir === 'h' ? sh.W : sh.L));
 });
+
+test('Streifen nummeriert: jedes Teil in genau einem Streifen, Nummern ab Anschlag, Schnitte kennen ihren Streifen', () => {
+  const CP = require('../web/js/cutplan.js');
+  const items = [{ id: '2', label: 'Seite', L: 904, W: 454, qty: 2 }, { id: '4', label: 'Boden', L: 766, W: 436, qty: 2 }, { id: '6', label: 'Einlegeboden', L: 765.6, W: 426, qty: 2 }];
+  const sh = CP.plan(items, { dir: 'long', goal: 'cuts' }).sheets[0];
+  for (const o of [{}, { order: 'strips' }, { flipY: true }, { flipX: true, flipY: true, trims: 'end' }]) {
+    const q = CP.cutSequence(sh, Object.assign({ dir: 'long' }, o));
+    assert.ok(q.strips.length >= 2, JSON.stringify(o));
+    assert.deepStrictEqual(q.strips.map((st) => st.n), q.strips.map((st, k) => k + 1));
+    assert.deepStrictEqual(q.strips.flatMap((st) => st.parts).sort(), sh.parts.map((p) => p.uid).sort());
+    // Längsstreifen: Bänder über die Plattenlänge, ab Anschlag (vorne bzw. hinten) der Reihe nach
+    const ys = q.strips.map((st) => st.region.y0);
+    assert.deepStrictEqual(ys, ys.slice().sort((a, b) => (o.flipY ? b - a : a - b)));
+    // jeder Schnitt mit Teilen gehört zu einem Streifen, in dem diese Teile liegen
+    for (const c of q.cuts) if (c.parts.length) {
+      const st = q.strips[c.sn - 1];
+      assert.ok(st && c.parts.every((u) => st.parts.includes(u)), JSON.stringify(o) + ' Schnitt ' + c.n);
+    }
+  }
+});

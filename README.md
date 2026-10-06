@@ -234,6 +234,10 @@ Dritte Seite oben (**Listen**):
   Stück, der Überstand kommt als Abfall ab) und Abfall-Schnitte. Groß das Maß ab Anschlag, dazu was im Stück liegt, welche
   Teile danach fertig sind und was als Reststück übrig bleibt. In der Zeichnung: das abzutrennende Stück blau, der Schnitt
   rot mit Pfeil, fertige Teile grau mit ✓. Weiter/Zurück mit den Knöpfen oder → / Leertaste / ←; Platte wählbar.
+  **Streifen nummeriert:** am Plattenrand (Längsstreifen links, Querstreifen vorne) steht die Nummer jedes Streifens mit
+  einer Klammer über seine Breite – der aktuelle blau gefüllt, fertige blass; auf der Karte „Streifen 2/4“, in der Liste
+  *Danach* „S2“. Auch im Zuschnittplan (mit *Schnittfolge*), im Druck und im PDF – so lassen sich viele Platten
+  hintereinander streifenweise abarbeiten.
   Oben auf der Karte riesig die Zahl, die **am Anschlag einzustellen** ist; fertig geschnittene Teile verschwinden aus der
   Zeichnung. Jedes Teil ist mit **Nr., Maß und Name** beschriftet (passend in die Fläche, schmale Teile gedreht – auch im
   Zuschnittplan). Sobald Teile fertig sind, öffnet sich ein großes Fenster **„Fertig geschnitten“**: Tippen auf ein Teil druckt

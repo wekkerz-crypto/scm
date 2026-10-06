@@ -32,6 +32,7 @@
   --sdrill: #008300;   /* schräge Bohrung */
   --hdrill: #4a3aa7;   /* Kante: Bohrung / Tasche */
   --ok: #0d7a5f;
+  --on: #1e8a3e;       /* aktiver Umschalter (grün) */
   --star: #b97c0c;
   --warn: #9a6410;
   --warn-bg: #fbf0d9;
@@ -49,7 +50,7 @@
     --bg: #131817; --surface: #1b2220; --sunken: #111615; --ink: #e5eae7; --muted: #98a49f; --line: #2c3633;
     --accent: #79a3f2; --accent-ink: #0d1626; --board: #4b3f2b; --board-edge: #b79e70; --drill: #3987e5;
     --pocket: #d95926; --mill: #199e70; --saw: #c98500; --chamfer: #d55181; --sdrill: #008300; --hdrill: #9085e9;
-    --ok: #3dc4ae; --star: #e2ad42; --warn: #e8b85a; --warn-bg: #30271a; --err: #f28b7f; --err-bg: #3a1f1c;
+    --ok: #3dc4ae; --on: #4cc46a; --on-ink: #06240f; --star: #e2ad42; --warn: #e8b85a; --warn-bg: #30271a; --err: #f28b7f; --err-bg: #3a1f1c;
     --hl: #1c2a40; --table: #0c100f;
     color-scheme: dark;
   }
@@ -58,7 +59,7 @@
   --bg: #131817; --surface: #1b2220; --sunken: #111615; --ink: #e5eae7; --muted: #98a49f; --line: #2c3633;
   --accent: #79a3f2; --accent-ink: #0d1626; --board: #4b3f2b; --board-edge: #b79e70; --drill: #3987e5;
   --pocket: #d95926; --mill: #199e70; --saw: #c98500; --chamfer: #d55181; --sdrill: #008300; --hdrill: #9085e9;
-  --ok: #3dc4ae; --star: #e2ad42; --warn: #e8b85a; --warn-bg: #30271a; --err: #f28b7f; --err-bg: #3a1f1c;
+  --ok: #3dc4ae; --on: #4cc46a; --on-ink: #06240f; --star: #e2ad42; --warn: #e8b85a; --warn-bg: #30271a; --err: #f28b7f; --err-bg: #3a1f1c;
   --hl: #1c2a40; --table: #0c100f;
   color-scheme: dark;
 }
@@ -868,7 +869,10 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
 .seg { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--line); border-radius: 99px; background: var(--sunken); justify-self: start; }
 .seg button { border: 0; background: none; color: var(--muted); font: inherit; font-size: 0.82rem; padding: 3px 12px; border-radius: 99px; cursor: pointer; }
 .seg button:hover { color: var(--ink); }
-.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.18); }
+.seg button[aria-pressed="true"] { background: var(--on, #1e8a3e); color: var(--on-ink, #fff); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.18); }
+/* Umschalter Stückliste / Zuschnittplan / Sägen: größer */
+.seg.ltabs { padding: 3px; gap: 3px; }
+.seg.ltabs button { font-size: 1rem; padding: 7px 20px; }
 .seg.small button { font-size: 0.78rem; padding: 2px 10px; }
 .seg .lab { align-self: center; padding: 0 6px 0 8px; font-size: 0.78rem; color: var(--muted); }
 .ctl .rough { font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
@@ -970,7 +974,7 @@ table.fmt.one .onet { display: inline; }
 
   <section class="card listpage" id="listpage" hidden>
     <div class="lbar">
-      <span class="seg" role="group" aria-label="Liste"><button type="button" data-ltab="bom" aria-pressed="true">Stückliste</button><button type="button" data-ltab="cut" aria-pressed="false">Zuschnittplan</button><button type="button" data-ltab="saw" aria-pressed="false" title="Schritt für Schritt an der Plattensäge: Anschnitt, Streifen, Querschnitte, Nachschnitte">Sägen</button></span>
+      <span class="seg ltabs" role="group" aria-label="Liste"><button type="button" data-ltab="bom" aria-pressed="true">Stückliste</button><button type="button" data-ltab="cut" aria-pressed="false">Zuschnittplan</button><button type="button" data-ltab="saw" aria-pressed="false" title="Schritt für Schritt an der Plattensäge: Anschnitt, Streifen, Querschnitte, Nachschnitte">Sägen</button></span>
       <span id="bomopts"><label><input type="checkbox" id="lgroup"> Gleiche Teile zusammenfassen</label>
         <label title="Kantendicke (alle Kanten gleich)">Kante <input type="number" id="emm" min="0" step="0.1" aria-label="Kantendicke"> mm</label>
         <label title="Dekor 1 – leer = wie die Platte (z. B. U708 ST9)">Dekor 1 <input type="text" id="ename1" placeholder="wie Platte" aria-label="Name Dekor 1"></label>

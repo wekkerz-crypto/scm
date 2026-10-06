@@ -16,6 +16,8 @@ Einkaufsliste
 * Raspberry Pi 5, 4 GB (reicht für Sägemodus, Zuschnitt, Listen, Etiketten);
   8 GB nur, wenn am Pi auch große STEP-Dateien in 3D geöffnet werden.
   2 GB nicht empfohlen (Chromium + 3D wird knapp).
+  Ein Pi 4 (4 GB) geht auch – etwas langsamer, 3D zäh; Netzteil 15 W (5 V / 3 A),
+  statt NVMe eine SSD am USB-3-Anschluss (blau) oder SD-Karte.
 * Offizielles Netzteil 27 W (USB-C) – andere führen oft zu Abstürzen
 * Kühlung: offizieller „Active Cooler“ oder Alu-Gehäuse mit Lüfter
   (Gehäuse möglichst geschlossen – Sägestaub)

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Step2Maestro am Sägeplatz – Raspberry Pi 5 einrichten (Raspberry Pi OS Bookworm, 64 Bit, mit Desktop)
+# Step2Maestro am Sägeplatz – Raspberry Pi 5 einrichten (Raspberry Pi OS Bookworm, 64 Bit, mit Desktop; Pi 5 oder Pi 4)
 #
 #   bash einrichten.sh                         fragt nach Adresse und Etikettgröße
 #   bash einrichten.sh --url https://www.deine-domain.de/step2maestro/

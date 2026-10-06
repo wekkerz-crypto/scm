@@ -298,7 +298,7 @@ header.top { padding: 6px 0 4px; }
 .detail { display: grid; gap: 16px; min-width: 0; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; min-width: 0; }
 .dhead { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; justify-content: space-between; }
-.dhead .title { display: grid; gap: 2px; min-width: 0; }
+.dhead .title { display: grid; gap: 2px; min-width: 0; flex: 1 1 100%; } /* immer ganze Breite – Knöpfe stets in der Zeile darunter, nichts springt beim Wenden */
 .dims { font-family: var(--font-mono); color: var(--muted); font-size: 0.85rem; }
 .tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .tools label { font-size: 0.85rem; color: var(--muted); display: flex; gap: 6px; align-items: center; }

@@ -897,6 +897,12 @@ details.settings summary { cursor: pointer; font-family: var(--font-display); fo
 .seg.ltabs { padding: 3px; gap: 3px; }
 .seg.ltabs button { font-size: 1rem; padding: 7px 20px; }
 .seg.small button { font-size: 0.78rem; padding: 2px 10px; }
+.runsum { font-size: 0.82rem; color: var(--muted); padding: 2px 4px 6px; font-family: var(--font-mono); }
+.chip.runs { background: color-mix(in srgb, var(--on, #1e8a3e) 14%, transparent); color: var(--on, #1e8a3e); font-weight: 700; }
+.chip.runs.none { background: var(--sunken); color: var(--muted); }
+.dhead .runs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 0.88rem; margin-top: 4px; }
+.dhead .runs input { width: 4.2em; font-family: var(--font-mono); }
+.dhead .runs b { color: var(--on, #1e8a3e); }
 .seg .lab { align-self: center; padding: 0 6px 0 8px; font-size: 0.78rem; color: var(--muted); }
 .ctl .rough { font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
 .ctl details.tech { flex: 1 1 100%; font-size: 0.75rem; }
@@ -2055,8 +2061,15 @@ table.fmt.one .onet { display: inline; }
     return { drills: drills, mill: mill, saw: saw };
   }
 
+  // Wie oft läuft ein Programm? Stücklisten-Position (gleiches Programm zusammengefasst) → Anzahl und Bauteil-Nr.
+  function progRuns() {
+    const m = new Map();
+    for (const row of bomRows()) for (const q of row.parts) m.set(q, row);
+    return m;
+  }
   function renderParts() {
     const el = $('parts');
+    const runs = progRuns();
     const head = '<div class="head"><button class="btn primary" id="pick" type="button" title="STEP: ein Volumenkörper = ein Programm, Baugruppen werden zerlegt. DXF: größte Kontur = Teil, alles darin als Vorschlag">STEP/DXF wählen</button>' +
       (state.parts.length ? '<span class="tools"><button class="btn small" id="zipall" type="button" title="Alle Programme als ZIP mit konvertieren.bat">' + ICON_ZIP + ' Alle als ZIP</button>' +
         '<button class="btn small" id="labelall" type="button" title="Etiketten aller Teile drucken">' + ICON_PRINT + ' Etiketten</button>' +
@@ -2067,7 +2080,11 @@ table.fmt.one .onet { display: inline; }
       $('pick').addEventListener('click', openPicker);
       return;
     }
-    el.innerHTML = head;
+    // Summe: Programmläufe und Maschinenzeit (je Stück × Anzahl)
+    let nRun = 0;
+    let tAll = 0;
+    for (const row of new Set(runs.values())) { nRun += row.qty; if (row.time) tAll += row.time.total * row.qty; }
+    el.innerHTML = head + (runs.size ? '<div class="runsum" title="Anzahl aus der Stückliste – gleiche Programme zusammengezählt">' + nRun + ' Programmläufe · ≈ ' + Toolpath.fmtTime(tAll) + ' gesamt</div>' : '');
     state.parts.forEach((p, i) => {
       const b = document.createElement('div');
       b.className = 'part';
@@ -2084,6 +2101,8 @@ table.fmt.one .onet { display: inline; }
           '<span class="chip ok">' + n(c.mill, 'Fräsung', 'Fräsungen') + '</span>' +
           (r.side2 ? '<span class="chip ok">+ Seite 2: ' + r.side2.ops.length + '</span>' : '') +
           ((tm) => tm ? '<span class="chip" title="' + esc(timeTitle(tm)) + '">≈ ' + Toolpath.fmtTime(tm.total) + '</span>' : '')(partTime(p)) +
+          ((row, tm) => row && row.qty !== 1 ? '<span class="chip runs' + (row.qty ? '' : ' none') + '" title="Programm läuft ' + row.qty + '× (Anzahl aus der Stückliste' +
+            (row.nums.length > 1 ? '; gleiches Programm: Nr. ' + row.nums.join(', ') : '') + ')">' + row.qty + '×' + (tm && row.qty ? ' = ≈ ' + Toolpath.fmtTime(tm.total * row.qty) : '') + '</span>' : '')(runs.get(p), partTime(p)) +
           (p.profile !== null && p.profile !== undefined ? '<span class="chip prof">' + esc(profName(p.profile)) + '</span>' : '') +
           (r.warnings.length ? '<span class="chip warn">' + r.warnings.length + ' Hinweis' + (r.warnings.length > 1 ? 'e' : '') + '</span>' : '') + '</span>';
       } else {
@@ -2448,7 +2467,11 @@ table.fmt.one .onet { display: inline; }
     el.innerHTML =
       '<div class="work"><div class="card stagecard" id="stagecard"><div class="dhead"><div class="title"><h2>' + esc(p.name) + '</h2><span class="dims">' + fmt(p.L) + ' × ' + fmt(p.W) + ' × ' +
       fmt(p.T) + ' mm · ' + esc(part.label) + (part.profile !== null && part.profile !== undefined ? ' · <b>Profil ' + esc(profName(part.profile)) + '</b>' : '') + (part.res.side2 ? ' · <b>Seite ' + part.side + (part.side === 2 ? ' (um Y gewendet, ohne Rohteil-Versatz)' : ' (mit Formatfräsen)') + '</b>' : '') +
-      ((tm) => tm ? ' · <span class="est" title="' + esc(timeTitle(tm)) + '">≈ ' + Toolpath.fmtTime(tm.total) + (tm.s2 ? ' (beide Seiten)' : '') + '</span>' : '')(partTime(part)) + '</span></div>' +
+      ((tm) => tm ? ' · <span class="est" title="' + esc(timeTitle(tm)) + '">≈ ' + Toolpath.fmtTime(tm.total) + (tm.s2 ? ' (beide Seiten)' : '') + ' je Stück</span>' : '')(partTime(part)) + '</span>' +
+      // Anzahl dieses Bauteils und wie oft das (gleiche) Programm insgesamt läuft – mit Gesamtzeit
+      ((row, tm) => '<span class="runs"><label>Anzahl <input type="number" id="pqty" min="0" step="1" value="' + qtyOf(part) + '" aria-label="Anzahl dieses Bauteils"></label>' +
+        (row ? ' <span>Programm läuft <b>' + row.qty + '×</b>' + (row.nums.length > 1 ? ' (gleiches Programm: Nr. ' + row.nums.join(', ') + ')' : '') +
+          (tm ? ' · gesamt <b>≈ ' + Toolpath.fmtTime(tm.total * row.qty) + '</b>' : '') + '</span>' : '') + '</span>')(progRuns().get(part), partTime(part)) + '</div>' +
       '<div class="tools"><span class="seg" role="group" aria-label="Ansicht"><button type="button" data-vmode="2d" aria-pressed="' + !state.mode3d + '">2D</button>' +
       '<button type="button" data-vmode="3d" aria-pressed="' + !!state.mode3d + '">3D</button></span>' +
       (part.res.canTwoSided ? '<span class="seg" role="group" aria-label="Seiten"><button type="button" data-two="0" aria-pressed="' + !part.res.side2 +
@@ -2694,6 +2717,7 @@ table.fmt.one .onet { display: inline; }
     });
     $('dl').addEventListener('click', () => saveFiles(partFiles(part), part.fileName.replace(/\.xcs$/i, '') + '.zip'));
     $('label').addEventListener('click', () => openLabels([part]));
+    $('pqty').addEventListener('change', (e) => { part.qty = Math.max(0, Math.round(+e.target.value || 0)); render(); });
   }
 
   // ------------------------------------------------ Etiketten (Druck über den Browser, z. B. 40 × 60 mm)

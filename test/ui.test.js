@@ -1191,6 +1191,32 @@ test('Web-Tool: Kanten nach Regeln vorbelegen und Sägemodus Schritt für Schrit
   }
 });
 
+test('Web-Tool: Anzahl je Programm und Gesamtzeit (Teil oben, Karte, Summe)', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1440, height: 950 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    const sum0 = await p.textContent('.runsum');
+    assert.match(await p.textContent('.dhead .runs'), /Programm läuft 1×/);
+    await p.fill('#pqty', '3');
+    await p.press('#pqty', 'Enter');
+    assert.match(await p.textContent('.dhead .runs'), /Programm läuft 3× · gesamt ≈ \d+:\d\d min/);
+    assert.match(await p.textContent('.part[aria-current="true"] .chip.runs'), /^3× = ≈ /);
+    const n = (t) => +t.match(/^(\d+) Programmläufe/)[1];
+    assert.strictEqual(n(await p.textContent('.runsum')), n(sum0) + 2);
+    // in der Stückliste dieselbe Anzahl
+    await p.click('.pagetabs [data-page="lists"]');
+    await p.click('[data-ltab="bom"]');
+    assert.ok((await p.$$eval('[data-bomqty]', (x) => x.map((i) => i.value))).includes('3'));
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});
+
 test('Web-Tool: Teil in der Stückliste anlegen und löschen, Plattenformat je Material und je Platte', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
   const browser = await chromium.launch();
   try {

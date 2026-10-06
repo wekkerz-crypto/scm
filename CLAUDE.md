@@ -51,7 +51,7 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   (Sägemodus `sawPop.strip`, `SAW_CFG.stripPopup`, `data-saw="striplbl"`; Zuschnittplan `data-striplbl`), Druck allgemein `printLabelHtml`), PDF-Datei über `web/js/pdf.js` (`MiniPdf`, ohne Druckdialog) in `cutPdf`.
   Teil von Hand (Stückliste `#bomnew`, `renderBomNew`/`addManualPart`): Rechteck als DXF (`rectDxf`) über `addDxf(text, name,
   {T, board, qty})` → nur Formatfräsen; Löschen `data-bomdel` (zweiter Klick).
-  Eigene Farben mit Namen: Schlüssel `#rrggbb[/u]~Name`, gemerkt in `settings.customBoards`. Zeit: `Toolpath.estimate`
+  Eigene Farben mit Namen: Schlüssel `#rrggbb[/u]~Name`, gemerkt in `settings.customBoards`. Programmläufe `progRuns()` (Teil → Stücklisten-Position, `row.qty` × Zeit; `#pqty` oben im Teil, `.chip.runs`, `.runsum`). Zeit: `Toolpath.estimate`
   (Einstellungen `est*`), `partTime` in `index.html`. Projektdatei .s2m: `saveProject`/`openProject` (= `sessionData`/`restoreFrom`).
 - Gekrümmte Flächen (je Teil `overrides.curved = {slant, surface}`, Schalter nur sichtbar, wenn erkannt):
   `panel.curvedSlants` (Schräge an Rundungen → `slantpath`, `offsetRun` in `xcs.js`) und `panel.curvedSurfaces`

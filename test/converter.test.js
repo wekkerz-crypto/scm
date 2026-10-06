@@ -1699,3 +1699,23 @@ test('Material aus dem Bauteilnamen und Farbe aus der STEP (Stückliste/Zuschnit
   assert.strictEqual(materialOf('Part 1 (2)'), '');
   assert.strictEqual(materialOf('Boden'), '');
 });
+
+test('Schnittfolge für den Sägemodus: Streifen, Querschnitte, Nachschnitt, fertige Teile', () => {
+  const CP = require('../web/js/cutplan.js');
+  const items = [{ id: '1', label: 'Seite', L: 904, W: 454, qty: 2 }, { id: '2', label: 'Boden', L: 766, W: 436, qty: 2 }, { id: '3', label: 'Tür', L: 760, W: 301, qty: 1 }];
+  const r = CP.plan(items, { dir: 'long', goal: 'cuts' });
+  for (const sh of r.sheets) {
+    const q = CP.cutSequence(sh, { dir: 'long' });
+    assert.ok(q.ok);
+    // jedes Teil genau einmal fertig, erster Schnitt ist ein Streifen über die ganze Platte
+    const done = q.cuts.flatMap((c) => c.done).sort();
+    assert.deepStrictEqual(done, sh.parts.map((p) => p.uid).sort());
+    assert.strictEqual(q.cuts[0].level, 0);
+    for (const c of q.cuts) {
+      assert.ok(['strip', 'cross', 'trim', 'waste'].includes(c.kind));
+      assert.ok(c.size > 0 && c.rest >= 0);
+      if (c.kind === 'trim') assert.ok(c.rest <= Math.max(150, 0.3 * c.size));
+      if (c.kind === 'strip') assert.strictEqual(c.level, 0);
+    }
+  }
+});

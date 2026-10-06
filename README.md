@@ -210,10 +210,21 @@ Dritte Seite oben (**Listen**):
   Zuschnitt abziehen* (Länge − B1 − B2, Breite − L1 − L2; auch im Zuschnittplan). Kanten stehen in CSV (je Seite das Dekor,
   Dicke, Laufmeter), PDF/Druck („L1 D1 · B2 D2“), auf dem Etikett (Strich an der Seite: Dekor 1 durchgezogen, Dekor 2
   gestrichelt) und in der Projektdatei.
+  **Kanten-Regeln …** belegt automatisch vor (Teile ohne eigene Kanten, in der Liste mit „Regel“ markiert): je Regel
+  „Name enthält“ (Wörter mit Komma, Umlaute egal, * = alle übrigen) → *ringsum*, *Vorderkante im Möbel*, *Längsseiten* oder
+  *keine*, mit Dekor 1 oder 2; die erste passende Regel gilt. Vorgabe: Tür/Front/Blende/Klappe/Schublade ringsum, Rückwand
+  keine, alle übrigen die Vorderkante. *Vorderkante im Möbel* = die Schmalseite, die zur Möbelvorderseite zeigt (einstellbar,
+  Vorgabe −Y wie in Onshape). Ein Klick auf eine Seite setzt die Kanten des Teils von Hand; „Eigene Kanten aller Teile
+  löschen“ stellt wieder alles auf die Regeln.
   In **Möbel 3D** zeigt der Schalter **Kanten** die Kantenbelegung: Seiten mit Kantenband im Dekor (bzw. in der eingestellten
   Kantenfarbe), offene Seiten als Rohkante (Spanplatte bzw. die gewählte Kante Multiplex/MDF); aus = Ansicht wie bisher.
   Dekor 2 in seiner eigenen Farbe. **hervorheben** färbt die Kanten zusätzlich in Signalfarben – Dekor 1 grün, Dekor 2 orange
   (beide wählbar) – so sieht man auf einen Blick, was womit bekantet ist.
+- **Sägen** (dritter Reiter): eine Platte Schritt für Schritt an der Plattensäge – erst der **Anschnitt** (Fabrikkante längs
+  und quer besäumen), dann **Streifen** abtrennen, darin die **Querschnitte**, **Nachschnitte** (nur noch ein Teil im
+  Stück, der Überstand kommt als Abfall ab) und Abfall-Schnitte. Groß das Maß ab Anschlag, dazu was im Stück liegt, welche
+  Teile danach fertig sind und was als Reststück übrig bleibt. In der Zeichnung: das abzutrennende Stück blau, der Schnitt
+  rot mit Pfeil, fertige Teile grau mit ✓. Weiter/Zurück mit den Knöpfen oder → / Leertaste / ←; Platte wählbar.
 - **Zuschnittplan:** Teile auf Rohplatten (Format, Schnittfuge, Besäumrand einstellbar) je Material und Dicke, mit
   durchgehenden Schnitten wie an der Plattensäge; mit Maserung bleibt die lange Seite längs der Plattenlänge, Dekore werden
   bei Bedarf gedreht. Rohmaß oder Fertigmaß wählbar. Zeichnung je Platte mit Nummer und Maß, Ausnutzung.

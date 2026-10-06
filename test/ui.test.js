@@ -716,6 +716,10 @@ test('Web-Tool: Listen (Stückliste, Zuschnitt, Zeit) und Projektdatei speichern
     await p.press('[data-bomqty="1"]', 'Tab');
     await p.waitForFunction(() => /\b6\b Teile/.test(document.querySelector('.bomsum').textContent));
     assert.strictEqual(await p.textContent('#ptn-lists'), '6');
+    // hier ohne Vorbelegung nach Regeln (eigener Test unten)
+    await p.click('#erules');
+    await p.uncheck('#erauto');
+    await p.click('#erclose');
     // ringsum: alle vier Seiten auf einmal (keine → Dekor 1 → Dekor 2 → keine)
     await p.click('[data-bomedge="1"][data-side="all"]');
     assert.strictEqual(await p.textContent('table.bom tbody tr:nth-child(2) .et'), 'L1 D1 · L2 D1 · B1 D1 · B2 D1');
@@ -878,6 +882,68 @@ test('Web-Tool: im claude.ai-Artifact (Drucken gesperrt) speichern die Druck-Kn�
     await p.click('#mpdf');
     await p.waitForFunction(() => window.__saved.length === 3);
     assert.match((await p.evaluate(() => window.__saved))[2], /^moebel_3d\.pdf:\d{4,}/);
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('Web-Tool: Kanten nach Regeln vorbelegen und Sägemodus Schritt für Schritt', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1440, height: 950 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    await p.click('#clear');
+    const [chooser] = await Promise.all([p.waitForEvent('filechooser'), p.click('#pick')]);
+    await chooser.setFiles(fixture('schrank3.step'));
+    await p.waitForFunction(() => document.querySelectorAll('.part').length === 10, null, { timeout: 60000 });
+    await p.click('[data-page="lists"]');
+    await p.click('[data-ltab="bom"]');
+    const edgesBy = () => p.$$eval('table.bom tbody tr', (rs) => Object.fromEntries(rs.map((r) => [r.querySelector('td:nth-child(3) b').textContent.split(',')[0],
+      r.querySelector('.et').textContent + (r.querySelector('.eauto') ? ' R' : '')])));
+    // Standardregeln: Türen ringsum, Rückwand keine, alle übrigen die Vorderkante im Möbel (−Y)
+    let e = await edgesBy();
+    assert.strictEqual(e.KP_1_Tuer_1_W1000_ST9, 'L1 D1 · L2 D1 · B1 D1 · B2 D1 R');
+    assert.strictEqual(e.KP_1_RW_U708_ST9, ' R');
+    assert.strictEqual(e.KP_1_SW_L_U708_ST9, 'L1 D1 R');
+    assert.strictEqual(e.KP_1_OB_U708_ST9, 'L1 D1 R');
+    // Regel ändern: Türen mit Dekor 2; von Hand gesetzte Kanten gehen vor
+    await p.click('#erules');
+    await p.selectOption('[data-er="0"][data-f="deco"]', '2');
+    e = await edgesBy();
+    assert.strictEqual(e.KP_1_Tuer_2_W1000_ST9, 'L1 D2 · L2 D2 · B1 D2 · B2 D2 R');
+    const k = await p.$$eval('table.bom tbody tr', (rs) => rs.findIndex((r) => r.textContent.includes('KP_1_RW')));
+    await p.click(`[data-bomedge="${k}"][data-side="l1"]`);
+    e = await edgesBy();
+    assert.strictEqual(e.KP_1_RW_U708_ST9, 'L1 D1');
+    await p.click('#erreset');
+    e = await edgesBy();
+    assert.strictEqual(e.KP_1_RW_U708_ST9, ' R');
+    // Sägemodus: Platte U708 19 mm – Anschnitt, Streifen, …, am Ende alle Teile fertig
+    await p.click('[data-ltab="saw"]');
+    await p.waitForSelector('#sawview .sawcard');
+    const opts = await p.$$eval('#sawsheet option', (o) => o.map((x) => x.textContent));
+    const i19 = opts.findIndex((t) => /U708 ST9 19 mm/.test(t));
+    await p.selectOption('#sawsheet', { index: i19 });
+    assert.match(await p.textContent('.sawcard .sk'), /Anschnitt/);
+    await p.keyboard.press('ArrowRight');
+    await p.keyboard.press('ArrowRight');
+    assert.match(await p.textContent('.sawcard .sk'), /Streifen/);
+    assert.match(await p.textContent('.sawcard .big'), /mm ab Anschlag/);
+    const total = await p.$$eval('#sawview svg.sheet rect.pt, #sawview svg.sheet rect.sdone', (x) => x.length);
+    let kinds = new Set();
+    for (let n = 0; n < 40 && !(await p.isDisabled('[data-saw="next"]')); n++) {
+      kinds.add(await p.textContent('.sawcard .sk'));
+      await p.click('[data-saw="next"]');
+    }
+    assert.ok(kinds.has('Nachschnitt'), [...kinds].join(', '));
+    assert.match(await p.textContent('.sawcard'), /ist geschnitten/);
+    assert.strictEqual(await p.$$eval('#sawview svg.sheet rect.sdone', (x) => x.length), total);
+    await p.keyboard.press('ArrowLeft');
+    assert.ok(!(await p.isDisabled('[data-saw="next"]')));
     assert.deepStrictEqual(errors, []);
   } finally {
     await browser.close();

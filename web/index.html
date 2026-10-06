@@ -277,6 +277,15 @@ table.bom input[type=number] { width: 4.2em; text-align: right; }
 .edgecell { white-space: nowrap; display: flex; gap: 6px; align-items: center; }
 .edgecell .et { font-size: 0.8rem; color: var(--ink); font-family: var(--font-mono); min-width: 7em; max-width: 12em; white-space: normal; line-height: 1.5; }
 .edgecell .et span { white-space: nowrap; }
+.erpanel { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; background: var(--surface); display: grid; gap: 10px; }
+.erpanel h4 { margin: 0; font-size: 0.95rem; }
+.erpanel .row { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: 0.88rem; }
+.erpanel table { border-collapse: collapse; font-size: 0.88rem; }
+.erpanel th { text-align: left; font-size: 0.78rem; color: var(--muted); font-weight: 600; padding: 4px 6px; }
+.erpanel td { padding: 3px 6px; }
+.erpanel td input[type=text] { width: 22em; max-width: 60vw; }
+.erpanel .note { font-size: 0.8rem; color: var(--muted); margin: 0; }
+.edgecell .eauto { font-size: 0.7rem; color: var(--accent); border: 1px solid currentColor; border-radius: 99px; padding: 0 6px; }
 .bomsum { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-top: 12px; font-size: 0.9rem; }
 .bomsum small { color: var(--muted); }
 .cutgrp { margin-bottom: 18px; }
@@ -313,6 +322,32 @@ table.sheetlist td { padding: 3px 6px; border-bottom: 1px solid var(--line); }
 table.sheetlist .r { text-align: right; font-family: var(--font-mono); white-space: nowrap; }
 table.sheetlist .ck { color: var(--muted); font-size: 1rem; line-height: 1; }
 svg.sheet .cuts { pointer-events: none; }
+/* Sägemodus */
+.saw { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; }
+@media (max-width: 1000px) { .saw { grid-template-columns: 1fr; } }
+.sawbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 12px; }
+.sawbar select { font-size: 0.9rem; padding: 4px 6px; }
+.sawprog { flex: 1; min-width: 140px; height: 8px; border-radius: 4px; background: var(--sunken); overflow: hidden; }
+.sawprog i { display: block; height: 100%; background: var(--accent); }
+.sawcard { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; gap: 10px; }
+.sawcard .sn, .sawbar .sn { font-size: 0.85rem; color: var(--muted); }
+.sawcard .sk { display: inline-block; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 9px; border-radius: 99px; background: var(--sunken); color: var(--ink); width: fit-content; }
+.sawcard .sk.trim { background: var(--warn-bg, #fff3d6); color: var(--warn); }
+.sawcard .sk.anschnitt, .sawcard .sk.waste { color: var(--muted); }
+.sawcard .big { font: 700 2.6rem/1.1 var(--font-mono); color: var(--ink); }
+.sawcard .big small { font-size: 1.1rem; color: var(--muted); font-weight: 600; }
+.sawcard .dir { font-size: 1.05rem; font-weight: 600; }
+.sawcard .tx { font-size: 0.95rem; line-height: 1.45; }
+.sawcard .fin { font-size: 0.9rem; color: var(--ok); }
+.sawcard .nx { font-size: 0.82rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; }
+.sawnav { display: flex; gap: 8px; }
+.sawnav .btn { flex: 1; font-size: 1rem; padding: 10px 12px; justify-content: center; }
+svg.sheet .sdone { fill: var(--sunken); stroke: var(--line); stroke-width: 4; }
+svg.sheet .sdt { fill: var(--muted); font: 600 40px var(--font-body); text-anchor: middle; dominant-baseline: central; }
+svg.sheet .scur { fill: var(--accent); fill-opacity: 0.16; stroke: var(--accent); stroke-width: 8; }
+svg.sheet .spast { stroke: var(--muted); stroke-width: 4; }
+svg.sheet .snow { stroke: var(--cutc, #d2451e); stroke-width: 14; stroke-linecap: round; }
+svg.sheet .sarr { fill: var(--cutc, #d2451e); }
 svg.sheet .cl { stroke: var(--cutc, #d2451e); stroke-width: 4; stroke-dasharray: 28 14; }
 svg.sheet .cn { fill: var(--surface); stroke: var(--cutc, #d2451e); stroke-width: 4; }
 svg.sheet .ct { fill: var(--cutc, #d2451e); font: 700 46px var(--font-mono); text-anchor: middle; dominant-baseline: central; }
@@ -717,13 +752,14 @@ table.fmt.one .onet { display: inline; }
 
   <section class="card listpage" id="listpage" hidden>
     <div class="lbar">
-      <span class="seg" role="group" aria-label="Liste"><button type="button" data-ltab="bom" aria-pressed="true">Stückliste</button><button type="button" data-ltab="cut" aria-pressed="false">Zuschnittplan</button></span>
+      <span class="seg" role="group" aria-label="Liste"><button type="button" data-ltab="bom" aria-pressed="true">Stückliste</button><button type="button" data-ltab="cut" aria-pressed="false">Zuschnittplan</button><button type="button" data-ltab="saw" aria-pressed="false" title="Schritt für Schritt an der Plattensäge: Anschnitt, Streifen, Querschnitte, Nachschnitte">Sägen</button></span>
       <span id="bomopts"><label><input type="checkbox" id="lgroup"> Gleiche Teile zusammenfassen</label>
         <label title="Kantendicke (alle Kanten gleich)">Kante <input type="number" id="emm" min="0" step="0.1" aria-label="Kantendicke"> mm</label>
         <label title="Dekor 1 – leer = wie die Platte (z. B. U708 ST9)">Dekor 1 <input type="text" id="ename1" placeholder="wie Platte" aria-label="Name Dekor 1"></label>
         <label title="Dekor 2 – zweites Kantendekor, Farbe für Möbel 3D">Dekor 2 <input type="text" id="ename2" placeholder="Dekor 2" aria-label="Name Dekor 2"> <input type="color" id="ecol2" aria-label="Farbe Dekor 2"></label>
         <label title="Zugabe je Kante für die Laufmeter (Überstand zum Kappen)">Zugabe <input type="number" id="eextra" min="0" step="1" aria-label="Zugabe je Kante"> mm</label>
-        <label><input type="checkbox" id="ededuct"> Kantendicke vom Zuschnitt abziehen</label></span>
+        <label><input type="checkbox" id="ededuct"> Kantendicke vom Zuschnitt abziehen</label>
+        <button type="button" class="btn small" id="erules" aria-expanded="false" aria-controls="erpanel" title="Kanten automatisch nach Bauteilnamen vorbelegen">Kanten-Regeln …</button></span>
       <span id="cutopts" hidden>
         <label>Platte <input type="number" id="csheetL" min="100" step="1" aria-label="Plattenlänge"> × <input type="number" id="csheetW" min="100" step="1" aria-label="Plattenbreite"> mm</label>
         <label>Schnittfuge <input type="number" id="ckerf" min="0" step="0.1"> mm</label>
@@ -739,7 +775,9 @@ table.fmt.one .onet { display: inline; }
       <button type="button" class="btn small" id="lpdf" title="Als PDF-Datei speichern (ohne Druckdialog)">PDF speichern</button>
       <button type="button" class="btn small" id="lprintbtn">Drucken</button>
     </div>
+    <div id="erpanel" class="erpanel" hidden></div>
     <div id="bomview"></div>
+    <div id="sawview" hidden></div>
     <div id="cutview" hidden><div id="cutsheets"></div>
       <p class="note">Teile mit der Maus verschieben (rasten an Rand und Nachbarteilen mit Schnittfuge ein, auch auf eine andere Platte); Klick wählt ein Teil – „↻ Drehen“ oder Doppelklick dreht es. Faserrichtung je Position (längs / quer / frei) in der Stückliste. Durchgehende Schnitte wie an der Plattensäge; Teile mit Maserung bleiben mit der langen Seite längs der Plattenlänge, Dekore ohne Maserung werden bei Bedarf gedreht. Material und Kanten wie in „Möbel 3D“ (Plattenfarbe).</p></div>
   </section>
@@ -2614,7 +2652,8 @@ table.fmt.one .onet { display: inline; }
     return lst.grain && View3D.boardOf(board).grain > 0 ? 'long' : 'free';
   }
   const LIST_KEY = 'step2xcs.lists.v1';
-  const lst = Object.assign({ tab: 'bom', group: true, raw: true, sheetL: 2800, sheetW: 2070, kerf: 4.4, trim: 10, grain: true, cuts: true, dir: 'auto', goal: 'waste', edgeMm: 1, edgeName1: '', edgeName2: 'Dekor 2', edgeColor2: '#5b4a3a', edgeExtra: 50, edgeDeduct: false }, loadJson(LIST_KEY, {}) || {});
+  const lst = Object.assign({ tab: 'bom', group: true, raw: true, sheetL: 2800, sheetW: 2070, kerf: 4.4, trim: 10, grain: true, cuts: true, dir: 'auto', goal: 'waste', edgeMm: 1, edgeName1: '', edgeName2: 'Dekor 2', edgeColor2: '#5b4a3a', edgeExtra: 50, edgeDeduct: false,
+    edgeAuto: true, edgeFront: '-y', edgeRules: null }, loadJson(LIST_KEY, {}) || {});
   const saveLst = () => storeJson(LIST_KEY, lst);
 
   /*
@@ -2623,7 +2662,48 @@ table.fmt.one .onet { display: inline; }
    * L1 = vorne (Y = 0), L2 = hinten (Y = B) – die langen Seiten der Länge L; B1 = links (X = 0), B2 = rechts (X = L).
    */
   const EDGE_SIDES = [['l1', 'L1', 'vorne'], ['l2', 'L2', 'hinten'], ['b1', 'B1', 'links'], ['b2', 'B2', 'rechts']];
-  const edgesOf = (p) => { const e = (p && p.edges) || {}; return { l1: e.l1 | 0, l2: e.l2 | 0, b1: e.b1 | 0, b2: e.b2 | 0 }; };
+  const edgesOf = (p) => {
+    const e = (p && p.edges) || (lst.edgeAuto ? autoEdges(p) : null) || {};
+    return { l1: e.l1 | 0, l2: e.l2 | 0, b1: e.b1 | 0, b2: e.b2 | 0 };
+  };
+  /*
+   * Vorbelegung nach Regeln (lst.edgeRules, erste passende gilt) für Teile ohne eigene Kanten (part.edges): Name enthält eines der
+   * Wörter (Komma getrennt, ganzes Wort oder ab 4 Buchstaben auch Teil des Namens, Umlaute egal; * = alle) → Seiten + Dekor.
+   * Seiten 'all' ringsum, 'front' = Vorderkante im Möbel (Schmalfläche, die nach lst.edgeFront zeigt), 'long' L1 + L2, 'none'.
+   */
+  const EDGE_RULES_DEFAULT = [{ match: 'Tür, Front, Blende, Klappe, Schublade', sides: 'all', deco: 1 }, { match: 'RW, Rückwand', sides: 'none', deco: 1 },
+    { match: '*', sides: 'front', deco: 1 }];
+  const EDGE_RULE_SIDES = { all: 'ringsum', front: 'Vorderkante im Möbel', long: 'Längsseiten (L1 + L2)', none: 'keine' };
+  const FRONT_DIRS = { '-y': ['−Y (Onshape vorne)', [0, -1, 0]], '+y': ['+Y', [0, 1, 0]], '-x': ['−X', [-1, 0, 0]], '+x': ['+X', [1, 0, 0]] };
+  const edgeRules = () => (Array.isArray(lst.edgeRules) ? lst.edgeRules : EDGE_RULES_DEFAULT);
+  const normWord = (w) => String(w || '').toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss').trim();
+  function edgeRuleOf(p) {
+    if (!p) return null;
+    const name = normWord(p.solid ? p.solid.stepName || p.solid.name : p.label);
+    const tokens = name.split(/[^a-z0-9]+/).filter(Boolean);
+    for (const r of edgeRules()) {
+      const words = String(r.match || '').split(/[,;]/).map(normWord).filter(Boolean);
+      if (words.some((w) => w === '*' || tokens.includes(w) || (w.length >= 4 && name.includes(w)))) return r;
+    }
+    return null;
+  }
+  function autoEdges(p) {
+    const r = edgeRuleOf(p);
+    if (!r || r.sides === 'none') return null;
+    const v = r.deco === 2 ? 2 : 1;
+    if (r.sides === 'all') return { l1: v, l2: v, b1: v, b2: v };
+    if (r.sides === 'long') return { l1: v, l2: v };
+    const res = p.res || p.result;
+    const m = res && res.panel && res.panel.tf && res.panel.tf.m;
+    if (!m) return null;
+    const d = (FRONT_DIRS[lst.edgeFront] || FRONT_DIRS['-y'])[1];
+    const dot = (a) => a[0] * d[0] + a[1] * d[1] + a[2] * d[2];
+    const px = dot(m[0]);
+    const py = dot(m[1]);
+    if (Math.abs(dot(m[2])) > 0.7) return null; // zeigt mit der Fläche nach vorne (Front, Tür) – keine Vorderkante
+    const sd = Math.abs(py) >= Math.abs(px) ? (py < 0 ? 'l1' : 'l2') : (px < 0 ? 'b1' : 'b2');
+    return { [sd]: v };
+  }
   const edgeMm = (v) => (v ? +lst.edgeMm || 0 : 0);
   const decoName = (v, board) => (v === 2 ? String(lst.edgeName2 || '').trim() || 'Dekor 2' : String(lst.edgeName1 || '').trim() || (board ? View3D.boardOf(board).name : 'Dekor 1'));
   const edgeSig = (e) => EDGE_SIDES.map(([k]) => e[k]).join('');
@@ -2655,13 +2735,14 @@ table.fmt.one .onet { display: inline; }
     return out;
   }
   // Schaltfläche je Seite (Klick: keine → Dekor 1 → Dekor 2)
-  function edgeWidget(e, k, board) {
+  function edgeWidget(e, k, board, rule) {
     const st = (v) => (v ? 'Dekor ' + v + ' (' + decoName(v, board) + ')' : 'keine');
     return '<span class="edgecell"><span class="edgew">' + EDGE_SIDES.map(([s2, t, w]) => '<button type="button" class="' + s2 + ' e' + e[s2] + '" data-bomedge="' + k + '" data-side="' + s2 +
       '" title="Kante ' + t + ' (' + w + '): ' + st(e[s2]) + ' – Klick wechselt" aria-label="Position ' + (k + 1) + ' Kante ' + t + ' ' + w + ': ' + st(e[s2]) + '"></button>').join('') +
       '<button type="button" class="pc' + (EDGE_SIDES.every(([s2]) => e[s2]) ? ' all' : '') + '" data-bomedge="' + k + '" data-side="all" title="Alle vier Kanten ringsum – Klick wechselt keine → Dekor 1 → Dekor 2" aria-label="Position ' +
       (k + 1) + ' alle Kanten ringsum">ringsum<small>L ↔</small></button></span><span class="et">' +
-      esc(edgeText(e)).split(' · ').map((t, i, a) => '<span>' + t + (i < a.length - 1 ? ' ·' : '') + '</span>').join(' ') + '</span></span>';
+      esc(edgeText(e)).split(' · ').map((t, i, a) => '<span>' + t + (i < a.length - 1 ? ' ·' : '') + '</span>').join(' ') + '</span>' +
+      (rule ? '<small class="eauto" title="Vorbelegt nach Regel „' + esc(rule.match) + '“ → ' + esc(EDGE_RULE_SIDES[rule.sides] || '') + ' – Klick auf eine Seite setzt die Kanten von Hand">Regel</small>' : '') + '</span>';
   }
   // Positionen der Stückliste: gleiche Teile (Maße, Plattenfarbe, gleiches Programm) zusammengefasst
   function bomRows() {
@@ -2715,7 +2796,7 @@ table.fmt.one .onet { display: inline; }
         '<td><b>' + r.names.map(esc).join(', ') + '</b><div class="sub">Bauteil ' + r.nums.join(', ') + '</div></td>' +
         '<td class="r">' + n1(r.L) + '</td><td class="r">' + n1(r.W) + '</td><td class="r">' + n1(r.T) + '</td>' +
         '<td>' + boardSwatch(r.board) + ' ' + esc(boardName(r.board)) + '</td>' +
-        '<td>' + edgeWidget(r.edges, k, r.board) + '</td>' +
+        '<td>' + edgeWidget(r.edges, k, r.board, !r.parts[0].edges && lst.edgeAuto ? edgeRuleOf(r.parts[0]) : null) + '</td>' +
         '<td class="r">' + n1(r.raw.L) + ' × ' + n1(r.raw.W) + '</td>' +
         '<td class="r">' + fmt(Math.round((r.L * r.W * r.qty) / 1e4) / 100) + '</td>' +
         '<td class="r">' + (r.time ? '<span title="' + esc(timeTitle(r.time)) + '">' + Toolpath.fmtTime(r.time.total) + '</span>' : '–') + '</td>' +
@@ -3088,16 +3169,178 @@ table.fmt.one .onet { display: inline; }
       if (e.target.closest('[data-cutunsel]')) { cutSel = null; renderLists(); }
     });
   })();
+  // Kanten-Regeln bearbeiten (Feld unter der Leiste der Stückliste)
+  function renderEdgeRules() {
+    const el = $('erpanel');
+    if (el.hidden) return;
+    const rules = edgeRules();
+    el.innerHTML = '<h4>Kanten automatisch vorbelegen</h4>' +
+      '<div class="row"><label><input type="checkbox" id="erauto"' + (lst.edgeAuto ? ' checked' : '') + '> Kanten nach Regeln vorbelegen (Teile ohne eigene Kanten)</label>' +
+      '<label>Möbel vorne <select id="erfront">' + Object.entries(FRONT_DIRS).map(([k, v]) => '<option value="' + k + '"' + (k === lst.edgeFront ? ' selected' : '') + '>' + v[0] + '</option>').join('') + '</select></label></div>' +
+      '<table><thead><tr><th>#</th><th>Name enthält</th><th>Kanten</th><th>Dekor</th><th></th></tr></thead><tbody>' +
+      rules.map((r, i) => '<tr><td>' + (i + 1) + '</td><td><input type="text" data-er="' + i + '" data-f="match" value="' + esc(r.match || '') + '" aria-label="Regel ' + (i + 1) + ' Name enthält"></td>' +
+        '<td><select data-er="' + i + '" data-f="sides" aria-label="Regel ' + (i + 1) + ' Kanten">' + Object.entries(EDGE_RULE_SIDES).map(([k, v]) => '<option value="' + k + '"' + (k === r.sides ? ' selected' : '') + '>' + v + '</option>').join('') + '</select></td>' +
+        '<td><select data-er="' + i + '" data-f="deco" aria-label="Regel ' + (i + 1) + ' Dekor"><option value="1"' + (r.deco !== 2 ? ' selected' : '') + '>Dekor 1</option><option value="2"' + (r.deco === 2 ? ' selected' : '') + '>Dekor 2</option></select></td>' +
+        '<td><button type="button" class="btn ghost small" data-erdel="' + i + '" aria-label="Regel ' + (i + 1) + ' löschen">✕</button></td></tr>').join('') + '</tbody></table>' +
+      '<div class="row"><button type="button" class="btn small" id="eradd">+ Regel</button><button type="button" class="btn ghost small" id="erdefault">Standardregeln</button>' +
+      '<button type="button" class="btn ghost small" id="erreset" title="Von Hand gesetzte Kanten aller Teile verwerfen – dann gilt wieder die Regel">Eigene Kanten aller Teile löschen</button>' +
+      '<button type="button" class="btn ghost small" id="erclose">Schließen</button></div>' +
+      '<p class="note">Erste passende Regel gilt (Bauteilname aus der STEP, Wörter mit Komma, * = alle übrigen). „Vorderkante im Möbel“ = die Schmalseite, die zur ' +
+      'Möbelvorderseite zeigt; Teile, die mit der Fläche nach vorne zeigen (Türen, Fronten), bekommen dabei keine. Von Hand gesetzte Kanten gehen vor (in der Liste ohne „Regel“).</p>';
+    const upd = (fn) => { const list = edgeRules().map((r) => Object.assign({}, r)); fn(list); lst.edgeRules = list; saveLst(); applyBoards(); renderEdgeRules(); };
+    el.querySelectorAll('[data-er]').forEach((inp) => inp.addEventListener('change', () => upd((list) => {
+      const r = list[+inp.dataset.er];
+      r[inp.dataset.f] = inp.dataset.f === 'deco' ? +inp.value : inp.value;
+    })));
+    el.querySelectorAll('[data-erdel]').forEach((b) => b.addEventListener('click', () => upd((list) => list.splice(+b.dataset.erdel, 1))));
+    // neue Regel vor die „*“-Regel (die fängt alle übrigen)
+    $('eradd').addEventListener('click', () => upd((list) => {
+      const star = list.findIndex((r) => String(r.match || '').trim() === '*');
+      list.splice(star < 0 ? list.length : star, 0, { match: '', sides: 'all', deco: 1 });
+    }));
+    $('erdefault').addEventListener('click', () => { lst.edgeRules = null; saveLst(); applyBoards(); renderEdgeRules(); });
+    $('erreset').addEventListener('click', () => { for (const p of state.parts) delete p.edges; applyBoards(); renderEdgeRules(); toast('Eigene Kanten gelöscht – es gelten wieder die Regeln.'); });
+    $('erclose').addEventListener('click', () => { el.hidden = true; $('erules').setAttribute('aria-expanded', 'false'); });
+    $('erauto').addEventListener('change', (e) => { lst.edgeAuto = e.target.checked; saveLst(); applyBoards(); });
+    $('erfront').addEventListener('change', (e) => { lst.edgeFront = e.target.value; saveLst(); applyBoards(); });
+  }
+  $('erules').addEventListener('click', () => { const el = $('erpanel'); el.hidden = !el.hidden; $('erules').setAttribute('aria-expanded', String(!el.hidden)); renderEdgeRules(); });
+
+  /*
+   * Sägemodus: eine Platte Schritt für Schritt – Anschnitt (Besäumen), Streifen, Querschnitte, Nachschnitte, Abfall.
+   * Schritte aus CutPlan.cutSequence (kind, size = Maß ab Anschlag, rest, done); Stand in lst.saw = { key, step }.
+   */
+  function sawSheets() {
+    const out = [];
+    for (const g of cutGroups()) g.plan.sheets.forEach((sh, i) => { if (sh.parts.length) out.push({ g: g, s: sh, i: i, key: g.key + '#' + i }); });
+    return out;
+  }
+  function sawSteps(x) {
+    const seq = seqOf(x.s, x.g);
+    const steps = [];
+    if (lst.trim > 0) for (const d of seq.dir === 'cross' ? ['v', 'h'] : ['h', 'v']) steps.push({ kind: 'anschnitt', dir: d, size: lst.trim, parts: [], done: [] });
+    for (const c of seq.cuts) steps.push(c);
+    return { steps: steps, ok: seq.ok };
+  }
+  function sawText(st, x) {
+    const pn = (uid) => { const p = x.s.parts.find((q) => q.uid === uid); return p ? 'Teil ' + p.id + ' · ' + p.label + ' ' + n1(p.l) + ' × ' + n1(p.w) : uid; };
+    const dirName = st.dir === 'h' ? 'Längsschnitt' : 'Querschnitt';
+    const len = st.to !== undefined ? n1(st.to - st.from) : '';
+    const inPiece = st.parts.length ? ' – darin ' + (st.parts.length === 1 ? pn(st.parts[0]) : st.parts.length + ' Teile') : '';
+    const restTx = st.restParts === 0 && st.rest > 0 ? ' Übrig: ' + n1(st.rest) + ' mm ' + (st.rest >= 300 ? 'Reststück' : 'Abfall') + '.' : '';
+    if (st.kind === 'anschnitt') {
+      return { kind: 'Anschnitt', cls: 'anschnitt', dir: (st.dir === 'h' ? 'Längs' : 'Quer') + ' besäumen', tx: 'Fabrikkante ' + (st.dir === 'h' ? 'längs' : 'quer') + ' abschneiden: ' + fmt(st.size) + ' mm vom Plattenrand.' };
+    }
+    if (st.kind === 'strip') return { kind: 'Streifen', cls: 'strip', dir: dirName, tx: 'Streifen ' + n1(st.size) + ' mm breit abtrennen (' + len + ' mm lang)' + inPiece + '.' + restTx };
+    if (st.kind === 'cross') return { kind: st.level === 1 ? 'Querschnitt im Streifen' : 'Schnitt im Stück', cls: 'cross', dir: dirName, tx: 'Stück ' + n1(st.size) + ' mm abtrennen' + inPiece + '.' + restTx };
+    if (st.kind === 'waste') return { kind: 'Abfall', cls: 'waste', dir: dirName, tx: n1(st.size) + ' mm Abfall vorn abschneiden, dann weiter.' };
+    // Nachschnitt: nur noch ein Teil im Stück, der Überstand kommt ab
+    const left = n1(st.rest) + ' mm Überstand ab (Abfall)';
+    return { kind: 'Nachschnitt', cls: 'trim', dir: dirName, tx: (st.parts.length ? pn(st.parts[0]) + ' auf ' + n1(st.size) + ' mm schneiden' : 'Auf Maß schneiden') + ' – ' + left + '.' };
+  }
+  function sawSvg(x, steps, cur) {
+    const sh = x.s;
+    const done = new Set();
+    steps.slice(0, cur).forEach((st) => st.done.forEach((u) => done.add(u)));
+    const Y = (y) => sh.W - y;
+    let o = '<svg class="sheet" viewBox="-30 -30 ' + (sh.L + 60) + ' ' + (sh.W + 60) + '" role="img" aria-label="Platte ' + (x.i + 1) + ' Sägeschritt ' + (cur + 1) + '">' +
+      '<rect x="0" y="0" width="' + sh.L + '" height="' + sh.W + '" class="sh"/>' +
+      '<rect x="' + lst.trim + '" y="' + lst.trim + '" width="' + (sh.L - 2 * lst.trim) + '" height="' + (sh.W - 2 * lst.trim) + '" class="trim"/>';
+    for (const p of sh.parts) {
+      const d = done.has(p.uid);
+      const fs = Math.max(26, Math.min(60, Math.min(p.l, p.w) / 5));
+      o += '<rect x="' + p.x + '" y="' + Y(p.y + p.w) + '" width="' + p.l + '" height="' + p.w + '" class="' + (d ? 'sdone' : 'pt') + '"/>' +
+        (p.l > 3 * fs && p.w > 1.4 * fs ? '<text x="' + (p.x + p.l / 2) + '" y="' + Y(p.y + p.w / 2) + '" font-size="' + fs + '" class="' + (d ? 'sdt' : 'pl') + '">' +
+          (d ? '✓ ' : '') + esc(p.id + ' · ' + n1(p.l) + ' × ' + n1(p.w)) + '</text>' : '');
+    }
+    const line = (st) => {
+      if (st.kind === 'anschnitt') return st.dir === 'h' ? [0, lst.trim, sh.L, lst.trim] : [lst.trim, 0, lst.trim, sh.W];
+      const c = st.c + lst.kerf / 2;
+      return st.dir === 'h' ? [st.from, c, st.to, c] : [c, st.from, c, st.to];
+    };
+    steps.slice(0, cur).forEach((st) => { const l = line(st); o += '<line x1="' + l[0] + '" y1="' + Y(l[1]) + '" x2="' + l[2] + '" y2="' + Y(l[3]) + '" class="spast"/>'; });
+    const st = steps[cur];
+    if (st) {
+      // abgetrenntes Stück hervorheben (bei Anschnitt der Randstreifen)
+      let r = null;
+      if (st.kind === 'anschnitt') r = st.dir === 'h' ? { x0: 0, y0: 0, x1: sh.L, y1: lst.trim } : { x0: 0, y0: 0, x1: lst.trim, y1: sh.W };
+      else r = st.dir === 'h' ? { x0: st.region.x0, y0: st.region.y0, x1: st.region.x1, y1: st.c } : { x0: st.region.x0, y0: st.region.y0, x1: st.c, y1: st.region.y1 };
+      o += '<rect x="' + r.x0 + '" y="' + Y(r.y1) + '" width="' + (r.x1 - r.x0) + '" height="' + (r.y1 - r.y0) + '" class="scur"/>';
+      const l = line(st);
+      o += '<line x1="' + l[0] + '" y1="' + Y(l[1]) + '" x2="' + l[2] + '" y2="' + Y(l[3]) + '" class="snow"/>';
+      // Pfeil am Schnittanfang (Sägerichtung)
+      const a = 46;
+      o += st.dir === 'h' ? '<path d="M' + (l[0] - 4) + ' ' + Y(l[1]) + ' l' + (-a) + ' ' + (-a * 0.7) + ' v' + (a * 1.4) + ' z" class="sarr"/>'
+        : '<path d="M' + l[0] + ' ' + (Y(l[1]) + 4) + ' l' + (-a * 0.7) + ' ' + a + ' h' + (a * 1.4) + ' z" class="sarr"/>';
+    }
+    return o + '</svg>';
+  }
+  function renderSaw() {
+    const list = sawSheets();
+    const host = $('sawview');
+    if (!list.length) { host.innerHTML = '<p class="note">Keine Teile für den Zuschnitt.</p>'; return; }
+    if (!lst.saw || !list.some((x) => x.key === lst.saw.key)) lst.saw = { key: list[0].key, step: 0 };
+    const xi = list.findIndex((x) => x.key === lst.saw.key);
+    const x = list[xi];
+    const { steps, ok } = sawSteps(x);
+    const cur = Math.max(0, Math.min(steps.length, lst.saw.step | 0));
+    const st = steps[cur];
+    const t = st ? sawText(st, x) : null;
+    const fin = st ? st.done.map((u) => x.s.parts.find((q) => q.uid === u)).filter(Boolean) : [];
+    const nx = steps[cur + 1] ? sawText(steps[cur + 1], x) : null;
+    host.innerHTML = '<div class="sawbar"><label>Platte <select id="sawsheet" aria-label="Platte zum Sägen">' + list.map((y, k) => '<option value="' + esc(y.key) + '"' + (k === xi ? ' selected' : '') + '>' +
+        esc(y.g.name + ' ' + fmt(y.g.T) + ' mm – Platte ' + (y.i + 1) + ' von ' + y.g.plan.sheets.length) + '</option>').join('') + '</select></label>' +
+      '<span class="sn">' + (st ? 'Schritt ' + (cur + 1) + ' von ' + steps.length : 'fertig') + '</span>' +
+      '<span class="sawprog" aria-hidden="true"><i style="width:' + Math.round((cur / Math.max(1, steps.length)) * 100) + '%"></i></span>' +
+      '<button type="button" class="btn ghost small" data-saw="reset">Von vorn</button></div>' +
+      (ok ? '' : '<p class="warn">Diese Anordnung ist nicht ganz mit durchgehenden Schnitten trennbar – im Zuschnittplan prüfen.</p>') +
+      '<div class="saw"><div>' + sawSvg(x, steps, cur) + '</div><div class="sawcard" aria-live="polite">' +
+      (st ? '<span class="sk ' + t.cls + '">' + esc(t.kind) + '</span><div class="dir">' + esc(t.dir) + '</div>' +
+        '<div class="big">' + n1(st.size) + ' <small>mm' + (st.kind === 'anschnitt' ? '' : ' ab Anschlag') + '</small></div>' +
+        '<div class="tx">' + esc(t.tx) + '</div>' +
+        (fin.length ? '<div class="fin">✓ Danach fertig: ' + fin.map((p) => esc('Teil ' + p.id + ' · ' + p.label + ' ' + n1(p.l) + ' × ' + n1(p.w))).join('<br>') + '</div>' : '') +
+        '<div class="nx">' + (nx ? 'Danach: ' + esc(nx.kind) + ' · ' + n1(steps[cur + 1].size) + ' mm' : 'Danach ist die Platte fertig.') + '</div>'
+        : '<span class="sk">Fertig</span><div class="dir">Platte ' + (x.i + 1) + ' ist geschnitten – ' + x.s.parts.length + ' Teile.</div>' +
+          (list[xi + 1] ? '<button type="button" class="btn" data-saw="nextsheet">Nächste Platte ▶</button>' : '<div class="tx">Alle Platten fertig.</div>')) +
+      '<div class="sawnav"><button type="button" class="btn ghost" data-saw="prev"' + (cur ? '' : ' disabled') + '>◀ Zurück</button>' +
+      '<button type="button" class="btn" data-saw="next"' + (st ? '' : ' disabled') + '>Weiter ▶</button></div>' +
+      '<div class="sn">Tasten: → / Leertaste = weiter, ← = zurück</div></div></div>';
+    $('sawsheet').addEventListener('change', (e) => { lst.saw = { key: e.target.value, step: 0 }; saveLst(); renderSaw(); });
+    host.querySelectorAll('[data-saw]').forEach((b) => b.addEventListener('click', () => sawGo(b.dataset.saw)));
+  }
+  function sawGo(what) {
+    const list = sawSheets();
+    if (!lst.saw) return;
+    const xi = list.findIndex((x) => x.key === lst.saw.key);
+    if (xi < 0) return;
+    const n = sawSteps(list[xi]).steps.length;
+    if (what === 'next') lst.saw.step = Math.min(n, (lst.saw.step | 0) + 1);
+    else if (what === 'prev') lst.saw.step = Math.max(0, (lst.saw.step | 0) - 1);
+    else if (what === 'reset') lst.saw.step = 0;
+    else if (what === 'nextsheet' && list[xi + 1]) lst.saw = { key: list[xi + 1].key, step: 0 };
+    saveLst();
+    renderSaw();
+  }
+  document.addEventListener('keydown', (e) => {
+    if (state.page !== 'lists' || lst.tab !== 'saw' || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.target && /^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(e.target.tagName) && e.key === ' ') return;
+    if (e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); sawGo('next'); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); sawGo('prev'); }
+  });
   function renderLists() {
     if (state.page !== 'lists') return;
     document.querySelectorAll('[data-ltab]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.ltab === lst.tab)));
     $('bomview').hidden = lst.tab !== 'bom';
     $('cutview').hidden = lst.tab !== 'cut';
+    $('sawview').hidden = lst.tab !== 'saw';
+    if (lst.tab !== 'bom') $('erpanel').hidden = true;
     $('bomopts').hidden = lst.tab !== 'bom';
-    $('cutopts').hidden = lst.tab !== 'cut';
+    $('cutopts').hidden = lst.tab === 'bom';
     $('lcsv').hidden = lst.tab !== 'bom';
     $('lgroup').checked = lst.group;
     if (lst.tab === 'bom') renderBom();
+    else if (lst.tab === 'saw') renderSaw();
     else $('cutsheets').innerHTML = renderCut(false);
   }
   document.querySelectorAll('[data-ltab]').forEach((b) => b.addEventListener('click', () => { lst.tab = b.dataset.ltab; saveLst(); renderLists(); }));

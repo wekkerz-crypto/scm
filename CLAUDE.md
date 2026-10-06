@@ -26,13 +26,16 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   Kantenband je Teil `part.edges = {l1, l2, b1, b2}` (0/1/2 = keine/Dekor 1/Dekor 2, L1 vorne Y=0, B1 links X=0; alle `lst.edgeMm`
   dick, Namen `lst.edgeName1` (leer = Platte)/`edgeName2`, Farbe `edgeColor2`, `decoName`): `edgeWidget`,
   `edgeMeters`, `edgeDeduct`, Mitte „ringsum“ = `data-side="all"` (`lst.edgeExtra/edgeDeduct`), Etikett `labelSketch(…, edges)`.
+  Vorbelegung `autoEdges`/`edgeRuleOf` (`lst.edgeAuto`, `edgeRules` [{match, sides all|front|long|none, deco}], `edgeFront`
+  '-y' …; nur ohne `part.edges`), Feld `#erpanel` (`renderEdgeRules`).
   Möbel 3D: Schalter `#medges` (Einstellung `modelEdges`) → `bandsOf` = {m: panel.tf.m, e, c2, hl, hl2} → `boardMaterials(…, bands)`
   (`boardUV`: Gruppe 2 = Schmalflächen mit Dekor 1, 3 = Dekor 2, Seite nach der Normalen in Plattenkoordinaten; hervorheben
   `#medgehl`/`#medgecol`/`#medgecol2` = `modelEdgeHl`/`modelEdgeColor`/`modelEdgeColor2`, eigene Materialfarbe in `userData.tint` –
   `applyLook` lässt sie stehen), `Viewer.setBoards(boards, bands)`.
   Zuschnittplan `web/js/cutplan.js` (`CutPlan.plan`, Guillotine, Schnittfuge/Besäumen/Maserung; `dir` auto/long/cross =
   `packFree` bzw. Streifen `packStrips`, `goal` waste/cuts wählt aus Varianten; `cutSequence` mit `dir`; `fits` beim Verschieben
-  von Hand → `lst.manual[Gruppe] = {sig, sheets}`), PDF-Datei über `web/js/pdf.js` (`MiniPdf`, ohne Druckdialog) in `cutPdf`.
+  von Hand → `lst.manual[Gruppe] = {sig, sheets}`; Sägemodus `lst.tab` 'saw': `renderSaw`/`sawSteps`/`sawText`/`sawSvg`, Stand
+  `lst.saw = {key, step}`, Schnitte mit `level`/`kind`/`size`/`rest`/`done` aus `cutSequence`), PDF-Datei über `web/js/pdf.js` (`MiniPdf`, ohne Druckdialog) in `cutPdf`.
   Eigene Farben mit Namen: Schlüssel `#rrggbb[/u]~Name`, gemerkt in `settings.customBoards`. Zeit: `Toolpath.estimate`
   (Einstellungen `est*`), `partTime` in `index.html`. Projektdatei .s2m: `saveProject`/`openProject` (= `sessionData`/`restoreFrom`).
 - Gekrümmte Flächen (je Teil `overrides.curved = {slant, surface}`, Schalter nur sichtbar, wenn erkannt):

@@ -1,6 +1,6 @@
 #!/bin/sh
 # Baut dist/Step2Maestro-Webserver.zip: Ordner step2maestro/ zum Hochladen auf einen Webspace
-# (index.html, js/, Schriften lokal statt Google Fonts, .htaccess) plus ANLEITUNG.txt (Strato).
+# (index.html, js/, Schriften lokal statt Google Fonts, .htaccess, dekore/ = Dekor-Bibliothek mit PHP) plus ANLEITUNG.txt (Strato).
 # Aufruf: sh tools/build_web.sh   (bzw. npm run build:web)
 set -e
 cd "$(dirname "$0")/.."
@@ -10,6 +10,9 @@ mkdir -p "$OUT/step2maestro"
 cp -r web/js "$OUT/step2maestro/js"
 cp -r tools/webserver/fonts "$OUT/step2maestro/fonts"
 cp tools/webserver/.htaccess "$OUT/step2maestro/.htaccess"
+# Dekor-Bibliothek (PHP): nur Programm, keine Daten – bilder/, vorschau/, daten/ legt api.php auf dem Server an
+mkdir -p "$OUT/step2maestro/dekore"
+cp tools/webserver/dekore/index.html tools/webserver/dekore/api.php tools/webserver/dekore/.htaccess "$OUT/step2maestro/dekore/"
 # Google Fonts -> lokale Schriften (keine Anfrage an fremde Server)
 python3 - "$OUT/step2maestro/index.html" <<'PY'
 import re, sys

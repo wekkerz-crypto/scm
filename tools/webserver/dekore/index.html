@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Dekor-Bibliothek</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<style>
+:root {
+  --bg: #eceee9; --surface: #fafaf6; --sunken: #e2e5df; --ink: #1d2422; --muted: #5d6863; --line: #d3d8d1;
+  --accent: #1f5fbf; --accent-ink: #fff; --ok: #0d7a5f; --warn: #9a6410; --err: #b42318; --err-bg: #fdecea;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131817; --surface: #1b2220; --sunken: #111615; --ink: #e5eae7; --muted: #98a49f; --line: #2c3633;
+    --accent: #79a3f2; --accent-ink: #0d1626; --ok: #3dc4ae; --warn: #e8b85a; --err: #f28b7f; --err-bg: #3a1f1c; color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 var(--font-body); }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding: 16px 22px; border-bottom: 1px solid var(--line); background: var(--surface); }
+header h1 { margin: 0; font-size: 1.35rem; }
+header h1 small { font-weight: 400; color: var(--muted); font-size: 0.9rem; }
+header .sp { flex: 1; }
+a { color: var(--accent); }
+main { padding: 18px 22px 40px; max-width: 1400px; margin: 0 auto; display: grid; gap: 16px; }
+.btn { font: inherit; font-size: 0.9rem; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.danger { color: var(--err); }
+.btn:disabled { opacity: 0.5; cursor: default; }
+input, select, textarea { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 7px; padding: 6px 9px; }
+input:focus, textarea:focus, select:focus, .btn:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 1px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+.card h2 { margin: 0 0 10px; font-size: 1.05rem; }
+.note { color: var(--muted); font-size: 0.88rem; margin: 6px 0 0; }
+.msg { padding: 9px 12px; border-radius: 8px; background: var(--err-bg); color: var(--err); }
+.msg.ok { background: color-mix(in srgb, var(--ok) 12%, transparent); color: var(--ok); }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.drop { display: block; border: 2px dashed var(--line); border-radius: 12px; padding: 22px; text-align: center; color: var(--muted); cursor: pointer; }
+.drop.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); color: var(--ink); }
+.drop b { color: var(--ink); }
+.prog { font-size: 0.88rem; display: grid; gap: 3px; margin-top: 8px; text-align: left; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.toolbar input[type=search] { min-width: 260px; flex: 1; max-width: 420px; }
+.count { color: var(--muted); font-size: 0.9rem; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+.dek { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: grid; cursor: pointer; text-align: left; padding: 0; font: inherit; color: inherit; }
+.dek:hover, .dek:focus-visible { border-color: var(--accent); }
+.dek .img { height: 130px; background: var(--sunken) center / cover no-repeat; position: relative; }
+.dek .img .sw { position: absolute; right: 8px; bottom: 8px; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--surface); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35); }
+.dek .t { padding: 9px 12px 11px; display: grid; gap: 2px; }
+.dek .c { font: 600 1rem var(--font-mono); }
+.dek .n { font-size: 0.9rem; }
+.dek .m { font-size: 0.78rem; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { border: 1px solid var(--line); border-radius: 99px; padding: 0 7px; }
+.chip.g { border-color: var(--warn); color: var(--warn); }
+.noimg { display: grid; place-items: center; height: 100%; font-size: 0.85rem; color: var(--muted); }
+dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); padding: 0; width: min(760px, 96vw); }
+dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
+.ed { display: grid; grid-template-columns: 260px 1fr; gap: 18px; padding: 18px 20px; }
+@media (max-width: 640px) { .ed { grid-template-columns: 1fr; } }
+.ed .pv { border-radius: 10px; min-height: 220px; background: var(--sunken) center / cover no-repeat; border: 1px solid var(--line); }
+.ed form { display: grid; gap: 9px; }
+.ed label { display: grid; gap: 3px; font-size: 0.85rem; color: var(--muted); }
+.ed label.ck { display: flex; align-items: center; gap: 8px; color: var(--ink); font-size: 0.95rem; }
+.ed .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ed input[type=color] { width: 100%; height: 36px; padding: 2px; }
+.ed h3 { margin: 0 0 4px; font-size: 1.1rem; }
+.foot { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; padding: 12px 20px 16px; border-top: 1px solid var(--line); }
+.foot .sp { flex: 1; }
+.login { max-width: 420px; }
+.login form { display: grid; gap: 10px; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Dekor-Bibliothek <small>Step2Maestro</small></h1>
+  <span class="sp"></span>
+  <span id="who" class="note"></span>
+  <button class="btn" id="pwbtn" hidden>Passwort ändern</button>
+  <button class="btn" id="logout" hidden>Abmelden</button>
+  <a class="btn" href="../">← zu Step2Maestro</a>
+</header>
+<main>
+  <div id="msg" class="msg" hidden role="status"></div>
+
+  <section class="card login" id="setup" hidden>
+    <h2>Passwort festlegen</h2>
+    <p class="note">Noch kein Passwort. Es schützt das Hochladen und Ändern (Ansehen ist für alle offen, Step2Maestro liest die Dekore von hier).</p>
+    <form id="setupform"><input type="password" id="pw1" placeholder="Neues Passwort (mind. 8 Zeichen)" autocomplete="new-password" required minlength="8">
+      <input type="password" id="pw2" placeholder="Passwort wiederholen" autocomplete="new-password" required minlength="8">
+      <button class="btn primary">Festlegen und anmelden</button></form>
+  </section>
+
+  <section class="card login" id="login" hidden>
+    <h2>Anmelden</h2>
+    <form id="loginform"><input type="password" id="lpw" placeholder="Passwort" autocomplete="current-password" required>
+      <button class="btn primary">Anmelden</button></form>
+    <p class="note">Ohne Anmeldung nur ansehen.</p>
+  </section>
+
+  <section class="card" id="upload" hidden>
+    <h2>Dekore hochladen</h2>
+    <label class="drop" id="drop" tabindex="0"><input type="file" id="files" accept="image/jpeg,image/png,image/webp" multiple hidden>
+      <b>Bilder hierher ziehen</b> oder klicken zum Auswählen – mehrere auf einmal.<br>
+      Dateiname = Dekor-Code, z. B. <code>U708_ST9.jpg</code> → „U708 ST9“. Gleicher Code ersetzt das Bild.</label>
+    <div class="prog" id="prog"></div>
+    <p class="note">Die Bilder werden auf dem Server auf höchstens 2048 Pixel verkleinert (für die 3D-Ansicht reicht das), die Farbe für Listen
+      wird aus dem Bild gemittelt. Bildbreite (mm) = wie viel Platte ein Bild zeigt – bestimmt die Größe der Maserung in 3D.</p>
+  </section>
+
+  <section class="toolbar">
+    <input type="search" id="q" placeholder="Suchen: Code, Name, Hersteller …" aria-label="Dekore suchen">
+    <span class="count" id="count"></span>
+    <span style="flex:1"></span>
+    <button class="btn" id="newbtn" hidden>+ Dekor ohne Bild</button>
+  </section>
+  <section class="grid" id="grid" aria-live="polite"></section>
+</main>
+
+<dialog id="dlg" aria-labelledby="dtitle">
+  <div class="ed">
+    <div><div class="pv" id="pv"></div>
+      <div class="row" style="margin-top:10px"><label class="btn" id="replbtn">Bild ersetzen<input type="file" id="repl" accept="image/jpeg,image/png,image/webp" hidden></label></div></div>
+    <form id="edform">
+      <h3 id="dtitle">Dekor</h3>
+      <div class="two"><label>Code (z. B. U708 ST9)<input id="f_code" required maxlength="40"></label><label>Hersteller<input id="f_hersteller" maxlength="40" placeholder="Egger"></label></div>
+      <label>Name<input id="f_name" maxlength="80" placeholder="z. B. Lichtgrau"></label>
+      <label class="ck"><input type="checkbox" id="f_grain"> Holzdekor mit Maserung (Zuschnitt: lange Seite längs)</label>
+      <div class="two"><label>Farbe (Listen, Farbfeld)<input type="color" id="f_color"></label><label>Bildbreite in mm<input type="number" id="f_scale" min="50" max="6000" step="10"></label></div>
+      <label>Notiz<textarea id="f_notiz" rows="2" maxlength="200"></textarea></label>
+    </form>
+  </div>
+  <div class="foot"><button class="btn danger" id="del">Löschen</button><span class="sp"></span><button class="btn" id="cancel">Abbrechen</button><button class="btn primary" id="save">Speichern</button></div>
+</dialog>
+
+<dialog id="pwdlg"><form id="pwform" class="ed" style="grid-template-columns:1fr">
+  <h3>Passwort ändern</h3>
+  <input type="password" id="pwold" placeholder="Bisheriges Passwort" autocomplete="current-password" required>
+  <input type="password" id="pwnew" placeholder="Neues Passwort (mind. 8 Zeichen)" autocomplete="new-password" required minlength="8">
+  <div class="row"><button type="button" class="btn" id="pwcancel">Abbrechen</button><button class="btn primary">Ändern</button></div></form></dialog>
+
+<script>
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  let st = { dekore: [], login: false, setup: false, csrf: '' };
+  let cur = null; // bearbeitetes Dekor (null = neu)
+
+  function msg(t, ok) { const m = $('msg'); m.hidden = !t; m.textContent = t || ''; m.classList.toggle('ok', !!ok); if (t && ok) setTimeout(() => { if (m.textContent === t) m.hidden = true; }, 3500); }
+  async function api(a, data, file) {
+    const fd = new FormData();
+    fd.append('a', a);
+    for (const [k, v] of Object.entries(data || {})) fd.append(k, v);
+    if (file) fd.append('datei', file);
+    const r = await fetch('api.php', { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-CSRF': st.csrf || '' } });
+    let j = null;
+    try { j = await r.json(); } catch (e) { throw new Error('Server antwortet nicht wie erwartet (PHP aktiv? Datei api.php hochgeladen?)'); }
+    if (!j.ok) throw new Error(j.fehler || 'Fehler');
+    if (j.csrf) st.csrf = j.csrf;
+    return j;
+  }
+  async function load() {
+    try {
+      const r = await fetch('api.php?a=list', { credentials: 'same-origin', cache: 'no-store' });
+      const j = await r.json();
+      st.dekore = j.dekore || [];
+      st.login = !!j.login;
+      st.setup = !!j.setup;
+      if (j.csrf) st.csrf = j.csrf;
+    } catch (e) { msg('Liste kann nicht geladen werden: ' + e.message); }
+    render();
+  }
+  function render() {
+    $('setup').hidden = !st.setup;
+    $('login').hidden = st.setup || st.login;
+    $('upload').hidden = !st.login;
+    $('newbtn').hidden = !st.login;
+    $('logout').hidden = !st.login;
+    $('pwbtn').hidden = !st.login;
+    $('who').textContent = st.login ? 'angemeldet' : '';
+    const q = $('q').value.trim().toLowerCase();
+    const list = st.dekore.filter((d) => !q || [d.code, d.name, d.hersteller, d.notiz].join(' ').toLowerCase().includes(q));
+    $('count').textContent = list.length + (list.length === st.dekore.length ? '' : ' von ' + st.dekore.length) + ' Dekor' + (st.dekore.length === 1 ? '' : 'e');
+    $('grid').innerHTML = list.length ? list.map((d) => '<button type="button" class="dek" data-key="' + esc(d.key) + '"' + (st.login ? '' : ' tabindex="-1"') + '>' +
+      '<div class="img" style="' + (d.vorschau ? 'background-image:url(\'' + esc(d.vorschau) + '\')' : '') + '">' + (d.vorschau ? '' : '<div class="noimg">kein Bild</div>') +
+      '<span class="sw" style="background:' + esc(d.color || '#ccc') + '"></span></div>' +
+      '<div class="t"><span class="c">' + esc(d.code) + '</span><span class="n">' + esc(d.name || '–') + '</span>' +
+      '<span class="m">' + (d.hersteller ? '<span>' + esc(d.hersteller) + '</span>' : '') + (d.grain ? '<span class="chip g">Maserung</span>' : '<span class="chip">uni</span>') +
+      '<span>' + esc(d.scale || 1000) + ' mm</span></span></div></button>').join('')
+      : '<p class="note">' + (st.dekore.length ? 'Nichts gefunden.' : 'Noch keine Dekore.' + (st.login ? ' Bilder oben hochladen.' : '')) + '</p>';
+    $('grid').querySelectorAll('.dek').forEach((b) => b.addEventListener('click', () => { if (st.login) edit(st.dekore.find((d) => d.key === b.dataset.key)); }));
+  }
+  function edit(d) {
+    cur = d || null;
+    $('dtitle').textContent = d ? 'Dekor ' + d.code : 'Neues Dekor';
+    $('f_code').value = d ? d.code : '';
+    $('f_name').value = d ? d.name || '' : '';
+    $('f_hersteller').value = d ? d.hersteller || '' : 'Egger';
+    $('f_grain').checked = d ? !!d.grain : false;
+    $('f_color').value = d && /^#[0-9a-f]{6}$/i.test(d.color) ? d.color : '#c8c8c4';
+    $('f_scale').value = d ? d.scale || 1000 : 1000;
+    $('f_notiz').value = d ? d.notiz || '' : '';
+    $('pv').style.backgroundImage = d && d.bild ? 'url("' + d.bild + '")' : '';
+    $('del').hidden = !d;
+    $('replbtn').hidden = !d;
+    $('dlg').showModal();
+  }
+  async function uploadFiles(files) {
+    const prog = $('prog');
+    prog.innerHTML = '';
+    let ok = 0;
+    for (const f of files) {
+      const line = document.createElement('div');
+      line.textContent = '⏳ ' + f.name;
+      prog.appendChild(line);
+      try {
+        const j = await api('upload', {}, f);
+        line.textContent = '✓ ' + f.name + ' → ' + j.dekor.code + (j.neu ? ' (neu)' : ' (Bild ersetzt)');
+        ok++;
+      } catch (e) { line.textContent = '✗ ' + f.name + ': ' + e.message; line.style.color = 'var(--err)'; }
+    }
+    if (ok) { msg(ok + ' Bild' + (ok === 1 ? '' : 'er') + ' hochgeladen.', true); await load(); }
+  }
+
+  $('setupform').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if ($('pw1').value !== $('pw2').value) { msg('Die Passwörter sind nicht gleich.'); return; }
+    try { await api('setup', { passwort: $('pw1').value }); msg('Passwort festgelegt – angemeldet.', true); await load(); } catch (err) { msg(err.message); }
+  });
+  $('loginform').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try { await api('login', { passwort: $('lpw').value }); $('lpw').value = ''; msg('Angemeldet.', true); await load(); } catch (err) { msg(err.message); }
+  });
+  $('logout').addEventListener('click', async () => { try { await api('logout'); } catch (e) { /* egal */ } st.csrf = ''; await load(); });
+  $('pwbtn').addEventListener('click', () => $('pwdlg').showModal());
+  $('pwcancel').addEventListener('click', () => $('pwdlg').close());
+  $('pwform').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try { await api('passwort', { alt: $('pwold').value, neu: $('pwnew').value }); $('pwdlg').close(); msg('Passwort geändert.', true); } catch (err) { msg(err.message); }
+  });
+  $('q').addEventListener('input', render);
+  $('newbtn').addEventListener('click', () => edit(null));
+  const drop = $('drop');
+  drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+  drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); uploadFiles(Array.from(e.dataTransfer.files || [])); });
+  drop.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('files').click(); } });
+  $('files').addEventListener('change', (e) => { uploadFiles(Array.from(e.target.files || [])); e.target.value = ''; });
+  $('cancel').addEventListener('click', () => $('dlg').close());
+  $('save').addEventListener('click', async () => {
+    if (!$('f_code').value.trim()) { $('f_code').focus(); return; }
+    try {
+      await api('save', { key: cur ? cur.key : '', code: $('f_code').value, name: $('f_name').value, hersteller: $('f_hersteller').value,
+        grain: $('f_grain').checked ? '1' : '0', color: $('f_color').value, scale: $('f_scale').value, notiz: $('f_notiz').value });
+      $('dlg').close();
+      msg('Gespeichert.', true);
+      await load();
+    } catch (err) { msg(err.message); }
+  });
+  $('del').addEventListener('click', async () => {
+    if (!cur || !confirm('Dekor ' + cur.code + ' mit Bild löschen?')) return;
+    try { await api('delete', { key: cur.key }); $('dlg').close(); msg('Gelöscht.', true); await load(); } catch (err) { msg(err.message); }
+  });
+  $('repl').addEventListener('change', async (e) => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f || !cur) return;
+    try { const j = await api('upload', { key: cur.key, code: cur.code }, f); $('pv').style.backgroundImage = 'url("' + j.dekor.bild + '")'; msg('Bild ersetzt.', true); await load(); cur = st.dekore.find((d) => d.key === j.dekor.key) || cur; } catch (err) { msg(err.message); }
+  });
+  load();
+})();
+</script>
+</body>
+</html>

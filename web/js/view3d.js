@@ -75,10 +75,25 @@
     { id: 'multiplex', name: 'Multiplex', color: '#e2c896' },
     { id: 'mdf', name: 'MDF', color: '#a8865f' },
   ];
+  /*
+   * Dekore vom Server (Dekor-Bibliothek dekore/api.php): Schlüssel 'dek:KEY' → { code, name, color, grain, scale (mm Bildbreite),
+   * url (Textur), thumb }. Unbekannt (offline) → neutrale Farbe mit dem Code als Name.
+   */
+  const DECORS = new Map();
+  function setDecors(list) {
+    DECORS.clear();
+    for (const d of list || []) if (d && d.key) DECORS.set(d.key, d);
+  }
   function boardOf(key) {
     const parts = typeof key === 'string' ? key.split('|') : [key];
     const sk = parts[0];
     let surf;
+    if (typeof sk === 'string' && sk.slice(0, 4) === 'dek:') {
+      const d = DECORS.get(sk.slice(4));
+      surf = { id: sk, color: d && /^#[0-9a-f]{6}$/i.test(d.color) ? d.color.toLowerCase() : '#c8c8c4', grain: d && d.grain ? 1 : 0,
+        name: d ? d.code + (d.name ? ' ' + d.name : '') : sk.slice(4).replace(/_/g, ' '), tex: d && d.url ? d.url : null, thumb: d && d.thumb ? d.thumb : null,
+        scale: d && d.scale > 0 ? +d.scale : 1000 };
+    }
     // eigene Farbe: '#rrggbb', '/u' = einfarbig, '~Name' (URI-kodiert) = eigener Name
     const own = typeof sk === 'string' && /^(#[0-9a-f]{6})(\/u)?(?:~(.*))?$/i.exec(sk);
     if (own) {
@@ -86,10 +101,10 @@
       try { nm = own[3] ? decodeURIComponent(own[3]) : ''; } catch (e) { nm = own[3] || ''; }
       surf = { id: sk, color: own[1].toLowerCase(), grain: own[2] ? 0 : 1, name: nm || 'Eigene Farbe' };
     }
-    else surf = MATERIALS.find((m) => m.id === sk) || MATERIALS[0];
+    else if (!surf) surf = MATERIALS.find((m) => m.id === sk) || MATERIALS[0];
     const ek = parts[1] && (EDGES.some((e) => e.id === parts[1]) || /^#[0-9a-f]{6}$/i.test(parts[1])) ? parts[1] : 'same';
     const e = EDGES.find((x) => x.id === ek);
-    return { id: surf.id, color: surf.color, grain: surf.grain, name: surf.name, edge: ek,
+    return { id: surf.id, color: surf.color, grain: surf.grain, name: surf.name, tex: surf.tex || null, thumb: surf.thumb || null, scale: surf.scale || 0, edge: ek,
       edgeName: e ? e.name : 'Kantenband', edgeColor: ek === 'same' ? surf.color : e ? e.color : ek.toLowerCase() };
   }
   // Schlüssel zusammensetzen (Oberfläche + Kanten)
@@ -298,6 +313,30 @@
   const matOpts = { metalness: 0, envMapIntensity: 0.4, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 };
 
   // Holz-Material (Maserung als Textur) – gleich für die Teil-Ansicht und Möbel 3D
+  /*
+   * Oberfläche einer Platte: Dekorbild vom Server (wiederholt, Bildbreite = scale mm, waagerecht = Faser längs L), sonst
+   * gezeichnete Holzmaserung. UV der Flächen: u = 1 je 700 mm, v = 1 je 350 mm (boardUV).
+   */
+  const decorTex = new Map();
+  function surfMaterial(T, bd, base) {
+    if (!bd.tex) return woodMaterial(T, base, bd.grain);
+    let tex = decorTex.get(bd.tex + '@' + bd.scale);
+    if (!tex) {
+      const ld = new T.TextureLoader();
+      ld.setCrossOrigin('anonymous');
+      tex = ld.load(bd.tex, (t) => {
+        const a = t.image && t.image.height ? t.image.width / t.image.height : 2;
+        t.repeat.set(700 / bd.scale, 350 / (bd.scale / a));
+        t.needsUpdate = true;
+      });
+      tex.wrapS = tex.wrapT = T.RepeatWrapping;
+      tex.encoding = T.sRGBEncoding;
+      tex.anisotropy = 8;
+      tex.repeat.set(700 / bd.scale, 350 / (bd.scale / 2));
+      decorTex.set(bd.tex + '@' + bd.scale, tex);
+    }
+    return new T.MeshStandardMaterial(Object.assign({ map: tex, roughness: 0.5 }, matOpts));
+  }
   function woodMaterial(T, base, grain) {
     if (grain === undefined) grain = 1;
     return new T.MeshStandardMaterial(Object.assign({ map: cachedTex(T, 'w' + base + '/' + grain, () => woodCanvas(base, grain)),
@@ -317,7 +356,7 @@
       const raw = bd.edge === 'same' || own ? 'span' : bd.edge;
       const rawColor = (EDGES.find((e) => e.id === raw) || EDGES[1]).color;
       boardUV(T, g, raw, bands);
-      const surf = woodMaterial(T, base, bd.grain);
+      const surf = surfMaterial(T, bd, base);
       const rawMat = new T.MeshStandardMaterial(Object.assign({ map: cachedTex(T, 'e' + raw + rawColor, () => edgeCanvas(raw, rawColor)), roughness: 0.85 }, matOpts));
       // Dekor 1: wie die Platte (bzw. eingestellte Kantenfarbe), Dekor 2: eigene Farbe; hervorheben (hl/hl2): Signalfarbe ohne
       // Spiegelung/Tonwert, leicht leuchtend – auch im Schatten gut zu sehen (Farbe in userData, applyLook lässt sie stehen)
@@ -334,7 +373,7 @@
       return [surf, rawMat, band, band2];
     }
     boardUV(T, g, bd.edge);
-    const surf = woodMaterial(T, base, bd.grain);
+    const surf = surfMaterial(T, bd, base);
     if (bd.edge === 'same') return [surf, surf];
     const kind = /^#/.test(bd.edge) ? 'band' : bd.edge;
     const edge = new T.MeshStandardMaterial(Object.assign({ map: cachedTex(T, 'e' + kind + bd.edgeColor, () => edgeCanvas(kind, bd.edgeColor)),
@@ -823,5 +862,6 @@
   };
 
   return { load: load, stepMeshes: stepMeshes, Viewer: Viewer,
-    MATERIALS: MATERIALS, EDGES: EDGES, boardOf: boardOf, boardKey: boardKey, boardMaterials: boardMaterials };
+    MATERIALS: MATERIALS, EDGES: EDGES, boardOf: boardOf, boardKey: boardKey, boardMaterials: boardMaterials, setDecors: setDecors,
+    decors: () => Array.from(DECORS.values()) };
 });

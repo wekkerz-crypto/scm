@@ -989,3 +989,73 @@ test('Web-Tool: Kanten nach Regeln vorbelegen und Sägemodus Schritt für Schrit
     await browser.close();
   }
 });
+
+// Dekor-Bibliothek (PHP auf dem Webspace): eingebauter PHP-Server mit web/ + tools/webserver/dekore in einem Testordner
+const { execFileSync, spawn } = require('child_process');
+let hasPhp = false;
+try { execFileSync('php', ['-v'], { stdio: 'ignore' }); hasPhp = true; } catch (e) { /* ohne PHP überspringen */ }
+test('Dekor-Bibliothek: Passwort, Hochladen, Bearbeiten – Step2Maestro übernimmt Namen per Code', { skip: (!chromium && 'Playwright nicht installiert') || (!hasPhp && 'PHP nicht installiert') }, async () => {
+  const fs = require('fs');
+  const os = require('os');
+  const zlib = require('zlib');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 's2m-dek-'));
+  const root = path.join(__dirname, '..');
+  fs.cpSync(path.join(root, 'web'), path.join(dir, 'app'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'app', 'dekore'));
+  for (const f of ['api.php', 'index.html']) fs.copyFileSync(path.join(root, 'tools', 'webserver', 'dekore', f), path.join(dir, 'app', 'dekore', f));
+  // kleines PNG (einfarbig grau, 64 × 32) als Dekorbild U708_ST9.png
+  const crc = (b) => { let c = ~0; for (const x of b) { c ^= x; for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1)); } return (~c) >>> 0; };
+  const chunk = (t, d) => { const l = Buffer.alloc(4); l.writeUInt32BE(d.length); const td = Buffer.concat([Buffer.from(t), d]); const c = Buffer.alloc(4); c.writeUInt32BE(crc(td)); return Buffer.concat([l, td, c]); };
+  const W = 64, H = 32;
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(W, 0); ihdr.writeUInt32BE(H, 4); ihdr[8] = 8; ihdr[9] = 2;
+  const raw = Buffer.alloc((W * 3 + 1) * H);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const o = y * (W * 3 + 1) + 1 + x * 3; raw[o] = 200; raw[o + 1] = 200; raw[o + 2] = 196; }
+  const png = Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
+  const img = path.join(dir, 'U708_ST9.png');
+  fs.writeFileSync(img, png);
+  const port = 18000 + Math.floor(Math.random() * 2000);
+  const srv = spawn('php', ['-S', '127.0.0.1:' + port, '-t', dir], { stdio: 'ignore' });
+  const browser = await chromium.launch();
+  try {
+    await new Promise((r) => setTimeout(r, 600));
+    const p = await browser.newPage({ viewport: { width: 1440, height: 950 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    const base = 'http://127.0.0.1:' + port + '/app/';
+    await p.goto(base + 'dekore/');
+    // erstes Passwort, dann Bild hochladen (Code aus dem Dateinamen), Namen eintragen
+    await p.waitForSelector('#setup:not([hidden])');
+    await p.fill('#pw1', 'werkstatt1');
+    await p.fill('#pw2', 'werkstatt1');
+    await p.click('#setupform button');
+    await p.waitForSelector('#upload:not([hidden])');
+    await p.setInputFiles('#files', img);
+    await p.waitForSelector('.dek[data-key="U708_ST9"]');
+    await p.click('.dek[data-key="U708_ST9"]');
+    await p.fill('#f_name', 'Lichtgrau');
+    await p.click('#save');
+    await p.waitForFunction(() => document.querySelector('#grid').textContent.includes('Lichtgrau'));
+    // ohne Anmeldung keine Änderung möglich
+    const anon = await (await fetch(base + 'dekore/api.php', { method: 'POST', body: new URLSearchParams({ a: 'delete', key: 'U708_ST9' }) })).json();
+    assert.strictEqual(anon.ok, false);
+    const list = await (await fetch(base + 'dekore/api.php?a=list')).json();
+    assert.deepStrictEqual(list.dekore.map((d) => [d.code, d.name]), [['U708 ST9', 'Lichtgrau']]);
+    assert.ok(/^#[0-9a-f]{6}$/.test(list.dekore[0].color) && list.dekore[0].bild);
+    // Step2Maestro über http: Bauteile „… (U708 ST9)“ bekommen das Dekor aus der Bibliothek
+    await p.goto(base);
+    await p.waitForSelector('.part');
+    await p.click('#clear');
+    const [chooser] = await Promise.all([p.waitForEvent('filechooser'), p.click('#pick')]);
+    await chooser.setFiles(fixture('schrank3.step'));
+    await p.waitForFunction(() => document.querySelectorAll('.part').length === 10, null, { timeout: 60000 });
+    await p.click('[data-page="lists"]');
+    await p.click('[data-ltab="bom"]');
+    await p.waitForFunction(() => document.querySelector('#bomview').textContent.includes('U708 ST9 Lichtgrau'));
+    assert.ok((await p.textContent('#bomview')).includes('W1000 ST9')); // nicht in der Bibliothek: wie bisher
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+    srv.kill();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

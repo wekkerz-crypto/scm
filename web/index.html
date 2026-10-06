@@ -464,6 +464,8 @@ svg.sheet .ct { fill: var(--cutc, #d2451e); font: 700 46px var(--font-mono); tex
 .boardbtn .bn { white-space: nowrap; font-family: var(--font-body); max-width: 16em; overflow: hidden; text-overflow: ellipsis; }
 .mtable .act button.mbsw .bsw { width: 18px; height: 18px; }
 .mtable .act button.mbsw.own .bsw { box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--accent); }
+.bpick .dsearch { width: 100%; margin-bottom: 6px; font-size: 0.85rem; padding: 4px 8px; }
+.bpick .dgrid { max-height: 220px; overflow: auto; }
 .bpick { position: fixed; z-index: 60; overflow-y: auto; width: 296px; padding: 12px; border-radius: 12px; background: var(--surface); color: var(--ink);
   border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,0.25); font-size: 0.86rem; }
 .bpick h5 { margin: 0 0 8px; font-size: 0.82rem; color: var(--muted); font-weight: 600; }
@@ -3675,6 +3677,26 @@ table.fmt.one .onet { display: inline; }
     return { lo: lo, hi: hi };
   }
   // ------------------------------------------------ Plattenfarbe (3D-Ansichten)
+  /*
+   * Dekor-Bibliothek: liegt das Programm auf dem Webserver, holt es sich die Dekore aus dekore/api.php (Bilder, Namen, Maserung).
+   * Offline (.exe, Datei) gibt es keine – dann wie bisher Farben. decorKey wie im PHP: „U708 ST9“ → U708_ST9.
+   */
+  let decorBase = '';
+  const decorKey = (code) => String(code || '').replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/Ä/g, 'Ae').replace(/Ö/g, 'Oe').replace(/Ü/g, 'Ue').replace(/ß/g, 'ss')
+    .replace(/[^A-Za-z0-9-]+/g, '_').replace(/^[_-]+|[_-]+$/g, '').toUpperCase().slice(0, 60);
+  async function loadDecors() {
+    if (!/^https?:$/.test(location.protocol)) return;
+    try {
+      const base = new URL('dekore/', location.href).href;
+      const r = await fetch(base + 'api.php?a=list', { cache: 'no-store' });
+      if (!r.ok) return;
+      const j = await r.json();
+      if (!j || !j.ok || !Array.isArray(j.dekore)) return;
+      decorBase = base;
+      View3D.setDecors(j.dekore.map((d) => Object.assign({}, d, { url: d.bild ? new URL(d.bild, base).href : null, thumb: d.vorschau ? new URL(d.vorschau, base).href : null })));
+      applyBoards();
+    } catch (e) { /* keine Bibliothek auf diesem Server */ }
+  }
   // Kantenbelegung für Möbel 3D (Schalter „Kanten“): Lage der Platte im Modell (panel.tf) und Kanten je Seite
   const bandsOf = (part) => {
     const r = part && (part.res || part.result);
@@ -3693,12 +3715,16 @@ table.fmt.one .onet { display: inline; }
   function nameBoard(part) {
     const s = part && part.solid;
     if (!s || !s.material || state.settings.boardFromName === false) return null;
+    // Dekor aus der Bibliothek auf dem Server (gleicher Code, z. B. „U708 ST9“ → U708_ST9): mit Bild und Namen
+    const dk = decorKey(s.material);
+    if (dk && View3D.decors().some((d) => d.key === dk)) return 'dek:' + dk;
     const code = s.material.trim().charAt(0).toUpperCase();
     const color = s.color || { W: '#f4f4f0', U: '#b9b9b5', H: '#c9a26b', F: '#9c9a95' }[code] || '#c8c8c4';
     return color + (code === 'H' ? '' : '/u') + '~' + encodeURIComponent(s.material);
   }
   function boardSwatch(key) {
     const b = View3D.boardOf(key);
+    if (b.thumb) return '<span class="bsw" style="background:' + b.color + ' url(\'' + esc(b.thumb) + '\') center / cover' + (b.edge !== 'same' ? ';box-shadow:inset -5px 0 0 ' + b.edgeColor : '') + '" aria-hidden="true"></span>';
     const bg = b.grain > 0 ? 'repeating-linear-gradient(172deg, ' + b.color + ' 0 3px, color-mix(in srgb, ' + b.color + ' 78%, #5a3410) 3px 4px, ' + b.color + ' 4px 7px)' : b.color;
     // andere Kanten: rechts ein Streifen in der Kantenfarbe
     const edge = b.edge !== 'same' ? ';box-shadow:inset -5px 0 0 ' + b.edgeColor : '';
@@ -3729,7 +3755,11 @@ table.fmt.one .onet { display: inline; }
     box.className = 'bpick';
     box.setAttribute('role', 'dialog');
     box.setAttribute('aria-label', 'Plattenfarbe');
-    box.innerHTML = '<h5>Oberfläche</h5><div class="grid">' + View3D.MATERIALS.map((m) => '<button type="button" data-bkey="' + m.id + '" aria-pressed="' + (!own && m.id === b0.id) + '">' +
+    const decs = View3D.decors();
+    box.innerHTML = (decs.length ? '<h5>Dekore (Bibliothek)</h5>' + (decs.length > 12 ? '<input type="search" class="dsearch" placeholder="Dekor suchen …" aria-label="Dekor suchen">' : '') +
+        '<div class="grid dgrid">' + decs.map((d) => '<button type="button" data-bkey="dek:' + esc(d.key) + '" data-dq="' + esc((d.code + ' ' + (d.name || '') + ' ' + (d.hersteller || '')).toLowerCase()) +
+        '" aria-pressed="' + ('dek:' + d.key === surf) + '">' + boardSwatch('dek:' + d.key) + esc(d.code + (d.name ? ' ' + d.name : '')) + '</button>').join('') + '</div>' : '') +
+      '<h5' + (decs.length ? ' class="eh"' : '') + '>Oberfläche</h5><div class="grid">' + View3D.MATERIALS.map((m) => '<button type="button" data-bkey="' + m.id + '" aria-pressed="' + (!own && m.id === b0.id) + '">' +
       boardSwatch(m.id) + esc(m.name) + '</button>').join('') + '</div>' +
       // gespeicherte eigene Farben (mit Namen)
       (customBoards().length ? '<h5 class="eh">Eigene Farben</h5><div class="grid">' + customBoards().map((k) => '<span class="ownk"><button type="button" data-bkey="' + esc(k) +
@@ -3742,8 +3772,11 @@ table.fmt.one .onet { display: inline; }
       (e.color ? '<span class="bsw" style="background:' + e.color + '" aria-hidden="true"></span>' : boardSwatch(surf)) + esc(e.name) + '</button>').join('') +
       '<label class="eband"><input type="color" value="' + (/^#/.test(edge) ? edge : '#3a3a3a') + '" aria-label="Farbe Kantenband"><button type="button" data-bband aria-pressed="' + /^#/.test(edge) + '">Kantenband</button></label></div>' +
       '<div class="foot">' + (inherit ? '<button type="button" class="inh" data-binh>' + boardSwatch(inherit) + 'Wie Einstellung</button>' : '<span></span>') +
+      (decorBase ? '<a class="btn ghost small" href="' + esc(decorBase) + '" target="_blank" rel="noopener">Dekore verwalten ↗</a>' : '') +
       '<button type="button" class="btn small" data-bdone>Fertig</button></div>';
     document.body.appendChild(box);
+    const ds = box.querySelector('.dsearch');
+    if (ds) ds.addEventListener('input', () => { const q = ds.value.trim().toLowerCase(); box.querySelectorAll('[data-dq]').forEach((b2) => { b2.hidden = !!q && !b2.dataset.dq.includes(q); }); });
     const r = anchor.getBoundingClientRect();
     const bw = box.offsetWidth;
     const bh = box.offsetHeight;
@@ -3838,6 +3871,7 @@ table.fmt.one .onet { display: inline; }
     render();
   }
   $('mboard').innerHTML = boardChip(state.settings.boardMaterial);
+  loadDecors();
   $('mboard').addEventListener('click', (e) => boardPicker(e.currentTarget, state.settings.boardMaterial, null, (key) => setBoardDefault(key)));
 
   // Symbole der Bauteilliste (Strich in Textfarbe): Auge = sichtbar, Auge durchgestrichen = ausgeblendet, Fokus = nur dieses

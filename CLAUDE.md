@@ -21,6 +21,9 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   (Sitzung), `boardPicker` in `index.html`, `Viewer.setBoards`.
   Material aus dem Namen: `StepToXcs.materialOf` → `solid.material`, Farbe `solid.color` (`colorsByItem` in `step.js`)
   → `nameBoard` in `index.html` (Einstellung `boardFromName`), Reihenfolge `part.board` < Name < Einstellung.
+  Dekor-Bibliothek: `tools/webserver/dekore/` (`api.php` PHP 8 + GD: list offen, setup/login/save/upload/delete mit Sitzung + X-CSRF,
+  Daten `daten/dekore.json`, Bilder `bilder/KEY.jpg` + `vorschau/`; `index.html` = Verwaltung) → `loadDecors` in `index.html` (nur http/https)
+  → `View3D.setDecors`, Schlüssel 'dek:KEY' (`boardOf` mit tex/thumb/scale, `surfMaterial` Bildtextur), `nameBoard` per `decorKey`.
   Schnitt `setSection` (clippingPlanes in `applyLook`), Bild `snapshot()` (Leinwand + Schilder/Maße nachgezeichnet).
 - Listen (`state.page` 'lists'): Stückliste `bomRows` (gleiche Teile zusammengefasst, Anzahl `part.qty`), CSV, Druck A4 `printA4`;
   Kantenband je Teil `part.edges = {l1, l2, b1, b2}` (0/1/2 = keine/Dekor 1/Dekor 2, L1 vorne Y=0, B1 links X=0; alle `lst.edgeMm`

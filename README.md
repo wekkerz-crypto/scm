@@ -198,6 +198,11 @@ Dritte Seite oben (**Listen**):
   Rohteil-Aufmaß), Fläche, geschätzter Zeit und Programmname. *Gleiche Teile zusammenfassen* (gleiche Maße, Farbe und
   gleiches Programm). **Anzahl** je Position änderbar (wird mit der Teileliste bzw. im Projekt gespeichert). Summen: Teile,
   m² je Material und Dicke, Bearbeitungszeit gesamt. **CSV / Excel** (Semikolon, deutsche Kommazahlen) und **Drucken / PDF**.
+- **Dekor-Bibliothek (Webserver):** Im Webserver-Paket liegt `dekore/` – eine Verwaltung im Browser (PHP, Passwort) zum
+  Hochladen, Benennen und Pflegen eurer Standard-Dekore (Bild, Code, Name, Hersteller, Maserung, Farbe, Bildbreite in mm).
+  Dateiname = Code (`U708_ST9.jpg` → „U708 ST9“). Step2Maestro lädt die Liste beim Start: Bauteile mit diesem Code im
+  Namen bekommen das Dekor mit Bild (Möbel 3D), Namen (Listen) und Maserung (Zuschnitt); in jeder Plattenauswahl unter
+  *Dekore (Bibliothek)*. Anleitung in der `ANLEITUNG.txt` des Pakets; offline (.exe) wie bisher Farben.
 - **Material aus dem Bauteilnamen:** Steht im Namen ein Dekor in Klammern (z. B. „KP_1_ OB (U708 ST9)“) oder ein Dekor-Code
   wie `U708_ST9` / `H1145 ST10`, wird er die Platte des Teils – mit der Farbe aus der STEP (sonst nach dem Code: W weiß, U grau,
   H Holz mit Maserung, F Stein). Stückliste, Zuschnitt und Möbel 3D gruppieren danach; je Teil von Hand änderbar, abschaltbar in

@@ -737,6 +737,25 @@ test('Web-Tool: Spalten Etiketten (Konfigurator, Druckliste) und Material', { sk
     await p.click('[data-page="lists"]');
     assert.strictEqual(await p.inputValue('#emm'), '2');
     assert.strictEqual(await p.inputValue('#csheetL'), '2500');
+    // Dekor-Bilder direkt in der Material-Spalte: Datei → Kachel mit Code aus dem Dateinamen, im Browser gespeichert
+    await p.click('.pagetabs [data-page="material"]');
+    await p.setInputFiles('#decfile', fixture('H1145 ST10.png'));
+    await p.waitForSelector('.dectile');
+    assert.strictEqual(await p.inputValue('.dectile [data-decf="code"]'), 'H1145 ST10');
+    assert.ok(await p.isChecked('.dectile [data-decf="grain"]')); // H… = Holz mit Maserung
+    assert.ok(await p.evaluate(() => View3D.decors().some((d) => d.key === 'H1145_ST10' && /^data:image\/jpeg/.test(d.url))));
+    await p.fill('.dectile [data-decf="name"]', 'Eiche Bardolino');
+    await p.press('.dectile [data-decf="name"]', 'Enter');
+    const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#decexp')]);
+    const exp = JSON.parse(require('fs').readFileSync(await dl.path(), 'utf8'));
+    assert.strictEqual(exp.dekore[0].name, 'Eiche Bardolino');
+    await p.waitForTimeout(400);
+    await p.reload();
+    await p.waitForSelector('#matpage:not([hidden]) .dectile');
+    assert.strictEqual(await p.inputValue('.dectile [data-decf="name"]'), 'Eiche Bardolino');
+    await p.click('[data-decdel="0"]');
+    await p.click('[data-decdel="0"]');
+    assert.strictEqual(await p.$('.dectile'), null);
     assert.deepStrictEqual(errors, []);
   } finally {
     await browser.close();

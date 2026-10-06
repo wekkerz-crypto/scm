@@ -19,7 +19,8 @@ dieselbe) und **Material**, Teilename (= Dateiname), Maße L × B × D groß, be
 **„⇅ 2-SEITIG · WENDEN“** (Bearbeitung von unten ohne zweite Seite: gestrichelt „! Unterseite beachten“), **Kantenbelegung**
 (in der Draufsicht dicke Striche an den Seiten – Dekor 1 durchgezogen, Dekor 2 gestrichelt – und darunter je Dekor Name und
 Seiten bzw. „ringsum“), Fußzeile mit Datum, Profil und Anzahl der Bearbeitungen; Draufsicht schwarz-weiß mit Länge/Breite,
-Nullpunkt, Bohrungen (Kantenbohrungen als Striche), Durchbrüchen und Taschen. Breite Etiketten (z. B. 60 × 40): Kopf
+Nullpunkt, Bohrungen (Kantenbohrungen als Striche), Durchbrüchen und Taschen; an der Bemaßung stehen die **Fertigmaße**
+(„762 fertig“ – aus dem Modell, nicht das Zuschnittmaß; bei sehr schmalen Teilen nur die Zahl). Breite Etiketten (z. B. 60 × 40): Kopf
 oben, Text links, Draufsicht rechts.
 
 **Etiketten** (eigene Spalte oben neben *Listen*; auch über *✎ Gestalten …* in der Etiketten-Vorschau oder *Werkzeuge &
@@ -44,7 +45,12 @@ Etiketten*. Im Druckdialog den Etikettendrucker wählen, Papier = Etikettgröße
 *Materialien im Projekt* (Art, Schmalflächen, Dicken mit Anzahl, Fläche, Plattenformat, Kante Dekor 1; *Ändern …* setzt ein
 anderes Material für alle Bauteile damit), *Standard* (Platte für alle Teile, Material aus dem Bauteilnamen), *Kantenband*
 (Dicke, Dekor 1/2, Farbe, Zugabe, Abzug vom Zuschnitt), *Rohplatten* (Format, Schnittfuge, Besäumen, Maserung, eigene Formate je
-Material), *Eigene Farben* und *Dekor-Bibliothek* (vom Webserver). Es sind dieselben Werte wie in Stückliste, Zuschnitt und
+Material), *Eigene Farben* und **Dekore**: Bilder direkt hineinziehen oder mit *+ Bilder* wählen (mehrere auf einmal) –
+der Dateiname wird zum Code („U708 ST9.jpg“ → U708 ST9), dazu Name, Maserung (H… vorbelegt) und Bildbreite in mm. Das
+Programm verkleinert die Bilder (≤ 1200 px, JPEG) und speichert sie im Browser – geht auch offline (.exe, Pi). Teile mit dem
+Code im Namen bekommen das Bild in Möbel 3D; *Exportieren*/*Importieren* (.json) für andere PCs oder den Pi; in der
+Projektdatei (.s2m) gehen die benutzten Dekor-Bilder mit. Liegt das Programm auf dem Webserver, kommen die Dekore der
+Server-Bibliothek dazu (eigene Bilder gehen bei gleichem Code vor). Es sind dieselben Werte wie in Stückliste, Zuschnitt und
 Einstellungen – Änderung an einer Stelle gilt überall.
 
 **DXF (2D-Zeichnung):** wird wie STEP geladen, ohne Layer-Steuerung. Die größte geschlossene Kontur ist das Teil

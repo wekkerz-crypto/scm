@@ -124,6 +124,20 @@ header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: 
   border-radius: 8px; font: 600 0.82rem var(--font-mono); min-width: 150px; }
 .matdec i { grid-row: 1 / 3; width: 40px; height: 40px; border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15); }
 .matdec small { font: 400 0.75rem var(--font-body); color: var(--muted); }
+.matcard h4 .sp { flex: 1; }
+.matcard h4 label.btn { cursor: pointer; }
+.decdrop { border: 2px dashed var(--line); border-radius: 10px; padding: 14px; text-align: center; font-size: 0.85rem; color: var(--muted); }
+.decdrop.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); color: var(--ink); }
+.decgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 10px; }
+.dectile { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 8px; border: 1px solid var(--line); border-radius: 10px; }
+.dectile > i { width: 72px; height: 72px; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15); }
+.decf { display: grid; gap: 4px; min-width: 0; font-size: 0.82rem; }
+.decf input[type=text] { width: 100%; box-sizing: border-box; }
+.decf input[data-decf="code"] { font: 600 0.9rem var(--font-mono); }
+.decf span { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.decf input[type=number] { width: 6em; font-family: var(--font-mono); }
+.dectile .btn.arm { color: #fff; background: var(--err); border-color: var(--err); }
+.dech { margin: 4px 0 0; font-size: 0.8rem; color: var(--muted); }
 /* Etiketten-Seite: Druckliste | Etikett | Eigenschaften */
 .labelpage .ldhead { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 12px; font-size: 0.9rem; }
 .labelpage .ldhead h3 { margin: 0 8px 0 0; }
@@ -1668,6 +1682,10 @@ table.fmt.one .onet { display: inline; }
     const d = new Date();
     const stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     const data = { format: PROJECT_FORMAT, saved: d.toISOString(), session: JSON.parse(JSON.stringify(sessionData())) };
+    // eigene Dekor-Bilder, die die Teile benutzen, gehen mit (auf einem anderen PC sind sie sonst nicht da)
+    const used = new Set(state.parts.map((p) => String(boardKeyOf(p)).split('|')[0]).filter((k) => k.slice(0, 4) === 'dek:').map((k) => k.slice(4)));
+    const dk = localDecors.filter((x) => used.has(x.key));
+    if (dk.length) data.dekore = dk;
     saveOne(base + '_' + stamp + '.s2m', JSON.stringify(data), 'application/json');
   }
   function openProject(text, name) {
@@ -1677,6 +1695,7 @@ table.fmt.one .onet { display: inline; }
     if (state.parts.length && !confirm('Projekt „' + name + '“ öffnen? Die aktuelle Teileliste wird ersetzt.')) return;
     state.parts = [];
     anim.result = null;
+    if (Array.isArray(data.dekore)) mergeDecors(data.dekore);
     restoreFrom(data.session);
     toast('Projekt geöffnet: ' + state.parts.length + ' Teile');
     render();
@@ -2716,8 +2735,10 @@ table.fmt.one .onet { display: inline; }
     s += tick(X(0), yb) + tick(X(p.L), yb) + tick(xl, Y(0)) + tick(xl, Y(p.W));
     const tx = (x, y, t, rot) => '<text x="' + x + '" y="' + y + '" font-size="' + fs + '" font-weight="600" text-anchor="middle" dominant-baseline="' + (rot ? 'auto' : 'hanging') + '"' +
       (rot ? ' transform="rotate(-90 ' + x + ' ' + y + ')"' : '') + ' paint-order="stroke" stroke="#fff" stroke-width="0.6">' + t + '</text>';
-    s += tx((X(0) + X(p.L)) / 2, yb + 0.35, n1(p.L));
-    s += tx(xl - 0.35, (Y(0) + Y(p.W)) / 2, n1(p.W), true);
+    // Fertigmaße (aus dem Modell, nicht Zuschnitt): „fertig“ dahinter, wo Platz ist
+    const lab = (v, len) => { const t = n1(v) + ' fertig'; return t.length * fs * 0.62 <= len ? t : n1(v); };
+    s += tx((X(0) + X(p.L)) / 2, yb + 0.35, lab(p.L, X(p.L) - X(0)));
+    s += tx(xl - 0.35, (Y(0) + Y(p.W)) / 2, lab(p.W, Y(0) - Y(p.W)), true);
     return s + '</svg>';
   }
   /*
@@ -3229,10 +3250,7 @@ table.fmt.one .onet { display: inline; }
           '<span>' + boardSwatch(k) + ' ' + esc(View3D.boardOf(k).name) + ' <button type="button" class="btn ghost small" data-matdel="' + esc(k) + '" aria-label="entfernen">✕</button></span>').join('') + '</div>'
         : '<p class="note">Noch keine – in der Farbauswahl (z. B. „Ändern …“) eigene Farbe mit Namen anlegen.</p>') + '</section>' +
       // Dekor-Bibliothek
-      '<section class="matcard wide"><h4>Dekor-Bibliothek <small>' + decs.length + '</small>' + (decorBase ? ' <a class="btn ghost small" href="' + esc(decorBase) + '" target="_blank" rel="noopener">verwalten ↗</a>' : '') + '</h4>' +
-        (decs.length ? '<div class="matdec">' + decs.map((d) => '<span title="' + esc(d.code + (d.name ? ' ' + d.name : '')) + '"><i style="background:' + esc(d.color || '#ccc') +
-          (d.thumb ? ' url(\'' + esc(d.thumb) + '\') center / cover' : '') + '"></i>' + esc(d.code) + '<small>' + esc(d.name || '') + '</small></span>').join('') + '</div>'
-          : '<p class="note">Nur auf dem Webserver (Strato): Dekore mit Bild und Namen unter <i>dekore/</i> pflegen – dann hier und in Möbel 3D.</p>') + '</section>' +
+      decorSectionHtml(decs) +
       '</div>';
     // Ereignisse
     list.forEach((m, i) => $('matchg' + i).addEventListener('click', (ev) => boardPicker(ev.currentTarget, m.key, null, (k) => {
@@ -3257,6 +3275,7 @@ table.fmt.one .onet { display: inline; }
     sync('m-ededuct', 'edgeDeduct', false, true); sync('m-sheetL', 'sheetL', true); sync('m-sheetW', 'sheetW', true); sync('m-kerf', 'kerf', true); sync('m-trim', 'trim', true);
     sync('m-grain', 'grain', false, true);
     host.querySelectorAll('[data-matgf]').forEach((b) => b.addEventListener('click', () => { delete lst.groupSheet[b.dataset.matgf]; saveLst(); renderMat(); }));
+    decorWire(host);
     host.querySelectorAll('[data-matdel]').forEach((b) => b.addEventListener('click', () => {
       state.settings.customBoards = customBoards().filter((k) => k !== b.dataset.matdel);
       saveSettings();
@@ -4630,9 +4649,171 @@ table.fmt.one .onet { display: inline; }
       const j = await r.json();
       if (!j || !j.ok || !Array.isArray(j.dekore)) return;
       decorBase = base;
-      View3D.setDecors(j.dekore.map((d) => Object.assign({}, d, { url: d.bild ? new URL(d.bild, base).href : null, thumb: d.vorschau ? new URL(d.vorschau, base).href : null })));
+      serverDecors = j.dekore.map((d) => Object.assign({}, d, { url: d.bild ? new URL(d.bild, base).href : null, thumb: d.vorschau ? new URL(d.vorschau, base).href : null }));
+      applyDecors();
       applyBoards();
     } catch (e) { /* keine Bibliothek auf diesem Server */ }
+  }
+  /*
+   * Dekor-Bilder direkt im Programm (Material › Dekore): Bild hineinziehen oder wählen → verkleinert (lange Seite ≤ 1200 px, JPEG),
+   * Vorschau 160 px, Grundfarbe aus dem Bild, Code aus dem Dateinamen („U708 ST9.jpg“ → U708 ST9). Gespeichert im Browser
+   * (IndexedDB, DECOR_KEY), Export/Import als .json, in der Projektdatei die benutzten. Gleiche Schlüssel wie die Bibliothek auf dem
+   * Server ('dek:KEY'); ein eigenes Bild geht dem vom Server vor.
+   */
+  const DECOR_KEY = 'step2xcs.decors.v1';
+  let serverDecors = [];
+  let localDecors = [];
+  function applyDecors() {
+    const m = new Map();
+    for (const d of serverDecors) m.set(d.key, d);
+    for (const d of localDecors) m.set(d.key, Object.assign({}, d, { url: d.img, thumb: d.thumb, local: true }));
+    View3D.setDecors(Array.from(m.values()));
+  }
+  let decorSaveT = null;
+  function saveLocalDecors() {
+    clearTimeout(decorSaveT);
+    decorSaveT = setTimeout(() => idbSet(DECOR_KEY, localDecors).catch(() => toast('Dekore konnten im Browser nicht gespeichert werden.')), 200);
+  }
+  async function loadLocalDecors() {
+    try { const v = await idbGet(DECOR_KEY); if (Array.isArray(v)) localDecors = v.filter((d) => d && d.key && d.img); } catch (e) { /* ohne Speicher */ }
+    applyDecors();
+    applyBoards();
+    if (state.page === 'material') renderMat();
+  }
+  // Bild → { img, thumb, color } (Canvas)
+  function decorImage(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const im = new Image();
+      im.onload = () => {
+        try {
+          const k = Math.min(1, 1200 / Math.max(im.naturalWidth, im.naturalHeight));
+          const c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round(im.naturalWidth * k));
+          c.height = Math.max(1, Math.round(im.naturalHeight * k));
+          c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+          const t = document.createElement('canvas');
+          t.width = t.height = 160;
+          const s0 = Math.min(im.naturalWidth, im.naturalHeight);
+          t.getContext('2d').drawImage(im, (im.naturalWidth - s0) / 2, (im.naturalHeight - s0) / 2, s0, s0, 0, 0, 160, 160);
+          const a = document.createElement('canvas');
+          a.width = a.height = 1;
+          const ax = a.getContext('2d');
+          ax.drawImage(im, 0, 0, 1, 1);
+          const px = ax.getImageData(0, 0, 1, 1).data;
+          URL.revokeObjectURL(url);
+          resolve({ img: c.toDataURL('image/jpeg', 0.86), thumb: t.toDataURL('image/jpeg', 0.8), w: c.width, h: c.height,
+            color: '#' + [px[0], px[1], px[2]].map((v) => v.toString(16).padStart(2, '0')).join('') });
+        } catch (e) { URL.revokeObjectURL(url); reject(e); }
+      };
+      im.onerror = () => { URL.revokeObjectURL(url); reject(new Error('kein Bild')); };
+      im.src = url;
+    });
+  }
+  async function addDecorFiles(files) {
+    let n = 0;
+    for (const f of Array.from(files || [])) {
+      if (!/^image\//.test(f.type) && !/\.(jpe?g|png|webp|gif|bmp)$/i.test(f.name)) continue;
+      try {
+        const im = await decorImage(f);
+        const code = f.name.replace(/\.[^.]+$/, '').replace(/_/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40) || 'Dekor';
+        const key = decorKey(code);
+        const old = localDecors.find((d) => d.key === key);
+        // Holz (H…) mit Maserung; Bildbreite: Vorgabe 1000 mm
+        const d = Object.assign(old || { key: key, code: code, name: '', grain: /^H/i.test(code), scale: 1000 }, { img: im.img, thumb: im.thumb, color: im.color });
+        if (!old) localDecors.push(d);
+        n++;
+      } catch (e) { toast(f.name + ': Bild nicht lesbar.'); }
+    }
+    if (!n) return;
+    localDecors.sort((a, b) => a.code.localeCompare(b.code, 'de', { numeric: true }));
+    saveLocalDecors();
+    applyDecors();
+    applyBoards();
+    toast(n + ' Dekor-Bild' + (n === 1 ? '' : 'er') + ' übernommen.');
+    render();
+  }
+  function decorSectionHtml(decs) {
+    const loc = new Set(localDecors.map((d) => d.key));
+    const srv = serverDecors.filter((d) => !loc.has(d.key));
+    return '<section class="matcard wide" id="decsec"><h4>Dekore <small>' + decs.length + '</small><span class="sp"></span>' +
+      '<label class="btn small" title="Bilder wählen (mehrere möglich) – Dateiname = Dekor-Code">+ Bilder <input type="file" id="decfile" accept="image/*" multiple hidden></label>' +
+      (localDecors.length ? '<button type="button" class="btn ghost small" id="decexp" title="Eigene Dekore als Datei sichern – für andere PCs oder den Pi">Exportieren</button>' : '') +
+      '<label class="btn ghost small" title="Dekor-Datei (.json) laden">Importieren <input type="file" id="decimp" accept=".json,application/json" hidden></label>' +
+      (decorBase ? '<a class="btn ghost small" href="' + esc(decorBase) + '" target="_blank" rel="noopener">Server-Bibliothek ↗</a>' : '') + '</h4>' +
+      '<div class="decdrop" id="decdrop">Dekor-Bilder hierher ziehen – der Dateiname wird zum Code (z. B. „U708 ST9.jpg“). Teile mit dem Code im Namen bekommen das Bild in Möbel 3D.</div>' +
+      (localDecors.length ? '<div class="decgrid">' + localDecors.map((d, i) => '<div class="dectile"><i style="background:' + esc(d.color) + ' url(\'' + d.thumb + '\') center / cover"></i>' +
+        '<div class="decf"><input type="text" data-decf="code" data-i="' + i + '" value="' + esc(d.code) + '" aria-label="Code" title="Code (wie im Bauteilnamen)">' +
+        '<input type="text" data-decf="name" data-i="' + i + '" value="' + esc(d.name || '') + '" placeholder="Name (z. B. Schiefer)" aria-label="Name">' +
+        '<span><label class="ck"><input type="checkbox" data-decf="grain" data-i="' + i + '"' + (d.grain ? ' checked' : '') + '> Maserung</label>' +
+        '<label title="Wie breit das Bild auf der Platte ist">Bild <input type="number" min="50" max="6000" step="10" data-decf="scale" data-i="' + i + '" value="' + (d.scale || 1000) + '"> mm</label></span></div>' +
+        '<button type="button" class="btn ghost small" data-decdel="' + i + '" aria-label="Dekor löschen" title="löschen">✕</button></div>').join('') + '</div>' : '') +
+      (srv.length ? '<h5 class="dech">vom Server</h5><div class="matdec">' + srv.map((d) => '<span title="' + esc(d.code + (d.name ? ' ' + d.name : '')) + '"><i style="background:' + esc(d.color || '#ccc') +
+        (d.thumb ? ' url(\'' + esc(d.thumb) + '\') center / cover' : '') + '"></i>' + esc(d.code) + '<small>' + esc(d.name || '') + '</small></span>').join('') + '</div>' : '') +
+      '</section>';
+  }
+  function decorWire(host) {
+    if (!$('decsec')) return;
+    $('decfile').addEventListener('change', (e) => { addDecorFiles(e.target.files); e.target.value = ''; });
+    const dz = $('decdrop');
+    dz.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); dz.classList.add('over'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+    dz.addEventListener('drop', (e) => { e.preventDefault(); e.stopPropagation(); dz.classList.remove('over'); addDecorFiles(e.dataTransfer.files); });
+    if ($('decexp')) $('decexp').addEventListener('click', () => saveOne('dekore_' + new Date().toISOString().slice(0, 10) + '.json',
+      JSON.stringify({ format: 'step2maestro-dekore', v: 1, dekore: localDecors }), 'application/json'));
+    $('decimp').addEventListener('change', async (e) => {
+      const f = e.target.files[0];
+      e.target.value = '';
+      if (!f) return;
+      try {
+        const j = JSON.parse(await f.text());
+        const n = mergeDecors(j && j.dekore);
+        toast(n + ' Dekor' + (n === 1 ? '' : 'e') + ' geladen.');
+      } catch (err) { toast(f.name + ': keine Dekor-Datei.'); }
+    });
+    host.querySelectorAll('[data-decf]').forEach((inp) => inp.addEventListener('change', () => {
+      const d = localDecors[+inp.dataset.i];
+      if (!d) return;
+      const k = inp.dataset.decf;
+      if (k === 'grain') d.grain = inp.checked;
+      else if (k === 'scale') d.scale = Math.max(50, Math.min(6000, +inp.value || 1000));
+      else if (k === 'code') {
+        const code = inp.value.trim().slice(0, 40);
+        const key = decorKey(code);
+        if (!key || localDecors.some((x) => x !== d && x.key === key)) { toast('Den Code gibt es schon (oder er ist leer).'); renderMat(); return; }
+        // Teile mit dem alten Dekor behalten es
+        for (const p of state.parts) if (p.board === 'dek:' + d.key) p.board = 'dek:' + key;
+        d.code = code;
+        d.key = key;
+      } else d.name = inp.value.trim().slice(0, 80);
+      saveLocalDecors();
+      applyDecors();
+      applyBoards();
+      render();
+    }));
+    host.querySelectorAll('[data-decdel]').forEach((b) => b.addEventListener('click', () => {
+      if (!b.classList.contains('arm')) { b.classList.add('arm'); b.textContent = 'Löschen?'; return; }
+      localDecors.splice(+b.dataset.decdel, 1);
+      saveLocalDecors();
+      applyDecors();
+      applyBoards();
+      render();
+    }));
+  }
+  // Dekore aus Datei/Projekt übernehmen (gleicher Code: Bild und Angaben ersetzen)
+  function mergeDecors(list) {
+    let n = 0;
+    for (const d of Array.isArray(list) ? list : []) {
+      if (!d || !d.key || !/^data:image\//.test(String(d.img || ''))) continue;
+      const clean = { key: decorKey(d.key), code: String(d.code || d.key).slice(0, 40), name: String(d.name || '').slice(0, 80), grain: !!d.grain,
+        scale: Math.max(50, Math.min(6000, +d.scale || 1000)), color: /^#[0-9a-f]{6}$/i.test(d.color) ? d.color : '#c8c8c4', img: d.img,
+        thumb: /^data:image\//.test(String(d.thumb || '')) ? d.thumb : d.img };
+      const i = localDecors.findIndex((x) => x.key === clean.key);
+      if (i >= 0) localDecors[i] = clean; else localDecors.push(clean);
+      n++;
+    }
+    if (n) { saveLocalDecors(); applyDecors(); applyBoards(); render(); }
+    return n;
   }
   // Kantenbelegung für Möbel 3D (Schalter „Kanten“): Lage der Platte im Modell (panel.tf) und Kanten je Seite
   const bandsOf = (part) => {
@@ -4809,6 +4990,7 @@ table.fmt.one .onet { display: inline; }
   }
   $('mboard').innerHTML = boardChip(state.settings.boardMaterial);
   loadDecors();
+  loadLocalDecors();
   $('mboard').addEventListener('click', (e) => boardPicker(e.currentTarget, state.settings.boardMaterial, null, (key) => setBoardDefault(key)));
 
   // Symbole der Bauteilliste (Strich in Textfarbe): Auge = sichtbar, Auge durchgestrichen = ausgeblendet, Fokus = nur dieses
@@ -6041,10 +6223,17 @@ table.fmt.one .onet { display: inline; }
   $('file').addEventListener('change', (e) => { loadFiles(e.target.files); e.target.value = ''; });
   const over = $('dropover');
   const hasFiles = (e) => e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
-  ['dragenter', 'dragover'].forEach((t) => document.addEventListener(t, (e) => { if (!hasFiles(e)) return; e.preventDefault(); over.hidden = false; }));
+  // Material-Seite: Bilder werden zu Dekoren (Feld „Dekor-Bilder hierher ziehen“), STEP/DXF wie sonst
+  const isImg = (f) => /^image\//.test(f.type) || /\.(jpe?g|png|webp|gif|bmp)$/i.test(f.name);
+  ['dragenter', 'dragover'].forEach((t) => document.addEventListener(t, (e) => { if (!hasFiles(e)) return; e.preventDefault(); if (state.page !== 'material') over.hidden = false; }));
   document.addEventListener('dragleave', (e) => { if (!e.relatedTarget) over.hidden = true; });
   document.addEventListener('drop', (e) => { e.preventDefault(); over.hidden = true; });
-  document.addEventListener('drop', (e) => { if (e.dataTransfer && e.dataTransfer.files.length) loadFiles(e.dataTransfer.files); });
+  document.addEventListener('drop', (e) => {
+    if (!e.dataTransfer || !e.dataTransfer.files.length) return;
+    const fs = Array.from(e.dataTransfer.files);
+    if (state.page === 'material' && fs.some(isImg)) { addDecorFiles(fs.filter(isImg)); if (fs.some((f) => !isImg(f))) loadFiles(fs.filter((f) => !isImg(f))); return; }
+    loadFiles(e.dataTransfer.files);
+  });
   $('reset').addEventListener('click', () => {
     state.settings = Object.assign({}, XcsWriter.DEFAULTS, { orderRule: { on: true, seq: XcsWriter.DEFAULTS.orderRule.seq.slice() },
       profiles: JSON.parse(JSON.stringify(XcsWriter.DEFAULTS.profiles)) });

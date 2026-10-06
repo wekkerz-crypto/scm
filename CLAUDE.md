@@ -98,7 +98,10 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   `labelData(part)` (Felder, `sketch`, `edgeList`, `two`), Seite `state.page` 'labels' (`#lblpage` – nicht `labelpage`, das ist der
   @page-Stil): `ldInit`/`renderLD`/`ldWire` (`ld`, Druckliste `ld.print` je Teil {on, n}, `ldPrintHtml`), `openLabelDesigner(part)` wechselt dorthin;
   Seite 'material' (`#matpage`, `renderMat`): Materialien im Projekt, Standard, Kantenband, Rohplatten, eigene Farben, Dekore – Felder
-  gekoppelt an `lst`/`settings` (Zwillinge in Stückliste/Zuschnitt werden nachgezogen);
+  gekoppelt an `lst`/`settings` (Zwillinge in Stückliste/Zuschnitt werden nachgezogen); Dekor-Bilder lokal: `localDecors`
+  (IndexedDB `DECOR_KEY`, je {key, code, name, grain, scale, color, img, thumb} als Data-URL), `decorImage`/`addDecorFiles`,
+  `decorSectionHtml`/`decorWire`, `mergeDecors` (Import, Projektdatei `data.dekore`), `applyDecors` = Server (`serverDecors`) + lokal;
+  auf der Material-Seite gehen abgelegte Bilder in die Dekore statt an `loadFiles`;
   gedruckt wird nur `#printarea` mit `@page` in Etikettgröße (`#labelpage`), schwarz-weiß für Thermodrucker.
 - `exe/` – kleine Windows-.exe (Go), bettet `web/` ein und öffnet es im Browser; bauen mit `npm run build:exe` → `dist/`.
   Webserver-Paket: `npm run build:web` → `dist/Step2Maestro-Webserver.zip` (`tools/webserver/`: ANLEITUNG.txt für Strato,

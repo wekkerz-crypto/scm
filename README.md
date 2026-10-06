@@ -225,6 +225,12 @@ Dritte Seite oben (**Listen**):
   Stück, der Überstand kommt als Abfall ab) und Abfall-Schnitte. Groß das Maß ab Anschlag, dazu was im Stück liegt, welche
   Teile danach fertig sind und was als Reststück übrig bleibt. In der Zeichnung: das abzutrennende Stück blau, der Schnitt
   rot mit Pfeil, fertige Teile grau mit ✓. Weiter/Zurück mit den Knöpfen oder → / Leertaste / ←; Platte wählbar.
+  **⛶ Vollbild** (oder Taste F, zurück mit Esc) für den Bildschirm an der Säge. **⚙ Schnittfolge** stellt ein, wie geschnitten
+  wird: Anschnitt längs/quer einzeln und welcher zuerst; erste Schnitte wie im Zuschnittplan, längs oder quer; Reihenfolge
+  *jeden Streifen gleich fertig* oder *erst alle Streifen, dann quer*; Anschlag/Beginn links oder rechts, vorne oder hinten;
+  Maß als *abgetrenntes Stück* (Parallelanschlag) oder *Restmaß* (Programmanschlag); Nachschnitte *sofort*, *nach jedem
+  Streifen* oder *am Schluss gesammelt*, bis zu welchem Überstand (mm / %) ein Schnitt Nachschnitt heißt, ab wann ein Rest
+  Reststück ist. Gemerkt im Browser; „Standard“ setzt zurück.
 - **Zuschnittplan:** Teile auf Rohplatten (Format, Schnittfuge, Besäumrand einstellbar) je Material und Dicke, mit
   durchgehenden Schnitten wie an der Plattensäge; mit Maserung bleibt die lange Seite längs der Plattenlänge, Dekore werden
   bei Bedarf gedreht. Rohmaß oder Fertigmaß wählbar. Zeichnung je Platte mit Nummer und Maß, Ausnutzung.

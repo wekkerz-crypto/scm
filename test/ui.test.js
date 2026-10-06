@@ -932,7 +932,7 @@ test('Web-Tool: Kanten nach Regeln vorbelegen und Sägemodus Schritt für Schrit
     await p.keyboard.press('ArrowRight');
     await p.keyboard.press('ArrowRight');
     assert.match(await p.textContent('.sawcard .sk'), /Streifen/);
-    assert.match(await p.textContent('.sawcard .big'), /mm ab Anschlag/);
+    assert.match(await p.textContent('.sawcard .big'), /mm Stück/);
     const total = await p.$$eval('#sawview svg.sheet rect.pt, #sawview svg.sheet rect.sdone', (x) => x.length);
     let kinds = new Set();
     for (let n = 0; n < 40 && !(await p.isDisabled('[data-saw="next"]')); n++) {
@@ -944,6 +944,26 @@ test('Web-Tool: Kanten nach Regeln vorbelegen und Sägemodus Schritt für Schrit
     assert.strictEqual(await p.$$eval('#sawview svg.sheet rect.sdone', (x) => x.length), total);
     await p.keyboard.press('ArrowLeft');
     assert.ok(!(await p.isDisabled('[data-saw="next"]')));
+    // Schnittfolge einstellen: ohne Anschnitt quer, erst alle Streifen, Restmaß zeigen
+    await p.click('[data-saw="cfg"]');
+    await p.uncheck('[data-sawcfg="trimCross"]');
+    await p.selectOption('[data-sawcfg="order"]', 'strips');
+    await p.selectOption('[data-sawcfg="measure"]', 'remain');
+    const seq = [];
+    for (let n = 0; n < 40 && !(await p.isDisabled('[data-saw="next"]')); n++) { seq.push(await p.textContent('.sawcard .sk')); await p.click('[data-saw="next"]'); }
+    assert.strictEqual(seq.filter((x) => x === 'Anschnitt').length, 1);
+    const lastStrip = seq.lastIndexOf('Streifen');
+    const firstCross = seq.findIndex((x) => /Querschnitt/.test(x));
+    assert.ok(lastStrip >= 0 && firstCross > lastStrip, seq.join(', '));
+    await p.click('[data-saw="reset"]');
+    await p.keyboard.press('ArrowRight');
+    assert.match(await p.textContent('.sawcard .big'), /mm Restmaß/);
+    // Vollbild mit F, zurück mit Esc
+    await p.keyboard.press('f');
+    assert.ok(await p.$eval('#sawview', (e) => e.classList.contains('sawfull')));
+    await p.keyboard.press('Escape');
+    assert.ok(!(await p.$eval('#sawview', (e) => e.classList.contains('sawfull'))));
+    await p.click('[data-saw="cfgreset"]');
     assert.deepStrictEqual(errors, []);
   } finally {
     await browser.close();

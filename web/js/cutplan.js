@@ -240,10 +240,35 @@
    *   2 … = wieder längs; kind 'strip' | 'cross' | 'trim' (Nachschnitt: nur noch ein Teil im Stück, Überstand ab) | 'waste'
    *   (vorn liegt nur Abfall); size = Maß des abgetrennten Stücks ab Anschlag (c − Stückanfang), rest = was danach übrig bleibt
    *   (restParts = Teile darin; 0 = Reststück/Abfall),
-   *   parts = Teile im abgetrennten Stück (uid), done = Teile, die mit diesem Schnitt fertig sind.
+   *   parts = Teile im abgetrennten Stück (uid), done = Teile, die mit diesem Schnitt fertig sind, side 'lo' | 'hi' = Lage des
+   *   abgetrennten Stücks (hi = bei höheren Koordinaten, wenn von rechts/hinten begonnen wird).
+   * Einstellbar (Sägemodus): flipX / flipY = am rechten / hinteren Rand beginnen; order 'depth' (jeden Streifen gleich fertig) |
+   * 'strips' (erst alle Streifen abtrennen, dann quer); trims 'now' | 'strip' (Nachschnitte nach dem Streifen) | 'end' (am Schluss);
+   * trimMax (mm) / trimPct (%) = bis zu welchem Überstand ein Schnitt Nachschnitt heißt.
    */
   function cutSequence(sheet, opts) {
-    const o = Object.assign({ kerf: 4.4, trim: 10 }, opts || {});
+    const o = Object.assign({ kerf: 4.4, trim: 10, order: 'depth', trims: 'now', trimMax: 150, trimPct: 30 }, opts || {});
+    // von rechts / hinten beginnen: Platte gespiegelt rechnen, Schnitte danach zurückspiegeln
+    if (o.flipX || o.flipY) {
+      const fx = !!o.flipX;
+      const fy = !!o.flipY;
+      const mir = { L: sheet.L, W: sheet.W, parts: sheet.parts.map((p) => Object.assign({}, p, { x: fx ? sheet.L - p.x - p.l : p.x, y: fy ? sheet.W - p.y - p.w : p.y })) };
+      const res = cutSequence(mir, Object.assign({}, o, { flipX: false, flipY: false }));
+      const kk = Math.max(0, o.kerf);
+      for (const c of res.cuts) {
+        const flipC = c.dir === 'h' ? fy : fx; // Schnittlage gespiegelt → abgetrenntes Stück liegt oben/rechts
+        const flipA = c.dir === 'h' ? fx : fy; // Schnitt läuft in der anderen Achse gespiegelt
+        const S = c.dir === 'h' ? sheet.W : sheet.L;
+        const A = c.dir === 'h' ? sheet.L : sheet.W;
+        if (flipC) c.c = S - c.c - kk;
+        if (flipA) { const f = c.from; c.from = A - c.to; c.to = A - f; }
+        c.side = flipC ? 'hi' : 'lo';
+        c.start = flipA ? c.to : c.from;
+        const r = c.region;
+        c.region = { x0: fx ? sheet.L - r.x1 : r.x0, x1: fx ? sheet.L - r.x0 : r.x1, y0: fy ? sheet.W - r.y1 : r.y0, y1: fy ? sheet.W - r.y0 : r.y1 };
+      }
+      return res;
+    }
     const k = Math.max(0, o.kerf);
     const e = 0.5;
     const cuts = [];
@@ -260,8 +285,12 @@
       return cs.filter((c) => c > lo + e && c + k < hi - e + k && c < hi - e &&
         parts.every((p) => a(p) + s2(p) <= c + e || a(p) >= c + k - e)).sort((x, y) => x - y);
     };
-    // by = Nummer (Index) des Schnitts, der das Stück r abgetrennt hat – ein Teil ist fertig, sobald sein Stück genau passt
-    function run(r, dir, depth, level, by) {
+    // erst alle Streifen, dann quer: die Stücke der Streifen-Ebene werden später geschnitten
+    const later = [];
+    // by = Nummer (Index) des Schnitts, der das Stück r abgetrennt hat – ein Teil ist fertig, sobald sein Stück genau passt;
+    // ctx = { strip: Streifen-Schnitt darüber, tg: Nachschnitt darüber (Gruppe, die beim Umsortieren zusammenbleibt) }
+    function run(r, dir, depth, level, by, ctx) {
+      ctx = ctx || { strip: -1, tg: -1 };
       if (depth > 200) { ok = false; return; }
       const parts = sheet.parts.filter((p) => inside(p, r));
       if (!parts.length) return; // Abfall
@@ -285,21 +314,42 @@
         const lv = d === dir ? level : level + 1;
         const restLen = Math.max(0, hi - c - k);
         // Nachschnitt: nur noch ein Teil im Stück und wenig Überstand (bis 150 mm bzw. 30 % des Maßes)
-        const kind = !inFirst.length ? 'waste' : parts.length === 1 && restLen <= Math.max(150, 0.3 * (c - lo)) ? 'trim' : lv === 0 ? 'strip' : 'cross';
+        const kind = !inFirst.length ? 'waste' : parts.length === 1 && restLen <= Math.max(+o.trimMax || 0, ((+o.trimPct || 0) / 100) * (c - lo)) ? 'trim' : lv === 0 ? 'strip' : 'cross';
         const i = cuts.length;
-        cuts.push({ n: i + 1, dir: d, c: c, from: d === 'h' ? r.x0 : r.y0, to: d === 'h' ? r.x1 : r.y1, level: lv, kind: kind,
-          size: c - lo, rest: restLen, restParts: parts.length - inFirst.length, parts: inFirst, done: [], region: r });
-        run(first, d === 'h' ? 'v' : 'h', depth + 1, lv + 1, i); // abgetrennten Streifen fertig schneiden (quer dazu)
-        run(rest, d, depth + 1, lv, i); // dann am Rest weiter in derselben Richtung
+        const strip = lv === 0 ? i : ctx.strip;
+        const tg = kind === 'trim' && ctx.tg < 0 ? i : ctx.tg;
+        cuts.push({ n: i + 1, dir: d, c: c, from: d === 'h' ? r.x0 : r.y0, to: d === 'h' ? r.x1 : r.y1, start: d === 'h' ? r.x0 : r.y0, side: 'lo', level: lv, kind: kind,
+          size: c - lo, rest: restLen, restParts: parts.length - inFirst.length, parts: inFirst, done: [], region: r, strip: strip, tg: tg });
+        const sub = () => run(first, d === 'h' ? 'v' : 'h', depth + 1, lv + 1, i, { strip: strip, tg: tg }); // abgetrenntes Stück fertig schneiden (quer dazu)
+        if (o.order === 'strips' && lv === 0) later.push(sub); else sub();
+        run(rest, d, depth + 1, lv, i, { strip: ctx.strip, tg: tg }); // dann am Rest weiter in derselben Richtung
         return;
       }
       if (parts.length > 1) ok = false; // nicht durchgehend trennbar
     }
     const go = (d) => {
       cuts.length = 0;
+      later.length = 0;
       ok = true;
       run({ x0: o.trim, y0: o.trim, x1: sheet.L - o.trim, y1: sheet.W - o.trim }, d, 0, 0, -1);
-      return { cuts: cuts.slice(), ok: ok, dir: d === 'h' ? 'long' : 'cross' };
+      while (later.length) later.shift()();
+      // Nachschnitte (mit allem, was danach am selben Stück geschnitten wird) nach dem Streifen bzw. ans Ende
+      let out = cuts.slice();
+      if (o.trims === 'end') out = out.filter((c) => c.tg < 0).concat(out.filter((c) => c.tg >= 0));
+      else if (o.trims === 'strip') {
+        const res = [];
+        let i = 0;
+        while (i < out.length) {
+          let j = i;
+          while (j < out.length && out[j].strip === out[i].strip) j++;
+          const seg = out.slice(i, j);
+          res.push(...seg.filter((c) => c.tg < 0), ...seg.filter((c) => c.tg >= 0));
+          i = j;
+        }
+        out = res;
+      }
+      out.forEach((c, k) => { c.n = k + 1; });
+      return { cuts: out, ok: ok, dir: d === 'h' ? 'long' : 'cross' };
     };
     // Vorzugsrichtung: 'long' = erst Längsschnitte, 'cross' = erst Querschnitte, sonst die mit weniger Schnitten
     if (o.dir === 'long' || o.dir === 'cross') return go(o.dir === 'long' ? 'h' : 'v');

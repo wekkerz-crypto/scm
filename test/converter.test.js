@@ -1719,3 +1719,28 @@ test('Schnittfolge für den Sägemodus: Streifen, Querschnitte, Nachschnitt, fer
     }
   }
 });
+
+test('Schnittfolge einstellbar: erst alle Streifen, Nachschnitte am Schluss, von rechts/hinten', () => {
+  const CP = require('../web/js/cutplan.js');
+  const items = [{ id: '1', label: 'Seite', L: 904, W: 454, qty: 2 }, { id: '2', label: 'Boden', L: 766, W: 436, qty: 2 }, { id: '3', label: 'Tür', L: 760, W: 301, qty: 1 },
+    { id: '4', label: 'Fach', L: 500, W: 300, qty: 3 }];
+  const sh = CP.plan(items, { dir: 'long', goal: 'cuts' }).sheets[0];
+  const all = (q) => q.cuts.flatMap((c) => c.done).sort();
+  const want = sh.parts.map((p) => p.uid).sort();
+  // erst alle Streifen: keine Ebene-0-Schnitte nach dem ersten Querschnitt
+  const s1 = CP.cutSequence(sh, { dir: 'long', order: 'strips' });
+  const firstCross = s1.cuts.findIndex((c) => c.level > 0);
+  assert.ok(s1.cuts.slice(firstCross).every((c) => c.level > 0));
+  assert.deepStrictEqual(all(s1), want);
+  // Nachschnitte am Schluss (mit großer Grenze gibt es welche)
+  const s2 = CP.cutSequence(sh, { dir: 'long', trims: 'end', trimMax: 2000 });
+  const firstT = s2.cuts.findIndex((c) => c.tg >= 0);
+  assert.ok(firstT > 0 && s2.cuts.slice(firstT).every((c) => c.tg >= 0));
+  assert.deepStrictEqual(all(s2), want);
+  // von rechts/hinten: gleiche Teile fertig, abgetrennte Stücke auf der hohen Seite
+  const s3 = CP.cutSequence(sh, { dir: 'long', flipX: true, flipY: true });
+  assert.ok(s3.ok);
+  assert.deepStrictEqual(all(s3), want);
+  assert.ok(s3.cuts.every((c) => c.side === 'hi'));
+  for (const c of s3.cuts) assert.ok(c.c > 0 && c.c < (c.dir === 'h' ? sh.W : sh.L));
+});

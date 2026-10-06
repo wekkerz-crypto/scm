@@ -792,6 +792,21 @@ test('Web-Tool: Zuschnittplan von Hand verschieben, als PDF speichern; eigene Fa
     await p.click('[data-czoom="fit"]');
     assert.strictEqual(await p.textContent('#czoomv'), '100 %');
     assert.ok((await sw()) > w70);
+    // Schrift: eigener Zoom, Beschriftung um die Teilmitte vergrößert
+    assert.strictEqual(await p.textContent('#cfontv'), '100 %');
+    await p.click('[data-cfont="1"]');
+    await p.click('[data-cfont="1"]');
+    assert.strictEqual(await p.textContent('#cfontv'), '120 %');
+    assert.ok((await p.$$eval('#cutsheets .plab', (x) => x.map((g) => g.getAttribute('transform') || ''))).every((t) => /scale\(1\.2\)/.test(t)));
+    await p.click('[data-cfont="-1"]');
+    await p.click('[data-cfont="-1"]');
+    assert.ok(!(await p.$eval('#cutsheets .plab', (g) => g.getAttribute('transform') || '')).includes('scale'));
+    // Übersicht: Platten insgesamt = Summe der Gruppen
+    const ov = await p.$eval('.cutover', (e) => ({ h: e.querySelector('h3').textContent, sum: e.querySelector('tfoot .big').textContent,
+      rows: Array.from(e.querySelectorAll('tbody .big')).map((x) => +x.textContent) }));
+    assert.strictEqual(ov.rows.reduce((a, b) => a + b, 0), +ov.sum);
+    assert.match(ov.h, new RegExp('^Übersicht ' + ov.sum + ' Platten? zu schneiden'));
+    assert.strictEqual(+ov.sum, await p.$$eval('#cutsheets svg.sheet', (x) => x.length));
     // Platte ganz ins Bild holen (sie ist so groß wie das Fenster), dann ein Teil ziehen: an eine freie Stelle rechts oben
     await p.$eval('svg.sheet', (e) => e.scrollIntoView({ block: 'end' }));
     const g = await p.$('svg.sheet g.cp');
@@ -970,6 +985,10 @@ test('Web-Tool: Kanten nach Regeln vorbelegen und Sägemodus Schritt für Schrit
     assert.ok(pops >= 3, 'Etikett-Fenster ' + pops);
     assert.ok(kinds.has('Nachschnitt'), [...kinds].join(', '));
     assert.match(await p.textContent('.sawcard'), /ist geschnitten/);
+    // Übersicht: diese Platte abgehakt
+    assert.match(await p.textContent('.sawover .so-t'), /^1 \/ \d+ Platten geschnitten/);
+    assert.strictEqual(await p.$$eval('.sawover .so-s.done', (x) => x.length), 1);
+    assert.ok(await p.$eval('.sawover .so-s.cur', (e) => e.classList.contains('done')));
     // fertige Teile sind aus der Zeichnung verschwunden
     assert.strictEqual(await p.$$eval('#sawview svg.sheet rect.pt', (x) => x.length), 0);
     await p.keyboard.press('ArrowLeft');
@@ -987,6 +1006,19 @@ test('Web-Tool: Kanten nach Regeln vorbelegen und Sägemodus Schritt für Schrit
     const firstCross = seq.findIndex((x) => /Querschnitt/.test(x));
     assert.ok(lastStrip >= 0 && firstCross > lastStrip, seq.join(', '));
     await p.click('[data-saw="reset"]');
+    // Zoom Platte (CSS) und Schrift (neu gezeichnet)
+    const sh = () => p.$eval('#sawview svg.sheet', (e) => e.getBoundingClientRect().height);
+    const h100 = await sh();
+    await p.click('[data-szoom="-1"]');
+    await p.click('[data-szoom="-1"]');
+    assert.strictEqual(await p.textContent('#szoomv'), '80 %');
+    assert.ok((await sh()) < h100);
+    await p.click('[data-szoom="1"]');
+    await p.click('[data-szoom="1"]');
+    await p.click('[data-sfont="1"]');
+    assert.strictEqual(await p.textContent('#sfontv'), '110 %');
+    assert.match(await p.$eval('#sawview .plab', (g) => g.getAttribute('transform') || ''), /scale\(1\.1\)/);
+    await p.click('[data-sfont="-1"]');
     await p.keyboard.press('ArrowRight');
     assert.match(await p.textContent('.sawcard .fl'), /Restmaß/);
     // Vollbild mit F, zurück mit Esc

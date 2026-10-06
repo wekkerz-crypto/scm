@@ -324,21 +324,40 @@ svg.sheet .cp.bad .pt { fill: color-mix(in srgb, var(--err) 35%, var(--board)); 
 .czoom { display: inline-flex; align-items: center; gap: 4px; }
 .czoom output { min-width: 3.4em; text-align: center; font-family: var(--font-mono); font-size: 0.85rem; }
 #cutsheets .sheetrow > table.sheetlist { flex: 0 1 340px; font-size: 0.92rem; }
-table.sheetlist { border-collapse: collapse; font-size: 0.82rem; min-width: 260px; }
-table.sheetlist th { text-align: left; font-size: 0.75rem; color: var(--muted); font-weight: 600; padding: 3px 6px; border-bottom: 1.5px solid var(--line); }
-table.sheetlist td { padding: 3px 6px; border-bottom: 1px solid var(--line); }
-table.sheetlist .r { text-align: right; font-family: var(--font-mono); white-space: nowrap; }
+.cutover { margin: 0 0 20px; }
+.cutover h3 { font-size: 1.05rem; margin: 4px 0 8px; color: var(--ink); text-transform: none; letter-spacing: 0.01em; }
+.cutover h3 small { font-weight: 400; color: var(--muted); font-size: 0.85rem; }
+table.cuttot { font-size: 0.92rem; }
+table.cuttot td { vertical-align: middle; }
+table.cuttot .big { font-weight: 700; font-size: 1.05rem; }
+table.cuttot tfoot td { font-weight: 700; border-top: 1.5px solid var(--line); border-bottom: 0; }
+table.cuttot .bsw { vertical-align: middle; }
+table.sheetlist, table.cuttot { border-collapse: collapse; font-size: 0.82rem; min-width: 260px; }
+table.sheetlist th, table.cuttot th { text-align: left; font-size: 0.75rem; color: var(--muted); font-weight: 600; padding: 3px 6px; border-bottom: 1.5px solid var(--line); }
+table.sheetlist td, table.cuttot td { padding: 3px 6px; border-bottom: 1px solid var(--line); }
+table.sheetlist .r, table.cuttot .r { text-align: right; font-family: var(--font-mono); white-space: nowrap; }
 table.sheetlist .ck { color: var(--muted); font-size: 1rem; line-height: 1; }
 svg.sheet .cuts { pointer-events: none; }
 /* Sägemodus */
-.saw { display: grid; grid-template-columns: minmax(0, 1fr) minmax(440px, 36%); gap: 22px; align-items: start; }
+.saw { display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, calc(36% / var(--sz, 1))); gap: 22px; align-items: start; }
 @media (max-width: 1100px) { .saw { grid-template-columns: 1fr; } }
 .sawbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 12px; }
 .sawbar select { font-size: 0.95rem; padding: 5px 8px; }
 .sawprog { flex: 1; min-width: 140px; height: 10px; border-radius: 5px; background: var(--sunken); overflow: hidden; }
 .sawprog i { display: block; height: 100%; background: var(--accent); transition: width 0.2s; }
-.sawdraw svg { width: 100%; max-height: 55vh; }
-.sawcard { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; display: grid; gap: 12px; box-shadow: 0 2px 10px color-mix(in srgb, var(--ink) 8%, transparent); }
+/* Zoom Platte: --sz am #sawview (lst.sawZoom) – Platte höher, Karte rechts schmaler */
+.sawdraw svg { width: 100%; max-height: calc(55vh * var(--sz, 1)); }
+.sawover { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0 0 12px; padding: 8px 12px; border-radius: 10px; background: var(--sunken); font-size: 0.9rem; }
+.sawover .so-t { color: var(--muted); }
+.sawover .so-t b { color: var(--ink); font-family: var(--font-mono); font-size: 1.05rem; }
+.sawover .so-g { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.sawover .so-n { display: inline-flex; align-items: center; gap: 5px; margin-right: 2px; }
+.so-s { min-width: 34px; height: 34px; padding: 0 6px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink);
+  font: 700 0.95rem var(--font-mono); cursor: pointer; }
+.so-s:hover { border-color: var(--accent); }
+.so-s.done { background: color-mix(in srgb, var(--ok) 14%, var(--surface)); border-color: var(--ok); color: var(--ok); }
+.so-s.cur { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.sawcard { container-type: inline-size; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; display: grid; gap: 12px; box-shadow: 0 2px 10px color-mix(in srgb, var(--ink) 8%, transparent); }
 .sawcard .sn, .sawbar .sn { font-size: 0.85rem; color: var(--muted); }
 .sawcard .keys { font-size: 0.78rem; }
 .sawhead { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
@@ -355,7 +374,8 @@ svg.sheet .cuts { pointer-events: none; }
 .sawcard .fence { display: grid; gap: 2px; padding: 14px 16px 10px; border-radius: 12px; background: color-mix(in srgb, var(--cutc, #d2451e) 9%, var(--surface));
   border: 2px solid color-mix(in srgb, var(--cutc, #d2451e) 45%, transparent); }
 .sawcard .fl { font-size: 0.85rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
-.sawcard .big { font: 800 clamp(5rem, 8.5vw, 9.5rem)/0.95 var(--font-mono); color: var(--ink); letter-spacing: -0.03em; display: flex; align-items: baseline; gap: 10px; }
+/* große Zahl: so breit wie die Karte (--nl = Anzahl Zeichen, Container-Einheiten cqi) */
+.sawcard .big { font: 800 clamp(3.5rem, calc(140cqi / max(var(--nl, 4), 4)), 11rem)/0.95 var(--font-mono); color: var(--ink); letter-spacing: -0.03em; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 10px; }
 .sawcard .big small { font-size: 1.6rem; color: var(--muted); font-weight: 600; letter-spacing: 0; }
 .sawcard .sub2 { font: 600 1rem var(--font-mono); color: var(--muted); margin-top: -6px; }
 .sawcard .tx { font-size: 1.1rem; line-height: 1.45; }
@@ -379,9 +399,9 @@ svg.sheet .cuts { pointer-events: none; }
 .sawcfg .row { display: flex; gap: 8px; justify-content: flex-end; }
 /* Vollbild */
 #sawview.sawfull { position: fixed; inset: 0; z-index: 900; background: var(--bg); padding: 16px 22px; overflow: auto; }
-#sawview.sawfull .saw { grid-template-columns: minmax(0, 1fr) minmax(520px, 40%); }
-#sawview.sawfull .sawdraw svg { max-height: calc(100vh - 110px); }
-#sawview.sawfull .sawcard .big { font-size: clamp(8rem, 13vw, 17rem); }
+#sawview.sawfull .saw { grid-template-columns: minmax(0, 1fr) minmax(400px, calc(40% / var(--sz, 1))); }
+#sawview.sawfull .sawdraw svg { max-height: calc((100vh - 170px) * var(--sz, 1)); }
+#sawview.sawfull .sawcard .big { font-size: clamp(4.5rem, calc(150cqi / max(var(--nl, 4), 4)), 17rem); }
 #sawview.sawfull .sawcard .dir { font-size: 1.7rem; }
 #sawview.sawfull .sawcard .inn, #sawview.sawfull .sawcard .fin { font-size: 1.2rem; }
 #sawview.sawfull .sawcard .tx { font-size: 1.25rem; }
@@ -429,7 +449,7 @@ svg.sheet .ct { fill: var(--cutc, #d2451e); font: 700 46px var(--font-mono); tex
 #printarea .a4 svg.sheet { --cutc: #c0391b; }
 #printarea .a4 svg.sheet .cn { fill: #fff; }
 #printarea .a4 .sheetrow { display: flex; gap: 5mm; align-items: flex-start; }
-#printarea .a4 table.sheetlist { width: auto; font-size: 8.5pt; }
+#printarea .a4 table.sheetlist, #printarea .a4 table.cuttot { width: auto; font-size: 8.5pt; }
 #printarea .a4 table.sheetlist th, #printarea .a4 table.sheetlist td { padding: 0.8mm 1.5mm; }
 #printarea .a4 svg.sheet .hl { stroke: #aaa; opacity: 1; stroke-width: 1.2; }
 #printarea .a4 svg.sheet .pl, #printarea .a4 svg.sheet .pn { fill: #000; }
@@ -831,9 +851,12 @@ table.fmt.one .onet { display: inline; }
         <label title="Welche Schnitte zuerst: längs = Streifen über die ganze Plattenlänge, quer = über die Plattenbreite">Erster Schnitt <select id="cdir"><option value="auto">automatisch</option><option value="long">längs bevorzugt</option><option value="cross">quer bevorzugt</option></select></label>
         <label title="Minimaler Verschnitt: wenig Platten, großes Reststück · Optimale Schnitte: wenig Schnitte, einfach zu sägen">Ziel <select id="cgoal"><option value="waste">minimaler Verschnitt</option><option value="cuts">optimale Schnitte</option></select></label>
         <label><input type="checkbox" id="ccuts"> Schnittfolge</label>
-        <span class="czoom" role="group" aria-label="Zoom Zuschnittplan" title="Größe der Zeichnung – auch Strg + Mausrad über der Platte"><span>Zoom</span>
-          <button type="button" class="btn small" data-czoom="-1" aria-label="Kleiner">−</button><output id="czoomv">70 %</output>
-          <button type="button" class="btn small" data-czoom="1" aria-label="Größer">+</button><button type="button" class="btn ghost small" data-czoom="fit" title="So groß wie das Fenster">Einpassen</button></span>
+        <span class="czoom" id="czoomg" role="group" aria-label="Zoom Platte" title="Größe der Platten – auch Strg + Mausrad über der Platte"><span>Platte</span>
+          <button type="button" class="btn small" data-czoom="-1" aria-label="Platte kleiner">−</button><output id="czoomv">70 %</output>
+          <button type="button" class="btn small" data-czoom="1" aria-label="Platte größer">+</button><button type="button" class="btn ghost small" data-czoom="fit" title="So groß wie das Fenster">Einpassen</button></span>
+        <span class="czoom" id="cfontg" role="group" aria-label="Zoom Schrift" title="Schriftgröße der Beschriftung im Plan – auch Strg + Umschalt + Mausrad"><span>Schrift</span>
+          <button type="button" class="btn small" data-cfont="-1" aria-label="Schrift kleiner">−</button><output id="cfontv">100 %</output>
+          <button type="button" class="btn small" data-cfont="1" aria-label="Schrift größer">+</button></span>
       </span>
       <span class="sp"></span>
       <button type="button" class="btn small" id="lcsv">CSV / Excel</button>
@@ -2722,7 +2745,7 @@ table.fmt.one .onet { display: inline; }
   }
   const LIST_KEY = 'step2xcs.lists.v1';
   const lst = Object.assign({ tab: 'bom', group: true, raw: true, sheetL: 2800, sheetW: 2070, kerf: 4.4, trim: 10, grain: true, cuts: true, dir: 'auto', goal: 'waste', edgeMm: 1, edgeName1: '', edgeName2: 'Dekor 2', edgeColor2: '#5b4a3a', edgeExtra: 50, edgeDeduct: false,
-    edgeAuto: true, edgeFront: '-y', edgeRules: null, cutZoom: 0.7 }, loadJson(LIST_KEY, {}) || {});
+    edgeAuto: true, edgeFront: '-y', edgeRules: null, cutZoom: 0.7, cutFont: 1, sawZoom: 1, sawFont: 1, sawDone: {} }, loadJson(LIST_KEY, {}) || {});
   const saveLst = () => storeJson(LIST_KEY, lst);
 
   /*
@@ -2975,7 +2998,7 @@ table.fmt.one .onet { display: inline; }
    * Beschriftung eines Teils in der Zeichnung (Plattenkoordinaten, yTop = SVG-Oberkante): immer Nr., Name und Maß, so groß wie
    * es in die Fläche passt – hohe, schmale Teile gedreht; wird es zu eng, erst zwei Zeilen, dann eine („Nr. 4 · 766 × 436“).
    */
-  function partLabelSvg(p, yTop, bg) {
+  function partLabelSvg(p, yTop, bg, f) {
     const cx = p.x + p.l / 2;
     const cy = yTop + p.w / 2;
     const rot = p.w > p.l * 1.25;
@@ -3000,7 +3023,9 @@ table.fmt.one .onet { display: inline; }
     }
     const tot = lines.reduce((a, l) => a + l[1] * fs * 1.2, 0);
     let y = cy - tot / 2;
-    let o = '<g class="plab"' + (rot ? ' transform="rotate(-90 ' + cx + ' ' + cy + ')"' : '') + '>';
+    // Schriftgröße von Hand (f, Zoom „Schrift“): um die Mitte des Teils vergrößert, darf dann über den Rand ragen
+    const tf = (rot ? 'rotate(-90 ' + cx + ' ' + cy + ')' : '') + (f && f !== 1 ? ' translate(' + cx + ' ' + cy + ') scale(' + f + ') translate(' + -cx + ' ' + -cy + ')' : '');
+    let o = '<g class="plab"' + (tf ? ' transform="' + tf.trim() + '"' : '') + '>';
     if (bg) {
       const bw = Math.min(W + 10, Math.max(...lines.map((l) => l[0].length * CW * l[1] * fs)) + fs * 0.8);
       o += '<rect class="lb" x="' + (cx - bw / 2) + '" y="' + (y - fs * 0.15) + '" width="' + bw + '" height="' + (tot + fs * 0.3) + '" rx="' + fs * 0.25 + '"/>';
@@ -3030,7 +3055,7 @@ table.fmt.one .onet { display: inline; }
       // ruhiges Feld hinter der Schrift (Schraffur nur außerhalb)
       out += '<g class="cp' + (cutSel && cutSel.grp === g.key && cutSel.uid === p.uid ? ' sel' : '') + '" data-uid="' + esc(p.uid) + '"><rect x="' + p.x + '" y="' + y + '" width="' + p.l + '" height="' + p.w + '" class="pt"/>' +
         '<rect x="' + p.x + '" y="' + y + '" width="' + p.l + '" height="' + p.w + '" class="hatch" fill="url(#' + hid + hatchDir(g, p) + ')"/>' +
-        partLabelSvg(p, y, true) +
+        partLabelSvg(p, y, true, lst.cutFont) +
         '<title>' + esc(p.label + ' – ' + n1(p.l) + ' × ' + n1(p.w) + (p.rot ? ' (gedreht)' : '') + ' · ziehen = verschieben, Doppelklick = drehen') + '</title></g>';
     }
     // Schnittfolge: Linien in der Mitte der Schnittfuge, Nummer am Anfang des Schnitts
@@ -3067,10 +3092,29 @@ table.fmt.one .onet { display: inline; }
       sheetRows(s).map((r) => '<tr><td class="ck">☐</td><td>' + r.id + '</td><td>' + esc(r.label) + '</td><td class="r">' + n1(r.l) + ' × ' + n1(r.w) + '</td><td class="r">' + r.n + '</td></tr>').join('') +
       '</tbody></table>';
   }
+  // Übersicht: je Material und Dicke Anzahl Platten, Teile, Ausnutzung – und die Summe
+  function cutOverview(groups) {
+    const rows = groups.map((g) => {
+      const parts = g.plan.sheets.reduce((a, s) => a + s.parts.length, 0);
+      const used = g.plan.sheets.reduce((a, s) => a + s.used, 0);
+      return { g: g, n: g.plan.sheets.length, parts: parts, area: used / 1e6, util: Math.round((1 - g.plan.waste) * 100), miss: g.plan.unplaced.length };
+    });
+    const sum = rows.reduce((a, r) => ({ n: a.n + r.n, parts: a.parts + r.parts, area: a.area + r.area, miss: a.miss + r.miss }), { n: 0, parts: 0, area: 0, miss: 0 });
+    return { rows: rows, sum: sum };
+  }
+  function cutOverviewHtml(groups) {
+    const o = cutOverview(groups);
+    const m2 = (v) => v.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return '<section class="cutover"><h3>Übersicht <small>' + o.sum.n + ' Platte' + (o.sum.n === 1 ? '' : 'n') + ' zu schneiden · ' + o.sum.parts + ' Teile</small></h3>' +
+      '<table class="cuttot"><thead><tr><th>Material</th><th class="r">Dicke</th><th class="r">Platten</th><th class="r">Format</th><th class="r">Teile</th><th class="r">Teilefläche</th><th class="r">Ausnutzung</th></tr></thead><tbody>' +
+      o.rows.map((r) => '<tr><td>' + boardSwatch(r.g.board) + ' ' + esc(r.g.name) + '</td><td class="r">' + fmt(r.g.T) + ' mm</td><td class="r big">' + r.n + '</td><td class="r">' + fmt(lst.sheetL) + ' × ' + fmt(lst.sheetW) +
+        '</td><td class="r">' + r.parts + (r.miss ? ' <span class="warn" title="passt nicht auf die Platte">+' + r.miss + ' !</span>' : '') + '</td><td class="r">' + m2(r.area) + ' m²</td><td class="r">' + r.util + ' %</td></tr>').join('') +
+      '</tbody><tfoot><tr><td>Summe</td><td></td><td class="r big">' + o.sum.n + '</td><td></td><td class="r">' + o.sum.parts + '</td><td class="r">' + m2(o.sum.area) + ' m²</td><td></td></tr></tfoot></table></section>';
+  }
   function renderCut(forPrint) {
     const groups = cutGroups();
     if (!groups.length) return '<p class="note">Keine Teile geladen.</p>';
-    return groups.map((g) => {
+    return cutOverviewHtml(groups) + groups.map((g) => {
       const pl = g.plan;
       return '<section class="cutgrp"><h3>' + boardSwatch(g.board) + ' ' + esc(g.name) + ' ' + fmt(g.T) + ' mm <small>' + pl.sheets.length + ' Platte' + (pl.sheets.length === 1 ? '' : 'n') +
         ' ' + fmt(lst.sheetL) + ' × ' + fmt(lst.sheetW) + ' · Ausnutzung ' + Math.round((1 - pl.waste) * 100) + ' %' + (g.grain && lst.grain ? ' · Maserung längs' : '') + dirText(g) +
@@ -3100,6 +3144,22 @@ table.fmt.one .onet { display: inline; }
     let total = 0;
     for (const g of groups) total += g.plan.sheets.length;
     let page = 0;
+    // erste Seite: Übersicht (Platten je Material, Summe)
+    if (groups.length) {
+      const o = cutOverview(groups);
+      total++;
+      d.page();
+      page++;
+      d.text(12, 16, 'Zuschnittplan – Übersicht', { size: 15, bold: true });
+      d.text(12, 24, o.sum.n + ' Platte' + (o.sum.n === 1 ? '' : 'n') + ' zu schneiden · ' + o.sum.parts + ' Teile', { size: 12, bold: true });
+      const m2 = (v) => v.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' m²';
+      const y = d.table(12, 32, [{ t: 'Material', w: 90 }, { t: 'Dicke', w: 20, align: 'right' }, { t: 'Platten', w: 22, align: 'right' }, { t: 'Format', w: 32, align: 'right' },
+        { t: 'Teile', w: 20, align: 'right' }, { t: 'Teilefläche', w: 30, align: 'right' }, { t: 'Ausnutzung', w: 26, align: 'right' }],
+        o.rows.map((r) => [r.g.name, fmt(r.g.T) + ' mm', String(r.n), fmt(lst.sheetL) + ' × ' + fmt(lst.sheetW), String(r.parts) + (r.miss ? ' (+' + r.miss + ' passt nicht)' : ''), m2(r.area), r.util + ' %'])
+          .concat([['Summe', '', String(o.sum.n), '', String(o.sum.parts), m2(o.sum.area), '']]), { size: 10 });
+      d.line(12, y - 6.2, 252, y - 6.2, { lw: 0.35 }); // über der Summe (Zeilenhöhe bei Schrift 10)
+      d.text(285, 203, info + ' · Seite 1/' + total, { size: 7.5, align: 'right', color: [0.35, 0.35, 0.35] });
+    }
     for (const g of groups) {
       g.plan.sheets.forEach((s, i) => {
         d.page();
@@ -3122,7 +3182,7 @@ table.fmt.one .onet { display: inline; }
           d.rect(X(p.x), Y(p.y + p.w), pw, ph, { fill: [0.95, 0.95, 0.95] });
           d.schraffur(X(p.x), Y(p.y + p.w), pw, ph, hatchDir(g, p), 2.2, { stroke: [0.7, 0.7, 0.7], lw: 0.12 });
           d.rect(X(p.x), Y(p.y + p.w), pw, ph, { stroke: [0, 0, 0], lw: 0.3 });
-          const size = Math.max(4.5, Math.min(10, ph * 0.9));
+          const size = Math.max(4.5, Math.min(10, ph * 0.9)) * (lst.cutFont || 1);
           const cx = X(p.x) + pw / 2;
           const cy = Y(p.y + p.w) + ph / 2;
           // Feld hinter der Schrift
@@ -3368,7 +3428,7 @@ table.fmt.one .onet { display: inline; }
     // fertige Teile sind weg (abgestapelt) – es bleiben die noch zu schneidenden
     for (const p of sh.parts) {
       if (done.has(p.uid)) continue;
-      o += '<rect x="' + p.x + '" y="' + Y(p.y + p.w) + '" width="' + p.l + '" height="' + p.w + '" class="pt"/>' + partLabelSvg(p, Y(p.y + p.w), false);
+      o += '<rect x="' + p.x + '" y="' + Y(p.y + p.w) + '" width="' + p.l + '" height="' + p.w + '" class="pt"/>' + partLabelSvg(p, Y(p.y + p.w), false, lst.sawFont);
     }
     const line = (st) => {
       if (st.kind === 'anschnitt') {
@@ -3438,6 +3498,8 @@ table.fmt.one .onet { display: inline; }
     const { steps, ok, cfg } = sawSteps(x);
     const cur = Math.max(0, Math.min(steps.length, lst.saw.step | 0));
     const st = steps[cur];
+    if (!lst.sawDone || typeof lst.sawDone !== 'object') lst.sawDone = {};
+    if (!st && steps.length && lst.sawDone[x.key] !== sawSig(x)) { lst.sawDone[x.key] = sawSig(x); saveLst(); }
     const t = st ? sawText(st, x, cfg) : null;
     const m = st ? sawMeasure(st, cfg) : null;
     const fin = st ? st.done.map((u) => x.s.parts.find((q) => q.uid === u)).filter(Boolean) : [];
@@ -3450,15 +3512,19 @@ table.fmt.one .onet { display: inline; }
         esc(y.g.name + ' ' + fmt(y.g.T) + ' mm – Platte ' + (y.i + 1) + ' von ' + y.g.plan.sheets.length) + '</option>').join('') + '</select></label>' +
       '<span class="sn">' + (st ? 'Schritt ' + (cur + 1) + ' von ' + steps.length : 'fertig') + ' · Teile fertig ' + doneN + ' / ' + x.s.parts.length + '</span>' +
       '<span class="sawprog" aria-hidden="true"><i style="width:' + Math.round((cur / Math.max(1, steps.length)) * 100) + '%"></i></span>' +
+      '<span class="czoom" role="group" aria-label="Zoom Platte" title="Größe der Platte – auch Strg + Mausrad"><span>Platte</span><button type="button" class="btn small" data-szoom="-1" aria-label="Platte kleiner">−</button>' +
+        '<output id="szoomv">' + Math.round((lst.sawZoom || 1) * 100) + ' %</output><button type="button" class="btn small" data-szoom="1" aria-label="Platte größer">+</button></span>' +
+      '<span class="czoom" role="group" aria-label="Zoom Schrift" title="Schrift im Plan – auch Strg + Umschalt + Mausrad"><span>Schrift</span><button type="button" class="btn small" data-sfont="-1" aria-label="Schrift kleiner">−</button>' +
+        '<output id="sfontv">' + Math.round((lst.sawFont || 1) * 100) + ' %</output><button type="button" class="btn small" data-sfont="1" aria-label="Schrift größer">+</button></span>' +
       '<button type="button" class="btn ghost small" data-saw="cfg" aria-expanded="' + String(!!lst.sawCfgOpen) + '">⚙ Schnittfolge</button>' +
       '<button type="button" class="btn ghost small" data-saw="reset">Von vorn</button>' +
       '<button type="button" class="btn small" data-saw="full" aria-pressed="' + full + '">' + (full ? '✕ Vollbild beenden' : '⛶ Vollbild') + '</button></div>' +
-      (lst.sawCfgOpen ? sawCfgHtml(cfg) : '') +
+      (lst.sawCfgOpen ? sawCfgHtml(cfg) : '') + sawOverHtml(list, xi) +
       (ok ? '' : '<p class="warn">Diese Anordnung ist nicht ganz mit durchgehenden Schnitten trennbar – im Zuschnittplan prüfen.</p>') +
       '<div class="saw"><div class="sawdraw">' + sawSvg(x, steps, cur, cfg) + '</div><div class="sawcard" aria-live="polite">' +
       (st ? '<div class="sawhead"><span class="sk ' + t.cls + '">' + esc(t.kind) + '</span><span class="snum">' + (cur + 1) + '<small>/' + steps.length + '</small></span></div>' +
         '<div class="fence"><span class="fl">' + (st.kind === 'anschnitt' ? 'Abschneiden' : cfg.measure === 'remain' ? 'Anschlag einstellen · Restmaß' : 'Anschlag einstellen') + '</span>' +
-        '<span class="big">' + n1(m.v) + '<small>mm</small></span></div>' +
+        '<span class="big" style="--nl:' + n1(m.v).length + '">' + n1(m.v) + '<small>mm</small></span></div>' +
         '<div class="dir"><span class="darr" aria-hidden="true">' + (st.dir === 'h' ? '⟷' : '↕') + '</span> ' + esc(t.dir) + '</div>' +
         (st.kind !== 'anschnitt' && cfg.measure === 'remain' ? '<div class="sub2">Stück ' + n1(st.size) + ' mm</div>' : st.kind !== 'anschnitt' && st.rest > 0 && !t.rest ? '<div class="sub2">Rest ' + n1(st.rest) + ' mm</div>' : '') +
         '<div class="tx">' + esc(t.tx) + '</div>' +
@@ -3474,6 +3540,9 @@ table.fmt.one .onet { display: inline; }
       '<div class="sn">' + Object.entries(kindTot).map(([k2, v]) => v + ' × ' + SAW_KIND[k2]).join(' · ') + '</div></div></div>' + sawPopHtml(x);
     $('sawsheet').addEventListener('change', (e) => { lst.saw = { key: e.target.value, step: 0 }; sawPop = null; saveLst(); renderSaw(); });
     host.querySelectorAll('[data-saw]').forEach((b) => b.addEventListener('click', () => sawGo(b.dataset.saw)));
+    host.querySelectorAll('[data-szoom]').forEach((b) => b.addEventListener('click', () => setSawZoom((lst.sawZoom || 1) + 0.1 * +b.dataset.szoom)));
+    host.querySelectorAll('[data-sfont]').forEach((b) => b.addEventListener('click', () => setSawFont((lst.sawFont || 1) + 0.1 * +b.dataset.sfont)));
+    host.querySelectorAll('[data-sawgo]').forEach((b) => b.addEventListener('click', () => { lst.saw = { key: b.dataset.sawgo, step: 0 }; sawPop = null; saveLst(); renderSaw(); }));
     host.querySelectorAll('[data-sawlbl]').forEach((b) => b.addEventListener('click', () => {
       const part = sawPart(x, b.dataset.sawlbl);
       if (!part) return;
@@ -3490,6 +3559,25 @@ table.fmt.one .onet { display: inline; }
       saveLst();
       renderSaw();
     }));
+  }
+  // Platte als geschnitten gemerkt? (Signatur = Gruppe + Teile der Platte)
+  const sawSig = (x) => {
+    const t = x.g.sig + '|' + x.s.parts.map((p) => p.uid + '@' + Math.round(p.x) + ',' + Math.round(p.y)).join(';');
+    let h = 0;
+    for (let i = 0; i < t.length; i++) h = (Math.imul(h, 31) + t.charCodeAt(i)) | 0;
+    return (h >>> 0).toString(36);
+  };
+  const sawIsDone = (x) => !!lst.sawDone && lst.sawDone[x.key] === sawSig(x);
+  // Übersicht im Sägemodus: alle Platten als Felder (fertige abgehakt), Tippen = diese Platte sägen
+  function sawOverHtml(list, xi) {
+    const nd = list.filter(sawIsDone).length;
+    const byG = new Map();
+    list.forEach((x, k) => { if (!byG.has(x.g.key)) byG.set(x.g.key, []); byG.get(x.g.key).push([x, k]); });
+    return '<div class="sawover" aria-label="Übersicht Platten"><span class="so-t"><b>' + nd + ' / ' + list.length + '</b> Platten geschnitten</span>' +
+      Array.from(byG.values()).map((xs) => '<span class="so-g"><span class="so-n">' + boardSwatch(xs[0][0].g.board) + esc(xs[0][0].g.name + ' ' + fmt(xs[0][0].g.T)) + '</span>' +
+        xs.map(([x, k]) => '<button type="button" class="so-s' + (sawIsDone(x) ? ' done' : '') + (k === xi ? ' cur' : '') + '" data-sawgo="' + esc(x.key) + '" title="Platte ' + (x.i + 1) +
+          ' · ' + x.s.parts.length + ' Teile' + (sawIsDone(x) ? ' · geschnitten' : '') + '"' + (k === xi ? ' aria-current="true"' : '') + '>' + (sawIsDone(x) ? '✓' : x.i + 1) + '</button>').join('') + '</span>').join('') +
+      (nd ? '<button type="button" class="btn ghost small" data-saw="donereset" title="Haken bei allen Platten entfernen">Haken löschen</button>' : '') + '</div>';
   }
   // Bauteil zu einem Stück im Plan (uid id#n)
   function sawPart(x, uid) {
@@ -3541,6 +3629,7 @@ table.fmt.one .onet { display: inline; }
     else if (what === 'cfg') lst.sawCfgOpen = !lst.sawCfgOpen;
     else if (what === 'cfgclose') lst.sawCfgOpen = false;
     else if (what === 'cfgreset') { lst.sawCfg = null; lst.saw.step = 0; }
+    else if (what === 'donereset') lst.sawDone = {};
     saveLst();
     renderSaw();
   }
@@ -3563,6 +3652,7 @@ table.fmt.one .onet { display: inline; }
     if (lst.tab !== 'bom') $('erpanel').hidden = true;
     $('bomopts').hidden = lst.tab !== 'bom';
     $('cutopts').hidden = lst.tab === 'bom';
+    $('czoomg').hidden = $('cfontg').hidden = lst.tab !== 'cut'; // Sägemodus: eigene Regler oben in der Leiste
     $('lcsv').hidden = lst.tab !== 'bom';
     $('lgroup').checked = lst.group;
     if (lst.tab === 'bom') renderBom();
@@ -3592,9 +3682,40 @@ table.fmt.one .onet { display: inline; }
   $('cutsheets').addEventListener('wheel', (e) => {
     if (!e.ctrlKey || !e.target.closest('svg.sheet')) return;
     e.preventDefault();
-    setCutZoom((lst.cutZoom || 0.7) + (e.deltaY < 0 ? 0.1 : -0.1));
+    if (e.shiftKey) setCutFont((lst.cutFont || 1) + (e.deltaY < 0 ? 0.1 : -0.1));
+    else setCutZoom((lst.cutZoom || 0.7) + (e.deltaY < 0 ? 0.1 : -0.1));
   }, { passive: false });
   setCutZoom(lst.cutZoom || 0.7);
+  // Schriftgröße der Beschriftung (Faktor 50 … 250 %) – zeichnet neu
+  const fontOf = (z) => Math.max(0.5, Math.min(2.5, Math.round(z * 10) / 10));
+  function setCutFont(z) {
+    lst.cutFont = fontOf(z);
+    $('cfontv').textContent = Math.round(lst.cutFont * 100) + ' %';
+    saveLst();
+    if (state.page === 'lists' && lst.tab === 'cut') $('cutsheets').innerHTML = renderCut(false);
+  }
+  document.querySelectorAll('[data-cfont]').forEach((b) => b.addEventListener('click', () => setCutFont((lst.cutFont || 1) + 0.1 * +b.dataset.cfont)));
+  $('cfontv').textContent = Math.round((lst.cutFont || 1) * 100) + ' %';
+  // Sägemodus: Plattengröße (CSS --sz, 50 … 160 %) und Schrift
+  function setSawZoom(z) {
+    lst.sawZoom = Math.max(0.5, Math.min(1.6, Math.round(z * 10) / 10));
+    $('sawview').style.setProperty('--sz', String(lst.sawZoom));
+    const o = $('szoomv');
+    if (o) o.textContent = Math.round(lst.sawZoom * 100) + ' %';
+    saveLst();
+  }
+  function setSawFont(z) {
+    lst.sawFont = fontOf(z);
+    saveLst();
+    renderSaw();
+  }
+  $('sawview').addEventListener('wheel', (e) => {
+    if (!e.ctrlKey || !e.target.closest('svg.sheet')) return;
+    e.preventDefault();
+    if (e.shiftKey) setSawFont((lst.sawFont || 1) + (e.deltaY < 0 ? 0.1 : -0.1));
+    else setSawZoom((lst.sawZoom || 1) + (e.deltaY < 0 ? 0.1 : -0.1));
+  }, { passive: false });
+  setSawZoom(lst.sawZoom || 1);
   for (const [id, k] of [['cdir', 'dir'], ['cgoal', 'goal']]) {
     $(id).value = lst[k];
     $(id).addEventListener('change', (e) => { lst[k] = e.target.value; saveLst(); renderLists(); });

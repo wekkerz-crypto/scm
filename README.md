@@ -238,7 +238,10 @@ Dritte Seite oben (**Listen**):
   Zeichnung. Jedes Teil ist mit **Nr., Maß und Name** beschriftet (passend in die Fläche, schmale Teile gedreht – auch im
   Zuschnittplan). Sobald Teile fertig sind, öffnet sich ein großes Fenster **„Fertig geschnitten“**: Tippen auf ein Teil druckt
   sein Etikett (wie unter *Etiketten*, über den Druckdialog des Browsers; abschaltbar in der Schnittfolge).
-  **⛶ Vollbild** (oder Taste F, zurück mit Esc) für den Bildschirm an der Säge. **⚙ Schnittfolge** stellt ein, wie geschnitten
+  **⛶ Vollbild** (oder Taste F, zurück mit Esc) für den Bildschirm an der Säge. Oben **Zoom** *Platte* (50–160 %: größer =
+  Zeichnung höher, Karte rechts schmaler, die große Zahl passt sich an; Strg + Mausrad) und *Schrift* (Strg + Umschalt +
+  Mausrad). Die **Übersicht** zeigt alle Platten je Material als Felder – fertig gesägte mit ✓ („2 / 5 Platten
+  geschnitten“), Tippen springt zu der Platte; *Haken löschen* setzt zurück. **⚙ Schnittfolge** stellt ein, wie geschnitten
   wird: Anschnitt längs/quer einzeln und welcher zuerst; erste Schnitte wie im Zuschnittplan, längs oder quer; Reihenfolge
   *jeden Streifen gleich fertig* oder *erst alle Streifen, dann quer*; Anschlag/Beginn links oder rechts, vorne oder hinten;
   Maß als *abgetrenntes Stück* (Parallelanschlag) oder *Restmaß* (Programmanschlag); Nachschnitte *sofort*, *nach jedem
@@ -247,8 +250,11 @@ Dritte Seite oben (**Listen**):
 - **Zuschnittplan:** Teile auf Rohplatten (Format, Schnittfuge, Besäumrand einstellbar) je Material und Dicke, mit
   durchgehenden Schnitten wie an der Plattensäge; mit Maserung bleibt die lange Seite längs der Plattenlänge, Dekore werden
   bei Bedarf gedreht. Rohmaß oder Fertigmaß wählbar. Zeichnung je Platte so groß wie das Fenster (Teileliste daneben bzw.
-  darunter), jedes Teil mit Nr., Maß und vollem Namen beschriftet, Ausnutzung. **Zoom** in der Leiste (− / + / Einpassen,
-  30–100 %, Vorgabe 70 %) oder Strg + Mausrad über der Platte.
+  darunter), jedes Teil mit Nr., Maß und vollem Namen beschriftet, Ausnutzung. **Zoom** in der Leiste: *Platte* (− / + /
+  Einpassen, 30–100 %, Vorgabe 70 %, auch Strg + Mausrad über der Platte) und *Schrift* (50–250 %, auch Strg + Umschalt +
+  Mausrad) – die Beschriftung wächst um die Teilmitte und darf dann über kleine Teile hinausragen; gilt auch für Druck und PDF.
+  **Übersicht** oben: je Material und Dicke Anzahl Platten, Format, Teile, Teilefläche und Ausnutzung, darunter die Summe
+  („3 Platten zu schneiden · 10 Teile“) – auch als erste Seite im PDF und im Druck.
   **Erster Schnitt:** *längs bevorzugt* = erst Streifen über die ganze Plattenlänge, darin quer ablängen; *quer bevorzugt* =
   erst Streifen über die ganze Plattenbreite, darin längs; *automatisch* = was am besten passt. **Ziel:** *minimaler
   Verschnitt* (wenig Platten, möglichst großes Reststück) oder *optimale Schnitte* (wenig Schnitte, gleich breite Teile im

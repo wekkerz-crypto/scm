@@ -28,6 +28,8 @@ RUN chmod +x /usr/local/bin/s2m-start && chown -R www-data:www-data /var/www/htm
 
 # Projekte ohne Anmeldung (Server nur im eigenen Netz); auf 0 setzen = Passwort wie Dekor-Verwaltung
 ENV S2M_OFFEN=1
+# lesbare Projektordner (STEP, Programme, Listen) – im Volume oder per eigenem Volume in einen freigegebenen Ordner
+ENV S2M_ORDNER=/daten/ordner
 VOLUME /daten
 EXPOSE 80
 HEALTHCHECK --interval=60s --timeout=5s CMD curl -fsS http://localhost/projekte/api.php?a=list >/dev/null || exit 1

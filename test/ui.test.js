@@ -1596,7 +1596,7 @@ test('Web-Tool: Projektseite beim Start – im Browser speichern, ungespeicherte
     await p.fill('#pj-name', 'Küche Müller');
     await p.fill('#pj-kunde', 'Müller');
     await p.click('#pj-save');
-    await p.waitForFunction(() => /gespeichert/.test(document.getElementById('pj-state').textContent));
+    await p.waitForFunction(() => document.getElementById('pj-state').classList.contains('ok'));
     assert.match(await p.textContent('#pj-state'), /dieser Browser/);
     assert.deepStrictEqual(await p.$$eval('.pjtbl tbody tr b', (x) => x.map((e) => e.textContent)), ['Küche Müller']);
     assert.match(await p.textContent('.pjtbl tbody tr'), /Müller[\s\S]*3[\s\S]*Eiche hell 19/);
@@ -1704,6 +1704,15 @@ test('Projektablage auf dem Server (PHP): offen im Netz, mit Passwort, zwei Ger�
     assert.strictEqual(list[0].name, 'Bad Meier');
     assert.strictEqual(list[0].teile, 3);
     assert.ok(fs.existsSync(path.join(dir, 'projekte', 'daten', list[0].id + '.s2m.gz')));
+    // lesbarer Projektordner: STEP, Programme, Listen, Version
+    const od = path.join(dir, 'projekte', 'daten', 'ordner', 'Bad Meier');
+    assert.strictEqual(list[0].ordner, 'Bad Meier');
+    for (const f of ['Projekt.s2m', 'Info.txt', 'Stueckliste.csv', 'Zuschnittplan.pdf', 'Programme/konvertieren.bat']) assert.ok(fs.existsSync(path.join(od, f)), f);
+    assert.strictEqual(fs.readdirSync(path.join(od, 'STEP')).length, 3);
+    assert.strictEqual(fs.readdirSync(path.join(od, 'Programme')).filter((f) => /\.xcs$/.test(f)).length, 3);
+    assert.strictEqual(fs.readdirSync(path.join(od, 'Versionen')).length, 1);
+    assert.strictEqual(JSON.parse(fs.readFileSync(path.join(od, 'Projekt.s2m'), 'utf8')).meta.name, 'Bad Meier');
+    assert.match(await p.textContent('.pjextra'), /Projektordner: Bad Meier/);
     // 2) offen im Netz (Datei OFFEN): zweites Gerät ohne Anmeldung, öffnet, ändert, speichert
     fs.writeFileSync(path.join(dir, 'projekte', 'OFFEN'), '');
     const q = await mk();
@@ -1714,7 +1723,7 @@ test('Projektablage auf dem Server (PHP): offen im Netz, mit Passwort, zwei Ger�
     await q.click('#projsave');
     await q.waitForFunction(() => !document.getElementById('projsave').classList.contains('dirty'));
     // erstes Gerät speichert danach auf altem Stand → Konflikt-Nachfrage (angenommen = überschreiben)
-    await p.evaluate(() => window.Step2Maestro.api.teile_aendern({ aenderungen: [{ teil: 2, anzahl: 2 }] }));
+    await p.evaluate(() => { window.Step2Maestro.api.teile_aendern({ aenderungen: [{ teil: 2, anzahl: 2 }] }); document.getElementById('toast').textContent = ''; });
     await p.click('#projsave');
     await p.waitForFunction(() => /Gespeichert/.test(document.getElementById('toast').textContent));
     assert.match(p.lastDialog || '', /anderen Gerät/);
@@ -1732,5 +1741,75 @@ test('Projektablage auf dem Server (PHP): offen im Netz, mit Passwort, zwei Ger�
     await browser.close();
     srv.kill();
     mock.kill();
+  }
+});
+
+test('Web-Tool: STEP aktualisieren (Einstellungen der Teile bleiben) und Sicherungsordner am PC', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const fs = require('fs');
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1440, height: 950 } });
+    const errors = [];
+    const dialogs = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    p.on('dialog', (d) => { dialogs.push(d.message()); d.accept(); });
+    // Sicherungsordner: Ordnerwahl nachgebildet (Ordner im Speicher, wie FileSystemDirectoryHandle)
+    await p.addInitScript(() => {
+      class Dir {
+        constructor(name) { this.name = name; this.kind = 'directory'; this.c = new Map(); }
+        async getDirectoryHandle(n, o) { if (!this.c.has(n)) { if (!o || !o.create) throw new Error('fehlt'); this.c.set(n, new Dir(n)); } return this.c.get(n); }
+        async getFileHandle(n, o) {
+          if (!this.c.has(n)) { if (!o || !o.create) throw new Error('fehlt'); const f = { kind: 'file', name: n, data: null, createWritable: async () => ({ write: async (d) => { f.data = d; }, close: async () => {} }) }; this.c.set(n, f); }
+          return this.c.get(n);
+        }
+        async removeEntry(n) { if (!this.c.delete(n)) throw new Error('fehlt'); }
+        async queryPermission() { return 'granted'; }
+        async requestPermission() { return 'granted'; }
+      }
+      window.__bk = new Dir('Sicherung');
+      window.showDirectoryPicker = async () => window.__bk;
+    });
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    await p.click('#clear');
+    const [chooser] = await Promise.all([p.waitForEvent('filechooser'), p.click('#pick')]);
+    await chooser.setFiles(fixture('schrank3.step'));
+    await p.waitForFunction(() => document.querySelectorAll('.part').length === 10, null, { timeout: 60000 });
+    // Einstellungen an Teilen: Rückwand 3×, Seite links umbenannt mit Kanten
+    const idx = await p.evaluate(() => { const t = window.Step2Maestro.api.teile_lesen().teile; return { rw: t.find((x) => /RW/.test(x.name)).teil, sw: t.find((x) => /SW_L/.test(x.name)).teil }; });
+    await p.evaluate((i) => window.Step2Maestro.api.teile_aendern({ aenderungen: [{ teil: i.rw, anzahl: 3 }, { teil: i.sw, name: 'Seite links', kanten: { l1: 2, l2: 0, b1: 0, b2: 0 } }] }), idx);
+    // neue Version: Einlegeboden 2 umbenannt (fällt weg, kommt als neues Teil dazu)
+    const v2 = fs.readFileSync(fixture('schrank3.step'), 'utf8').split('KP_1_ EB 2 (U708 ST9)').join('KP_1_ EB 9 (U708 ST9)');
+    await p.click('.pagetabs [data-page="start"]');
+    await p.waitForSelector('[data-stepupd]');
+    const [ch2] = await Promise.all([p.waitForEvent('filechooser'), p.click('[data-stepupd]')]);
+    await ch2.setFiles({ name: 'schrank3.step', mimeType: 'application/step', buffer: Buffer.from(v2) });
+    await p.waitForFunction(() => /STEP aktualisiert/.test(document.getElementById('toast').textContent));
+    assert.match(await p.textContent('#toast'), /9 Teile übernommen, 1 neu, 1 entfernt/);
+    assert.ok(dialogs.some((d) => /fehlen 1 Teil:[\s\S]*EB_2/.test(d)), dialogs.join(' | '));
+    const t = await p.evaluate(() => window.Step2Maestro.api.teile_lesen().teile);
+    assert.strictEqual(t.length, 10);
+    assert.strictEqual(t.find((x) => /RW/.test(x.name)).anzahl, 3);
+    const sw = t.find((x) => x.name === 'Seite_links');
+    assert.ok(sw, t.map((x) => x.name).join(', '));
+    assert.strictEqual(sw.kanten.l1, 2);
+    assert.ok(t.some((x) => /EB_9/.test(x.name)) && !t.some((x) => /EB_2/.test(x.name)));
+    // Sicherungsordner wählen, speichern → Ordner mit STEP, Programmen und Listen
+    await p.click('#pj-bk');
+    await p.waitForSelector('#pj-bkoff');
+    await p.fill('#pj-name', 'Schrank Test');
+    await p.click('#pj-save');
+    await p.waitForFunction(() => /Gespeichert[\s\S]*Sicherung/.test(document.getElementById('toast').textContent));
+    const tree = await p.evaluate(() => {
+      const out = [];
+      const walk = (d, pre) => { for (const [n, h] of d.c) { if (h.kind === 'directory') walk(h, pre + n + '/'); else if (h.data !== null) out.push(pre + n); } };
+      walk(window.__bk.c.get('Schrank Test'), '');
+      return out.sort();
+    });
+    for (const f of ['Info.txt', 'Projekt.s2m', 'STEP/schrank3.step', 'Programme/konvertieren.bat', 'Stueckliste.csv', 'Stueckliste.pdf', 'Zuschnittplan.pdf']) assert.ok(tree.includes(f), f + ' fehlt: ' + tree.join(', '));
+    assert.ok(tree.filter((f) => /^Programme\/.*\.xcs$/.test(f)).length >= 10, tree.join(', '));
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
   }
 });

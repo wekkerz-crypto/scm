@@ -381,6 +381,22 @@ inzwischen gespeichert, fragt *Speichern* nach (überschreiben oder nicht). Zuga
 (Anmelden auf der Projektseite) oder – nur für einen Server im eigenen Netz – offen (`S2M_OFFEN=1` bzw. Datei
 `projekte/OFFEN`).
 
+**Projektordner (lesbar, als Sicherung):** Beim Speichern auf dem Server schreibt Step2Maestro zusätzlich einen normalen
+Ordner je Projekt (Name = Projektname, bei Umbenennen mit umbenannt): `Projekt.s2m` (das ganze Projekt als lesbares JSON),
+`Info.txt`, `STEP/` (die geladenen STEP-/DXF-Dateien, Stand beim Speichern), `Programme/` (alle .xcs inkl. `_S1`/`_S2` und
+`konvertieren.bat` für den X-Konverter), `Stueckliste.csv`, `Stueckliste.pdf`, `Zuschnittplan.pdf` und `Versionen/` (die
+letzten 20 Stände von `Projekt.s2m`). STEP und Programme werden bei jedem Speichern neu geschrieben (keine alten Programme);
+gelöschte Projekte: Ordner wird in „… (gelöscht Datum)“ umbenannt. Ort: `S2M_ORDNER` (Docker: `/daten/ordner`, per Volume
+in einen freigegebenen Ordner der Diskstation legbar, z. B. `\\diskstation\Werkstatt\Step2Maestro-Projekte`), sonst
+`projekte/daten/ordner`. **Sicherungsordner am PC** (Chrome/Edge, *💾 Sicherungsordner am PC wählen …* auf der
+Projektseite): denselben Ordner bei jedem Speichern zusätzlich in einen Ordner auf dem PC bzw. ein Netzlaufwerk – auch ohne
+Server (Projekte im Browser); der Browser fragt nach dem Neustart einmal nach der Erlaubnis.
+
+**STEP aktualisieren** (Projektseite, *↻ Dateiname*): neue Version einer STEP-Datei einlesen. Teile werden über ihren Namen
+in der STEP zugeordnet und behalten Drehlage, Feld, Programmname, Werkstück-Profil, Werkzeuge/Bearbeitungs-Änderungen,
+Material, Anzahl, Kanten und Faser (auch einen umbenannten Namen); neue Teile kommen dazu (hinter die anderen der Datei),
+fehlende werden nach Nachfrage entfernt. Danach speichern.
+
 **Startadressen:** `…/index.html#saegen` öffnet gleich den Sägemodus (für den Pi), ebenso `#programme`, `#moebel`,
 `#listen`, `#zuschnitt`, `#etiketten`, `#material`, `#projekte`.
 
@@ -605,7 +621,7 @@ Am Sägeplatz bzw. mit echtem Konto noch nicht ausprobiert:
   laufenden Säge; Mikrofon-Freigabe im Kiosk (`--use-fake-ui-for-media-stream`). Getestet sind nur die Befehle, die Anbindung
   mit nachgebildeter Erkennung und dass ein defektes Modell sauber gemeldet wird.
 - **Docker auf der Diskstation:** Abbild hier nur ohne GD-Erweiterung gebaut (Paketquellen gesperrt) – Start, Datenordner,
-  Projektablage, Konflikt-Prüfung und ChatGPT-Weiterleitung im Container geprüft; der vollständige Bau (mit GD für die
+  Projektablage, lesbare Projektordner, Konflikt-Prüfung und ChatGPT-Weiterleitung im Container geprüft; der vollständige Bau (mit GD für die
   Dekor-Bilder und Vosk) läuft erst auf der Diskstation.
 - **KI-Assistent mit echtem API-Schlüssel:** Claude – Verbindung aus dem Browser zur API ist geprüft (Antwort „Schlüssel
   ungültig“ kommt richtig an); ChatGPT – die Verbindung zu api.openai.com war aus der Entwicklungsumgebung nicht erreichbar,

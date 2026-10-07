@@ -64,6 +64,12 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   Dekor-Verwaltung (Cookie-Pfad = Programmordner) oder offen `S2M_OFFEN=1`/Datei `projekte/OFFEN`, X-CSRF), Browser = IndexedDB
   `projekte.v1` + `projekt:<id>`; `srvRefresh` prüft auch `ki/openai.php` (ChatGPT über den Server: `kiSrv`, `aiServer()` →
   SDK mit baseURL `ki/openai.php/v1` + X-CSRF; Schlüssel `OPENAI_API_KEY` bzw. `ki/schluessel.php`; Test-Ziel `S2M_OPENAI_URL`).
+  Lesbarer Projektordner: `projFolderFiles(data)` (Projekt.s2m, Info.txt, STEP/, Programme/ + konvertieren.bat, Stueckliste.csv/.pdf
+  (`bomPdf(true)`), Zuschnittplan.pdf (`cutPdf(true)`)) → Server `a=ordner` (ZIP ohne Packen, `zipEntries`/`safePath`, Ordner
+  `S2M_ORDNER` bzw. `projekte/daten/ordner`, Name = `folderName`, `proj.ordner`, Versionen/ 20 Stände) bzw. Sicherungsordner am PC
+  (`backup`, File System Access, Handle in IndexedDB `sicherungsordner`, `backupReady(true)` gleich beim Klick, `backupWrite`).
+  STEP aktualisieren: `updateStep(oldFileId, text, label)` (Zuordnung über `stepName`, übernimmt orientation/field/fileName/profile/
+  board/qty/grain/edges/overrides/overrides2 und den Namen; fehlende nach Nachfrage weg), Knöpfe `data-stepupd`, Feld `#stepupd`.
   Docker: `tools/docker/` (php:8.3-apache + GD, Volume `/daten` per Symlink an dekore/daten|bilder|vorschau und projekte/daten,
   Vosk beim Bauen), `npm run build:docker`; Pi `einrichten.sh` setzt für http-Adressen `--unsecurely-treat-insecure-origin-as-secure`.
 - Projektdatei .s2m (`projectPayload`/`applyProject`, Datei: `saveProject`/`openProject`): `data.session` (Teile) + `data.lists` (`projectLists()`, Schlüssel `PROJECT_LST_KEYS` – Ansicht/Zoom/`sawCfg` bleiben

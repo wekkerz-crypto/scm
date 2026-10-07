@@ -63,10 +63,31 @@ Zeichen). Mit S2M_OFFEN=0 gilt dieses Passwort auch für die Projekte.
   Anmeldeportal -> Erweitert -> Reverse Proxy eine https-Adresse auf
   localhost:8080 einrichten.
 
+Projektordner (lesbar, ohne Programm)
+-------------------------------------
+Bei jedem Speichern legt Step2Maestro je Projekt einen normalen Ordner an:
+  Küche Müller/
+    Projekt.s2m           das ganze Projekt (zum Öffnen in Step2Maestro)
+    Info.txt              Name, Kunde, Datum
+    STEP/                 die STEP-/DXF-Dateien
+    Programme/            alle .xcs + konvertieren.bat (Doppelklick am PC mit
+                          Maestro = .pgmx)
+    Stueckliste.csv/.pdf, Zuschnittplan.pdf
+    Versionen/            die letzten 20 Stände
+Standard: daten/ordner. Besser in einen freigegebenen Ordner, den man vom
+Büro-PC im Netzwerk öffnet: in docker-compose.yml die Zeile
+  # - /volume1/Werkstatt/Step2Maestro-Projekte:/daten/ordner
+aktivieren (# weg, Pfad anpassen, Ordner vorher in der File Station anlegen)
+und das Projekt neu erstellen. Am PC dann z. B.
+  \\diskstation\Werkstatt\Step2Maestro-Projekte\Küche Müller\Programme
+Die Ordner werden beim Speichern überschrieben – eigene Dateien darin nicht
+ablegen (außer in einem eigenen Unterordner).
+
 Daten und Sicherung
 -------------------
 Alles liegt in /docker/step2maestro/daten:
   projekte/daten/   Projekte (*.s2m.gz) + projekte.json, papierkorb/ (gelöschte)
+  ordner/           lesbare Projektordner (wenn nicht anders eingestellt)
   dekore/           Dekor-Liste, Bilder, Vorschau, Passwort (Hash)
   ki/openai-key     (falls so eingetragen)
 Diesen Ordner mit Hyper Backup sichern. Ein gelöschtes Projekt liegt noch im

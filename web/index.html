@@ -587,6 +587,11 @@ body.sawlock { overflow: hidden; }
 .pjact .pjcount { color: var(--muted); font-size: 0.9rem; }
 .pjact .btn.go { background: var(--on, #1e8a3e); border-color: var(--on, #1e8a3e); color: var(--on-ink, #fff); font-weight: 700; padding: 8px 18px; }
 .pjact .btn.go[disabled] { background: var(--sunken); border-color: var(--line); color: var(--muted); }
+.pjextra { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; font-size: 0.86rem; color: var(--muted); }
+.pjextra:empty { display: none; }
+.pjinfo { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.pjinfo b { color: var(--ink); font-weight: 600; }
+.pjsteps .btn small { opacity: 0.7; margin-left: 2px; }
 .pjwhere { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--muted); }
 .pjlist { display: grid; gap: 10px; }
 .pjbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
@@ -1172,6 +1177,7 @@ table.fmt.one .onet { display: inline; }
   </section>
 
   <input id="file" type="file" accept=".step,.stp,.dxf,.s2m,.STEP,.STP,.DXF,.S2M" multiple hidden>
+  <input id="stepupd" type="file" accept=".step,.stp,.STEP,.STP" hidden>
   <div class="dropover" id="dropover" hidden>STEP- oder DXF-Dateien hier ablegen</div>
 
   <section class="bench">
@@ -1897,7 +1903,7 @@ table.fmt.one .onet { display: inline; }
     if (!projLeaveOk('Projekt „' + name + '“ öffnen? Die aktuelle Teileliste wird ersetzt.')) return;
     applyProject(data);
     const m = data.meta || {};
-    projSet({ id: null, store: null, name: m.name || String(name).replace(/\.s2m$/i, ''), kunde: m.kunde || '', notiz: m.notiz || '', basis: '', saved: null, sig: null });
+    projSet({ id: null, store: null, name: m.name || String(name).replace(/\.s2m$/i, ''), kunde: m.kunde || '', notiz: m.notiz || '', basis: '', saved: null, sig: null, ordner: '' });
     toast('Projekt geöffnet: ' + state.parts.length + ' Teile');
     render();
   }
@@ -4163,7 +4169,7 @@ table.fmt.one .onet { display: inline; }
   }
 
   // Zuschnittplan als PDF-Datei (eine Platte je Seite, A4 quer) – geht ohne Druckdialog
-  function cutPdf() {
+  function cutPdf(ret) {
     const groups = cutGroups();
     const d = MiniPdf.doc(297, 210);
     const date = new Date().toLocaleDateString('de-DE');
@@ -4267,7 +4273,8 @@ table.fmt.one .onet { display: inline; }
           sheetRows(s).map((r) => ['\u25a1', String(r.id), r.label, n1(r.l) + ' × ' + n1(r.w), String(r.n)]), { size: 7.5 });
       });
     }
-    if (!page) { toast('Keine Teile für den Zuschnitt.'); return; }
+    if (!page) { if (ret === true) return null; toast('Keine Teile für den Zuschnitt.'); return; }
+    if (ret === true) return d.save();
     saveOne('zuschnittplan.pdf', d.save(), 'application/pdf');
   }
 
@@ -5119,7 +5126,7 @@ table.fmt.one .onet { display: inline; }
     $(id).checked = lst[k];
     $(id).addEventListener('change', (e) => { lst[k] = e.target.checked; saveLst(); renderLists(); });
   }
-  $('lpdf').addEventListener('click', () => (lst.tab === 'bom' ? bomPdf() : cutPdf()));
+  $('lpdf').addEventListener('click', () => (lst.tab === 'bom' ? bomPdf(false) : cutPdf(false)));
   $('lcsv').addEventListener('click', () => saveOne('stueckliste.csv', bomCsv(), 'text/csv;charset=utf-8'));
   $('lprintbtn').addEventListener('click', () => {
     if (lst.tab === 'bom') printOr(bomPdf, () => printA4(bomPrintHtml(), true));
@@ -5147,10 +5154,12 @@ table.fmt.one .onet { display: inline; }
     if (tot.bands.size) d.text(12, y + 5.5, 'Kantenband (inkl. ' + fmt(+lst.edgeExtra || 0) + ' mm Zugabe je Kante): ' +
       Array.from(tot.bands).map(([k, v]) => k + ': ' + fmt(Math.round(v * 10) / 10) + ' m').join(' · '), { size: 9.5, maxW: 273 });
   }
-  function bomPdf() {
-    if (!bomRows().length) { toast('Keine Teile vorhanden.'); return; }
+  // ret = true: Bytes zurück (Projektordner) statt Datei speichern
+  function bomPdf(ret) {
+    if (!bomRows().length) { if (ret) return null; toast('Keine Teile vorhanden.'); return; }
     const d = MiniPdf.doc(297, 210);
     addBomPdf(d);
+    if (ret === true) return d.save();
     saveOne('stueckliste.pdf', d.save(), 'application/pdf');
   }
   // Möbel 3D: Ansicht als Bild, Maße, dahinter die Stückliste
@@ -6752,7 +6761,7 @@ table.fmt.one .onet { display: inline; }
       for (let i = 2; used.has(name.toLowerCase()); i++) name = f.name.replace(/(\.xcs)?$/i, '_' + i + '$1');
       used.add(name.toLowerCase());
       const nb = enc.encode(name);
-      const data = enc.encode(f.text);
+      const data = f.data instanceof Uint8Array ? f.data : enc.encode(f.text); // Text oder schon fertige Bytes (PDF)
       const crc = CRC(data);
       const h = new DataView(new ArrayBuffer(30));
       h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
@@ -7454,6 +7463,8 @@ table.fmt.one .onet { display: inline; }
     if (!state.parts.length) { toast('Keine Teile – nichts zu speichern.'); return false; }
     const name = String(opts.name !== undefined ? opts.name : proj.name || '').trim();
     if (!name) { setPage('start'); toast('Bitte zuerst einen Projektnamen eingeben.'); setTimeout(() => { const n = $('pj-name'); if (n) n.focus(); }, 50); return false; }
+    // Sicherungsordner am PC: Zugriff gleich nach dem Klick erfragen (später geht es nicht mehr)
+    const bkp = backup.handle ? backupReady(true) : Promise.resolve(false);
     const asNew = !!opts.asNew || !proj.id;
     const store = asNew ? (opts.store || (srv.ok && srv.login ? 'server' : 'local')) : proj.store;
     const meta = { name: name, kunde: opts.kunde !== undefined ? opts.kunde : proj.kunde || '', notiz: opts.notiz !== undefined ? opts.notiz : proj.notiz || '' };
@@ -7480,6 +7491,8 @@ table.fmt.one .onet { display: inline; }
         }
         if (!j.ok) throw new Error(j.fehler || 'Speichern fehlgeschlagen.');
         projSet({ id: j.projekt.id, store: 'server', basis: j.projekt.geaendert, saved: j.projekt.geaendert, sig: sig });
+        // lesbarer Projektordner auf dem Server (STEP, Programme, Listen) – Fehler hier verhindern das Speichern nicht
+        try { projSet({ ordner: await srvFolder(j.projekt.id, data) }); } catch (e) { toast('Projekt gespeichert, Projektordner aber nicht: ' + (e.message || e)); }
         await srvRefresh();
         pst.tab = 'server';
       } else {
@@ -7491,7 +7504,10 @@ table.fmt.one .onet { display: inline; }
         pst.local = await localList();
         pst.tab = 'local';
       }
-      toast('💾 Gespeichert: ' + meta.name + (store === 'server' ? ' (Server)' : ' (dieser Browser)'));
+      let bk = '';
+      if (await bkp) { try { bk = await backupWrite(data); } catch (e) { toast('Sicherungsordner nicht geschrieben: ' + (e.message || e)); } }
+      toast('💾 Gespeichert: ' + meta.name + (store === 'server' ? ' (Server' + (proj.ordner ? ', Ordner „' + proj.ordner + '“' : '') + ')' : ' (dieser Browser)') +
+        (bk ? ' + Sicherung „' + backup.name + '/' + bk + '“' : ''));
       return true;
     } catch (e) {
       toast('Speichern nicht möglich: ' + (e.message || e));
@@ -7516,7 +7532,7 @@ table.fmt.one .onet { display: inline; }
     } catch (e) { toast('Öffnen nicht möglich: ' + (e.message || e)); return; }
     if (!data || data.format !== PROJECT_FORMAT) { toast('Projektdaten fehlen oder sind beschädigt.'); return; }
     applyProject(data);
-    projSet({ id: id, store: store, name: meta.name, kunde: meta.kunde || '', notiz: meta.notiz || '', basis: meta.geaendert || '', saved: meta.geaendert || '' });
+    projSet({ id: id, store: store, name: meta.name, kunde: meta.kunde || '', notiz: meta.notiz || '', basis: meta.geaendert || '', saved: meta.geaendert || '', ordner: meta.ordner || '' });
     projSet({ sig: projSig() });
     toast('Projekt geöffnet: ' + meta.name);
     render();
@@ -7531,7 +7547,7 @@ table.fmt.one .onet { display: inline; }
     saveLst();
     if (mdl.viewer) mdl.viewer.clearDims();
     mdl.dimsSaved = null;
-    projSet({ id: null, store: null, name: '', kunde: '', notiz: '', basis: '', saved: null, sig: null });
+    projSet({ id: null, store: null, name: '', kunde: '', notiz: '', basis: '', saved: null, sig: null, ordner: '' });
     render();
     renderStart();
     toast('Neues Projekt – STEP/DXF laden (Programme) oder Teile in der Stückliste anlegen.');
@@ -7583,6 +7599,171 @@ table.fmt.one .onet { display: inline; }
       saveOne(StepToXcs.partName(meta.name || 'Projekt') + '.s2m', text, 'application/json');
     } catch (e) { toast('Export nicht möglich: ' + (e.message || e)); }
   }
+  /*
+   * Lesbarer Projektordner (Sicherung, ohne Programm zu öffnen): Projekt.s2m (alles, unverschlüsselt JSON), Info.txt,
+   * STEP/ (Originale), Programme/ (.xcs + konvertieren.bat), Stueckliste.csv/.pdf, Zuschnittplan.pdf.
+   * Auf dem Server nach jedem Speichern (projekte/api.php a=ordner), am PC in einen gewählten Sicherungsordner (Chrome/Edge).
+   */
+  const fileSafe = (s) => String(s || '').replace(/[\\/:*?"<>|\x00-\x1f]+/g, '_').replace(/\s+/g, ' ').trim().replace(/^\.+|\.+$/g, '').slice(0, 80) || 'Projekt';
+  function projFolderFiles(data) {
+    const files = [{ name: 'Projekt.s2m', text: JSON.stringify(data, null, 1) }];
+    const d = new Date();
+    files.push({ name: 'Info.txt', text: ['Projekt: ' + (proj.name || ''), 'Kunde/Auftrag: ' + (proj.kunde || ''), 'Notiz: ' + (proj.notiz || ''),
+      'Gespeichert: ' + d.toLocaleString('de-DE'), 'Teile: ' + state.parts.length, '',
+      'Projekt.s2m     – das ganze Projekt; in Step2Maestro auf der Projektseite „Datei öffnen (.s2m)“',
+      'STEP/           – die geladenen STEP-/DXF-Dateien (Stand beim Speichern)',
+      'Programme/      – die .xcs-Programme und konvertieren.bat (wandelt sie mit dem X-Konverter in .pgmx)',
+      'Versionen/      – frühere Stände von Projekt.s2m (nur auf dem Server)', ''].join('\r\n') });
+    const seen = new Set();
+    for (const f of data.session.files || []) {
+      let n = fileSafe(String(f.label).replace(/^Beispiel: /, '').replace(/^.*[\\/]/, ''));
+      if (!/\.(step|stp|dxf)$/i.test(n)) n += f.kind === 'dxf' ? '.dxf' : '.step';
+      for (let k = 2; seen.has(n.toLowerCase()); k++) n = n.replace(/(\.\w+)$/, '_' + k + '$1');
+      seen.add(n.toLowerCase());
+      files.push({ name: 'STEP/' + n, text: f.text });
+    }
+    const progs = state.parts.flatMap(partFiles);
+    for (const f of progs) files.push({ name: 'Programme/' + fileSafe(f.name), text: f.text });
+    if (progs.length) files.push({ name: 'Programme/konvertieren.bat', text: StepToXcs.makeBatch(state.settings) });
+    try {
+      if (bomRows().length) {
+        files.push({ name: 'Stueckliste.csv', text: bomCsv() });
+        const b = bomPdf(true);
+        if (b) files.push({ name: 'Stueckliste.pdf', data: b });
+      }
+      const c = cutPdf(true);
+      if (c) files.push({ name: 'Zuschnittplan.pdf', data: c });
+    } catch (e) { /* Listen nicht berechenbar: Ordner ohne PDF */ }
+    return files;
+  }
+  async function srvFolder(id, data) {
+    const fd = new FormData();
+    fd.append('a', 'ordner');
+    fd.append('id', id);
+    fd.append('paket', zip(projFolderFiles(data)), 'ordner.zip');
+    const j = await srvJson(await srvCall('ordner', { body: fd }));
+    if (!j.ok) throw new Error(j.fehler || 'Projektordner nicht geschrieben.');
+    return j.ordner;
+  }
+  // --- Sicherungsordner am PC (File System Access: Chrome/Edge), Ordner-Zugriff in IndexedDB gemerkt
+  const BACKUP_KEY = 'sicherungsordner';
+  const backupPossible = () => typeof window.showDirectoryPicker === 'function';
+  const backup = { handle: null, name: '', loaded: false };
+  async function backupLoad() {
+    if (backup.loaded || !backupPossible()) return;
+    backup.loaded = true;
+    try { backup.handle = (await idbGet(BACKUP_KEY)) || null; backup.name = backup.handle ? backup.handle.name : ''; } catch (e) { backup.handle = null; }
+  }
+  async function backupPick() {
+    try {
+      const h = await window.showDirectoryPicker({ id: 's2m-sicherung', mode: 'readwrite' });
+      backup.handle = h;
+      backup.name = h.name;
+      try { await idbSet(BACKUP_KEY, h); } catch (e) { /* nicht speicherbar: gilt bis zum Neuladen */ }
+      toast('Sicherungsordner: ' + h.name + ' – beim Speichern kommt dort ein Ordner je Projekt hinein.');
+    } catch (e) { if (e && e.name !== 'AbortError') toast('Ordner nicht wählbar: ' + (e.message || e)); }
+    renderStart();
+  }
+  async function backupOff() { backup.handle = null; backup.name = ''; try { await idbSet(BACKUP_KEY, null); } catch (e) { /* egal */ } renderStart(); }
+  // Rechte prüfen – nachfragen geht nur direkt nach einem Klick (daher vor allem anderen in projSave)
+  async function backupReady(ask) {
+    if (!backup.handle) return false;
+    try {
+      let p = await backup.handle.queryPermission({ mode: 'readwrite' });
+      if (p === 'prompt' && ask) p = await backup.handle.requestPermission({ mode: 'readwrite' });
+      return p === 'granted';
+    } catch (e) { return false; }
+  }
+  async function backupWrite(data) {
+    const dir = await backup.handle.getDirectoryHandle(fileSafe(proj.name), { create: true });
+    // Programme und STEP frisch (alte Programme nicht liegen lassen)
+    for (const sub of ['Programme', 'STEP']) { try { await dir.removeEntry(sub, { recursive: true }); } catch (e) { /* gab es nicht */ } }
+    for (const f of projFolderFiles(data)) {
+      const parts = f.name.split('/');
+      let d = dir;
+      for (const p of parts.slice(0, -1)) d = await d.getDirectoryHandle(p, { create: true });
+      const fh = await d.getFileHandle(parts[parts.length - 1], { create: true });
+      const w = await fh.createWritable();
+      await w.write(f.data instanceof Uint8Array ? f.data : f.text);
+      await w.close();
+    }
+    return fileSafe(proj.name);
+  }
+
+  /*
+   * STEP aktualisieren: neue Version einer Datei im Projekt einlesen. Teile werden über den Namen aus der STEP zugeordnet
+   * (stepName, bei mehreren gleichen in Reihenfolge) und behalten Drehlage, Feld, Programmname, Werkstück-Profil,
+   * Werkzeuge/Bearbeitungen, Material, Anzahl, Kanten und Faser; neue Teile kommen dazu, fehlende werden (nach Nachfrage) entfernt.
+   */
+  function stepFilesInProject() {
+    const used = new Map();
+    for (const p of state.parts) if (p.src && p.solid && p.stepText !== undefined && !used.has(p.src.file)) used.set(p.src.file, srcFiles.get(p.src.file));
+    return Array.from(used.entries()).filter(([, f]) => f && f.kind === 'step').map(([id, f]) => ({ id: id, label: f.label, n: state.parts.filter((p) => p.src && p.src.file === id).length }));
+  }
+  function updateStep(oldId, text, label) {
+    let solids;
+    try { solids = StepToXcs.readParts(text, label.replace(/^Beispiel: /, '')); } catch (e) { toast(label + ': ' + (e.message || e)); return null; }
+    if (!solids.length) { toast(label + ': keine Bauteile gefunden.'); return null; }
+    const old = state.parts.filter((p) => p.src && p.src.file === oldId);
+    const keyOf = (s) => normWord(s.stepName || s.name);
+    const pool = old.slice();
+    const pairs = solids.map((s) => {
+      const i = pool.findIndex((p) => keyOf(p.solid) === keyOf(s));
+      return [s, i >= 0 ? pool.splice(i, 1)[0] : null];
+    });
+    const gone = pool;
+    if (gone.length && !confirm('In der neuen Version fehlen ' + gone.length + ' Teil' + (gone.length === 1 ? '' : 'e') + ':\n' +
+      gone.map((p) => '• ' + p.solid.name).join('\n') + '\n\nOK = entfernen und aktualisieren\nAbbrechen = nichts ändern')) return null;
+    const fileId = srcFile(label, 'step', text);
+    const taken = new Set(state.parts.filter((p) => p.solid && !old.includes(p)).map((p) => p.solid.name.toLowerCase()));
+    const made = pairs.map(([s, o], idx) => {
+      const part = { label: label, src: { file: fileId, idx: idx }, solid: s, stepText: text, orientation: null, field: null, fileName: null, result: null, side: 1,
+        profile: state.newProfile, overrides: { tools: {}, steps: {}, depths: {} }, overrides2: { tools: {}, steps: {}, depths: {} } };
+      if (o) {
+        // Einstellungen des Teils übernehmen (auch einen geänderten Namen)
+        for (const k of ['orientation', 'field', 'fileName', 'profile', 'board', 'qty', 'grain', 'edges']) if (o[k] !== undefined) part[k] = JSON.parse(JSON.stringify(o[k]));
+        part.overrides = JSON.parse(JSON.stringify(o.overrides || part.overrides));
+        part.overrides2 = JSON.parse(JSON.stringify(o.overrides2 || part.overrides2));
+        s.name = o.solid.name;
+      } else {
+        let k = s.name;
+        for (let j = 2; taken.has(k.toLowerCase()); j++) k = s.name + '_' + j;
+        s.name = k;
+      }
+      taken.add(s.name.toLowerCase());
+      try { compute(part); } catch (e) { part.error = e.message || String(e); }
+      return [part, o];
+    });
+    // an der Stelle der alten Teile einsetzen, neue dahinter
+    const sel = state.parts[state.sel];
+    const out = [];
+    let lastOld = -1;
+    state.parts.forEach((p) => {
+      if (!old.includes(p)) { out.push(p); return; }
+      const m = made.find(([, o]) => o === p);
+      if (m) out.push(m[0]);
+      lastOld = out.length - 1;
+    });
+    const fresh = made.filter(([, o]) => !o).map(([p]) => p);
+    out.splice(lastOld + 1, 0, ...fresh);
+    state.parts = out;
+    state.sel = Math.max(0, out.indexOf(sel) >= 0 ? out.indexOf(sel) : Math.min(state.sel, out.length - 1));
+    anim.result = null;
+    if (mdl) mdl.key = null; // Möbel 3D neu aufbauen
+    render();
+    return { kept: made.filter(([, o]) => o).length, added: fresh.map((p) => p.solid.name), removed: gone.map((p) => p.solid.name) };
+  }
+  let stepUpdateId = null;
+  $('stepupd').addEventListener('change', async (e) => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if (!f || stepUpdateId === null) return;
+    const r = updateStep(stepUpdateId, await f.text(), f.name);
+    stepUpdateId = null;
+    if (!r) return;
+    toast('STEP aktualisiert: ' + r.kept + ' Teile übernommen' + (r.added.length ? ', ' + r.added.length + ' neu' : '') + (r.removed.length ? ', ' + r.removed.length + ' entfernt' : '') + ' – speichern nicht vergessen.');
+    renderStart();
+  });
   // zuletzt benutzte Arbeitsseite (nicht die Projektseite)
   // Startadressen: index.html#saegen öffnet gleich den Sägemodus (z. B. am Pi), #programme, #listen, #zuschnitt …
   const HASH_PAGES = { projekte: ['start'], programme: ['pgmx'], moebel: ['model'], moebel3d: ['model'], listen: ['lists', 'bom'], stueckliste: ['lists', 'bom'],
@@ -7615,7 +7796,14 @@ table.fmt.one .onet { display: inline; }
       (srv.ok && canSrv && !proj.id ? '<label class="pjwhere">Ablage <select id="pj-store"><option value="server">Server (alle Geräte)</option><option value="local">nur dieser Browser</option></select></label>' : '') +
       '<button type="button" class="btn" id="pj-new">＋ Neues Projekt</button>' +
       '<span class="sp"></span><span class="pjcount">' + state.parts.length + ' Teile</span>' +
-      '<button type="button" class="btn go" id="pj-go"' + (state.parts.length ? '' : ' disabled') + '>Weiter bearbeiten ▶</button></div></div>' +
+      '<button type="button" class="btn go" id="pj-go"' + (state.parts.length ? '' : ' disabled') + '>Weiter bearbeiten ▶</button></div>' +
+      '<div class="pjextra">' +
+      (proj.store === 'server' && proj.ordner ? '<span class="pjinfo" title="Auf dem Server: Projekt.s2m, STEP/, Programme/ (xcs + konvertieren.bat), Stückliste, Zuschnittplan, Versionen/">📂 Projektordner: <b>' + esc(proj.ordner) + '</b></span>' : '') +
+      (backupPossible() ? (backup.handle ? '<span class="pjinfo">💾 Sicherung am PC: <b>' + esc(backup.name) + '/' + esc(fileSafe(proj.name || 'Projekt')) + '</b> <button type="button" class="btn ghost small" id="pj-bk">ändern</button><button type="button" class="btn ghost small" id="pj-bkoff">aus</button></span>'
+        : '<button type="button" class="btn ghost small" id="pj-bk" title="Beim Speichern zusätzlich einen lesbaren Ordner (STEP, Programme, Listen) in einen Ordner auf diesem PC bzw. Netzlaufwerk schreiben">💾 Sicherungsordner am PC wählen …</button>') : '') +
+      (stepFilesInProject().length ? '<span class="pjinfo pjsteps">STEP aktualisieren: ' + stepFilesInProject().map((f) => '<button type="button" class="btn ghost small" data-stepupd="' + f.id + '" title="Neue Version dieser Datei einlesen – Einstellungen der Teile bleiben (Zuordnung über den Teilenamen)">↻ ' +
+        esc(String(f.label).replace(/^Beispiel: /, '').replace(/^.*[\\/]/, '')) + ' <small>' + f.n + '</small></button>').join('') + '</span>' : '') +
+      '</div></div>' +
       '<div class="pjlist"><div class="pjbar"><h3>Projekte</h3>' +
       (srv.ok ? '<span class="seg" role="group" aria-label="Ablage"><button type="button" data-pjtab="server" aria-pressed="' + (pst.tab === 'server') + '">🖧 Server <small>' + (canSrv ? srv.list.length : '') + '</small></button>' +
         '<button type="button" data-pjtab="local" aria-pressed="' + (pst.tab === 'local') + '">💻 Dieser Browser <small>' + pst.local.length + '</small></button></span>' : '<span class="note">Ablage: dieser Browser' + (serverPossible() ? '' : ' (ohne Server)') + '</span>') +
@@ -7626,7 +7814,8 @@ table.fmt.one .onet { display: inline; }
         '<input type="password" id="pj-pw" autocomplete="current-password" aria-label="Passwort"><button type="submit" class="btn primary">Anmelden</button></form>' : '') +
       (list.length ? '<div class="tblwrap"><table class="pjtbl"><thead><tr><th>Projekt</th><th class="r">Teile</th><th>Material</th><th>Geändert</th><th></th></tr></thead><tbody>' +
         list.map((m) => { const cur = proj.id === m.id && proj.store === pst.tab; const k = pst.tab + m.id; return '<tr' + (cur ? ' class="cur"' : '') + '><td><b>' + esc(m.name) + '</b>' + (cur ? ' <span class="chip ok">offen</span>' : '') +
-          (m.kunde ? '<div class="sub">' + esc(m.kunde) + '</div>' : '') + (m.notiz ? '<div class="sub n">' + esc(m.notiz) + '</div>' : '') + '</td>' +
+          (m.kunde ? '<div class="sub">' + esc(m.kunde) + '</div>' : '') + (m.notiz ? '<div class="sub n">' + esc(m.notiz) + '</div>' : '') +
+          (m.ordner ? '<div class="sub">📂 ' + esc(m.ordner) + '</div>' : '') + '</td>' +
           '<td class="r">' + (m.teile !== undefined ? m.teile + (m.stueck && m.stueck !== m.teile ? '<div class="sub">' + m.stueck + ' Stück</div>' : '') : '') + '</td>' +
           '<td class="mat">' + esc((m.materialien || []).join(', ')) + (m.platten ? '<div class="sub">' + m.platten + ' Platte' + (m.platten === 1 ? '' : 'n') + '</div>' : '') + '</td>' +
           '<td>' + esc(dateText(m.geaendert)) + '</td>' +
@@ -7645,6 +7834,9 @@ table.fmt.one .onet { display: inline; }
     if ($('pj-saveas')) $('pj-saveas').addEventListener('click', () => projSave(Object.assign(nm(), { asNew: true, store: srv.ok && srv.login ? 'server' : 'local' })));
     $('pj-new').addEventListener('click', projNew);
     $('pj-go').addEventListener('click', () => setPage(lastWorkPage()));
+    if ($('pj-bk')) $('pj-bk').addEventListener('click', backupPick);
+    if ($('pj-bkoff')) $('pj-bkoff').addEventListener('click', backupOff);
+    host.querySelectorAll('[data-stepupd]').forEach((b) => b.addEventListener('click', () => { stepUpdateId = +b.dataset.stepupd; $('stepupd').click(); }));
     $('pj-import').addEventListener('click', () => openPicker());
     $('pj-export').addEventListener('click', saveProject);
     $('pj-q').addEventListener('input', (e) => { pst.q = e.target.value; const pos = e.target.selectionStart; renderStart(); const q = $('pj-q'); q.focus(); q.setSelectionRange(pos, pos); });
@@ -7661,6 +7853,7 @@ table.fmt.one .onet { display: inline; }
   }
   async function startInit() {
     pst.local = await localList();
+    await backupLoad();
     await srvRefresh();
     if (state.page === 'start') renderStart();
   }

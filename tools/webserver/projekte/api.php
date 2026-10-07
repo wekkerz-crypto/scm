@@ -11,6 +11,9 @@
  *                 basis = „geaendert“ des Stands, auf dem die Änderung beruht: ist das Projekt inzwischen von einem anderen
  *                 Gerät gespeichert worden, kommt 409 (nichts überschrieben) – ohne basis wird nicht geprüft (erzwingen).
  *   POST a=meta   id, name, kunde, notiz  /  a=copy id, name  /  a=delete id
+ *   POST a=ordner id, paket (ZIP, unkomprimiert, vom Programm gebaut)  → lesbarer Projektordner (Sicherung):
+ *                 <S2M_ORDNER bzw. daten/ordner>/<Projektname>/ mit Projekt.s2m, Info.txt, STEP/, Programme/ (xcs +
+ *                 konvertieren.bat), Stückliste/Zuschnitt, Versionen/ (die letzten 20 Stände von Projekt.s2m)
  * Zugriff: mit dem Passwort der Dekor-Verwaltung (gleiche Anmeldung, dekore/api.php a=login) – oder ohne Anmeldung, wenn
  * die Umgebungsvariable S2M_OFFEN=1 gesetzt ist bzw. die Datei OFFEN neben api.php liegt (Server nur im eigenen Netz, z. B.
  * Diskstation). Schreibende Aufrufe brauchen immer den Kopf X-CSRF (aus list).
@@ -79,6 +82,48 @@ function saveDb(array $list): void {
   writeAtomic($dbFile, $json);
 }
 function fileOf(string $id): string { global $dataDir; return $dataDir . '/' . $id . '.s2m.gz'; }
+// lesbare Projektordner: Umgebungsvariable S2M_ORDNER (Docker: freigegebener Ordner der Diskstation) oder daten/ordner
+function folderBase(): string {
+  global $dataDir;
+  $b = getenv('S2M_ORDNER');
+  $b = is_string($b) && $b !== '' ? rtrim($b, '/') : $dataDir . '/ordner';
+  if (!is_dir($b) && !@mkdir($b, 0755, true)) fail('Ordner für die Projektordner kann nicht angelegt werden (' . $b . ').', 500);
+  return $b;
+}
+// Ordnername aus dem Projektnamen (lesbar, für Windows-Freigaben erlaubt)
+function folderName(string $name): string {
+  $s = preg_replace('~[\\\\/:*?"<>|\x00-\x1f]+~u', '_', $name) ?? '';
+  $s = trim(preg_replace('/\s+/u', ' ', $s) ?? '', ' .');
+  return mb_substr($s !== '' ? $s : 'Projekt', 0, 80);
+}
+function rmTree(string $d): void {
+  if (!is_dir($d) || is_link($d)) { if (is_file($d) || is_link($d)) @unlink($d); return; }
+  foreach (scandir($d) ?: [] as $f) if ($f !== '.' && $f !== '..') rmTree($d . '/' . $f);
+  @rmdir($d);
+}
+// ZIP lesen (nur „gespeichert“, ohne Packen – so baut es das Programm; ohne PHP-Erweiterung zip)
+function zipEntries(string $file): array {
+  $b = (string) file_get_contents($file);
+  $out = [];
+  $p = 0;
+  $n = strlen($b);
+  while ($p + 30 <= $n && substr($b, $p, 4) === "PK\x03\x04") {
+    $h = unpack('vver/vflag/vmethod/vtime/vdate/Vcrc/Vcsize/Vsize/vnlen/velen', substr($b, $p + 4, 26));
+    if ($h['method'] !== 0) fail('Paket ist gepackt – erwartet unkomprimiert.');
+    $name = substr($b, $p + 30, $h['nlen']);
+    $start = $p + 30 + $h['nlen'] + $h['elen'];
+    if ($start + $h['csize'] > $n) fail('Paket ist unvollständig.');
+    $out[$name] = substr($b, $start, $h['csize']);
+    $p = $start + $h['csize'];
+  }
+  return $out;
+}
+// erlaubte Pfade im Ordner: Datei oder Unterordner/Datei, keine .. / absolute Pfade / PHP
+function safePath(string $p): string {
+  $p = str_replace('\\', '/', $p);
+  if (!preg_match('#^([^/]{1,80}/)?[^/]{1,120}$#u', $p) || str_contains($p, '..') || preg_match('/\.(php\d?|phtml|phar|htaccess)$/i', $p) || preg_match('/[\x00-\x1f]/', $p)) return '';
+  return $p;
+}
 // Kurzinfo vom Programm (Teile, Stück, Materialien …): nur einfache Werte übernehmen
 function infoOf(string $json): array {
   $j = json_decode($json, true);
@@ -196,9 +241,58 @@ switch ($a) {
     if (!@copy(fileOf($id), fileOf($nid))) fail('Kopieren nicht möglich.', 500);
     $now = date('c');
     $p = array_merge($src, ['id' => $nid, 'name' => clean(post('name'), 120) ?: $src['name'] . ' (Kopie)', 'erstellt' => $now, 'geaendert' => $now]);
+    unset($p['ordner']); // eigener Ordner beim ersten Speichern
     $list[] = $p;
     saveDb($list);
     out(['ok' => true, 'projekt' => $p]);
+
+  case 'ordner':
+    $id = idOk(post('id'));
+    $f = $_FILES['paket'] ?? null;
+    if (!$f || ($f['error'] ?? 1) !== UPLOAD_ERR_OK || !is_uploaded_file($f['tmp_name'])) fail('Kein Paket für den Projektordner empfangen (zu groß?).');
+    if ($f['size'] > MAX_BYTES * 2) fail('Paket ist zu groß.');
+    $entries = zipEntries($f['tmp_name']);
+    lockDb();
+    $list = loadDb(true);
+    $idx = null;
+    foreach ($list as $i => $p) if ($p['id'] === $id) $idx = $i;
+    if ($idx === null) fail('Projekt nicht gefunden.', 404);
+    $base = folderBase();
+    $want = folderName($list[$idx]['name']);
+    $cur = isset($list[$idx]['ordner']) && is_string($list[$idx]['ordner']) ? $list[$idx]['ordner'] : '';
+    $taken = array_map(fn($p) => $p['ordner'] ?? '', array_filter($list, fn($p) => $p['id'] !== $id));
+    // Name geändert (oder neu): freien Ordnernamen suchen; bisherigen Ordner umbenennen
+    $same = $cur !== '' && ($cur === $want || preg_match('/^' . preg_quote($want, '/') . ' \(\d+\)$/u', $cur));
+    if (!$same) {
+      $name = $want;
+      for ($k = 2; in_array($name, $taken, true) || ($name !== $cur && file_exists($base . '/' . $name)); $k++) $name = $want . ' (' . $k . ')';
+      if ($cur !== '' && is_dir($base . '/' . $cur) && $cur !== $name) @rename($base . '/' . $cur, $base . '/' . $name);
+      $cur = $name;
+    }
+    $dir = $base . '/' . $cur;
+    if (!is_dir($dir) && !@mkdir($dir, 0755, true)) fail('Projektordner kann nicht angelegt werden.', 500);
+    // Programme und STEP immer frisch (keine alten Programme liegen lassen); Versionen bleiben
+    foreach (['STEP', 'Programme'] as $sub) rmTree($dir . '/' . $sub);
+    $n = 0;
+    foreach ($entries as $path => $data) {
+      $sp = safePath((string) $path);
+      if ($sp === '' || str_starts_with($sp, 'Versionen/')) continue;
+      if (str_contains($sp, '/')) { $sd = $dir . '/' . dirname($sp); if (!is_dir($sd)) @mkdir($sd, 0755, true); }
+      if (@file_put_contents($dir . '/' . $sp, $data) === false) fail('Datei ' . $sp . ' kann nicht geschrieben werden.', 500);
+      $n++;
+    }
+    // Versionen: Kopie von Projekt.s2m mit Datum, die letzten 20 behalten
+    if (isset($entries['Projekt.s2m'])) {
+      $vd = $dir . '/Versionen';
+      if (!is_dir($vd)) @mkdir($vd, 0755, true);
+      @file_put_contents($vd . '/' . date('Y-m-d_H-i-s') . '.s2m', $entries['Projekt.s2m']);
+      $vs = glob($vd . '/*.s2m') ?: [];
+      sort($vs);
+      foreach (array_slice($vs, 0, max(0, count($vs) - 20)) as $old) @unlink($old);
+    }
+    $list[$idx]['ordner'] = $cur;
+    saveDb($list);
+    out(['ok' => true, 'ordner' => $cur, 'dateien' => $n]);
 
   case 'delete':
     $id = idOk(post('id'));
@@ -209,6 +303,8 @@ switch ($a) {
     // nicht endgültig: in den Papierkorb (Datei + Eintrag), von Hand zurückholbar
     $gone = array_values(array_filter($list, fn($p) => $p['id'] === $id))[0];
     if (is_file(fileOf($id))) @rename(fileOf($id), $trashDir . '/' . $id . '.s2m.gz');
+    // lesbarer Projektordner: umbenennen in „… (gelöscht …)“, nicht entfernen
+    if (!empty($gone['ordner']) && is_dir(folderBase() . '/' . $gone['ordner'])) @rename(folderBase() . '/' . $gone['ordner'], folderBase() . '/' . $gone['ordner'] . ' (gelöscht ' . date('Y-m-d') . ')');
     @file_put_contents($trashDir . '/' . $id . '.json', json_encode($gone + ['geloescht' => date('c')], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
     saveDb($keep);
     out(['ok' => true]);

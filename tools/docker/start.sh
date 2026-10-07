@@ -7,7 +7,8 @@ for d in dekore/daten dekore/bilder dekore/vorschau projekte/daten; do
   rm -rf "$W/$d"
   ln -s "/daten/$d" "$W/$d"
 done
-chown -R www-data:www-data /daten
+mkdir -p "${S2M_ORDNER:-/daten/ordner}"
+chown -R www-data:www-data /daten "${S2M_ORDNER:-/daten/ordner}"
 # Passwort der Dekor-Verwaltung schon gesetzt: Freigabe zum Einrichten entfernen
 [ -f /daten/dekore/daten/passwort.php ] && rm -f "$W/dekore/EINRICHTEN"
 # OpenAI-Schlüssel auch als Datei möglich: /daten/ki/openai-key (eine Zeile)

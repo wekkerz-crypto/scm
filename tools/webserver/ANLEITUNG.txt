@@ -137,6 +137,9 @@ Auf der Startseite „Projekte“ werden Projekte auf dem Server gespeichert und
 auf jedem Gerät geöffnet. Anmelden mit dem Passwort der Dekor-Verwaltung
 (erst dort einrichten, siehe unten). Gespeichert wird in projekte/daten (legt
 das Programm an; ein Update überschreibt es nicht – beim Sichern mitnehmen).
+Zusätzlich je Projekt ein lesbarer Ordner in projekte/daten/ordner/<Name>
+(STEP, Programme .xcs + konvertieren.bat, Stückliste, Zuschnitt-PDF,
+Versionen) – per FileZilla herunterladbar, z. B. als Sicherung.
 Große Projekte (viele STEP-Dateien): im Strato-Kunden-Login die PHP-Grenzen
 upload_max_filesize und post_max_size auf z. B. 80M stellen.
 Tipp: Für die Werkstatt ist eine Diskstation mit Docker oft besser (alles im

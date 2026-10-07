@@ -284,6 +284,15 @@ Dritte Seite oben (**Listen**):
   im Streifen und eine kleine Skizze der Platte (dieser Streifen schwarz) – im Sägemodus nach jedem abgetrennten Streifen als
   Fenster (abschaltbar unter *⚙ Schnittfolge*) und als Knopf auf der Karte, im Zuschnittplan je Platte *🏷 Streifen-Etiketten*.
   Im **Vollbild** sind Platten-Umschalter, Auswahl und *Weiter / Zurück* groß für Touch; Weiter/Zurück bleiben unten stehen.
+  **Weiter** ist grün und größer als *Zurück* (im Vollbild sehr groß), ebenso *Nächste Platte* und *Weiter sägen*.
+  **Sprachbefehle** (*🎤 Sprache* in der Leiste): „weiter“ (auch „okay“, „fertig“), „zurück“, „drucken“ / „Etikett“ (druckt
+  die Etiketten im offenen Fenster, sonst das Streifen-Etikett), „nächster Streifen“ (springt zum ersten Schnitt des nächsten
+  Streifens, ohne Etiketten), „nächste Platte“, „nochmal“ (Schritt und Maß vorlesen), „Vollbild“, „Mikrofon aus“. Unter der
+  Karte steht, was verstanden wurde. **🔊 Ansage** liest nach jedem Schritt „Schritt 4. Streifen 2. Querschnitt, quer.
+  604 Millimeter.“ vor (Sprachausgabe des Browsers; währenddessen zählt nichts als Befehl). Erkennung: in Chrome/Edge die
+  des Browsers (braucht Internet); **offline** mit Vosk, wenn `js/vendor/vosk/vosk.js` und `model-de.tar.gz` daliegen
+  (`tools/pi/sprache_holen.sh`; Raspberry Pi: `einrichten.sh --sprache`) – Vosk kennt nur die Befehlswörter, das ist an der
+  lauten Säge sicherer. Am besten mit Headset-Mikrofon. Seite oder Reiter verlassen schaltet das Mikrofon aus.
   **Streifen nummeriert:** am Plattenrand (Längsstreifen links, Querstreifen vorne) steht die Nummer jedes Streifens mit
   einer Klammer über seine Breite – der aktuelle blau gefüllt, fertige blass; auf der Karte „Streifen 2/4“, in der Liste
   *Danach* „S2“. Auch im Zuschnittplan (mit *Schnittfolge*), im Druck und im PDF – so lassen sich viele Platten
@@ -347,11 +356,38 @@ Dritte Seite oben (**Listen**):
 
 ### Projektdatei (.s2m)
 
-**Projekt speichern** (ganz oben neben Hell/Dunkel, auf jeder Seite) schreibt eine Datei mit allen STEP/DXF-Dateien, allen Änderungen je Teil
-(Drehung, Feld, Werkzeuge, Reihenfolge, Profil …), Plattenfarben, Anzahl und den Maßen aus Möbel 3D. **Projekt öffnen**
-(oder die .s2m auf die Seite ziehen) ersetzt die Teileliste – so geht ein Auftrag auf einem anderen PC weiter oder später
-wieder auf. Die Einstellungen (Werkzeuge, Sauger …) bleiben die des jeweiligen Rechners. Auch die Maße aus *Bemaßen* bleiben
-jetzt nach dem Neuladen erhalten.
+**Projekt speichern** (ganz oben neben Hell/Dunkel, auf jeder Seite) schreibt das **ganze Projekt** in eine Datei: alle
+STEP/DXF-Dateien, alle Änderungen je Teil (Drehung, Feld, Werkzeuge, Reihenfolge, Profil …), Teile von Hand, die Maße aus
+Möbel 3D, die **Stückliste** (Anzahl, Plattenfarben/Dekore, Kantenband je Teil, Faser, Kanten-Einstellungen und -Regeln) und
+den **Zuschnittplan** (Plattenformat, Schnittfuge, Besäumen, Richtung/Ziel, Format je Material und je Platte, von Hand
+verschobene Pläne, Haken „geschnitten“ und der Stand im Sägemodus); eigene Dekor-Bilder, die benutzt werden, gehen mit.
+Dazu die **Einstellungen** (Werkzeuge, Regeln, Sauger …). **Projekt öffnen** (oder die .s2m auf die Seite ziehen) ersetzt
+die Teileliste und stellt Stückliste und Zuschnitt wieder her; weichen die Einstellungen des Projekts von denen des Rechners
+ab, wird gefragt, ob sie übernommen werden (Pfade zu X-Konverter/Werkzeugdatei bleiben immer die des Rechners). Am Gerät
+bleiben: Ansicht, Zoom/Schrift und die Säge-Einstellungen (*⚙ Schnittfolge*). Ältere .s2m-Dateien (ohne Listen) gehen weiter.
+
+### KI-Assistent (✨ oben rechts)
+
+Ein Fenster rechts, in dem man in Werkstattsprache sagt, was zu tun ist – z. B. „Sortiere nach Material und Dicke, große
+Teile zuerst“, „Alle Fronten Kanten ringsum“, „Die Seiten 2× statt 1×“, „Plattenformat für U708 auf 2800 × 2070“, „Wie viele
+Platten brauche ich?“. Die KI (Claude von Anthropic) liest und ändert über die **Programm-Schnittstelle** nur Daten für
+Liste, Zuschnitt und Etiketten: Namen, Anzahl, Material/Dekor, Kanten, Faser, Reihenfolge, Teile von Hand anlegen/löschen,
+Zuschnitt-Einstellungen, Ansicht – **keine Bearbeitungen**. Jeder Schritt steht im Verlauf („› Teile geändert (4)“);
+**↶ Rückgängig** nimmt alle Änderungen der letzten Anfrage zurück. *Neu* beginnt ein neues Gespräch.
+Dafür braucht es einen eigenen **API-Schlüssel** von Anthropic (console.anthropic.com → API Keys, Abrechnung über dieses
+Konto) – unter *⚙ Einstellungen* im Fenster eintragen; „merken“ speichert ihn im Browser dieses Geräts (sonst nur bis zum
+Schließen). Modell wählbar (*Claude Opus 5.5* Standard, *Sonnet 5.5* schneller/günstiger, *Haiku 4.5* am günstigsten) und
+*Gründlichkeit*. Gesendet werden nur die Listendaten (Namen, Maße, Material, Kanten, Zuschnitt), keine STEP-Dateien. Braucht
+Internet; läuft in der .exe, auf dem Webserver und am Pi. Lehnt die KI eine Anfrage ab, übernimmt automatisch ein
+Ersatzmodell (`fallbacks: "default"`).
+
+**Programm-Schnittstelle** `window.Step2Maestro.api` (auch für eigene Skripte, z. B. in der Browser-Konsole):
+`teile_lesen()`, `stueckliste_lesen()`, `zuschnitt_lesen()`, `materialien_lesen()`, `teile_aendern({aenderungen: [{teil,
+name, anzahl, material, kanten: {l1, l2, b1, b2}, kanten_auto, faser}]})`, `teile_sortieren({reihenfolge: [Nr …]})`,
+`teile_loeschen({teile: [Nr …]})`, `teil_anlegen({name, laenge, breite, dicke, anzahl, material})`,
+`zuschnitt_einstellen({platte_laenge, platte_breite, schnittfuge, besaeumen, faser, richtung, ziel, roh, gruppe, format})`,
+`seite_zeigen({seite, teil})`, `projekt()`. Eingaben und Rückgaben sind einfache Daten (JSON), Fehler als Exception mit
+deutschem Text; die Schemas stehen in `web/js/assist.js` (`Assist.TOOLS`).
 
 ## Was erkannt wird
 
@@ -518,6 +554,14 @@ umgewandelt, im X-Konverter als Script importiert und als Maestro-Programm angel
 
 ## Noch zu prüfen an der Maschine
 
+Am Sägeplatz bzw. mit echtem Konto noch nicht ausprobiert:
+
+- **Sprachbefehle offline (Vosk) am Pi:** Laden des deutschen Modells, Erkennung der Befehlswörter mit Headset an der
+  laufenden Säge; Mikrofon-Freigabe im Kiosk (`--use-fake-ui-for-media-stream`). Getestet sind nur die Befehle, die Anbindung
+  mit nachgebildeter Erkennung und dass ein defektes Modell sauber gemeldet wird.
+- **KI-Assistent mit echtem API-Schlüssel:** Verbindung aus dem Browser zur API ist geprüft (Antwort „Schlüssel ungültig“
+  kommt richtig an), der Ablauf mit nachgebildeten Antworten; eine echte Sitzung mit Schlüssel steht noch aus.
+
 Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
 
 - **Kantenbohrungen vorne/hinten:** Ebenennamen `"Front"`/`"Back"` sind laut Handbuch Standardebenen;
@@ -600,7 +644,7 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
 
 | Ordner | Inhalt |
 |---|---|
-| `web/` | Web-Tool (`index.html`) und die JS-Module `step.js` (STEP-Leser), `panel.js` (Erkennung), `xcs.js` (Ausgabe), `surface.js` (Kugelfräser-Bahn), `occtmesh.js` (3D-Netz), `dxf.js` (DXF-Leser) |
+| `web/` | Web-Tool (`index.html`) und die JS-Module `step.js` (STEP-Leser), `panel.js` (Erkennung), `xcs.js` (Ausgabe), `surface.js` (Kugelfräser-Bahn), `occtmesh.js` (3D-Netz), `dxf.js` (DXF-Leser), `assist.js` (KI-Assistent), `voice.js` (Sprachbefehle); `js/vendor/anthropic.js` = Anthropic-SDK als Browser-Skript (`tools/build_anthropic.sh`) |
 | `cli/` | Kommandozeilen-Aufruf |
 | `test/` | Tests (`npm test`) und Test-STEP/DXF-Dateien |
 | `tools/` | `make_fixtures.py` erzeugt einen Teil der Test-STEP-Dateien (CadQuery; die übrigen stammen aus Onshape/Werkstatt), `make_dxf.js` die Test-DXF, `build_defaults.js` die eingebaute Werkzeugliste und Beispiele, `build_exe.sh`/`build_web.sh` die Pakete, `webserver/` Anleitung, `.htaccess` und Schriften für den Webserver |

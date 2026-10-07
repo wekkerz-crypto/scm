@@ -26,6 +26,13 @@ Wichtig zu wissen
   Browser und Adresse. Nach dem Neuladen ist alles wieder da. Auf dem Server gelten also andere
   Einstellungen als in der STEP2XCS.exe. Werkzeugdatei auf dem Server einmal
   neu laden (Abschnitt "Werkzeugliste & Favoriten").
+* KI-Assistent (✨ oben rechts): fragt direkt aus dem Browser bei Anthropic an
+  (api.anthropic.com) – mit dem eigenen API-Schlüssel, den jeder Benutzer im
+  Fenster einträgt. Auf dem Server liegt dafür nichts.
+* Sprachbefehle im Sägemodus offline (z. B. für den Pi): Ordner „vosk“ mit
+  sprache_holen.sh (aus dem Pi-Paket) holen und als step2maestro/js/vendor/vosk/
+  hochladen (ca. 50 MB). Ohne den Ordner nimmt Chrome/Edge seine eigene
+  Erkennung (braucht Internet).
 * HTTPS verwenden (bei Strato im Paket enthalten). Ohne HTTPS funktioniert
   z. B. "Kopieren" in die Zwischenablage nicht.
 

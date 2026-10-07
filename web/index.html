@@ -522,8 +522,12 @@ svg.sheet .cuts { pointer-events: none; }
 .sawcard .nx { border-top: 1px solid var(--line); padding-top: 10px; font-size: 0.92rem; }
 .sawcard .nx ol { margin: 4px 0 0; padding-left: 1.6em; display: grid; gap: 2px; }
 .sawcard .nx p { margin: 4px 0 0; color: var(--muted); }
-.sawnav { display: grid; grid-template-columns: 1fr 1.6fr; gap: 10px; }
+.sawnav { display: grid; grid-template-columns: 1fr 2.2fr; gap: 10px; }
 .sawnav .btn, .sawbig { font-size: 1.15rem; min-height: 58px; justify-content: center; }
+/* Weiter (und „Nächste Platte“, „Weiter sägen“): groß und grün */
+.sawnav .btn.go, .btn.sawbig { min-height: 84px; font-size: 1.6rem; font-weight: 700; border-radius: 12px; background: var(--on, #1e8a3e); border-color: var(--on, #1e8a3e); color: var(--on-ink, #fff); }
+.sawnav .btn.go:hover:not([disabled]), .btn.sawbig:hover { filter: brightness(1.08); border-color: var(--on, #1e8a3e); }
+.sawnav .btn.go[disabled] { background: var(--sunken); border-color: var(--line); color: var(--muted); }
 .sawcfg { border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin-bottom: 14px; background: var(--surface); display: grid; gap: 10px; }
 .sawcfg h4 { margin: 0; font-size: 0.95rem; }
 .sawcfg .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
@@ -549,13 +553,49 @@ svg.sheet .cuts { pointer-events: none; }
 #sawview.sawfull .sawover { gap: 10px 18px; padding: 10px 14px; font-size: 1.05rem; }
 #sawview.sawfull .sawover .so-g { gap: 8px; }
 #sawview.sawfull .sawnav .btn { min-height: 92px; font-size: 1.7rem; font-weight: 700; border-radius: 14px; }
+#sawview.sawfull .sawnav .btn.go, #sawview.sawfull .btn.sawbig { min-height: 130px; font-size: 2.6rem; border-radius: 16px; }
 #sawview.sawfull .sawnav { gap: 14px; position: sticky; bottom: 0; z-index: 3; background: var(--surface); padding: 8px 0 4px; }
 .sawcard .sstriplbl { justify-self: start; }
+.sawcard .vstat { font-size: 0.95rem; color: var(--muted); padding: 6px 10px; border-radius: 8px; background: var(--sunken); }
+.sawcard .vstat.warn { color: var(--warn); background: var(--warn-bg); }
+#sawview.sawfull .seg.vctl button { font-size: 1rem; padding: 7px 14px; }
+#sawview.sawfull .sawcard .vstat { font-size: 1.2rem; }
 #sawview.sawfull .sawcard .sstriplbl { font-size: 1.05rem; padding: 8px 14px; }
 .sawtile.stile { border-color: var(--on, #1e8a3e); background: color-mix(in srgb, var(--on, #1e8a3e) 8%, var(--surface)); }
 .sawtile .s-tn small { font-size: 1.4rem; color: var(--muted); }
 body.sawlock { overflow: hidden; }
 .sawcard .tx { font-size: 1.15rem; }
+/* KI-Assistent: Fenster rechts */
+.aibtn { white-space: nowrap; }
+.aibtn[aria-expanded="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.aipanel { position: fixed; top: 0; right: 0; bottom: 0; width: min(440px, 100vw); z-index: 800; background: var(--surface); border-left: 1px solid var(--line);
+  box-shadow: -8px 0 24px rgba(0,0,0,0.14); display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; }
+.aipanel[hidden] { display: none; }
+.aihead { display: flex; align-items: center; gap: 8px; }
+.aihead h2 { margin: 0 auto 0 0; font-size: 1.1rem; }
+.aiset { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--sunken); }
+.aiset label { display: grid; gap: 3px; font-size: 0.85rem; font-weight: 600; }
+.aiset label.ck { display: flex; align-items: center; gap: 6px; font-weight: 400; }
+.aiset input[type=password], .aiset select { font-family: var(--font-mono); font-size: 0.85rem; }
+.aiset .note { margin: 0; font-size: 0.78rem; }
+.ailog { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 2px; }
+.ailog .m { padding: 8px 11px; border-radius: 10px; font-size: 0.9rem; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 92%; }
+.ailog .m.u { align-self: flex-end; background: var(--accent); color: var(--accent-ink); }
+.ailog .m.a { align-self: flex-start; background: var(--sunken); }
+.ailog .m.e { align-self: stretch; background: var(--err-bg); color: var(--err); }
+.ailog .t { align-self: flex-start; font-size: 0.78rem; color: var(--muted); padding: 1px 8px; border-left: 2px solid var(--line); }
+.ailog .t.err { color: var(--err); border-color: var(--err); }
+.ailog .busy { align-self: flex-start; font-size: 0.85rem; color: var(--muted); }
+.ailog .hello { color: var(--muted); font-size: 0.88rem; }
+.ailog .hello b { color: var(--ink); }
+.aisugg { display: flex; flex-wrap: wrap; gap: 6px; }
+.aisugg button { font-size: 0.8rem; border: 1px solid var(--line); background: var(--surface); border-radius: 99px; padding: 4px 10px; color: var(--ink); }
+.aisugg button:hover { border-color: var(--accent); }
+.aiform { display: grid; gap: 8px; }
+.aiform textarea { width: 100%; resize: vertical; font: inherit; font-size: 0.9rem; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); box-sizing: border-box; }
+.aiform .row { display: flex; gap: 8px; align-items: center; }
+.aiform .row #aisend { margin-right: auto; }
+@media (max-width: 560px) { .aipanel { padding: 12px; } }
 /* Etikett-Fenster */
 .sawpop { position: fixed; inset: 0; z-index: 950; background: color-mix(in srgb, var(--ink) 45%, transparent); display: grid; place-items: center; padding: 20px; }
 .sawpopin { background: var(--surface); border-radius: 18px; padding: 26px 28px; width: min(980px, 96vw); max-height: 92vh; overflow: auto; display: grid; gap: 14px;
@@ -982,8 +1022,9 @@ table.fmt.one .onet { display: inline; }
     <div class="toprow">
     <div class="proj" role="group" aria-label="Projekt">
       <button type="button" class="btn small" id="projopen" title="Gespeichertes Projekt (.s2m) öffnen – ersetzt die Teileliste; die Datei kann auch auf die Seite gezogen werden"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1H7.5a2 2 0 0 0-1.9 1.4L3 19z"/><path d="M3 19l2.6-7.6A2 2 0 0 1 7.5 10H22l-2.7 7.6a2 2 0 0 1-1.9 1.4H3z"/></svg>Projekt öffnen</button>
-      <button type="button" class="btn small" id="projsave" title="Projekt als Datei (.s2m) speichern: STEP/DXF, alle Änderungen je Teil, Farben, Anzahl, Maße – später oder auf einem anderen PC weiterarbeiten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h11l4 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 1-2z"/><path d="M8 3v5h7V3M8 21v-6h8v6"/></svg>Projekt speichern</button>
+      <button type="button" class="btn small" id="projsave" title="Ganzes Projekt als Datei (.s2m) speichern: STEP/DXF, alle Änderungen je Teil, Stückliste (Anzahl, Kanten, Farben), Zuschnittplan (Format, Pläne von Hand, Stand im Sägemodus), Maße und Einstellungen – später oder auf einem anderen PC weiterarbeiten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h11l4 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 1-2z"/><path d="M8 3v5h7V3M8 21v-6h8v6"/></svg>Projekt speichern</button>
     </div>
+    <button type="button" class="btn small aibtn" id="aibtn" aria-expanded="false" aria-controls="aipanel" title="KI-Assistent: Stückliste bearbeiten, sortieren, Material und Kanten setzen, Zuschnitt einstellen – mit eigenem Anthropic-API-Schlüssel"><span aria-hidden="true">✨</span> KI-Assistent</button>
     <div class="theme" role="group" aria-label="Darstellung">
       <button type="button" data-theme-set="light" aria-pressed="false" title="Heller Modus"><span aria-hidden="true">☀</span> Hell</button>
       <button type="button" data-theme-set="dark" aria-pressed="false" title="Dunkler Modus"><span aria-hidden="true">☾</span> Dunkel</button>
@@ -1129,6 +1170,28 @@ table.fmt.one .onet { display: inline; }
   </details>
 </div>
 <div class="toast" id="toast" hidden></div>
+<aside class="aipanel" id="aipanel" hidden aria-label="KI-Assistent">
+  <div class="aihead"><h2><span aria-hidden="true">✨</span> KI-Assistent</h2>
+    <button type="button" class="btn ghost small" id="aisetbtn" aria-expanded="false" aria-controls="aiset">⚙ Einstellungen</button>
+    <button type="button" class="btn ghost small" id="aiclose" aria-label="KI-Assistent schließen">✕</button></div>
+  <div class="aiset" id="aiset" hidden>
+    <label>Anthropic-API-Schlüssel <input type="password" id="aikey" autocomplete="off" spellcheck="false" placeholder="sk-ant-…"></label>
+    <label class="ck"><input type="checkbox" id="aikeep"> Schlüssel auf diesem Gerät merken</label>
+    <label>Modell <select id="aimodel"></select></label>
+    <label>Gründlichkeit <select id="aieffort"></select></label>
+    <p class="note">Den Schlüssel gibt es in der Anthropic-Konsole (console.anthropic.com → API Keys); die Kosten laufen über dieses Konto.
+      Gesendet werden nur die Daten der Teileliste (Namen, Maße, Material, Kanten, Zuschnitt) – keine STEP-Dateien. Der Schlüssel bleibt im Browser
+      (ohne Haken nur bis zum Schließen) – auf fremden Geräten nicht merken.</p>
+  </div>
+  <div class="ailog" id="ailog" aria-live="polite"></div>
+  <div class="aisugg" id="aisugg"></div>
+  <form class="aiform" id="aiform">
+    <textarea id="aiin" rows="3" placeholder="z. B. „Sortiere nach Material und Dicke, große Teile zuerst“ – Enter sendet, Umschalt + Enter = neue Zeile" aria-label="Frage oder Auftrag an den KI-Assistenten"></textarea>
+    <div class="row"><button type="submit" class="btn primary" id="aisend">Senden</button>
+      <button type="button" class="btn ghost small" id="aiundo" disabled title="Änderungen der letzten Anfrage zurücknehmen">↶ Rückgängig</button>
+      <button type="button" class="btn ghost small" id="ainew" title="Neues Gespräch (Verlauf leeren)">Neu</button></div>
+  </form>
+</aside>
 
 <script src="js/step.js"></script>
 <script src="js/panel.js"></script>
@@ -1144,6 +1207,8 @@ table.fmt.one .onet { display: inline; }
 <script src="js/cutplan.js"></script>
 <script src="js/pdf.js"></script>
 <script src="js/labels.js"></script>
+<script src="js/voice.js"></script>
+<script src="js/assist.js"></script>
 <script src="js/occtmesh.js"></script>
 <script src="js/view3d.js"></script>
 <script>
@@ -1722,7 +1787,19 @@ table.fmt.one .onet { display: inline; }
     const used = new Set(state.parts.map((p) => String(boardKeyOf(p)).split('|')[0]).filter((k) => k.slice(0, 4) === 'dek:').map((k) => k.slice(4)));
     const dk = localDecors.filter((x) => used.has(x.key));
     if (dk.length) data.dekore = dk;
+    // Stückliste/Zuschnitt (Format, Schnittfuge, Pläne von Hand, Haken im Sägemodus, Kanten) und die Einstellungen gehen mit
+    data.lists = projectLists();
+    data.settings = JSON.parse(JSON.stringify(state.settings));
     saveOne(base + '_' + stamp + '.s2m', JSON.stringify(data), 'application/json');
+  }
+  // Listen-Werte, die zum Projekt gehören (Ansicht, Zoom und Säge-Einstellungen bleiben am Gerät)
+  const PROJECT_LST_KEYS = ['group', 'raw', 'sheetL', 'sheetW', 'kerf', 'trim', 'grain', 'cuts', 'dir', 'goal', 'groupSheet', 'manual', 'sawDone', 'saw',
+    'edgeMm', 'edgeName1', 'edgeName2', 'edgeColor2', 'edgeExtra', 'edgeDeduct', 'edgeAuto', 'edgeFront', 'edgeRules'];
+  const SETTINGS_LOCAL = ['xconverterPath', 'toolsFile', 'pgmxDir']; // Pfade gehören zum PC
+  function projectLists() {
+    const o = {};
+    for (const k of PROJECT_LST_KEYS) if (lst[k] !== undefined) o[k] = lst[k];
+    return JSON.parse(JSON.stringify(o));
   }
   function openProject(text, name) {
     let data;
@@ -1732,6 +1809,22 @@ table.fmt.one .onet { display: inline; }
     state.parts = [];
     anim.result = null;
     if (Array.isArray(data.dekore)) mergeDecors(data.dekore);
+    // Einstellungen des Projekts (Werkzeuge, Regeln, Sauger …): nur nach Nachfrage, wenn sie von den eigenen abweichen
+    if (data.settings && typeof data.settings === 'object') {
+      const strip = (o) => { const c = Object.assign({}, o); for (const k of SETTINGS_LOCAL) delete c[k]; return JSON.stringify(Object.keys(c).sort().map((k) => [k, c[k]])); };
+      const mine = Object.assign({}, state.settings);
+      const theirs = Object.assign({}, XcsWriter.DEFAULTS, data.settings);
+      if (strip(mine) !== strip(theirs) && confirm('Das Projekt wurde mit anderen Einstellungen gespeichert (Werkzeuge, Regeln, Sauger …).\n\nOK = Einstellungen aus dem Projekt übernehmen\nAbbrechen = eigene Einstellungen behalten')) {
+        for (const k of SETTINGS_LOCAL) if (mine[k] !== undefined) theirs[k] = mine[k];
+        state.settings = theirs;
+        saveSettings(); renderSettings(); renderRule(); renderProfileEditor();
+      }
+    }
+    if (data.lists && typeof data.lists === 'object') {
+      for (const k of PROJECT_LST_KEYS) if (data.lists[k] !== undefined) lst[k] = data.lists[k];
+      saveLst();
+      syncListInputs();
+    }
     // Maße des alten Projekts in Möbel 3D verwerfen (die neuen setzt restoreFrom)
     if (mdl.viewer) mdl.viewer.clearDims();
     mdl.dimsSaved = null;
@@ -4496,6 +4589,8 @@ table.fmt.one .onet { display: inline; }
       ((m) => '<span class="seg lmode" role="group" aria-label="Etiketten beim Sägen" title="Etiketten beim Sägen: aus, Fenster zum Antippen oder automatisch bei „Weiter“ drucken">' +
         '<span class="lab">🏷 Etiketten</span>' + [['off', 'Aus'], ['popup', 'Fenster'], ['auto', 'Automatisch']].map(([k, t]) =>
         '<button type="button" data-lmode="' + k + '" aria-pressed="' + (m === k) + '">' + t + '</button>').join('') + '</span>')(sawLabelMode(cfg)) +
+      '<span class="seg vctl" role="group" aria-label="Sprache"><button type="button" data-saw="voice" aria-pressed="' + voiceOn() + '" title="Sprachbefehle: „weiter“, „zurück“, „drucken“, „nächster Streifen“, „nächste Platte“, „nochmal“, „Mikrofon aus“">🎤 Sprache</button>' +
+        '<button type="button" data-saw="say" aria-pressed="' + !!lst.sawSay + '" title="Ansage: Schritt und Maß nach jedem Schritt vorlesen">🔊 Ansage</button></span>' +
       '<button type="button" class="btn ghost small" data-saw="cfg" aria-expanded="' + String(!!lst.sawCfgOpen) + '">⚙ Schnittfolge</button>' +
       '<button type="button" class="btn ghost small" data-saw="reset">Von vorn</button>' +
       '<button type="button" class="btn small" data-saw="full" aria-pressed="' + full + '">' + (full ? '✕ Vollbild beenden' : '⛶ Vollbild') + '</button></div>' +
@@ -4517,8 +4612,9 @@ table.fmt.one .onet { display: inline; }
         : '<div class="sawhead"><span class="sk done">Fertig</span></div><div class="dir">Platte ' + (x.i + 1) + ' ist geschnitten – ' + x.s.parts.length + ' Teile.</div>' +
           (list[xi + 1] ? '<button type="button" class="btn sawbig" data-saw="nextsheet">Nächste Platte ▶</button>' : '<div class="tx">Alle Platten fertig.</div>')) +
       '<div class="sawnav"><button type="button" class="btn ghost" data-saw="prev"' + (cur ? '' : ' disabled') + '>◀ Zurück</button>' +
-      '<button type="button" class="btn" data-saw="next"' + (st ? '' : ' disabled') + '>Weiter ▶</button></div>' +
-      '<div class="sn keys">Tasten: → oder Leertaste = weiter · ← = zurück · F = Vollbild</div>' +
+      '<button type="button" class="btn go" data-saw="next"' + (st ? '' : ' disabled') + '>Weiter ▶</button></div>' +
+      '<div class="sn keys">Tasten: → oder Leertaste = weiter · ← = zurück · F = Vollbild' + (voiceOn() ? ' · Sprache: „weiter“, „zurück“, „drucken“, „nächster Streifen“, „nochmal“' : '') + '</div>' +
+      (voice.msg || voice.heard ? '<div class="vstat' + (voice.msg ? ' warn' : '') + '" role="status">' + esc(voice.msg || '🎤 „' + voice.heard + '“' + (voice.cmd ? '' : ' – kein Befehl')) + '</div>' : '') +
       '<div class="sn">' + Object.entries(kindTot).map(([k2, v]) => v + ' × ' + SAW_KIND[k2]).join(' · ') + '</div></div></div>' + sawPopHtml(x);
     $('sawsheet').addEventListener('change', (e) => { lst.saw = { key: e.target.value, step: 0 }; sawPop = null; saveLst(); renderSaw(); });
     host.querySelectorAll('[data-saw]').forEach((b) => b.addEventListener('click', () => sawGo(b.dataset.saw)));
@@ -4645,6 +4741,19 @@ table.fmt.one .onet { display: inline; }
     }
     else if (what === 'nextsheet' && list[xi + 1]) lst.saw = { key: list[xi + 1].key, step: 0 };
     else if (what === 'full') { sawFull(!$('sawview').classList.contains('sawfull')); return; }
+    else if (what === 'voice') { voiceToggle(); return; }
+    else if (what === 'say') { lst.sawSay = !lst.sawSay; saveLst(); renderSaw(); if (lst.sawSay) sawSay(); return; }
+    else if (what === 'strip') {
+      // nächster Streifen: zum ersten Schritt eines anderen Streifens (ohne Etiketten)
+      const steps = sawSteps(list[xi]).steps;
+      const cur = lst.saw.step | 0;
+      const sn = steps[cur] && steps[cur].sn;
+      let j = cur + 1;
+      while (j < steps.length && !(steps[j].sn && steps[j].sn !== sn)) j++;
+      lst.saw.step = Math.min(n, j);
+      sawPop = null;
+      if (lst.saw.step === n) { if (!lst.sawDone || typeof lst.sawDone !== 'object') lst.sawDone = {}; lst.sawDone[list[xi].key] = sawSig(list[xi]); }
+    }
     else if (what === 'cfg') lst.sawCfgOpen = !lst.sawCfgOpen;
     else if (what === 'cfgclose') lst.sawCfgOpen = false;
     else if (what === 'cfgreset') { lst.sawCfg = null; lst.saw.step = 0; }
@@ -4652,6 +4761,67 @@ table.fmt.one .onet { display: inline; }
     saveLst();
     renderSaw();
   }
+  /*
+   * Sprachsteuerung (js/voice.js): Befehle wie die Knöpfe; „drucken“ druckt die Etiketten im offenen Fenster (sonst das
+   * Streifen-Etikett des aktuellen Schritts). Ansage (lst.sawSay): Schritt und Maß nach jedem Schritt vorlesen.
+   */
+  const voice = { ctl: null, msg: '', heard: '', cmd: null };
+  const voiceOn = () => !!(voice.ctl && voice.ctl.on);
+  function voiceToggle() {
+    if (!voice.ctl) {
+      voice.ctl = Voice.create({
+        voskBase: new URL('js/vendor/vosk/', location.href).href,
+        onCommand: (cmd) => voiceCommand(cmd),
+        onHeard: (t, cmd) => { voice.heard = t; voice.cmd = cmd; voice.msg = ''; if (state.page === 'lists' && lst.tab === 'saw') renderSaw(); },
+        onState: (x) => { voice.msg = x.msg; if (!x.on) voice.heard = ''; if (state.page === 'lists' && lst.tab === 'saw') renderSaw(); },
+      });
+    }
+    if (voice.ctl.on) { voice.ctl.stop(); voice.msg = ''; voice.heard = ''; renderSaw(); toast('🎤 Sprache aus'); }
+    else { voice.msg = ''; voice.ctl.start().then(() => { if (voice.ctl.on) toast('🎤 Sprache an – „weiter“, „zurück“, „drucken“, „nächster Streifen“'); renderSaw(); }); }
+  }
+  function voiceCommand(cmd) {
+    if (state.page !== 'lists' || lst.tab !== 'saw') return;
+    if (cmd === 'print') { sawPrintNow(); return; }
+    if (cmd === 'say') { sawSay(); return; }
+    if (cmd === 'sheet') { sawGo('nextsheet'); }
+    else sawGo(cmd); // next, prev, strip, full
+    if (lst.sawSay && cmd !== 'full') sawSay();
+  }
+  // „drucken“: offenes Etikett-Fenster ganz (Streifen + Teile, ein Druckauftrag), sonst das Streifen-Etikett
+  function sawPrintNow() {
+    const list = sawSheets();
+    const x = lst.saw && list.find((y) => y.key === lst.saw.key);
+    if (!x) return;
+    if (sawPop) {
+      const parts = sawPop.uids.map((u) => sawPart(x, u)).filter((q) => q && q.res && q.res.panel);
+      const sp = sawPop.strip ? stripsOf(x.g, x.i).find((q) => q.strip.n === sawPop.strip) : null;
+      if (!parts.length && !sp) { toast('Nichts zu drucken.'); return; }
+      lblNums = labelNums();
+      printLabelHtml((sp ? stripLabelHtml(sp) : '') + parts.map(labelHtml).join(''));
+      if (sp) sawPop.printed.add('strip');
+      for (const u of sawPop.uids) sawPop.printed.add(u);
+      renderSaw();
+      return;
+    }
+    const st = sawSteps(x).steps[lst.saw.step | 0];
+    if (st && st.sn) sawGo('striplbl'); else toast('Nichts zu drucken – Etiketten gibt es nach einem Schnitt, der Teile fertig macht.');
+  }
+  // Ansage des aktuellen Schritts (Sprachausgabe des Browsers)
+  function sawSay() {
+    const list = sawSheets();
+    const x = lst.saw && list.find((y) => y.key === lst.saw.key);
+    if (!x) return;
+    const { steps, cfg } = sawSteps(x);
+    const cur = lst.saw.step | 0;
+    const st = steps[cur];
+    if (sawPop) { Voice.say('Fertig. Etikett drucken oder weiter.'); return; }
+    if (!st) { Voice.say('Platte ' + (x.i + 1) + ' ist fertig.'); return; }
+    const t = sawText(st, x, cfg);
+    const m = sawMeasure(st, cfg);
+    Voice.say('Schritt ' + (cur + 1) + '. ' + (st.sn ? 'Streifen ' + st.sn + '. ' : '') + t.kind + ', ' + (st.dir === 'h' ? 'längs' : 'quer') + '. ' + n1(m.v) + ' Millimeter.');
+  }
+  // Seite oder Reiter verlassen: Mikrofon aus
+  function voiceIdle() { if (voiceOn() && !(state.page === 'lists' && lst.tab === 'saw')) { voice.ctl.stop(true); voice.heard = ''; voice.msg = ''; } }
   document.addEventListener('keydown', (e) => {
     if (state.page !== 'lists' || lst.tab !== 'saw' || e.altKey || e.ctrlKey || e.metaKey) return;
     if (e.target && /^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(e.target.tagName) && e.key === ' ') return;
@@ -4674,6 +4844,7 @@ table.fmt.one .onet { display: inline; }
     $('czoomg').hidden = $('cfontg').hidden = lst.tab !== 'cut'; // Sägemodus: eigene Regler oben in der Leiste
     $('lcsv').hidden = lst.tab !== 'bom';
     $('lgroup').checked = lst.group;
+    voiceIdle();
     if (lst.tab === 'bom') renderBom();
     else if (lst.tab === 'saw') renderSaw();
     else $('cutsheets').innerHTML = renderCut(false);
@@ -4824,6 +4995,7 @@ table.fmt.one .onet { display: inline; }
   function setPage(pg) {
     state.page = pg;
     storeJson(PAGE_KEY, pg);
+    voiceIdle();
     document.body.dataset.page = pg;
     $('modelpage').hidden = pg !== 'model';
     $('listpage').hidden = pg !== 'lists';
@@ -6577,6 +6749,303 @@ table.fmt.one .onet { display: inline; }
     state.parts.forEach(compute);
     renderToolLib(); renderSettings(); render();
   });
+
+  // ------------------------------------------------ Programm-Schnittstelle (window.Step2Maestro.api) und KI-Assistent
+  /*
+   * Die Schnittstelle bedient Teileliste, Stückliste und Zuschnitt mit einfachen Daten (JSON) – der KI-Assistent (js/assist.js)
+   * ruft genau diese Funktionen als Werkzeuge auf; sie lassen sich auch aus der Browser-Konsole oder einem eigenen Skript nutzen.
+   * Fehler als Exception mit deutschem Text. Nach Änderungen wird die Seite neu gezeichnet und die Sitzung gespeichert.
+   */
+  const rd = (v) => (typeof v === 'number' ? Math.round(v * 10) / 10 : v);
+  function apiPartOf(nr) {
+    const p = state.parts[(nr | 0) - 1];
+    if (!p || nr !== (nr | 0)) throw new Error('Bauteil ' + nr + ' gibt es nicht (1 … ' + state.parts.length + ').');
+    return p;
+  }
+  function apiPart(p, i) {
+    const r = p.res || p.result;
+    const pn = r && r.panel;
+    const b = boardKeyOf(p);
+    const t = pn ? partTime(p) : null;
+    const prof = p.profile === null || p.profile === undefined ? null : (state.settings.profiles[p.profile] || {}).name || null;
+    return { teil: i + 1, name: p.solid ? p.solid.name : p.label, datei: String(p.label || '').replace(/^Beispiel: /, ''), L: pn ? rd(pn.L) : null, B: pn ? rd(pn.W) : null,
+      D: pn ? rd(pn.T) : null, anzahl: qtyOf(p), material: { key: b, name: boardName(b) }, kanten: edgesOf(p), kanten_von_hand: !!p.edges, faser: grainOf(p),
+      profil: prof, zweiseitig: !!(r && r.side2), zeit_s: t ? Math.round(t.total) : null, warnungen: r && r.warnings ? r.warnings.slice(0, 6) : [],
+      fehler: p.error || (r && r.error) || null, programm: p.fileName || (r && r.fileName) || null };
+  }
+  // gültiger Material-Schlüssel? (Liste aus materialien_lesen, eigene Farbe #rrggbb[/u][~Name] oder Dekor dek:KEY)
+  function apiBoardKey(k) {
+    k = String(k || '').trim();
+    if (!k) return null;
+    if (View3D.MATERIALS.some((m) => m.id === k.split('|')[0]) || customBoards().includes(k)) return k;
+    if (/^dek:/.test(k) && View3D.decors().some((d) => 'dek:' + d.key === k.split('|')[0])) return k;
+    if (/^#[0-9a-f]{6}(\/u)?(~[^|]{1,80})?$/i.test(k)) return k;
+    if (state.parts.some((p) => boardKeyOf(p) === k)) return k;
+    throw new Error('Material „' + k + '“ unbekannt – Schlüssel aus materialien_lesen nehmen.');
+  }
+  function syncListInputs() {
+    for (const [id, k] of [['csheetL', 'sheetL'], ['csheetW', 'sheetW'], ['ckerf', 'kerf'], ['ctrim', 'trim'], ['emm', 'edgeMm'], ['eextra', 'edgeExtra'], ['ename1', 'edgeName1'], ['ename2', 'edgeName2'], ['cdir', 'dir'], ['cgoal', 'goal']]) {
+      if ($(id) && lst[k] !== undefined) $(id).value = lst[k];
+    }
+    for (const [id, k] of [['craw', 'raw'], ['cgrain', 'grain'], ['ccuts', 'cuts'], ['ededuct', 'edgeDeduct'], ['lgroup', 'group']]) if ($(id)) $(id).checked = !!lst[k];
+    if ($('ecol2') && /^#[0-9a-f]{6}$/i.test(lst.edgeColor2 || '')) $('ecol2').value = lst.edgeColor2;
+  }
+  let apiChanged = false; // in einer KI-Anfrage etwas geändert? (für „Rückgängig“)
+  const api = {
+    teile_lesen() { return { anzahl_bauteile: state.parts.length, teile: state.parts.map(apiPart) }; },
+    stueckliste_lesen() {
+      const rows = bomRows();
+      const tot = bomTotals(rows);
+      return { positionen: rows.map((r, k) => ({ pos: k + 1, teile: r.nums, namen: r.names, anzahl: r.qty, L: rd(r.L), B: rd(r.W), D: rd(r.T), roh: { L: rd(r.raw.L), B: rd(r.raw.W) },
+        material: { key: r.board, name: boardName(r.board) }, kanten: r.edges, kanten_text: edgeText(r.edges), zeit_s_je_stueck: r.time ? Math.round(r.time.total) : null })),
+        summe: { teile: tot.qty, zeit_s: Math.round(tot.time), m2_je_material: Object.fromEntries(Array.from(tot.byMat).map(([k, v]) => [k, Math.round(v * 100) / 100])),
+          kantenband_m: Object.fromEntries(Array.from(tot.bands).map(([k, v]) => [k, Math.round(v * 10) / 10])) } };
+    },
+    zuschnitt_lesen() {
+      const groups = cutGroups();
+      const o = cutOverview(groups);
+      return { einstellungen: { platte_laenge: lst.sheetL, platte_breite: lst.sheetW, schnittfuge: lst.kerf, besaeumen: lst.trim, faser: !!lst.grain, richtung: lst.dir, ziel: lst.goal, roh: !!lst.raw },
+        gruppen: o.rows.map((r) => ({ gruppe: r.g.key, material: r.g.name, D: rd(r.g.T), format: { L: r.g.fmt.L, W: r.g.fmt.W, eigenes: !!(lst.groupSheet && lst.groupSheet[r.g.key]) },
+          platten: r.n, teile: r.parts, ausnutzung_prozent: r.util, von_hand: !!r.g.plan.manual, passt_nicht: r.g.plan.unplaced.map((u) => ({ teil: u.id, name: u.label, L: rd(u.l || u.L), B: rd(u.w || u.W) })) })),
+        summe: { platten: o.sum.n, teile: o.sum.parts, nicht_passend: o.sum.miss } };
+    },
+    materialien_lesen() {
+      const used = Array.from(new Set(state.parts.map(boardKeyOf)));
+      return { standard: { key: boardKeyOf(null), name: boardName(boardKeyOf(null)) },
+        im_projekt: used.map((k) => ({ key: k, name: boardName(k) })),
+        holz_und_farben: View3D.MATERIALS.map((m) => ({ key: m.id, name: m.name })),
+        dekore: View3D.decors().map((d) => ({ key: 'dek:' + d.key, name: d.name || d.code || d.key, code: d.code || d.key })),
+        eigene_farben: customBoards().map((k) => ({ key: k, name: boardName(k) })),
+        kantenband: { dicke_mm: lst.edgeMm, dekor1: lst.edgeName1 || 'wie Platte', dekor2: lst.edgeName2 } };
+    },
+    teile_aendern(input) {
+      const list = input.aenderungen || [];
+      const todo = list.map((c) => [apiPartOf(c.teil), c]); // erst alle prüfen, dann ändern
+      for (const [, c] of todo) if (c.material) apiBoardKey(c.material);
+      const out = [];
+      for (const [p, c] of todo) {
+        let recompute = false;
+        if (c.name !== undefined && p.solid) {
+          const base = StepToXcs.partName(String(c.name)) || p.solid.name;
+          const taken = new Set(state.parts.filter((q) => q !== p && q.solid).map((q) => q.solid.name.toLowerCase()));
+          let k = base;
+          for (let j = 2; taken.has(k.toLowerCase()); j++) k = base + '_' + j;
+          p.solid.name = k;
+          p.fileName = null;
+          recompute = true;
+        }
+        if (c.anzahl !== undefined) p.qty = Math.max(0, Math.round(c.anzahl));
+        if (c.material !== undefined) p.board = apiBoardKey(c.material);
+        if (c.kanten_auto) delete p.edges;
+        if (c.kanten) { p.edges = edgesOf(p); for (const [s2] of EDGE_SIDES) if (c.kanten[s2] !== undefined) p.edges[s2] = c.kanten[s2]; }
+        if (c.faser !== undefined) p.grain = c.faser === 'auto' ? undefined : c.faser;
+        if (recompute) compute(p);
+        out.push(apiPart(p, state.parts.indexOf(p)));
+      }
+      apiChanged = true;
+      applyBoards();
+      render();
+      return { geaendert: out.length, teile: out };
+    },
+    teile_sortieren(input) {
+      const order = input.reihenfolge || [];
+      const seen = new Set();
+      for (const nr of order) { apiPartOf(nr); if (seen.has(nr)) throw new Error('Bauteil ' + nr + ' doppelt in der Reihenfolge.'); seen.add(nr); }
+      const sel = state.parts[state.sel];
+      const first = order.map((nr) => state.parts[nr - 1]);
+      state.parts = first.concat(state.parts.filter((p, i) => !seen.has(i + 1)));
+      state.sel = Math.max(0, state.parts.indexOf(sel));
+      apiChanged = true;
+      render();
+      return { reihenfolge: state.parts.map((p, i) => ({ teil: i + 1, name: p.solid ? p.solid.name : p.label })) };
+    },
+    teile_loeschen(input) {
+      const nrs = Array.from(new Set(input.teile || []));
+      for (const nr of nrs) apiPartOf(nr);
+      const gone = new Set(nrs.map((nr) => state.parts[nr - 1]));
+      const sel = state.parts[state.sel];
+      state.parts = state.parts.filter((p) => !gone.has(p));
+      state.sel = Math.max(0, Math.min(state.parts.length - 1, state.parts.indexOf(sel)));
+      anim.result = null;
+      apiChanged = true;
+      render();
+      return { geloescht: gone.size, uebrig: state.parts.length };
+    },
+    teil_anlegen(input) {
+      const board = input.material ? apiBoardKey(input.material) : null;
+      const n0 = state.parts.length;
+      addManualPart({ name: String(input.name).trim() || 'Teil', L: +input.laenge, W: +input.breite, T: +input.dicke, qty: Math.max(1, Math.round(input.anzahl || 1)), board: board });
+      if (state.parts.length === n0) throw new Error('Teil konnte nicht angelegt werden.');
+      apiChanged = true;
+      render();
+      return apiPart(state.parts[state.parts.length - 1], state.parts.length - 1);
+    },
+    zuschnitt_einstellen(input) {
+      const map = { platte_laenge: 'sheetL', platte_breite: 'sheetW', schnittfuge: 'kerf', besaeumen: 'trim', faser: 'grain', richtung: 'dir', ziel: 'goal', roh: 'raw' };
+      if (input.format !== undefined && !input.gruppe) throw new Error('format nur zusammen mit gruppe.');
+      if (input.gruppe && !cutGroups().some((g) => g.key === input.gruppe)) throw new Error('Gruppe „' + input.gruppe + '“ gibt es nicht – Schlüssel aus zuschnitt_lesen.');
+      for (const [k, v] of Object.entries(input)) if (map[k]) lst[map[k]] = v;
+      if (input.gruppe && input.format !== undefined) {
+        if (!lst.groupSheet || typeof lst.groupSheet !== 'object') lst.groupSheet = {};
+        if (input.format === null) delete lst.groupSheet[input.gruppe]; else lst.groupSheet[input.gruppe] = { L: input.format.L, W: input.format.W };
+      }
+      saveLst();
+      syncListInputs();
+      apiChanged = true;
+      render();
+      return api.zuschnitt_lesen();
+    },
+    seite_zeigen(input) {
+      const to = { programme: ['pgmx'], moebel3d: ['model'], stueckliste: ['lists', 'bom'], zuschnitt: ['lists', 'cut'], saegen: ['lists', 'saw'], etiketten: ['labels'], material: ['material'] }[input.seite];
+      if (!to) throw new Error('unbekannte Seite');
+      if (input.teil) { apiPartOf(input.teil); state.sel = input.teil - 1; }
+      if (to[1]) { lst.tab = to[1]; saveLst(); }
+      setPage(to[0]);
+      render();
+      return { seite: input.seite };
+    },
+    // für eigene Skripte: Projekt als Daten (wie die .s2m-Datei) und Neuberechnung
+    projekt() { return { session: JSON.parse(JSON.stringify(sessionData())), lists: projectLists() }; },
+  };
+  window.Step2Maestro = { api: api, version: 1 };
+
+  // ---- KI-Assistent (Fenster rechts)
+  const AI_KEY = 'step2xcs.ai.v1';
+  const ai = Object.assign({ model: Assist.DEFAULT_MODEL, effort: 'medium', keep: false }, loadJson(AI_KEY, {}) || {});
+  const aiState = { history: [], busy: false, undo: null, client: null, clientKey: null };
+  const aiKeyNow = () => { try { return ai.keep ? (localStorage.getItem(AI_KEY + '.key') || '') : (sessionStorage.getItem(AI_KEY + '.key') || ''); } catch (e) { return aiState.mem || ''; } };
+  function aiStoreKey(k) {
+    aiState.mem = k;
+    try {
+      localStorage.removeItem(AI_KEY + '.key'); sessionStorage.removeItem(AI_KEY + '.key');
+      if (k) (ai.keep ? localStorage : sessionStorage).setItem(AI_KEY + '.key', k);
+    } catch (e) { /* nur im Speicher */ }
+  }
+  const aiSave = () => storeJson(AI_KEY, { model: ai.model, effort: ai.effort, keep: ai.keep });
+  let anthropicLoading = null;
+  function loadAnthropic() {
+    if (window.Anthropic) return Promise.resolve(window.Anthropic);
+    if (!anthropicLoading) {
+      anthropicLoading = new Promise((resolve, reject) => {
+        const el = document.createElement('script');
+        el.src = 'js/vendor/anthropic.js';
+        el.onload = () => (window.Anthropic ? resolve(window.Anthropic) : reject(new Error('Anthropic-SDK fehlt')));
+        el.onerror = () => reject(new Error('Datei fehlt: js/vendor/anthropic.js'));
+        document.head.appendChild(el);
+      });
+      anthropicLoading.catch(() => { anthropicLoading = null; });
+    }
+    return anthropicLoading;
+  }
+  const AI_SUGG = ['Sortiere die Liste nach Material und Dicke, große Teile zuerst', 'Prüf die Stückliste: fehlen Kanten oder stimmen Anzahlen nicht?',
+    'Wie viele Platten brauche ich und wie ist die Ausnutzung?', 'Setz bei allen Fronten Kanten ringsum'];
+  function aiLog(cls, text) {
+    const log = $('ailog');
+    const hello = log.querySelector('.hello');
+    if (hello) { hello.remove(); $('aisugg').innerHTML = ''; } // Vorschläge nur am Anfang
+    const d = document.createElement('div');
+    d.className = cls;
+    d.textContent = text;
+    log.appendChild(d);
+    log.scrollTop = log.scrollHeight;
+    return d;
+  }
+  function aiHello() {
+    $('ailog').innerHTML = '<div class="hello"><p><b>Was soll ich tun?</b> Ich kann die Teileliste sortieren, Namen, Anzahl, Material, Kanten und Faser setzen, ' +
+      'Teile anlegen oder löschen und den Zuschnitt einstellen. Bearbeitungen (Bohrungen, Fräsungen) ändere ich nicht.</p>' +
+      (aiKeyNow() ? '' : '<p>Zuerst unter ⚙ Einstellungen den Anthropic-API-Schlüssel eintragen.</p>') + '</div>';
+    $('aisugg').innerHTML = AI_SUGG.map((t) => '<button type="button" data-aisugg="' + esc(t) + '">' + esc(t) + '</button>').join('');
+  }
+  function aiOpen(on) {
+    $('aipanel').hidden = !on;
+    $('aibtn').setAttribute('aria-expanded', String(on));
+    if (!on) return;
+    if (!$('ailog').children.length) aiHello();
+    if (!aiKeyNow()) aiSetOpen(true);
+    $(aiKeyNow() ? 'aiin' : 'aikey').focus();
+  }
+  function aiSetOpen(on) {
+    $('aiset').hidden = !on;
+    $('aisetbtn').setAttribute('aria-expanded', String(on));
+    if (on) {
+      $('aikey').value = aiKeyNow();
+      $('aikeep').checked = !!ai.keep;
+      $('aimodel').innerHTML = Assist.MODELS.map(([v, t]) => '<option value="' + v + '"' + (v === ai.model ? ' selected' : '') + '>' + esc(t) + '</option>').join('');
+      $('aieffort').innerHTML = Assist.EFFORTS.map(([v, t]) => '<option value="' + v + '"' + (v === ai.effort ? ' selected' : '') + '>' + esc(t) + '</option>').join('');
+    }
+  }
+  async function aiSend(text) {
+    text = String(text || '').trim();
+    if (!text || aiState.busy) return;
+    const key = aiKeyNow();
+    if (!key) { aiSetOpen(true); $('aikey').focus(); toast('Bitte zuerst den API-Schlüssel eintragen.'); return; }
+    aiState.busy = true;
+    $('aisend').disabled = true;
+    $('aiin').value = '';
+    aiLog('m u', text);
+    const busy = aiLog('busy', 'denkt nach …');
+    // Stand vor der Anfrage merken (Rückgängig)
+    const snap = { session: JSON.parse(JSON.stringify(sessionData())), lists: projectLists() };
+    apiChanged = false;
+    const n0 = aiState.history.length;
+    aiState.history.push({ role: 'user', content: text });
+    try {
+      const A = await loadAnthropic();
+      if (!aiState.client || aiState.clientKey !== key) {
+        aiState.client = new A({ apiKey: key, dangerouslyAllowBrowser: true, maxRetries: 2 });
+        aiState.clientKey = key;
+      }
+      const res = await Assist.run({ client: aiState.client, model: ai.model, effort: ai.effort, history: aiState.history,
+        exec: (name, input) => { if (!api[name]) throw new Error('unbekannt: ' + name); return api[name](input); },
+        onStep: (st) => {
+          if (st.type === 'tool') { const d = aiLog('t' + (st.error ? ' err' : ''), '› ' + Assist.toolText(st) + (st.error ? ' – ' + st.error : '')); $('ailog').insertBefore(d, busy); }
+          else { const d = aiLog('m a', st.text); $('ailog').insertBefore(d, busy); }
+        } });
+      busy.remove();
+      if (res.stop === 'refusal' || res.stop === 'max_tokens' || res.stop === 'steps') aiLog('m e', res.text);
+      else if (!res.text) aiLog('m a', 'Erledigt.');
+    } catch (e) {
+      busy.remove();
+      aiLog('m e', Assist.errorText(e, window.Anthropic));
+      // Anfrage ohne Antwort: aus dem Verlauf nehmen, damit das Gespräch gültig bleibt
+      if (aiState.history.length > n0 && aiState.history[aiState.history.length - 1].role === 'user' && typeof aiState.history[aiState.history.length - 1].content === 'string') aiState.history.length = n0;
+    }
+    if (apiChanged) { aiState.undo = snap; $('aiundo').disabled = false; }
+    aiState.busy = false;
+    $('aisend').disabled = false;
+    $('aiin').focus();
+  }
+  function aiUndo() {
+    const snap = aiState.undo;
+    if (!snap) return;
+    state.parts = [];
+    anim.result = null;
+    restoreFrom(snap.session);
+    for (const k of PROJECT_LST_KEYS) { if (snap.lists[k] !== undefined) lst[k] = snap.lists[k]; else delete lst[k]; }
+    saveLst();
+    syncListInputs();
+    aiState.undo = null;
+    $('aiundo').disabled = true;
+    applyBoards();
+    render();
+    aiLog('t', '↶ Änderungen der letzten Anfrage zurückgenommen');
+    // die KI soll wissen, dass ihr Stand nicht mehr gilt
+    if (aiState.history.length) aiState.history.push({ role: 'user', content: '(Hinweis: Der Benutzer hat die Änderungen deiner letzten Antwort mit „Rückgängig“ zurückgenommen. Lies den Stand neu, bevor du weitermachst.)' },
+      { role: 'assistant', content: 'Verstanden – ich lese den Stand vor der nächsten Änderung neu.' });
+  }
+  $('aibtn').addEventListener('click', () => aiOpen($('aipanel').hidden));
+  $('aiclose').addEventListener('click', () => { aiOpen(false); $('aibtn').focus(); });
+  $('aisetbtn').addEventListener('click', () => aiSetOpen($('aiset').hidden));
+  $('aikey').addEventListener('change', (e) => { aiStoreKey(e.target.value.trim()); if (aiKeyNow()) aiHello(); });
+  $('aikeep').addEventListener('change', (e) => { const k = aiKeyNow() || $('aikey').value.trim(); ai.keep = e.target.checked; aiSave(); aiStoreKey(k); });
+  $('aimodel').addEventListener('change', (e) => { ai.model = e.target.value; aiSave(); });
+  $('aieffort').addEventListener('change', (e) => { ai.effort = e.target.value; aiSave(); });
+  $('aiform').addEventListener('submit', (e) => { e.preventDefault(); aiSend($('aiin').value); });
+  $('aiin').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); aiSend($('aiin').value); } });
+  $('aisugg').addEventListener('click', (e) => { const b = e.target.closest('[data-aisugg]'); if (b) aiSend(b.dataset.aisugg); });
+  $('aiundo').addEventListener('click', aiUndo);
+  $('ainew').addEventListener('click', () => { if (aiState.busy) return; aiState.history = []; aiHello(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('aipanel').hidden && !document.querySelector('.sawpop')) { aiOpen(false); } });
 
   // Start mit Beispiel aus Onshape
   renderToolLib();

@@ -9,6 +9,7 @@ Inhalt der ZIP
 --------------
   ANLEITUNG-PI.txt     diese Datei
   einrichten.sh        richtet alles ein (Drucker, Vollbild-Start)
+  sprache_holen.sh     holt die Offline-Spracherkennung (für --sprache)
   step2maestro/        das Programm zum Offline-Betrieb (ohne Server)
 
 Einkaufsliste
@@ -25,6 +26,8 @@ Einkaufsliste
   sonst eine gute SD-Karte (A2, 64 GB)
 * Touch-Monitor 15,6" mit HDMI und USB-Touch (Full HD), Kabel Micro-HDMI auf HDMI
 * Die Zebra hängt per USB direkt am Pi
+* Für Sprachbefehle: USB-Headset mit Mikrofon am Kopf (an der Säge ist es laut –
+  ein Tischmikrofon versteht im Lärm wenig), z. B. ein einfaches USB-Headset
 
 1. Raspberry Pi OS installieren
 -------------------------------
@@ -49,6 +52,8 @@ ZIP auf den Pi kopieren (USB-Stick) und entpacken, z. B. in den Ordner
   --etikett 40x60   Etikettgröße in mm (Breite x Höhe), Vorgabe 40x60
   --dpi 203      Auflösung der Zebra (steht auf dem Typenschild: 203 oder 300)
   --test         druckt am Ende ein Testetikett
+  --sprache      Sprachbefehle offline („weiter“, „zurück“, „drucken“,
+                 „nächster Streifen“) – lädt Vosk + deutsches Modell (45 MB)
 
 Das Skript fragt nach dem Passwort (für die Installation). Danach:
 
@@ -60,6 +65,25 @@ Nach dem Neustart öffnet sich Step2Maestro im Vollbild. Einmal unter
 „Werkzeuge & Regeln -> Etiketten“ die gleiche Etikettgröße einstellen wie oben
 (z. B. 40 x 60 mm). Dann: Listen -> Sägen -> Vollbild. Nach jedem fertigen Teil
 erscheint „Fertig geschnitten“ – Tippen druckt das Etikett.
+
+Sprachbefehle beim Sägen
+------------------------
+Im Sägemodus „🎤 Sprache“ antippen, dann sprechen:
+  „weiter“ (auch „okay“, „fertig“)   nächster Schritt
+  „zurück“                            Schritt zurück
+  „drucken“ / „Etikett“               Etiketten im offenen Fenster drucken
+                                      (sonst das Streifen-Etikett)
+  „nächster Streifen“                 zum nächsten Streifen springen
+  „nächste Platte“                    nächste Platte
+  „nochmal“                           Schritt und Maß vorlesen
+  „Mikrofon aus“                      Sprache aus
+„🔊 Ansage“ liest nach jedem Schritt Maß und Richtung vor.
+Die Erkennung des Browsers (Chrome/Edge am PC) braucht Internet und geht auf
+dem Pi NICHT – dort mit  --sprache  die Offline-Erkennung einrichten:
+* offline (--offline --sprache): läuft ganz auf dem Pi (eigene Adresse
+  http://127.0.0.1:8765 – Einstellungen einmal neu machen).
+* Webserver (--url … --sprache): das Skript legt den Ordner
+  „vosk-fuer-webserver“ an – auf den Server laden als step2maestro/js/vendor/vosk/
 
 Gut zu wissen
 -------------

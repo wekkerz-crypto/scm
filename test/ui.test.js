@@ -882,17 +882,24 @@ test('Web-Tool: Listen (Stückliste, Zuschnitt, Zeit) und Projektdatei speichern
     await p.click('[data-ltab="cut"]');
     await p.waitForSelector('svg.sheet');
     assert.strictEqual(await p.$$eval('svg.sheet .pt', (x) => x.length), 6);
-    // Projekt speichern, Liste leeren, Projekt öffnen → Teile und Anzahl wieder da
+    // Projekt speichern, Liste leeren, Projekt öffnen → Teile und Anzahl wieder da, auch Plattenformat des Zuschnitts
+    const setL = (v) => p.evaluate((x) => { const el = document.getElementById('csheetL'); el.value = x; el.dispatchEvent(new Event('change')); }, v);
+    await setL('2500');
     await p.click('[data-page="pgmx"]');
     const [proj] = await Promise.all([p.waitForEvent('download'), p.click('#projsave')]);
     assert.match(proj.suggestedFilename(), /\.s2m$/);
     const file = await proj.path();
+    const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
+    assert.strictEqual(saved.lists.sheetL, 2500);
+    assert.ok(saved.settings && saved.settings.fieldThreshold > 0);
     await p.click('#clear');
     await p.waitForSelector('.empty');
+    await setL('2800');
     const [chooser] = await Promise.all([p.waitForEvent('filechooser'), p.click('#projopen')]);
     await chooser.setFiles({ name: 'projekt.s2m', mimeType: 'application/json', buffer: fs.readFileSync(file) });
     await p.waitForFunction(() => document.querySelectorAll('.part').length === 3);
     assert.strictEqual(await p.textContent('#ptn-lists'), '6');
+    assert.strictEqual(await p.inputValue('#csheetL'), '2500');
     await p.click('[data-page="lists"]');
     await p.click('[data-ltab="bom"]');
     assert.strictEqual(await p.textContent('table.bom tbody tr:first-child .et'), 'L1 D2 · B2 D1');
@@ -1365,5 +1372,141 @@ test('Dekor-Bibliothek: Passwort, Hochladen, Bearbeiten – Step2Maestro überni
     await browser.close();
     srv.kill();
     fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('Web-Tool: Sägemodus per Sprache, Weiter groß und grün', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1440, height: 950 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    // Attrappe der Spracherkennung (Chrome: webkitSpeechRecognition) und der Sprachausgabe
+    await p.addInitScript(() => {
+      window.SpeechRecognition = window.webkitSpeechRecognition = class { constructor() { window.__rec = this; } start() { this.started = true; } abort() { this.started = false; } };
+      window.__said = [];
+      window.SpeechSynthesisUtterance = class { constructor(t) { this.text = t; } };
+      Object.defineProperty(window, 'speechSynthesis', { value: { cancel() {}, getVoices: () => [], speak(u) { window.__said.push(u.text); if (u.onend) setTimeout(u.onend, 0); } } });
+      window.__say = (t) => window.__rec.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: t }], { isFinal: true })] });
+    });
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    await p.click('#clear');
+    const [chooser] = await Promise.all([p.waitForEvent('filechooser'), p.click('#pick')]);
+    await chooser.setFiles(fixture('schrank3.step'));
+    await p.waitForFunction(() => document.querySelectorAll('.part').length === 10, null, { timeout: 60000 });
+    await p.click('[data-page="lists"]');
+    await p.click('[data-ltab="saw"]');
+    await p.waitForSelector('#sawview .sawcard');
+    const opts = await p.$$eval('#sawsheet option', (o) => o.map((x) => x.textContent));
+    await p.selectOption('#sawsheet', { index: opts.findIndex((t) => /U708 ST9 19 mm/.test(t)) });
+    // Weiter: grün (Farbe --on) und deutlich höher als Zurück
+    const st = await p.$eval('[data-saw="next"]', (b) => { const c = getComputedStyle(b); return { bg: c.backgroundColor, h: b.getBoundingClientRect().height }; });
+    const hp = await p.$eval('[data-saw="prev"]', (b) => b.getBoundingClientRect().height);
+    assert.strictEqual(st.bg, 'rgb(30, 138, 62)');
+    assert.ok(st.h >= 80 && st.h >= hp, st.h + ' / ' + hp);
+    const step = async () => (await p.textContent('.sawcard .snum')).split('/')[0];
+    assert.strictEqual(await step(), '1');
+    await p.click('[data-saw="voice"]');
+    await p.waitForFunction(() => window.__rec && window.__rec.started);
+    assert.strictEqual(await p.getAttribute('[data-saw="voice"]', 'aria-pressed'), 'true');
+    await p.evaluate(() => window.__say('weiter'));
+    assert.strictEqual(await step(), '2');
+    assert.match(await p.textContent('.sawcard .vstat'), /weiter/);
+    await p.evaluate(() => window.__say('zurück'));
+    assert.strictEqual(await step(), '1');
+    await p.evaluate(() => window.__say('Hallo'));
+    assert.match(await p.textContent('.sawcard .vstat'), /kein Befehl/);
+    assert.strictEqual(await step(), '1');
+    // nächster Streifen: zum ersten Schritt eines anderen Streifens
+    await p.evaluate(() => window.__say('nächster Streifen'));
+    const sn1 = await p.textContent('.sawcard .sstrip');
+    assert.match(sn1, /^Streifen 1\//);
+    await p.evaluate(() => window.__say('nächster Streifen'));
+    assert.match(await p.textContent('.sawcard .sstrip'), /^Streifen 2\//);
+    // drucken: Streifen-Etikett des aktuellen Schritts
+    await p.evaluate(() => { window.__printed = 0; window.print = () => { window.__printed++; }; });
+    await p.evaluate(() => window.__say('drucken'));
+    assert.strictEqual(await p.evaluate(() => window.__printed), 1);
+    assert.match(await p.textContent('#printarea .slb'), /STREIFEN\s*2/);
+    // Ansage an: nach „weiter“ werden Schritt und Maß vorgelesen
+    await p.click('[data-saw="say"]');
+    await p.evaluate(() => window.__say('weiter'));
+    const said = await p.evaluate(() => window.__said);
+    assert.match(said[said.length - 1], /^Schritt \d+\. .* Millimeter\.$/);
+    // Mikrofon aus per Sprache
+    await p.evaluate(() => { window.__said = []; });
+    await p.waitForTimeout(500); // Ansage vorbei
+    await p.evaluate(() => window.__say('Mikrofon aus'));
+    assert.strictEqual(await p.getAttribute('[data-saw="voice"]', 'aria-pressed'), 'false');
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('Web-Tool: KI-Assistent ruft Werkzeuge der Programm-Schnittstelle auf (Attrappe der API), Rückgängig', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1440, height: 950 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    // Attrappe des Anthropic-SDK: erst lesen, dann umbenennen + Anzahl + sortieren, dann Antwort
+    await p.addInitScript(() => {
+      window.__reqs = [];
+      const replies = [
+        { stop_reason: 'tool_use', content: [{ type: 'text', text: 'Ich lese die Teile.' }, { type: 'tool_use', id: 't1', name: 'teile_lesen', input: {} }] },
+        { stop_reason: 'tool_use', content: [{ type: 'tool_use', id: 't2', name: 'teile_aendern', input: { aenderungen: [{ teil: 1, name: 'Seite links', anzahl: 3, kanten: { l1: 2 } }] } },
+          { type: 'tool_use', id: 't3', name: 'teile_sortieren', input: { reihenfolge: [2] } },
+          { type: 'tool_use', id: 't4', name: 'teile_loeschen', input: { teile: [99] } }] },
+        { stop_reason: 'end_turn', content: [{ type: 'text', text: 'Fertig: Teil umbenannt, Anzahl 3, sortiert.' }] },
+      ];
+      window.Anthropic = class {
+        constructor(o) { this.opts = o; this.beta = { messages: { create: async (req) => { window.__reqs.push(JSON.parse(JSON.stringify(req))); return replies[window.__reqs.length - 1]; } } }; }
+      };
+    });
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    const names0 = await p.$$eval('.part .n', (x) => x.map((e) => e.textContent.replace(/^\d+/, '')));
+    await p.click('#aibtn');
+    assert.ok(await p.isVisible('#aiset')); // ohne Schlüssel: Einstellungen offen
+    await p.fill('#aikey', 'sk-ant-test');
+    await p.dispatchEvent('#aikey', 'change');
+    await p.fill('#aiin', 'Erstes Teil in Seite links umbenennen, 3 Stück, dann nach vorne sortieren');
+    await p.press('#aiin', 'Enter');
+    await p.waitForFunction(() => /Fertig: Teil umbenannt/.test(document.getElementById('ailog').textContent));
+    const reqs = await p.evaluate(() => window.__reqs);
+    assert.strictEqual(reqs.length, 3);
+    assert.strictEqual(reqs[0].model, 'claude-opus-5-5');
+    assert.strictEqual(reqs[0].fallbacks, 'default');
+    assert.deepStrictEqual(reqs[0].betas, ['server-side-fallback-2026-07-01']);
+    assert.ok(reqs[0].tools.some((t) => t.name === 'teile_aendern'));
+    // Werkzeugergebnisse gehen zurück (Fehler für Teil 99 als is_error)
+    const res2 = reqs[2].messages[reqs[2].messages.length - 1].content;
+    assert.strictEqual(res2.length, 3);
+    assert.ok(res2[2].is_error && /gibt es nicht/.test(res2[2].content));
+    assert.match(reqs[1].messages[2].content[0].content, /"teil":1/);
+    // Seite geändert: Teil umbenannt und (nach Sortieren) an zweiter Stelle, Anzahl 3
+    const names1 = await p.$$eval('.part .n', (x) => x.map((e) => e.textContent.replace(/^\d+/, '')));
+    assert.strictEqual(names1[0], names0[1]);
+    assert.strictEqual(names1[1], 'Seite_links');
+    const api = await p.evaluate(() => window.Step2Maestro.api.teile_lesen().teile[1]);
+    assert.strictEqual(api.anzahl, 3);
+    assert.strictEqual(api.kanten.l1, 2);
+    assert.match(await p.textContent('#ailog'), /Teile gelesen[\s\S]*Teile geändert[\s\S]*Liste sortiert/);
+    // Rückgängig: alter Stand
+    await p.click('#aiundo');
+    await p.waitForFunction((n) => document.querySelector('.part .n').textContent.replace(/^\d+/, '') === n, names0[0]);
+    assert.deepStrictEqual(await p.$$eval('.part .n', (x) => x.map((e) => e.textContent.replace(/^\d+/, ''))), names0);
+    assert.strictEqual(await p.evaluate(() => window.Step2Maestro.api.teile_lesen().teile[0].anzahl), 1);
+    assert.ok(await p.isDisabled('#aiundo'));
+    // Schnittstelle direkt: ungültiges Material wird abgelehnt
+    const err = await p.evaluate(() => { try { window.Step2Maestro.api.teile_aendern({ aenderungen: [{ teil: 1, material: 'gibtsnicht' }] }); return ''; } catch (e) { return e.message; } });
+    assert.match(err, /unbekannt/);
+    await p.click('#aiclose');
+    assert.ok(await p.isHidden('#aipanel'));
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
   }
 });

@@ -5,6 +5,7 @@
 #   bash einrichten.sh --url https://www.deine-domain.de/step2maestro/
 #   bash einrichten.sh --offline               Programm vom Pi selbst (ohne Internet, ohne Dekor-Bibliothek)
 #   weitere: --etikett 40x60  --dpi 203|300  --nur-drucker  --test
+#   --sprache                                  Sprachbefehle im Sägemodus offline (Vosk, Modell ca. 45 MB, USB-Mikrofon)
 #
 # Macht: CUPS + Zebra (USB, Treiber „Zebra ZPL Label Printer“) als Standarddrucker mit Etikettgröße, Bildschirm-
 # abschaltung aus, Chromium beim Anmelden im Vollbild mit --kiosk-printing (Etiketten ohne Druckdialog).
@@ -17,6 +18,8 @@ ETIKETT="40x60"
 DPI="203"
 NUR_DRUCKER=0
 TEST=0
+SPRACHE=0
+PORT=8765
 HIER="$(cd "$(dirname "$0")" && pwd)"
 
 while [ $# -gt 0 ]; do
@@ -27,7 +30,8 @@ while [ $# -gt 0 ]; do
     --dpi) DPI="${2:-203}"; shift ;;
     --nur-drucker) NUR_DRUCKER=1 ;;
     --test) TEST=1 ;;
-    -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
+    --sprache) SPRACHE=1 ;;
+    -h|--help) sed -n '2,13p' "$0"; exit 0 ;;
     *) echo "Unbekannte Angabe: $1 (Hilfe: bash einrichten.sh --help)"; exit 1 ;;
   esac
   shift
@@ -66,6 +70,29 @@ if [ "$OFFLINE" -eq 1 ]; then
   step "Programm nach /opt/step2maestro kopieren"
   sudo mkdir -p /opt/step2maestro && sudo cp -r "$HIER/step2maestro/." /opt/step2maestro/ && ok "kopiert"
   URL="file:///opt/step2maestro/index.html"
+  # Offline-Spracherkennung liest ihr Modell nur über http: kleiner Webserver nur für diesen Pi (127.0.0.1)
+  [ "$SPRACHE" -eq 1 ] && URL="http://127.0.0.1:$PORT/index.html"
+fi
+
+# ---------------------------------------------------------------- Sprache (offline)
+if [ "$SPRACHE" -eq 1 ] && [ "$NUR_DRUCKER" -eq 0 ]; then
+  step "Offline-Spracherkennung holen (Vosk + deutsches Modell)"
+  if [ "$OFFLINE" -eq 1 ]; then
+    if bash "$HIER/sprache_holen.sh" "$HOME/.cache/step2maestro-vosk"; then
+      sudo mkdir -p /opt/step2maestro/js/vendor/vosk && sudo cp "$HOME/.cache/step2maestro-vosk/." -r /opt/step2maestro/js/vendor/vosk/ && ok "abgelegt in /opt/step2maestro/js/vendor/vosk"
+    else
+      warn "Download fehlgeschlagen – Internet prüfen und erneut starten. Sprache geht dann nur online (Chrome) oder gar nicht."
+    fi
+    warn "Neue Adresse $URL: Einstellungen aus der bisherigen Datei-Version (file://) sind dort nicht – einmal neu einstellen."
+  else
+    if bash "$HIER/sprache_holen.sh" "$HIER/vosk-fuer-webserver"; then
+      ok "geholt: $HIER/vosk-fuer-webserver"
+      warn "Diesen Ordner auf den Webserver laden als  step2maestro/js/vendor/vosk/  (FileZilla) – dann erkennt der Pi"
+      warn "die Sprachbefehle über $URL offline."
+    else
+      warn "Download fehlgeschlagen – Internet prüfen."
+    fi
+  fi
 fi
 
 # ---------------------------------------------------------------- Pakete
@@ -129,11 +156,16 @@ exec 9>/tmp/step2maestro-kiosk.lock
 flock -n 9 || exit 0   # nur einmal starten (Autostart kann doppelt auslösen)
 sleep 4                # Netzwerk und Oberfläche abwarten
 B="\$(command -v chromium-browser || command -v chromium)"
+SERVE="$([ "$SPRACHE" -eq 1 ] && [ "$OFFLINE" -eq 1 ] && echo 1 || echo 0)"
+# Offline mit Sprache: kleiner Webserver nur für diesen Pi
+if [ "\$SERVE" = 1 ]; then python3 -m http.server $PORT --bind 127.0.0.1 --directory /opt/step2maestro >/dev/null 2>&1 9>&- & sleep 1; fi
 # nach Stromausfall keine „Wiederherstellen?“-Meldung
 P="\$HOME/.config/chromium/Default/Preferences"
 [ -f "\$P" ] && sed -i 's/"exited_cleanly":false/"exited_cleanly":true/; s/"exit_type":"[^"]*"/"exit_type":"Normal"/' "\$P"
+# Sprache: Mikrofon ohne Nachfrage erlauben (sonst bleibt die Abfrage im Vollbild hängen)
+MIC="$([ "$SPRACHE" -eq 1 ] && echo --use-fake-ui-for-media-stream)"
 exec "\$B" --kiosk --kiosk-printing --noerrdialogs --disable-infobars --disable-session-crashed-bubble \\
-  --no-first-run --password-store=basic --check-for-update-interval=31536000 --ozone-platform-hint=auto "\$URL"
+  --no-first-run --password-store=basic --check-for-update-interval=31536000 --ozone-platform-hint=auto \$MIC "\$URL"
 EOF
 chmod +x "$START"
 cat > "$HOME/.config/autostart/step2maestro.desktop" <<EOF
@@ -154,3 +186,5 @@ echo
 echo "Fertig. Jetzt neu starten:  sudo reboot"
 echo "Danach startet Step2Maestro von selbst. In Step2Maestro unter „Werkzeuge & Regeln → Etiketten“ dieselbe"
 echo "Etikettgröße einstellen (${ETIKETT/x/ × } mm). Beenden des Vollbilds: Alt+F4."
+[ "$SPRACHE" -eq 1 ] && echo "Sprache: USB-Mikrofon oder Headset anschließen, im Sägemodus „🎤 Sprache“ antippen."
+true

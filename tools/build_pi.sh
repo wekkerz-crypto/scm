@@ -19,7 +19,7 @@ cp tools/pi/einrichten.sh tools/pi/sprache_holen.sh tools/pi/ANLEITUNG-PI.txt "$
 (cd "$OUT" && python3 -c "
 import zipfile, os
 z = zipfile.ZipFile('../Step2Maestro-Pi.zip', 'w', zipfile.ZIP_DEFLATED)
-for f in ("ANLEITUNG-PI.txt", "einrichten.sh", "sprache_holen.sh"):
+for f in ('ANLEITUNG-PI.txt', 'einrichten.sh', 'sprache_holen.sh'):
     i = zipfile.ZipInfo.from_file(f); i.external_attr = (0o755 if f.endswith('.sh') else 0o644) << 16
     z.writestr(i, open(f, 'rb').read(), zipfile.ZIP_DEFLATED)
 for r, ds, fs in os.walk('step2maestro'):

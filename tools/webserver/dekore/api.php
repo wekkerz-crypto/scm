@@ -141,7 +141,9 @@ function setPw(string $pw): void {
 function startSession(): void {
   $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
   session_name('s2m_dekore');
-  session_set_cookie_params(['lifetime' => 0, 'path' => dirname($_SERVER['SCRIPT_NAME']) . '/', 'secure' => $https, 'httponly' => true, 'samesite' => 'Strict']);
+  // Cookie für den ganzen Programmordner: dieselbe Anmeldung gilt für die Projektablage (projekte/) und die KI (ki/)
+  $root = rtrim(dirname(dirname($_SERVER['SCRIPT_NAME'] ?? '/x/api.php')), '/') . '/';
+  session_set_cookie_params(['lifetime' => 0, 'path' => $root, 'secure' => $https, 'httponly' => true, 'samesite' => 'Strict']);
   session_start();
 }
 function loggedIn(): bool { return isset($_SESSION) && !empty($_SESSION['ok']); }

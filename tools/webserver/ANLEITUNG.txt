@@ -12,6 +12,11 @@ Inhalt der ZIP
                        nicht in Suchmaschinen, immer aktuelle Dateien)
     dekore/            Dekor-Bibliothek (Egger-Dekore: Bilder, Namen) –
                        Verwaltung im Browser, braucht PHP (bei Strato da)
+    projekte/          Projektablage (Startseite „Projekte“): Projekte auf
+                       dem Server für alle Geräte – mit dem Passwort der
+                       Dekor-Verwaltung (PHP)
+    ki/                ChatGPT über den Server (optional, Schlüssel in
+                       ki/schluessel.php)
 
 Wichtig zu wissen
 -----------------
@@ -125,6 +130,23 @@ Prüfen: Gehört zu deinem Paket ein Webspace (SFTP-Zugang / Datei-Manager)?
    Hinweis: Programm und Builder-Seite sollten beide über https laufen,
    sonst blockiert der Browser die Einbettung.
 
+
+PROJEKTE AUF DEM SERVER (Ordner projekte/)
+------------------------------------------
+Auf der Startseite „Projekte“ werden Projekte auf dem Server gespeichert und
+auf jedem Gerät geöffnet. Anmelden mit dem Passwort der Dekor-Verwaltung
+(erst dort einrichten, siehe unten). Gespeichert wird in projekte/daten (legt
+das Programm an; ein Update überschreibt es nicht – beim Sichern mitnehmen).
+Große Projekte (viele STEP-Dateien): im Strato-Kunden-Login die PHP-Grenzen
+upload_max_filesize und post_max_size auf z. B. 80M stellen.
+Tipp: Für die Werkstatt ist eine Diskstation mit Docker oft besser (alles im
+eigenen Netz, schnell, ein KI-Schlüssel für alle) – siehe Docker-Paket.
+
+CHATGPT ÜBER DEN SERVER (Ordner ki/, optional)
+----------------------------------------------
+Statt den OpenAI-Schlüssel an jedem Gerät einzutragen: Datei
+ki/schluessel.php mit dem Inhalt   <?php return 'sk-…';   hochladen. Dann
+nutzt der KI-Assistent ihn für alle angemeldeten Benutzer.
 
 DEKOR-BIBLIOTHEK (Ordner dekore/)
 ---------------------------------

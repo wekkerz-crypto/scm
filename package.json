@@ -7,7 +7,8 @@
     "test": "node --test test/*.test.js",
     "build:exe": "sh tools/build_exe.sh",
     "build:web": "sh tools/build_web.sh",
-    "build:pi": "sh tools/build_pi.sh"
+    "build:pi": "sh tools/build_pi.sh",
+    "build:docker": "sh tools/build_docker.sh"
   },
   "bin": {
     "step2xcs": "cli/step2xcs.js"

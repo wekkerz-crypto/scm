@@ -6,6 +6,7 @@
 #   bash einrichten.sh --offline               Programm vom Pi selbst (ohne Internet, ohne Dekor-Bibliothek)
 #   weitere: --etikett 40x60  --dpi 203|300  --nur-drucker  --test
 #   --sprache                                  Sprachbefehle im Sägemodus offline (Vosk, Modell ca. 45 MB, USB-Mikrofon)
+#   Diskstation (Docker):  bash einrichten.sh --url http://diskstation:8080/ --sprache
 #
 # Macht: CUPS + Zebra (USB, Treiber „Zebra ZPL Label Printer“) als Standarddrucker mit Etikettgröße, Bildschirm-
 # abschaltung aus, Chromium beim Anmelden im Vollbild mit --kiosk-printing (Etiketten ohne Druckdialog).
@@ -31,7 +32,7 @@ while [ $# -gt 0 ]; do
     --nur-drucker) NUR_DRUCKER=1 ;;
     --test) TEST=1 ;;
     --sprache) SPRACHE=1 ;;
-    -h|--help) sed -n '2,13p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,14p' "$0"; exit 0 ;;
     *) echo "Unbekannte Angabe: $1 (Hilfe: bash einrichten.sh --help)"; exit 1 ;;
   esac
   shift
@@ -84,6 +85,8 @@ if [ "$SPRACHE" -eq 1 ] && [ "$NUR_DRUCKER" -eq 0 ]; then
       warn "Download fehlgeschlagen – Internet prüfen und erneut starten. Sprache geht dann nur online (Chrome) oder gar nicht."
     fi
     warn "Neue Adresse $URL: Einstellungen aus der bisherigen Datei-Version (file://) sind dort nicht – einmal neu einstellen."
+  elif U0="${URL%%#*}"; U0="${U0%index.html}"; curl -fsI "${U0%/}/js/vendor/vosk/model-de.tar.gz" >/dev/null 2>&1; then
+    ok "Der Server hat die Offline-Erkennung schon (z. B. Diskstation/Docker) – nichts zu holen"
   else
     if bash "$HIER/sprache_holen.sh" "$HIER/vosk-fuer-webserver"; then
       ok "geholt: $HIER/vosk-fuer-webserver"
@@ -93,6 +96,13 @@ if [ "$SPRACHE" -eq 1 ] && [ "$NUR_DRUCKER" -eq 0 ]; then
       warn "Download fehlgeschlagen – Internet prüfen."
     fi
   fi
+fi
+
+# http-Adresse im eigenen Netz (nicht 127.0.0.1): Mikrofon trotzdem erlauben
+INSECURE=""
+if [[ "$URL" =~ ^http://([^/]+) ]]; then
+  HOSTPORT="${BASH_REMATCH[1]}"
+  [[ "$HOSTPORT" =~ ^(127\.0\.0\.1|localhost)(:|$) ]] || INSECURE="--unsecurely-treat-insecure-origin-as-secure=http://$HOSTPORT"
 fi
 
 # ---------------------------------------------------------------- Pakete
@@ -162,8 +172,9 @@ if [ "\$SERVE" = 1 ]; then python3 -m http.server $PORT --bind 127.0.0.1 --direc
 # nach Stromausfall keine „Wiederherstellen?“-Meldung
 P="\$HOME/.config/chromium/Default/Preferences"
 [ -f "\$P" ] && sed -i 's/"exited_cleanly":false/"exited_cleanly":true/; s/"exit_type":"[^"]*"/"exit_type":"Normal"/' "\$P"
-# Sprache: Mikrofon ohne Nachfrage erlauben (sonst bleibt die Abfrage im Vollbild hängen)
-MIC="$([ "$SPRACHE" -eq 1 ] && echo --use-fake-ui-for-media-stream)"
+# Sprache: Mikrofon ohne Nachfrage erlauben (sonst bleibt die Abfrage im Vollbild hängen); Server im eigenen Netz ohne https
+# (z. B. Diskstation http://…:8080): für diese Adresse wie https behandeln, sonst sperrt Chromium das Mikrofon
+MIC="$([ "$SPRACHE" -eq 1 ] && echo --use-fake-ui-for-media-stream) $INSECURE"
 exec "\$B" --kiosk --kiosk-printing --noerrdialogs --disable-infobars --disable-session-crashed-bubble \\
   --no-first-run --password-store=basic --check-for-update-interval=31536000 --ozone-platform-hint=auto \$MIC "\$URL"
 EOF

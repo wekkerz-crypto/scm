@@ -1,0 +1,7 @@
+# KI über den Server: nur openai.php, der Schlüssel (schluessel.php) wird nie ausgeliefert
+Options -Indexes
+<Files "schluessel.php">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+</Files>

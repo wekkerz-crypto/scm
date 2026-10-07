@@ -56,8 +56,17 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   Teil von Hand (Stückliste `#bomnew`, `renderBomNew`/`addManualPart`): Rechteck als DXF (`rectDxf`) über `addDxf(text, name,
   {T, board, qty})` → nur Formatfräsen; Löschen `data-bomdel` (zweiter Klick).
   Eigene Farben mit Namen: Schlüssel `#rrggbb[/u]~Name`, gemerkt in `settings.customBoards`. Programmläufe `progRuns()` (Teil → Stücklisten-Position, `row.qty` × Zeit; `#pqty` oben im Teil, `.chip.runs`, `.runsum`). Zeit: `Toolpath.estimate`
-  (Einstellungen `est*`), `partTime` in `index.html`. Projektdatei .s2m: `saveProject`/`openProject` (= `sessionData`/`restoreFrom`).
-- Projektdatei .s2m: `data.session` (Teile) + `data.lists` (`projectLists()`, Schlüssel `PROJECT_LST_KEYS` – Ansicht/Zoom/`sawCfg` bleiben
+  (Einstellungen `est*`), `partTime` in `index.html`. Projektdatei: siehe Projekte.
+- Projekte (Startseite, `state.page` 'start', `#startpage`, `renderStart`; beim Start immer, außer Adresse `#saegen` … `HASH_PAGES`):
+  aktuelles Projekt `proj` (localStorage `step2xcs.project.v1`: id, store 'server'|'local', name, kunde, notiz, basis, sig = `projSig()`
+  → `projDirty`/`projMark` (• an `#projsave`), `projLeaveOk`), `projSave`/`projOpen`/`projNew`/`projCopy`/`projDelete`/`projExport`;
+  Server `projekte/api.php` (list/get/save mit basis → 409/meta/copy/delete → papierkorb; gzip `*.s2m.gz`; Zugang = Sitzung der
+  Dekor-Verwaltung (Cookie-Pfad = Programmordner) oder offen `S2M_OFFEN=1`/Datei `projekte/OFFEN`, X-CSRF), Browser = IndexedDB
+  `projekte.v1` + `projekt:<id>`; `srvRefresh` prüft auch `ki/openai.php` (ChatGPT über den Server: `kiSrv`, `aiServer()` →
+  SDK mit baseURL `ki/openai.php/v1` + X-CSRF; Schlüssel `OPENAI_API_KEY` bzw. `ki/schluessel.php`; Test-Ziel `S2M_OPENAI_URL`).
+  Docker: `tools/docker/` (php:8.3-apache + GD, Volume `/daten` per Symlink an dekore/daten|bilder|vorschau und projekte/daten,
+  Vosk beim Bauen), `npm run build:docker`; Pi `einrichten.sh` setzt für http-Adressen `--unsecurely-treat-insecure-origin-as-secure`.
+- Projektdatei .s2m (`projectPayload`/`applyProject`, Datei: `saveProject`/`openProject`): `data.session` (Teile) + `data.lists` (`projectLists()`, Schlüssel `PROJECT_LST_KEYS` – Ansicht/Zoom/`sawCfg` bleiben
   am Gerät) + `data.settings` (beim Öffnen Nachfrage, wenn anders; `SETTINGS_LOCAL` = Pfade bleiben); `syncListInputs()` zieht die Felder nach.
 - Programm-Schnittstelle `window.Step2Maestro.api` (index.html, `api`): teile_lesen, stueckliste_lesen, zuschnitt_lesen, materialien_lesen,
   teile_aendern, teile_sortieren, teile_loeschen, teil_anlegen, zuschnitt_einstellen, seite_zeigen, saegen_status, saegen_steuern, projekt –

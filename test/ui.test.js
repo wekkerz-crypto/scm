@@ -9,7 +9,7 @@ for (const id of ['playwright', '/opt/node-tools/node_modules/playwright']) {
   try { chromium = require(id).chromium; break; } catch (e) { /* weiter suchen */ }
 }
 
-const page = 'file://' + path.join(__dirname, '..', 'web', 'index.html');
+const page = 'file://' + path.join(__dirname, '..', 'web', 'index.html') + '#programme';
 const fixture = (n) => path.join(__dirname, 'fixtures', n);
 
 test('Web-Tool: STEP laden per Knopf und Ablegen, Liste leeren', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
@@ -759,6 +759,7 @@ test('Web-Tool: Spalten Etiketten (Konfigurator, Druckliste) und Material', { sk
     assert.strictEqual(exp.dekore[0].name, 'Eiche Bardolino');
     await p.waitForTimeout(400);
     await p.reload();
+    await p.click('.pagetabs [data-page="material"]'); // nach dem Neuladen: Seite aus der Adresse, dann Material wählen
     await p.waitForSelector('#matpage:not([hidden]) .dectile');
     assert.strictEqual(await p.inputValue('.dectile [data-decf="name"]'), 'Eiche Bardolino');
     await p.click('[data-decdel="0"]');
@@ -885,17 +886,20 @@ test('Web-Tool: Listen (Stückliste, Zuschnitt, Zeit) und Projektdatei speichern
     // Projekt speichern, Liste leeren, Projekt öffnen → Teile und Anzahl wieder da, auch Plattenformat des Zuschnitts
     const setL = (v) => p.evaluate((x) => { const el = document.getElementById('csheetL'); el.value = x; el.dispatchEvent(new Event('change')); }, v);
     await setL('2500');
-    await p.click('[data-page="pgmx"]');
-    const [proj] = await Promise.all([p.waitForEvent('download'), p.click('#projsave')]);
+    await p.click('#projopen'); // Projektseite: „Aktuelles als Datei“
+    await p.waitForSelector('#startpage:not([hidden]) #pj-export');
+    const [proj] = await Promise.all([p.waitForEvent('download'), p.click('#pj-export')]);
     assert.match(proj.suggestedFilename(), /\.s2m$/);
     const file = await proj.path();
     const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
     assert.strictEqual(saved.lists.sheetL, 2500);
     assert.ok(saved.settings && saved.settings.fieldThreshold > 0);
+    await p.click('[data-page="pgmx"]');
     await p.click('#clear');
     await p.waitForSelector('.empty');
     await setL('2800');
-    const [chooser] = await Promise.all([p.waitForEvent('filechooser'), p.click('#projopen')]);
+    await p.click('[data-page="start"]');
+    const [chooser] = await Promise.all([p.waitForEvent('filechooser'), p.click('#pj-import')]);
     await chooser.setFiles({ name: 'projekt.s2m', mimeType: 'application/json', buffer: fs.readFileSync(file) });
     await p.waitForFunction(() => document.querySelectorAll('.part').length === 3);
     assert.strictEqual(await p.textContent('#ptn-lists'), '6');
@@ -1357,7 +1361,7 @@ test('Dekor-Bibliothek: Passwort, Hochladen, Bearbeiten – Step2Maestro überni
     assert.deepStrictEqual(list.dekore.map((d) => [d.code, d.name]), [['U708 ST9', 'Lichtgrau']]);
     assert.ok(/^#[0-9a-f]{6}$/.test(list.dekore[0].color) && list.dekore[0].bild);
     // Step2Maestro über http: Bauteile „… (U708 ST9)“ bekommen das Dekor aus der Bibliothek
-    await p.goto(base);
+    await p.goto(base + '#programme');
     await p.waitForSelector('.part');
     await p.click('#clear');
     const [chooser] = await Promise.all([p.waitForEvent('filechooser'), p.click('#pick')]);
@@ -1570,5 +1574,163 @@ test('Web-Tool: KI-Assistent mit ChatGPT (Attrappe der API) ruft Werkzeuge der P
     assert.deepStrictEqual(errors, []);
   } finally {
     await browser.close();
+  }
+});
+
+test('Web-Tool: Projektseite beim Start – im Browser speichern, ungespeicherte Änderungen, neu, öffnen, Kopie, löschen; #saegen', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1440, height: 950 } });
+    const errors = [];
+    const dialogs = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    p.on('dialog', (d) => { dialogs.push(d.message()); d.accept(); });
+    await p.goto(page.replace(/#.*$/, ''));
+    await p.waitForSelector('#startpage:not([hidden]) .pjcur');
+    assert.strictEqual(await p.evaluate(() => document.body.dataset.page), 'start');
+    assert.strictEqual(await p.getAttribute('.pagetabs [data-page="start"]', 'aria-selected'), 'true');
+    assert.match(await p.textContent('.pjbar'), /dieser Browser/);
+    // ohne Namen speichern: Hinweis, Name eingeben, speichern
+    await p.click('#pj-save');
+    assert.match(await p.textContent('#toast'), /Projektnamen/);
+    await p.fill('#pj-name', 'Küche Müller');
+    await p.fill('#pj-kunde', 'Müller');
+    await p.click('#pj-save');
+    await p.waitForFunction(() => /gespeichert/.test(document.getElementById('pj-state').textContent));
+    assert.match(await p.textContent('#pj-state'), /dieser Browser/);
+    assert.deepStrictEqual(await p.$$eval('.pjtbl tbody tr b', (x) => x.map((e) => e.textContent)), ['Küche Müller']);
+    assert.match(await p.textContent('.pjtbl tbody tr'), /Müller[\s\S]*3[\s\S]*Eiche hell 19/);
+    // weiter bearbeiten → Programme; Änderung → Speichern-Knopf markiert
+    await p.click('#pj-go');
+    assert.strictEqual(await p.evaluate(() => document.body.dataset.page), 'pgmx');
+    assert.ok(!(await p.$eval('#projsave', (b) => b.classList.contains('dirty'))));
+    await p.evaluate(() => window.Step2Maestro.api.teile_aendern({ aenderungen: [{ teil: 1, anzahl: 4 }] }));
+    await p.waitForFunction(() => document.getElementById('projsave').classList.contains('dirty'));
+    await p.click('#projsave'); // speichert ins selbe Projekt
+    await p.waitForFunction(() => !document.getElementById('projsave').classList.contains('dirty'));
+    // neues Projekt: leer; gespeichertes wieder öffnen → Anzahl 4
+    await p.click('#projopen');
+    await p.click('#pj-new');
+    assert.strictEqual(await p.evaluate(() => document.querySelectorAll('.part').length), 0);
+    assert.strictEqual(await p.inputValue('#pj-name'), '');
+    assert.deepStrictEqual(dialogs, []); // nichts Ungespeichertes → keine Nachfrage
+    await p.click('[data-pjopen]');
+    await p.waitForFunction(() => document.body.dataset.page === 'pgmx' && document.querySelectorAll('.part').length === 3);
+    assert.strictEqual(await p.evaluate(() => window.Step2Maestro.api.teile_lesen().teile[0].anzahl), 4);
+    // Kopie, dann die Kopie löschen (zweiter Klick)
+    await p.click('#projopen');
+    await p.click('[data-pjcopy]');
+    await p.waitForFunction(() => document.querySelectorAll('.pjtbl tbody tr').length === 2);
+    const copyRow = await p.$$eval('.pjtbl tbody tr', (rs) => rs.findIndex((r) => /Kopie/.test(r.textContent)));
+    const delSel = '.pjtbl tbody tr:nth-child(' + (copyRow + 1) + ') [data-pjdel]';
+    await p.click(delSel);
+    assert.match(await p.textContent(delSel), /Wirklich/);
+    await p.click(delSel);
+    await p.waitForFunction(() => document.querySelectorAll('.pjtbl tbody tr').length === 1);
+    // Suche
+    await p.fill('#pj-q', 'gibtsnicht');
+    assert.match(await p.textContent('.pjlist'), /Kein Projekt passt/);
+    await p.fill('#pj-q', 'müller');
+    assert.strictEqual(await p.$$eval('.pjtbl tbody tr', (x) => x.length), 1);
+    // ungespeicherte Änderung + neues Projekt → Nachfrage
+    await p.evaluate(() => window.Step2Maestro.api.teile_aendern({ aenderungen: [{ teil: 2, anzahl: 2 }] }));
+    await p.click('#pj-new');
+    assert.ok(dialogs.some((d) => /ungespeicherte Änderungen/.test(d)));
+    // nach dem Neuladen: Projektseite, Projekt noch gemerkt; #saegen öffnet den Sägemodus
+    await p.goto('about:blank');
+    await p.goto(page.replace(/#.*$/, '') + '#saegen');
+    await p.waitForSelector('#sawview:not([hidden])');
+    assert.strictEqual(await p.evaluate(() => document.body.dataset.page), 'lists');
+    await p.goto('about:blank');
+    await p.goto(page.replace(/#.*$/, ''));
+    await p.waitForSelector('#startpage:not([hidden]) .pjtbl');
+    assert.strictEqual(await p.$$eval('.pjtbl tbody tr', (x) => x.length), 1);
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('Projektablage auf dem Server (PHP): offen im Netz, mit Passwort, zwei Geräte und Konflikt; ChatGPT über den Server', { skip: (!chromium && 'Playwright nicht installiert') || (!hasPhp && 'PHP nicht installiert') }, async () => {
+  const fs = require('fs');
+  const os = require('os');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 's2m-proj-'));
+  const root = path.join(__dirname, '..');
+  fs.cpSync(path.join(root, 'web'), dir, { recursive: true });
+  for (const d of ['dekore', 'projekte', 'ki']) fs.cpSync(path.join(root, 'tools', 'webserver', d), path.join(dir, d), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'dekore', 'EINRICHTEN'), '');
+  // Nachbildung der OpenAI-API (gibt den Schlüssel zurück, den der Server mitschickt)
+  const mockDir = fs.mkdtempSync(path.join(os.tmpdir(), 's2m-mock-'));
+  fs.writeFileSync(path.join(mockDir, 'r.php'), '<?php header("Content-Type: application/json"); $b = json_decode(file_get_contents("php://input"), true);' +
+    ' echo json_encode(["id" => "m1", "status" => "completed", "output" => [["type" => "message", "content" => [["type" => "output_text", "text" => "Schlüssel " . ($_SERVER["HTTP_AUTHORIZATION"] ?? "") . " Modell " . ($b["model"] ?? "")]]]]]);');
+  const port = 8830 + Math.floor(Math.random() * 100);
+  const mport = port + 200;
+  const mock = spawn('php', ['-S', '127.0.0.1:' + mport, path.join(mockDir, 'r.php')], { stdio: 'ignore' });
+  const srv = spawn('php', ['-S', '127.0.0.1:' + port, '-t', dir], { stdio: 'ignore', env: Object.assign({}, process.env, { OPENAI_API_KEY: 'sk-server-1', S2M_OPENAI_URL: 'http://127.0.0.1:' + mport }) });
+  const base = 'http://127.0.0.1:' + port + '/';
+  await new Promise((r) => setTimeout(r, 800));
+  const browser = await chromium.launch();
+  try {
+    const errors = [];
+    const mk = async () => {
+      const ctx = await browser.newContext({ viewport: { width: 1440, height: 950 } });
+      const p = await ctx.newPage();
+      p.on('pageerror', (e) => errors.push(e.message));
+      p.on('dialog', (d) => { p.lastDialog = d.message(); d.accept(); });
+      await p.goto(base);
+      await p.waitForSelector('#startpage:not([hidden]) .pjcur');
+      return p;
+    };
+    // 1) ohne OFFEN und ohne Passwort: Server da, aber Anmeldung nötig
+    let p = await mk();
+    await p.waitForSelector('[data-pjtab="server"]');
+    assert.match(await p.textContent('.pjlist'), /Anmelden/);
+    // Passwort einrichten (Dekor-Verwaltung), dann auf der Projektseite anmelden
+    const fd = await p.evaluate(async () => { const f = new FormData(); f.append('a', 'setup'); f.append('passwort', 'geheim123'); const r = await fetch('dekore/api.php', { method: 'POST', body: f }); return (await r.json()).ok; });
+    assert.ok(fd);
+    p = await mk(); // neues Gerät (ohne Sitzung)
+    await p.waitForSelector('#pj-login');
+    await p.fill('#pj-pw', 'falsch');
+    await p.click('#pj-login button');
+    await p.waitForFunction(() => /falsch/.test(document.getElementById('toast').textContent));
+    await p.fill('#pj-pw', 'geheim123');
+    await p.click('#pj-login button');
+    await p.waitForFunction(() => !document.getElementById('pj-login'));
+    await p.fill('#pj-name', 'Bad Meier');
+    await p.click('#pj-save');
+    await p.waitForFunction(() => /gespeichert[\s\S]*Server/.test(document.getElementById('pj-state').textContent));
+    const list = JSON.parse(fs.readFileSync(path.join(dir, 'projekte', 'daten', 'projekte.json'), 'utf8')).projekte;
+    assert.strictEqual(list.length, 1);
+    assert.strictEqual(list[0].name, 'Bad Meier');
+    assert.strictEqual(list[0].teile, 3);
+    assert.ok(fs.existsSync(path.join(dir, 'projekte', 'daten', list[0].id + '.s2m.gz')));
+    // 2) offen im Netz (Datei OFFEN): zweites Gerät ohne Anmeldung, öffnet, ändert, speichert
+    fs.writeFileSync(path.join(dir, 'projekte', 'OFFEN'), '');
+    const q = await mk();
+    await q.waitForSelector('[data-pjopen]');
+    await q.click('[data-pjopen]');
+    await q.waitForFunction(() => document.body.dataset.page === 'pgmx' && document.querySelectorAll('.part').length === 3);
+    await q.evaluate(() => window.Step2Maestro.api.teile_aendern({ aenderungen: [{ teil: 1, anzahl: 7 }] }));
+    await q.click('#projsave');
+    await q.waitForFunction(() => !document.getElementById('projsave').classList.contains('dirty'));
+    // erstes Gerät speichert danach auf altem Stand → Konflikt-Nachfrage (angenommen = überschreiben)
+    await p.evaluate(() => window.Step2Maestro.api.teile_aendern({ aenderungen: [{ teil: 2, anzahl: 2 }] }));
+    await p.click('#projsave');
+    await p.waitForFunction(() => /Gespeichert/.test(document.getElementById('toast').textContent));
+    assert.match(p.lastDialog || '', /anderen Gerät/);
+    // ChatGPT über den Server: ohne eigenen Schlüssel, der Server schickt seinen
+    await q.click('#aibtn');
+    await q.waitForFunction(() => /vom Server/.test(document.getElementById('ailog').textContent));
+    await q.fill('#aiin', 'Hallo');
+    await q.press('#aiin', 'Enter');
+    await q.waitForFunction(() => /Schlüssel Bearer sk-server-1 Modell gpt-5\.5/.test(document.getElementById('ailog').textContent));
+    // Daten nicht direkt abrufbar (php -S kennt kein .htaccess – nur die API prüft): falsche ID → 404
+    const st = await q.evaluate(async () => (await fetch('projekte/api.php?a=get&id=../projekte')).status);
+    assert.strictEqual(st, 404);
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+    srv.kill();
+    mock.kill();
   }
 });

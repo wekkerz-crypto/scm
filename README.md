@@ -364,17 +364,47 @@ Dritte Seite oben (**Listen**):
   Eilgang und Werkzeugwechsel; Werte unter Einstellungen → *Zeitschätzung*. Mit dem **Korrekturfaktor** an die echte
   Maschinenzeit anpassen (gemessene ÷ geschätzte Zeit an 2–3 Teilen).
 
-### Projektdatei (.s2m)
+### Projekte (Startseite)
 
-**Projekt speichern** (ganz oben neben Hell/Dunkel, auf jeder Seite) schreibt das **ganze Projekt** in eine Datei: alle
-STEP/DXF-Dateien, alle Änderungen je Teil (Drehung, Feld, Werkzeuge, Reihenfolge, Profil …), Teile von Hand, die Maße aus
-Möbel 3D, die **Stückliste** (Anzahl, Plattenfarben/Dekore, Kantenband je Teil, Faser, Kanten-Einstellungen und -Regeln) und
-den **Zuschnittplan** (Plattenformat, Schnittfuge, Besäumen, Richtung/Ziel, Format je Material und je Platte, von Hand
-verschobene Pläne, Haken „geschnitten“ und der Stand im Sägemodus); eigene Dekor-Bilder, die benutzt werden, gehen mit.
-Dazu die **Einstellungen** (Werkzeuge, Regeln, Sauger …). **Projekt öffnen** (oder die .s2m auf die Seite ziehen) ersetzt
-die Teileliste und stellt Stückliste und Zuschnitt wieder her; weichen die Einstellungen des Projekts von denen des Rechners
-ab, wird gefragt, ob sie übernommen werden (Pfade zu X-Konverter/Werkzeugdatei bleiben immer die des Rechners). Am Gerät
-bleiben: Ansicht, Zoom/Schrift und die Säge-Einstellungen (*⚙ Schnittfolge*). Ältere .s2m-Dateien (ohne Listen) gehen weiter.
+Beim Öffnen zeigt Step2Maestro die **Projektseite** (erster Reiter *Projekte*): oben das **aktuelle Projekt** mit Name,
+Kunde/Auftrag und Notiz, Zustand („gespeichert 07.10. 10:42 · Server“ bzw. „ungespeicherte Änderungen“), **💾 Speichern**,
+*Als neues Projekt speichern*, *＋ Neues Projekt* und **Weiter bearbeiten ▶** (zur zuletzt benutzten Seite). Darunter die
+**Liste der Projekte** mit Suche (Name, Kunde, Material), Teile/Stück, Material, Platten und Änderungsdatum; je Projekt
+*Öffnen*, *Kopie*, *Datei* (.s2m) und *Löschen* (zweimal klicken). Oben in der Leiste: *Projekte* (zur Projektseite) und
+*Speichern* (mit • bei ungespeicherten Änderungen). Vor dem Öffnen/Neu wird bei ungespeicherten Änderungen nachgefragt.
+
+**Ablage:** auf dem **Server** (Diskstation/Docker oder Webspace – für alle Geräte: Büro, Laptop, Pi an der Säge) oder **in
+diesem Browser** (nur dieses Gerät, ohne Server). Gibt es einen Server, ist er vorgewählt; der Umschalter *🖧 Server / 💻
+Dieser Browser* zeigt beide Listen. Auf dem Server werden Projekte gepackt gespeichert (`projekte/daten/*.s2m.gz` +
+`projekte.json`), gelöschte kommen in den Papierkorb (`projekte/daten/papierkorb/`). Hat ein anderes Gerät dasselbe Projekt
+inzwischen gespeichert, fragt *Speichern* nach (überschreiben oder nicht). Zugang: mit dem Passwort der Dekor-Verwaltung
+(Anmelden auf der Projektseite) oder – nur für einen Server im eigenen Netz – offen (`S2M_OFFEN=1` bzw. Datei
+`projekte/OFFEN`).
+
+**Startadressen:** `…/index.html#saegen` öffnet gleich den Sägemodus (für den Pi), ebenso `#programme`, `#moebel`,
+`#listen`, `#zuschnitt`, `#etiketten`, `#material`, `#projekte`.
+
+**Projektdatei (.s2m)** zum Weitergeben/Sichern: *Aktuelles als Datei* bzw. *Datei* in der Liste; *Datei öffnen (.s2m)*
+(oder auf die Seite ziehen) lädt eine. Inhalt: alle STEP/DXF-Dateien, alle Änderungen je Teil (Drehung, Feld, Werkzeuge,
+Reihenfolge, Profil …), Teile von Hand, die Maße aus Möbel 3D, die **Stückliste** (Anzahl, Plattenfarben/Dekore, Kantenband
+je Teil, Faser, Kanten-Einstellungen und -Regeln), der **Zuschnittplan** (Plattenformat, Schnittfuge, Besäumen,
+Richtung/Ziel, Format je Material und je Platte, von Hand verschobene Pläne, Haken „geschnitten“, Stand im Sägemodus),
+benutzte eigene Dekor-Bilder, Name/Kunde/Notiz und die **Einstellungen** (Werkzeuge, Regeln, Sauger …). Weichen die
+Einstellungen eines Projekts von denen des Rechners ab, wird beim Öffnen gefragt, ob sie übernommen werden (Pfade zu
+X-Konverter/Werkzeugdatei bleiben immer die des Rechners). Am Gerät bleiben: Ansicht, Zoom/Schrift und die
+Säge-Einstellungen (*⚙ Schnittfolge*). Ältere .s2m-Dateien (ohne Listen) gehen weiter.
+
+### Docker / Diskstation
+
+`npm run build:docker` → `dist/Step2Maestro-Docker.zip` (Ordner `step2maestro-docker/`: `Dockerfile`, `docker-compose.yml`,
+`start.sh`, `ANLEITUNG-DOCKER.txt`, Programm). Ein Container (PHP 8.3 + Apache + GD) stellt alles für die Werkstatt bereit:
+Programm, **Projektablage**, Dekor-Bibliothek, **ChatGPT über den Server** (`OPENAI_API_KEY` in `docker-compose.yml` – die
+Geräte brauchen keinen eigenen Schlüssel; `ki/openai.php` reicht nur `POST /v1/responses` und `GET /v1/models` weiter) und
+die **Offline-Spracherkennung** (Vosk wird beim Bauen geholt, `SPRACHE=1`). Daten im Volume `./daten` (Projekte, Dekore,
+Bilder – mit Hyper Backup sichern). Auf der Synology: Container Manager → Projekt → Ordner mit `docker-compose.yml`; Aufruf
+`http://<diskstation>:8080/`. Der Pi an der Säge: `einrichten.sh --url http://<diskstation>:8080/ --sprache` (erlaubt das
+Mikrofon für diese http-Adresse). Vorteil gegenüber dem Webspace: alles bleibt im eigenen Netz, schnell, ohne Internet
+nutzbar (außer ChatGPT), Projekte zentral für alle Geräte, ein KI-Schlüssel für alle.
 
 ### KI-Assistent (✨ oben rechts)
 
@@ -574,6 +604,9 @@ Am Sägeplatz bzw. mit echtem Konto noch nicht ausprobiert:
 - **Sprachbefehle offline (Vosk) am Pi:** Laden des deutschen Modells, Erkennung der Befehlswörter mit Headset an der
   laufenden Säge; Mikrofon-Freigabe im Kiosk (`--use-fake-ui-for-media-stream`). Getestet sind nur die Befehle, die Anbindung
   mit nachgebildeter Erkennung und dass ein defektes Modell sauber gemeldet wird.
+- **Docker auf der Diskstation:** Abbild hier nur ohne GD-Erweiterung gebaut (Paketquellen gesperrt) – Start, Datenordner,
+  Projektablage, Konflikt-Prüfung und ChatGPT-Weiterleitung im Container geprüft; der vollständige Bau (mit GD für die
+  Dekor-Bilder und Vosk) läuft erst auf der Diskstation.
 - **KI-Assistent mit echtem API-Schlüssel:** Claude – Verbindung aus dem Browser zur API ist geprüft (Antwort „Schlüssel
   ungültig“ kommt richtig an); ChatGPT – die Verbindung zu api.openai.com war aus der Entwicklungsumgebung nicht erreichbar,
   also noch gar nicht geprüft (Abruf direkt aus dem Browser, CORS). Beide Abläufe sind mit nachgebildeten Antworten getestet;
@@ -664,6 +697,8 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
 |---|---|
 | `web/` | Web-Tool (`index.html`) und die JS-Module `step.js` (STEP-Leser), `panel.js` (Erkennung), `xcs.js` (Ausgabe), `surface.js` (Kugelfräser-Bahn), `occtmesh.js` (3D-Netz), `dxf.js` (DXF-Leser), `assist.js` (KI-Assistent), `voice.js` (Sprachbefehle); `js/vendor/openai.js` / `anthropic.js` = OpenAI- bzw. Anthropic-SDK als Browser-Skript (`tools/build_openai.sh`, `tools/build_anthropic.sh`) |
 | `cli/` | Kommandozeilen-Aufruf |
+| `tools/webserver/` | Webspace-Paket: `dekore/` (Dekor-Bibliothek), `projekte/` (Projektablage), `ki/` (ChatGPT über den Server), Anleitung |
+| `tools/docker/` | Docker für die Diskstation: `Dockerfile`, `docker-compose.yml`, `start.sh`, `ANLEITUNG-DOCKER.txt` |
 | `test/` | Tests (`npm test`) und Test-STEP/DXF-Dateien |
 | `tools/` | `make_fixtures.py` erzeugt einen Teil der Test-STEP-Dateien (CadQuery; die übrigen stammen aus Onshape/Werkstatt), `make_dxf.js` die Test-DXF, `build_defaults.js` die eingebaute Werkzeugliste und Beispiele, `build_exe.sh`/`build_web.sh` die Pakete, `webserver/` Anleitung, `.htaccess` und Schriften für den Webserver |
 | `step/` | Original-STEP-Exporte aus Onshape |

@@ -353,7 +353,7 @@ table.ops td.k .jump:hover { color: var(--accent); }
 .view canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 /* Seiten: Programme (STEP → PGMX) / Möbel 3D */
 /* Seitenwahl oben: zwei große Schalter (Symbol, Name, Erklärung, Anzahl) – der aktive gefüllt in der Akzentfarbe */
-.pagetabs { display: grid; grid-template-columns: repeat(5, minmax(0, 250px)); gap: 6px; padding: 5px; margin: 4px 0 8px; width: fit-content; max-width: 100%;
+.pagetabs { display: grid; grid-template-columns: repeat(6, minmax(0, 230px)); gap: 6px; padding: 5px; margin: 4px 0 8px; width: fit-content; max-width: 100%;
   background: var(--sunken); border: 1px solid var(--line); border-radius: 14px; }
 .pagetabs button { display: flex; align-items: center; gap: 12px; text-align: left; border: 1px solid transparent; background: none; color: var(--muted);
   font: inherit; padding: 9px 14px; border-radius: 10px; cursor: pointer; min-width: 0; transition: background .15s, color .15s; }
@@ -369,12 +369,13 @@ table.ops td.k .jump:hover { color: var(--accent); }
 .pagetabs button[aria-selected="true"] .ptn { background: var(--accent-ink); color: var(--accent); border-color: transparent; }
 @media (max-width: 520px) { .pagetabs .pti { display: none; } .pagetabs .ptt b { font-size: 0.92rem !important; overflow: hidden; text-overflow: ellipsis; } .pagetabs button { justify-content: center; } }
 @media (max-width: 1100px) { .pagetabs .ptt small, .pagetabs .ptn { display: none; } .pagetabs button { gap: 8px; } }
-@media (max-width: 640px) { .pagetabs { width: 100%; grid-template-columns: repeat(5, minmax(0, 1fr)); } .pagetabs button { gap: 8px; padding: 8px 10px; }
+@media (max-width: 640px) { .pagetabs { width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); } .pagetabs button { gap: 8px; padding: 8px 10px; }
   .pagetabs .ptt small, .pagetabs .ptn { display: none; } .pagetabs .ptt b { font-size: 1rem; white-space: nowrap; } .pagetabs .pti { width: 22px; height: 22px; } }
 body[data-page="model"] .profilebar, body[data-page="model"] .bench, body[data-page="model"] details.settings,
 body[data-page="lists"] .profilebar, body[data-page="lists"] .bench, body[data-page="lists"] details.settings,
 body[data-page="labels"] .profilebar, body[data-page="labels"] .bench, body[data-page="labels"] details.settings,
-body[data-page="material"] .profilebar, body[data-page="material"] .bench, body[data-page="material"] details.settings { display: none; }
+body[data-page="material"] .profilebar, body[data-page="material"] .bench, body[data-page="material"] details.settings,
+body[data-page="start"] .profilebar, body[data-page="start"] .bench, body[data-page="start"] details.settings { display: none; }
 /* Listen: Stückliste und Zuschnittplan */
 .lbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 12px; }
 .lbar .sp { flex: 1; }
@@ -566,6 +567,47 @@ svg.sheet .cuts { pointer-events: none; }
 .sawtile .s-tn small { font-size: 1.4rem; color: var(--muted); }
 body.sawlock { overflow: hidden; }
 .sawcard .tx { font-size: 1.15rem; }
+/* Projekte (Startseite) */
+#projsave.dirty { border-color: var(--warn); }
+#projsave.dirty::after { content: '•'; color: var(--warn); font-weight: 700; margin-left: 2px; }
+.startpage { display: grid; gap: 18px; }
+.pjcur { display: grid; gap: 12px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
+.pjtitle { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+.pjtitle .lab { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.pjstate { font-size: 0.88rem; color: var(--muted); }
+.pjstate.ok { color: var(--ok); }
+.pjstate.ok::before { content: '✓ '; }
+.pjstate.warn { color: var(--warn); font-weight: 600; }
+.pjform { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.6fr); gap: 10px 14px; }
+.pjform label { display: grid; gap: 4px; font-size: 0.82rem; font-weight: 600; color: var(--muted); }
+.pjform input { font: inherit; font-size: 1rem; font-weight: 400; color: var(--ink); padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); min-width: 0; }
+.pjform #pj-name { font-weight: 700; font-size: 1.1rem; }
+.pjact { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.pjact .sp { flex: 1; }
+.pjact .pjcount { color: var(--muted); font-size: 0.9rem; }
+.pjact .btn.go { background: var(--on, #1e8a3e); border-color: var(--on, #1e8a3e); color: var(--on-ink, #fff); font-weight: 700; padding: 8px 18px; }
+.pjact .btn.go[disabled] { background: var(--sunken); border-color: var(--line); color: var(--muted); }
+.pjwhere { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--muted); }
+.pjlist { display: grid; gap: 10px; }
+.pjbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.pjbar h3 { margin: 0; font-size: 1.1rem; }
+.pjbar .sp { flex: 1; }
+.pjbar input[type=search] { font: inherit; font-size: 0.9rem; padding: 5px 10px; border: 1px solid var(--line); border-radius: 99px; background: var(--surface); color: var(--ink); width: 17em; max-width: 100%; }
+.pjbar .seg small { opacity: 0.75; margin-left: 3px; }
+.pjlogin { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 10px 12px; border-radius: 10px; background: var(--warn-bg); color: var(--ink); font-size: 0.9rem; }
+.pjlogin input { font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; }
+.pjtbl { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+.pjtbl th { text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.pjtbl td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.pjtbl th.r, .pjtbl td.r { text-align: right; }
+.pjtbl tr.cur td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.pjtbl .sub { font-size: 0.8rem; color: var(--muted); }
+.pjtbl .sub.n { font-style: italic; }
+.pjtbl td.mat { max-width: 22em; color: var(--muted); font-size: 0.85rem; }
+.pjtbl td.act { white-space: nowrap; text-align: right; }
+.pjtbl td.act .btn { margin-left: 4px; }
+.pjtbl td.act .btn.arm { color: #fff; background: var(--err); border-color: var(--err); }
+@media (max-width: 760px) { .pjform { grid-template-columns: 1fr; } .pjtbl td.mat, .pjtbl th:nth-child(3) { display: none; } .pjtbl td.act { white-space: normal; } }
 /* KI-Assistent: Fenster rechts */
 .aibtn { white-space: nowrap; }
 .aibtn[aria-expanded="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
@@ -1024,8 +1066,8 @@ table.fmt.one .onet { display: inline; }
     <div class="topright">
     <div class="toprow">
     <div class="proj" role="group" aria-label="Projekt">
-      <button type="button" class="btn small" id="projopen" title="Gespeichertes Projekt (.s2m) öffnen – ersetzt die Teileliste; die Datei kann auch auf die Seite gezogen werden"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1H7.5a2 2 0 0 0-1.9 1.4L3 19z"/><path d="M3 19l2.6-7.6A2 2 0 0 1 7.5 10H22l-2.7 7.6a2 2 0 0 1-1.9 1.4H3z"/></svg>Projekt öffnen</button>
-      <button type="button" class="btn small" id="projsave" title="Ganzes Projekt als Datei (.s2m) speichern: STEP/DXF, alle Änderungen je Teil, Stückliste (Anzahl, Kanten, Farben), Zuschnittplan (Format, Pläne von Hand, Stand im Sägemodus), Maße und Einstellungen – später oder auf einem anderen PC weiterarbeiten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h11l4 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 1-2z"/><path d="M8 3v5h7V3M8 21v-6h8v6"/></svg>Projekt speichern</button>
+      <button type="button" class="btn small" id="projopen" title="Projekte: gespeicherte Projekte öffnen, neues Projekt, .s2m-Datei öffnen (Startseite)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1H7.5a2 2 0 0 0-1.9 1.4L3 19z"/><path d="M3 19l2.6-7.6A2 2 0 0 1 7.5 10H22l-2.7 7.6a2 2 0 0 1-1.9 1.4H3z"/></svg>Projekte</button>
+      <button type="button" class="btn small" id="projsave" title="Projekt speichern – auf dem Server bzw. in diesem Browser (Name auf der Projektseite)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h11l4 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 1-2z"/><path d="M8 3v5h7V3M8 21v-6h8v6"/></svg>Speichern</button>
     </div>
     <button type="button" class="btn small aibtn" id="aibtn" aria-expanded="false" aria-controls="aipanel" title="KI-Assistent (ChatGPT oder Claude): Stückliste bearbeiten, sortieren, Material und Kanten setzen, Zuschnitt einstellen, Sägemodus steuern – mit eigenem API-Schlüssel"><span aria-hidden="true">✨</span> KI-Assistent</button>
     <div class="theme" role="group" aria-label="Darstellung">
@@ -1037,6 +1079,7 @@ table.fmt.one .onet { display: inline; }
   </header>
 
   <nav class="pagetabs" role="tablist" aria-label="Ansicht">
+    <button type="button" role="tab" data-page="start" aria-selected="false"><svg class="pti" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 10h18"/></svg><span class="ptt"><b>Projekte</b><small>öffnen, speichern, verwalten</small></span></button>
     <button type="button" role="tab" data-page="pgmx" aria-selected="true"><svg class="pti" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M9.5 12.5 7.5 15l2 2.5M14.5 12.5l2 2.5-2 2.5"/></svg><span class="ptt"><b>Programme</b><small>Teile prüfen, .xcs/.pgmx</small></span><span class="ptn" id="ptn-pgmx"></span></button>
     <button type="button" role="tab" data-page="model" aria-selected="false"><svg class="pti" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 20.5 7v10L12 21.5 3.5 17V7z"/><path d="M12 21.5V12M20.5 7 12 12 3.5 7"/></svg><span class="ptt"><b>Möbel 3D</b><small>ansehen, messen, bemaßen</small></span><span class="ptn" id="ptn-model"></span></button>
     <button type="button" role="tab" data-page="lists" aria-selected="false"><svg class="pti" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span class="ptt"><b>Listen</b><small>Stückliste, Zuschnitt, Zeit</small></span><span class="ptn" id="ptn-lists"></span></button>
@@ -1044,6 +1087,7 @@ table.fmt.one .onet { display: inline; }
     <button type="button" role="tab" data-page="material" aria-selected="false"><svg class="pti" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5 12 3l9 4.5-9 4.5z"/><path d="M3 12l9 4.5 9-4.5M3 16.5 12 21l9-4.5"/></svg><span class="ptt"><b>Material</b><small>Platten, Dekore, Kanten</small></span></button>
   </nav>
 
+  <section class="card startpage" id="startpage" hidden></section>
   <section class="card labelpage" id="lblpage" hidden></section>
   <section class="card matpage" id="matpage" hidden></section>
 
@@ -1728,6 +1772,7 @@ table.fmt.one .onet { display: inline; }
     let data;
     try { data = JSON.parse(JSON.stringify(sessionData())); } catch (e) { return; }
     idbSet(SESSION_KEY, data).catch(() => { /* ohne Speicher: nur für diese Sitzung */ });
+    projMark();
   }
   function saveSession() {
     if (!sessionReady) return;
@@ -1779,13 +1824,9 @@ table.fmt.one .onet { display: inline; }
 
   // ------------------------------------------------ Projektdatei (.s2m): Dateien, Teile mit allen Änderungen, Farben, Anzahl, Maße
   const PROJECT_FORMAT = 'step2maestro-projekt';
-  function saveProject() {
-    if (!state.parts.length) { toast('Keine Teile vorhanden.'); return; }
-    const first = state.parts.find((p) => p.label);
-    const base = StepToXcs.partName(String(first ? first.label : 'Projekt').replace(/^Beispiel: /, '').replace(/^.*[\\/]/, '').replace(/\.(step|stp|dxf)$/i, ''));
-    const d = new Date();
-    const stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    const data = { format: PROJECT_FORMAT, saved: d.toISOString(), session: JSON.parse(JSON.stringify(sessionData())) };
+  // ganzes Projekt als Daten: Teile (session), Stückliste/Zuschnitt (lists), Einstellungen, benutzte eigene Dekor-Bilder, Name/Kunde/Notiz
+  function projectPayload() {
+    const data = { format: PROJECT_FORMAT, saved: new Date().toISOString(), session: JSON.parse(JSON.stringify(sessionData())) };
     // eigene Dekor-Bilder, die die Teile benutzen, gehen mit (auf einem anderen PC sind sie sonst nicht da)
     const used = new Set(state.parts.map((p) => String(boardKeyOf(p)).split('|')[0]).filter((k) => k.slice(0, 4) === 'dek:').map((k) => k.slice(4)));
     const dk = localDecors.filter((x) => used.has(x.key));
@@ -1793,7 +1834,17 @@ table.fmt.one .onet { display: inline; }
     // Stückliste/Zuschnitt (Format, Schnittfuge, Pläne von Hand, Haken im Sägemodus, Kanten) und die Einstellungen gehen mit
     data.lists = projectLists();
     data.settings = JSON.parse(JSON.stringify(state.settings));
-    saveOne(base + '_' + stamp + '.s2m', JSON.stringify(data), 'application/json');
+    if (typeof proj !== 'undefined' && proj.name) data.meta = { name: proj.name, kunde: proj.kunde || '', notiz: proj.notiz || '' };
+    return data;
+  }
+  // Export als Datei (.s2m) – zum Weitergeben oder als Sicherung
+  function saveProject() {
+    if (!state.parts.length) { toast('Keine Teile vorhanden.'); return; }
+    const first = state.parts.find((p) => p.label);
+    const base = StepToXcs.partName(String(proj.name || (first ? first.label : 'Projekt')).replace(/^Beispiel: /, '').replace(/^.*[\\/]/, '').replace(/\.(step|stp|dxf)$/i, ''));
+    const d = new Date();
+    const stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    saveOne(base + '_' + stamp + '.s2m', JSON.stringify(projectPayload()), 'application/json');
   }
   // Listen-Werte, die zum Projekt gehören (Ansicht, Zoom und Säge-Einstellungen bleiben am Gerät)
   const PROJECT_LST_KEYS = ['group', 'raw', 'sheetL', 'sheetW', 'kerf', 'trim', 'grain', 'cuts', 'dir', 'goal', 'groupSheet', 'manual', 'sawDone', 'saw',
@@ -1804,11 +1855,14 @@ table.fmt.one .onet { display: inline; }
     for (const k of PROJECT_LST_KEYS) if (lst[k] !== undefined) o[k] = lst[k];
     return JSON.parse(JSON.stringify(o));
   }
-  function openProject(text, name) {
+  function parseProject(text, name) {
     let data;
-    try { data = JSON.parse(text); } catch (e) { toast(name + ': keine gültige Projektdatei.'); return; }
-    if (!data || data.format !== PROJECT_FORMAT || !data.session || data.session.v !== 1) { toast(name + ': keine Step2Maestro-Projektdatei.'); return; }
-    if (state.parts.length && !confirm('Projekt „' + name + '“ öffnen? Die aktuelle Teileliste wird ersetzt.')) return;
+    try { data = JSON.parse(text); } catch (e) { toast(name + ': keine gültige Projektdatei.'); return null; }
+    if (!data || data.format !== PROJECT_FORMAT || !data.session || data.session.v !== 1) { toast(name + ': keine Step2Maestro-Projektdatei.'); return null; }
+    return data;
+  }
+  // Projekt-Daten übernehmen (ersetzt die Teileliste)
+  function applyProject(data) {
     state.parts = [];
     anim.result = null;
     if (Array.isArray(data.dekore)) mergeDecors(data.dekore);
@@ -1823,20 +1877,30 @@ table.fmt.one .onet { display: inline; }
         saveSettings(); renderSettings(); renderRule(); renderProfileEditor();
       }
     }
-    if (data.lists && typeof data.lists === 'object') {
-      for (const k of PROJECT_LST_KEYS) if (data.lists[k] !== undefined) lst[k] = data.lists[k];
-      saveLst();
-      syncListInputs();
+    // Listen: Werte aus dem Projekt, fehlende (ältere Dateien) wie neu
+    const fresh = { manual: {}, groupSheet: {}, sawDone: {}, saw: null };
+    for (const k of PROJECT_LST_KEYS) {
+      if (data.lists && typeof data.lists === 'object' && data.lists[k] !== undefined) lst[k] = data.lists[k];
+      else if (k in fresh) lst[k] = JSON.parse(JSON.stringify(fresh[k]));
     }
+    saveLst();
+    syncListInputs();
     // Maße des alten Projekts in Möbel 3D verwerfen (die neuen setzt restoreFrom)
     if (mdl.viewer) mdl.viewer.clearDims();
     mdl.dimsSaved = null;
     restoreFrom(data.session);
+  }
+  // .s2m-Datei öffnen (Knopf auf der Projektseite oder auf die Seite gezogen)
+  function openProject(text, name) {
+    const data = parseProject(text, name);
+    if (!data) return;
+    if (!projLeaveOk('Projekt „' + name + '“ öffnen? Die aktuelle Teileliste wird ersetzt.')) return;
+    applyProject(data);
+    const m = data.meta || {};
+    projSet({ id: null, store: null, name: m.name || String(name).replace(/\.s2m$/i, ''), kunde: m.kunde || '', notiz: m.notiz || '', basis: '', saved: null, sig: null });
     toast('Projekt geöffnet: ' + state.parts.length + ' Teile');
     render();
   }
-  $('projsave').addEventListener('click', saveProject);
-  $('projopen').addEventListener('click', () => openPicker());
   function addStep(text, label) {
     let solids;
     try { solids = StepToXcs.readParts(text, label.replace(/^Beispiel: /, '')); } catch (e) {
@@ -4751,7 +4815,7 @@ table.fmt.one .onet { display: inline; }
     else if (what === 'ai') {
       lst.sawAi = !lst.sawAi;
       saveLst();
-      if (lst.sawAi && !aiKeyNow()) toast('🤖 Für freie Sätze im KI-Assistenten (✨ oben) den API-Schlüssel eintragen.');
+      if (lst.sawAi && !aiReady()) toast('🤖 Für freie Sätze im KI-Assistenten (✨ oben) den API-Schlüssel eintragen.');
       if (voiceOn()) voice.ctl.restart(); // Offline-Erkennung: mit/ohne Befehls-Grammatik
       renderSaw();
       return;
@@ -5131,22 +5195,24 @@ table.fmt.one .onet { display: inline; }
 
   // ------------------------------------------------ Möbel 3D: alle STEP-Bauteile zusammengebaut
   const PAGE_KEY = 'step2xcs.page.v1';
-  state.page = ['model', 'lists', 'labels', 'material'].includes(loadJson(PAGE_KEY, 'pgmx')) ? loadJson(PAGE_KEY, 'pgmx') : 'pgmx';
+  state.page = 'start';
   const mdl = { viewer: null, key: null, hidden: new Set(), sel: null, loading: false };
   function setPage(pg) {
     state.page = pg;
-    storeJson(PAGE_KEY, pg);
+    if (pg !== 'start') storeJson(PAGE_KEY, pg); // gemerkt wird die letzte Arbeitsseite („Weiter bearbeiten“)
     voiceIdle();
     document.body.dataset.page = pg;
     $('modelpage').hidden = pg !== 'model';
     $('listpage').hidden = pg !== 'lists';
     $('lblpage').hidden = pg !== 'labels';
     $('matpage').hidden = pg !== 'material';
+    $('startpage').hidden = pg !== 'start';
     document.querySelectorAll('.pagetabs [data-page]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.page === pg)));
     if (pg === 'model') renderModel();
     if (pg === 'lists') renderLists();
     if (pg === 'labels') renderLD();
     if (pg === 'material') renderMat();
+    if (pg === 'start') renderStart();
   }
   document.querySelectorAll('.pagetabs [data-page]').forEach((b) => b.addEventListener('click', () => setPage(b.dataset.page)));
   // Bauteile mit STEP (DXF hat kein 3D-Modell); Nummer = Platz in der Programmliste
@@ -7079,6 +7145,9 @@ table.fmt.one .onet { display: inline; }
       if (k) (ai.keep ? localStorage : sessionStorage).setItem(keyName(pv), k);
     } catch (e) { /* nur im Speicher */ }
   }
+  // ChatGPT über den Server (ki/openai.php, Schlüssel auf der Diskstation) – wenn kein eigener Schlüssel eingetragen ist
+  const aiServer = () => ai.provider === 'openai' && kiSrv.aktiv && kiSrv.zugang && !aiKeyNow('openai');
+  const aiReady = () => !!aiKeyNow() || aiServer();
   const aiSave = () => storeJson(AI_KEY, { provider: ai.provider, model: ai.model, oaModel: ai.oaModel, effort: ai.effort, keep: ai.keep });
   const aiModel = () => (isOA() ? ai.oaModel || Assist.OPENAI_DEFAULT : ai.model || Assist.DEFAULT_MODEL);
   const sdkLoading = {};
@@ -7099,8 +7168,15 @@ table.fmt.one .onet { display: inline; }
   }
   async function aiClient() {
     const pv = ai.provider;
-    const key = aiKeyNow(pv);
     const A = await loadSdk(pv);
+    if (aiServer()) {
+      const c = aiState.clients.server;
+      if (c && c.key === kiSrv.csrf) return c.client;
+      const client = new A({ apiKey: 'server', baseURL: new URL('ki/openai.php/v1', location.href).href, defaultHeaders: { 'X-CSRF': kiSrv.csrf }, dangerouslyAllowBrowser: true, maxRetries: 1 });
+      aiState.clients.server = { key: kiSrv.csrf, client: client };
+      return client;
+    }
+    const key = aiKeyNow(pv);
     const c = aiState.clients[pv];
     if (c && c.key === key) return c.client;
     const client = new A({ apiKey: key, dangerouslyAllowBrowser: true, maxRetries: 2 });
@@ -7153,7 +7229,7 @@ table.fmt.one .onet { display: inline; }
     $('ailog').innerHTML = '<div class="hello"><p><b>Was soll ich tun?</b> Ich kann die Teileliste sortieren, Namen, Anzahl, Material, Kanten und Faser setzen, ' +
       'Teile anlegen oder löschen, den Zuschnitt einstellen und im Sägemodus blättern und drucken. Bearbeitungen (Bohrungen, Fräsungen) ändere ich nicht.</p>' +
       '<p>Antwortet: <b>' + esc(PROV[ai.provider].name) + '</b> (' + esc(aiModel()) + ')</p>' +
-      (aiKeyNow() ? '' : '<p>Zuerst unter ⚙ Einstellungen den ' + esc(PROV[ai.provider].keyLabel) + ' eintragen.</p>') + '</div>';
+      (aiServer() ? '<p>Schlüssel: vom Server.</p>' : aiKeyNow() ? '' : '<p>Zuerst unter ⚙ Einstellungen den ' + esc(PROV[ai.provider].keyLabel) + ' eintragen.</p>') + '</div>';
     $('aisugg').innerHTML = AI_SUGG.map((t) => '<button type="button" data-aisugg="' + esc(t) + '">' + esc(t) + '</button>').join('');
   }
   function aiOpen(on) {
@@ -7161,8 +7237,8 @@ table.fmt.one .onet { display: inline; }
     $('aibtn').setAttribute('aria-expanded', String(on));
     if (!on) return;
     if (!$('ailog').children.length) aiHello();
-    if (!aiKeyNow()) aiSetOpen(true);
-    $(aiKeyNow() ? 'aiin' : 'aikey').focus();
+    if (!aiReady()) aiSetOpen(true);
+    $(aiReady() ? 'aiin' : 'aikey').focus();
   }
   function aiModelList(ids) {
     const sugg = isOA() ? Assist.OPENAI_MODELS : Assist.MODELS;
@@ -7182,13 +7258,13 @@ table.fmt.one .onet { display: inline; }
     $('aimodel').value = aiModel();
     aiModelList(null);
     $('aieffort').innerHTML = Assist.EFFORTS.map(([v, t]) => '<option value="' + v + '"' + (v === ai.effort ? ' selected' : '') + '>' + esc(t) + '</option>').join('');
-    $('aikeynote').textContent = P.note + ' Gesendet werden nur die Daten der Teileliste (Namen, Maße, Material, Kanten, Zuschnitt, Stand beim Sägen) – keine STEP-Dateien. ' +
+    $('aikeynote').textContent = (ai.provider === 'openai' && kiSrv.aktiv ? 'Auf dem Server ist ein OpenAI-Schlüssel eingetragen – ohne eigenen Schlüssel läuft ChatGPT darüber' + (kiSrv.zugang ? '.' : ' (nach der Anmeldung auf der Projektseite).') + ' ' : '') + P.note + ' Gesendet werden nur die Daten der Teileliste (Namen, Maße, Material, Kanten, Zuschnitt, Stand beim Sägen) – keine STEP-Dateien. ' +
       'Der Schlüssel bleibt im Browser (ohne Haken nur bis zum Schließen) – auf fremden Geräten nicht merken.';
   }
   async function aiSend(text) {
     text = String(text || '').trim();
     if (!text || aiState.busy) return;
-    if (!aiKeyNow()) { aiSetOpen(true); $('aikey').focus(); toast('Bitte zuerst den ' + PROV[ai.provider].keyLabel + ' eintragen.'); return; }
+    if (!aiReady()) { aiSetOpen(true); $('aikey').focus(); toast('Bitte zuerst den ' + PROV[ai.provider].keyLabel + ' eintragen.'); return; }
     aiState.busy = true;
     $('aisend').disabled = true;
     $('aiin').value = '';
@@ -7209,7 +7285,7 @@ table.fmt.one .onet { display: inline; }
   // gesprochen an der Säge (kein fester Befehl, „🤖 KI“ an): an die KI, Antwort vorlesen
   async function aiVoice(text) {
     if (aiState.busy) { Voice.say('Moment, ich bin noch dran.'); return; }
-    if (!aiKeyNow()) { voice.msg = 'Für freie Sätze den API-Schlüssel im KI-Assistenten eintragen.'; renderSaw(); return; }
+    if (!aiReady()) { voice.msg = 'Für freie Sätze den API-Schlüssel im KI-Assistenten eintragen.'; renderSaw(); return; }
     aiState.busy = true;
     voice.reply = '🤖 …';
     renderSaw();
@@ -7258,7 +7334,7 @@ table.fmt.one .onet { display: inline; }
     aiSave();
   });
   $('aimload').addEventListener('click', async () => {
-    if (!aiKeyNow()) { toast('Zuerst den Schlüssel eintragen.'); return; }
+    if (!aiReady()) { toast('Zuerst den Schlüssel eintragen.'); return; }
     try {
       const client = await aiClient();
       const ids = [];
@@ -7276,6 +7352,321 @@ table.fmt.one .onet { display: inline; }
   $('ainew').addEventListener('click', () => { if (aiState.busy) return; aiState.chat = newConv(); aiState.saw = newConv(); aiHello(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('aipanel').hidden && !document.querySelector('.sawpop')) { aiOpen(false); } });
 
+  // ------------------------------------------------ Projekte (Startseite): verwalten, speichern, öffnen
+  /*
+   * Ablage auf dem Server (projekte/api.php – Diskstation/Docker oder Webspace, für alle Geräte) oder in diesem Browser
+   * (IndexedDB). Aktuelles Projekt in proj (gemerkt in localStorage): id + store ('server'|'local'), Name, Kunde, Notiz,
+   * basis = Stand auf dem Server (Konflikt-Prüfung), sig = Prüfsumme beim Speichern (ungespeicherte Änderungen).
+   */
+  const PROJ_KEY = 'step2xcs.project.v1';
+  const LOCAL_PROJ = 'projekte.v1';
+  const proj = Object.assign({ id: null, store: null, name: '', kunde: '', notiz: '', basis: '', saved: null, sig: null }, loadJson(PROJ_KEY, {}) || {});
+  const srv = { checked: false, ok: false, login: false, offen: false, passwort: false, csrf: '', list: [], err: '' };
+  const kiSrv = { aktiv: false, zugang: false, csrf: '' };
+  const pst = { tab: null, q: '', local: [], del: null, busy: false };
+  const serverPossible = () => /^https?:$/.test(location.protocol);
+  function projSet(o) { Object.assign(proj, o); storeJson(PROJ_KEY, proj); projMark(); }
+  // Prüfsumme des Projekts (ohne Auswahl): gleich = nichts geändert seit dem Speichern
+  function projSig() {
+    const d = sessionData();
+    delete d.sel;
+    const t = JSON.stringify([d, projectLists(), proj.name, proj.kunde, proj.notiz]);
+    let h = 0;
+    for (let i = 0; i < t.length; i++) h = (Math.imul(h, 31) + t.charCodeAt(i)) | 0;
+    return (h >>> 0).toString(36) + ':' + t.length;
+  }
+  const projDirty = () => state.parts.length > 0 && proj.sig !== projSig();
+  // vor dem Wechsel: ungespeicherte Änderungen nachfragen
+  function projLeaveOk(msg) {
+    if (!projDirty()) return true;
+    return confirm('Das aktuelle Projekt' + (proj.name ? ' „' + proj.name + '“' : '') + ' hat ungespeicherte Änderungen – sie gehen verloren.\n\n' + (msg || 'Trotzdem fortfahren?'));
+  }
+  // Knopf oben: Speichern (• = ungespeicherte Änderungen)
+  let markTimer = null;
+  function projMark() {
+    clearTimeout(markTimer);
+    markTimer = setTimeout(() => {
+      const d = projDirty();
+      $('projsave').classList.toggle('dirty', d);
+      $('projsave').title = (proj.name ? 'Projekt „' + proj.name + '“ speichern' : 'Projekt speichern (Name auf der Projektseite)') + (d ? ' – ungespeicherte Änderungen' : '');
+      if (state.page === 'start') renderStartHead();
+    }, 300);
+  }
+  // gzip (Server-Ablage)
+  async function gzBlob(text) { return new Response(new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'))).blob(); }
+  async function ungz(blob) { return new Response(blob.stream().pipeThrough(new DecompressionStream('gzip'))).text(); }
+  // Kurzinfo für die Liste
+  function projInfo() {
+    const mats = new Set();
+    let stueck = 0;
+    for (const p of state.parts) { if (p.res || p.result) { stueck += qtyOf(p); const r = p.res || p.result; if (r.panel) mats.add(View3D.boardOf(boardKeyOf(p)).name + ' ' + fmt(r.panel.T)); } }
+    let platten = 0;
+    try { platten = cutOverview(cutGroups()).sum.n; } catch (e) { platten = 0; }
+    return { teile: state.parts.length, stueck: stueck, platten: platten, materialien: Array.from(mats).slice(0, 12), zeit: Math.round(bomTotals(bomRows()).time) };
+  }
+
+  // --- Server
+  async function srvCall(a, opts) {
+    const r = await fetch('projekte/api.php?a=' + a + (opts && opts.q ? '&' + opts.q : ''), Object.assign({ credentials: 'same-origin', cache: 'no-store' },
+      opts && opts.body ? { method: 'POST', body: opts.body, headers: { 'X-CSRF': srv.csrf } } : {}));
+    return r;
+  }
+  async function srvJson(r) {
+    let j = null;
+    try { j = await r.json(); } catch (e) { j = null; }
+    if (!j) throw new Error('Server antwortet nicht wie erwartet (' + r.status + ').');
+    return j;
+  }
+  async function srvRefresh() {
+    if (!serverPossible()) { srv.checked = true; srv.ok = false; return; }
+    try {
+      const j = await srvJson(await srvCall('list'));
+      srv.ok = !!j.ok; srv.login = !!j.login; srv.offen = !!j.offen; srv.passwort = !!j.passwort; srv.csrf = j.csrf || ''; srv.list = j.projekte || []; srv.err = '';
+    } catch (e) { srv.ok = false; srv.err = ''; }
+    srv.checked = true;
+    // KI über den Server (Schlüssel auf der Diskstation)?
+    try {
+      const r = await fetch('ki/openai.php', { credentials: 'same-origin', cache: 'no-store' });
+      const j = r.ok ? await r.json() : null;
+      kiSrv.aktiv = !!(j && j.aktiv); kiSrv.zugang = !!(j && j.zugang); kiSrv.csrf = (j && j.csrf) || '';
+    } catch (e) { kiSrv.aktiv = false; }
+  }
+  async function srvLogin(pw) {
+    const fd = new FormData();
+    fd.append('a', 'login');
+    fd.append('passwort', pw);
+    const j = await srvJson(await fetch('dekore/api.php', { method: 'POST', body: fd, credentials: 'same-origin' }));
+    if (!j.ok) throw new Error(j.fehler || 'Anmeldung fehlgeschlagen.');
+    await srvRefresh();
+  }
+  // --- Browser (IndexedDB)
+  async function localList() { try { return (await idbGet(LOCAL_PROJ)) || []; } catch (e) { return []; } }
+  async function localPut(meta, data) {
+    const list = (await localList()).filter((m) => m.id !== meta.id);
+    await idbSet('projekt:' + meta.id, data);
+    list.unshift(meta);
+    await idbSet(LOCAL_PROJ, list);
+  }
+
+  // --- Speichern: dorthin, wo das Projekt liegt; neue Projekte auf den Server, wenn er da ist (sonst Browser)
+  async function projSave(opts) {
+    opts = opts || {};
+    if (!state.parts.length) { toast('Keine Teile – nichts zu speichern.'); return false; }
+    const name = String(opts.name !== undefined ? opts.name : proj.name || '').trim();
+    if (!name) { setPage('start'); toast('Bitte zuerst einen Projektnamen eingeben.'); setTimeout(() => { const n = $('pj-name'); if (n) n.focus(); }, 50); return false; }
+    const asNew = !!opts.asNew || !proj.id;
+    const store = asNew ? (opts.store || (srv.ok && srv.login ? 'server' : 'local')) : proj.store;
+    const meta = { name: name, kunde: opts.kunde !== undefined ? opts.kunde : proj.kunde || '', notiz: opts.notiz !== undefined ? opts.notiz : proj.notiz || '' };
+    projSet(meta); // Name gehört in die Prüfsumme und ins Projekt
+    const data = projectPayload();
+    const sig = projSig();
+    const info = projInfo();
+    pst.busy = true;
+    try {
+      if (store === 'server') {
+        const fd = new FormData();
+        fd.append('a', 'save');
+        if (!asNew) { fd.append('id', proj.id); if (!opts.force) fd.append('basis', proj.basis || ''); }
+        fd.append('name', meta.name); fd.append('kunde', meta.kunde); fd.append('notiz', meta.notiz);
+        fd.append('info', JSON.stringify(info));
+        fd.append('geraet', (navigator.platform || '').slice(0, 30));
+        fd.append('datei', await gzBlob(JSON.stringify(data)), 'projekt.s2m.gz');
+        const r = await srvCall('save', { body: fd });
+        const j = await srvJson(r);
+        if (r.status === 409) {
+          pst.busy = false;
+          if (confirm(j.fehler + '\n\nOK = trotzdem überschreiben\nAbbrechen = nicht speichern (z. B. erst als neues Projekt speichern)')) return projSave(Object.assign({}, opts, { force: true }));
+          return false;
+        }
+        if (!j.ok) throw new Error(j.fehler || 'Speichern fehlgeschlagen.');
+        projSet({ id: j.projekt.id, store: 'server', basis: j.projekt.geaendert, saved: j.projekt.geaendert, sig: sig });
+        await srvRefresh();
+        pst.tab = 'server';
+      } else {
+        const id = asNew ? 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7) : proj.id;
+        const now = new Date().toISOString();
+        const old = (await localList()).find((m) => m.id === id);
+        await localPut(Object.assign({ id: id, erstellt: old ? old.erstellt : now }, meta, info, { geaendert: now }), data);
+        projSet({ id: id, store: 'local', basis: now, saved: now, sig: sig });
+        pst.local = await localList();
+        pst.tab = 'local';
+      }
+      toast('💾 Gespeichert: ' + meta.name + (store === 'server' ? ' (Server)' : ' (dieser Browser)'));
+      return true;
+    } catch (e) {
+      toast('Speichern nicht möglich: ' + (e.message || e));
+      return false;
+    } finally {
+      pst.busy = false;
+      if (state.page === 'start') renderStart();
+    }
+  }
+  async function projOpen(store, id) {
+    const meta = (store === 'server' ? srv.list : pst.local).find((m) => m.id === id);
+    if (!meta) return;
+    if (proj.id === id && proj.store === store && !projDirty()) { toast('Projekt ist schon offen.'); setPage(lastWorkPage()); return; }
+    if (!projLeaveOk()) return;
+    let data = null;
+    try {
+      if (store === 'server') {
+        const r = await srvCall('get', { q: 'id=' + encodeURIComponent(id) });
+        if (!r.ok) throw new Error((await srvJson(r)).fehler || 'nicht gefunden');
+        data = parseProject(await ungz(await r.blob()), meta.name);
+      } else data = await idbGet('projekt:' + id);
+    } catch (e) { toast('Öffnen nicht möglich: ' + (e.message || e)); return; }
+    if (!data || data.format !== PROJECT_FORMAT) { toast('Projektdaten fehlen oder sind beschädigt.'); return; }
+    applyProject(data);
+    projSet({ id: id, store: store, name: meta.name, kunde: meta.kunde || '', notiz: meta.notiz || '', basis: meta.geaendert || '', saved: meta.geaendert || '' });
+    projSet({ sig: projSig() });
+    toast('Projekt geöffnet: ' + meta.name);
+    render();
+    setPage(lastWorkPage());
+  }
+  function projNew() {
+    if (!projLeaveOk('Neues Projekt beginnen? Die aktuelle Teileliste wird geleert.')) return;
+    state.parts = [];
+    state.sel = 0;
+    anim.result = null;
+    for (const [k, v] of Object.entries({ manual: {}, groupSheet: {}, sawDone: {}, saw: null })) lst[k] = v;
+    saveLst();
+    if (mdl.viewer) mdl.viewer.clearDims();
+    mdl.dimsSaved = null;
+    projSet({ id: null, store: null, name: '', kunde: '', notiz: '', basis: '', saved: null, sig: null });
+    render();
+    renderStart();
+    toast('Neues Projekt – STEP/DXF laden (Programme) oder Teile in der Stückliste anlegen.');
+  }
+  async function projDelete(store, id) {
+    if (pst.del !== store + id) { pst.del = store + id; renderStart(); return; } // zweiter Klick löscht
+    pst.del = null;
+    try {
+      if (store === 'server') {
+        const fd = new FormData(); fd.append('a', 'delete'); fd.append('id', id);
+        const j = await srvJson(await srvCall('delete', { body: fd }));
+        if (!j.ok) throw new Error(j.fehler);
+        await srvRefresh();
+      } else {
+        await idbSet(LOCAL_PROJ, (await localList()).filter((m) => m.id !== id));
+        await idbSet('projekt:' + id, null);
+        pst.local = await localList();
+      }
+      if (proj.id === id && proj.store === store) projSet({ id: null, store: null, basis: '', saved: null, sig: null });
+      toast('Projekt gelöscht' + (store === 'server' ? ' (liegt im Papierkorb auf dem Server)' : '.'));
+    } catch (e) { toast('Löschen nicht möglich: ' + (e.message || e)); }
+    renderStart();
+  }
+  async function projCopy(store, id) {
+    try {
+      if (store === 'server') {
+        const fd = new FormData(); fd.append('a', 'copy'); fd.append('id', id);
+        const j = await srvJson(await srvCall('copy', { body: fd }));
+        if (!j.ok) throw new Error(j.fehler);
+        await srvRefresh();
+      } else {
+        const m = pst.local.find((x) => x.id === id);
+        const data = await idbGet('projekt:' + id);
+        const nid = 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+        const now = new Date().toISOString();
+        await localPut(Object.assign({}, m, { id: nid, name: m.name + ' (Kopie)', erstellt: now, geaendert: now }), data);
+        pst.local = await localList();
+      }
+      toast('Kopie angelegt.');
+    } catch (e) { toast('Kopieren nicht möglich: ' + (e.message || e)); }
+    renderStart();
+  }
+  async function projExport(store, id) {
+    const meta = (store === 'server' ? srv.list : pst.local).find((m) => m.id === id);
+    try {
+      let text;
+      if (store === 'server') { const r = await srvCall('get', { q: 'id=' + encodeURIComponent(id) }); text = await ungz(await r.blob()); }
+      else text = JSON.stringify(await idbGet('projekt:' + id));
+      saveOne(StepToXcs.partName(meta.name || 'Projekt') + '.s2m', text, 'application/json');
+    } catch (e) { toast('Export nicht möglich: ' + (e.message || e)); }
+  }
+  // zuletzt benutzte Arbeitsseite (nicht die Projektseite)
+  // Startadressen: index.html#saegen öffnet gleich den Sägemodus (z. B. am Pi), #programme, #listen, #zuschnitt …
+  const HASH_PAGES = { projekte: ['start'], programme: ['pgmx'], moebel: ['model'], moebel3d: ['model'], listen: ['lists', 'bom'], stueckliste: ['lists', 'bom'],
+    zuschnitt: ['lists', 'cut'], saegen: ['lists', 'saw'], etiketten: ['labels'], material: ['material'] };
+  const lastWorkPage = () => { const p = loadJson(PAGE_KEY, 'pgmx'); return p && p !== 'start' ? p : 'pgmx'; };
+
+  // --- Darstellung
+  const dateText = (iso) => { if (!iso) return ''; const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }); };
+  function renderStartHead() {
+    const el = $('pj-state');
+    if (!el) return;
+    const d = projDirty();
+    el.className = 'pjstate' + (d ? ' warn' : proj.saved ? ' ok' : '');
+    el.textContent = !state.parts.length ? 'leer – Teile laden oder anlegen' : !proj.id ? 'noch nicht gespeichert' :
+      (d ? 'ungespeicherte Änderungen · ' : 'gespeichert ') + dateText(proj.saved) + ' · ' + (proj.store === 'server' ? 'Server' : 'dieser Browser');
+  }
+  async function renderStart() {
+    const host = $('startpage');
+    if (!host || state.page !== 'start') return;
+    // Ablage-Reiter: von selbst Server (wenn da), bis man selbst umschaltet
+    if (!pst.tabUser) pst.tab = srv.ok ? 'server' : 'local';
+    const list = (pst.tab === 'server' ? srv.list : pst.local).filter((m) => !pst.q || normWord(m.name + ' ' + (m.kunde || '') + ' ' + (m.notiz || '') + ' ' + (m.materialien || []).join(' ')).includes(normWord(pst.q)));
+    const canSrv = srv.ok && srv.login;
+    host.innerHTML = '<div class="pjcur"><div class="pjtitle"><span class="lab">Aktuelles Projekt</span><span id="pj-state"></span></div>' +
+      '<div class="pjform"><label>Name <input type="text" id="pj-name" maxlength="120" value="' + esc(proj.name) + '" placeholder="z. B. Küche Müller"></label>' +
+      '<label>Kunde / Auftrag <input type="text" id="pj-kunde" maxlength="120" value="' + esc(proj.kunde) + '"></label>' +
+      '<label class="wide">Notiz <input type="text" id="pj-notiz" maxlength="500" value="' + esc(proj.notiz) + '"></label></div>' +
+      '<div class="pjact"><button type="button" class="btn primary" id="pj-save"' + (pst.busy ? ' disabled' : '') + '>💾 Speichern</button>' +
+      (proj.id ? '<button type="button" class="btn" id="pj-saveas">Als neues Projekt speichern</button>' : '') +
+      (srv.ok && canSrv && !proj.id ? '<label class="pjwhere">Ablage <select id="pj-store"><option value="server">Server (alle Geräte)</option><option value="local">nur dieser Browser</option></select></label>' : '') +
+      '<button type="button" class="btn" id="pj-new">＋ Neues Projekt</button>' +
+      '<span class="sp"></span><span class="pjcount">' + state.parts.length + ' Teile</span>' +
+      '<button type="button" class="btn go" id="pj-go"' + (state.parts.length ? '' : ' disabled') + '>Weiter bearbeiten ▶</button></div></div>' +
+      '<div class="pjlist"><div class="pjbar"><h3>Projekte</h3>' +
+      (srv.ok ? '<span class="seg" role="group" aria-label="Ablage"><button type="button" data-pjtab="server" aria-pressed="' + (pst.tab === 'server') + '">🖧 Server <small>' + (canSrv ? srv.list.length : '') + '</small></button>' +
+        '<button type="button" data-pjtab="local" aria-pressed="' + (pst.tab === 'local') + '">💻 Dieser Browser <small>' + pst.local.length + '</small></button></span>' : '<span class="note">Ablage: dieser Browser' + (serverPossible() ? '' : ' (ohne Server)') + '</span>') +
+      '<input type="search" id="pj-q" placeholder="Suchen (Name, Kunde, Material)" value="' + esc(pst.q) + '" aria-label="Projekte suchen">' +
+      '<span class="sp"></span><button type="button" class="btn small" id="pj-import">Datei öffnen (.s2m)</button>' +
+      '<button type="button" class="btn small" id="pj-export"' + (state.parts.length ? '' : ' disabled') + '>Aktuelles als Datei</button></div>' +
+      (pst.tab === 'server' && srv.ok && !srv.login ? '<form class="pjlogin" id="pj-login"><b>Anmelden</b> – Projekte auf dem Server: Passwort wie in der Dekor-Verwaltung' +
+        '<input type="password" id="pj-pw" autocomplete="current-password" aria-label="Passwort"><button type="submit" class="btn primary">Anmelden</button></form>' : '') +
+      (list.length ? '<div class="tblwrap"><table class="pjtbl"><thead><tr><th>Projekt</th><th class="r">Teile</th><th>Material</th><th>Geändert</th><th></th></tr></thead><tbody>' +
+        list.map((m) => { const cur = proj.id === m.id && proj.store === pst.tab; const k = pst.tab + m.id; return '<tr' + (cur ? ' class="cur"' : '') + '><td><b>' + esc(m.name) + '</b>' + (cur ? ' <span class="chip ok">offen</span>' : '') +
+          (m.kunde ? '<div class="sub">' + esc(m.kunde) + '</div>' : '') + (m.notiz ? '<div class="sub n">' + esc(m.notiz) + '</div>' : '') + '</td>' +
+          '<td class="r">' + (m.teile !== undefined ? m.teile + (m.stueck && m.stueck !== m.teile ? '<div class="sub">' + m.stueck + ' Stück</div>' : '') : '') + '</td>' +
+          '<td class="mat">' + esc((m.materialien || []).join(', ')) + (m.platten ? '<div class="sub">' + m.platten + ' Platte' + (m.platten === 1 ? '' : 'n') + '</div>' : '') + '</td>' +
+          '<td>' + esc(dateText(m.geaendert)) + '</td>' +
+          '<td class="act"><button type="button" class="btn small primary" data-pjopen="' + esc(m.id) + '">Öffnen</button>' +
+          '<button type="button" class="btn ghost small" data-pjcopy="' + esc(m.id) + '" title="Kopie anlegen">Kopie</button>' +
+          '<button type="button" class="btn ghost small" data-pjexp="' + esc(m.id) + '" title="Als .s2m-Datei speichern">Datei</button>' +
+          '<button type="button" class="btn ghost small' + (pst.del === k ? ' arm' : '') + '" data-pjdel="' + esc(m.id) + '" title="Löschen – zweimal klicken">' + (pst.del === k ? 'Wirklich löschen?' : ICON_TRASH) + '</button></td></tr>'; }).join('') +
+        '</tbody></table></div>' : '<p class="note">' + (pst.q ? 'Kein Projekt passt zur Suche.' : pst.tab === 'server' && !srv.login ? '' : 'Noch keine Projekte gespeichert – oben einen Namen eingeben und „Speichern“.') + '</p>') +
+      (pst.tab === 'local' ? '<p class="note">Im Browser gespeicherte Projekte gibt es nur auf diesem Gerät' + (srv.ok ? ' – für alle Geräte auf dem Server speichern.' : '. Mit einem Server (Diskstation/Docker oder Webspace) liegen sie zentral für alle Geräte.') + '</p>' : '') +
+      '</div>';
+    renderStartHead();
+    const nm = () => ({ name: $('pj-name').value.trim(), kunde: $('pj-kunde').value.trim(), notiz: $('pj-notiz').value.trim() });
+    for (const id of ['pj-name', 'pj-kunde', 'pj-notiz']) $(id).addEventListener('change', () => { projSet(nm()); });
+    $('pj-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('pj-save').click(); } });
+    $('pj-save').addEventListener('click', () => projSave(Object.assign(nm(), { store: $('pj-store') ? $('pj-store').value : undefined })));
+    if ($('pj-saveas')) $('pj-saveas').addEventListener('click', () => projSave(Object.assign(nm(), { asNew: true, store: srv.ok && srv.login ? 'server' : 'local' })));
+    $('pj-new').addEventListener('click', projNew);
+    $('pj-go').addEventListener('click', () => setPage(lastWorkPage()));
+    $('pj-import').addEventListener('click', () => openPicker());
+    $('pj-export').addEventListener('click', saveProject);
+    $('pj-q').addEventListener('input', (e) => { pst.q = e.target.value; const pos = e.target.selectionStart; renderStart(); const q = $('pj-q'); q.focus(); q.setSelectionRange(pos, pos); });
+    host.querySelectorAll('[data-pjtab]').forEach((b) => b.addEventListener('click', () => { pst.tab = b.dataset.pjtab; pst.tabUser = true; pst.del = null; renderStart(); }));
+    host.querySelectorAll('[data-pjopen]').forEach((b) => b.addEventListener('click', () => projOpen(pst.tab, b.dataset.pjopen)));
+    host.querySelectorAll('[data-pjcopy]').forEach((b) => b.addEventListener('click', () => projCopy(pst.tab, b.dataset.pjcopy)));
+    host.querySelectorAll('[data-pjexp]').forEach((b) => b.addEventListener('click', () => projExport(pst.tab, b.dataset.pjexp)));
+    host.querySelectorAll('[data-pjdel]').forEach((b) => b.addEventListener('click', () => projDelete(pst.tab, b.dataset.pjdel)));
+    if ($('pj-login')) $('pj-login').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try { await srvLogin($('pj-pw').value); toast('Angemeldet.'); } catch (err) { toast(err.message || String(err)); }
+      renderStart();
+    });
+  }
+  async function startInit() {
+    pst.local = await localList();
+    await srvRefresh();
+    if (state.page === 'start') renderStart();
+  }
+  $('projsave').addEventListener('click', () => projSave());
+  $('projopen').addEventListener('click', () => setPage('start'));
+
   // Start mit Beispiel aus Onshape
   renderToolLib();
   renderRule();
@@ -7285,8 +7676,13 @@ table.fmt.one .onet { display: inline; }
     // gespeicherte Sitzung (auch eine geleerte Liste) – sonst beim ersten Öffnen die Beispielteile
     const had = await restoreSession();
     if (!had) for (const s of (window.SAMPLE_STEPS || [])) addStep(s.text, 'Beispiel: ' + s.name);
+    if (!had) projSet({ sig: projSig() }); // Beispielteile zählen nicht als ungespeichertes Projekt
     sessionReady = true;
-    setPage(state.page);
+    // beim Start die Projektseite („Weiter bearbeiten“ führt zur letzten Seite) – oder die Seite aus der Adresse (#saegen …)
+    const fromHash = HASH_PAGES[String(location.hash || '').slice(1).toLowerCase()];
+    if (fromHash && fromHash[1]) { lst.tab = fromHash[1]; saveLst(); }
+    setPage(fromHash ? fromHash[0] : 'start');
+    startInit();
     render();
   })();
 })();

@@ -46,7 +46,9 @@ ZIP auf den Pi kopieren (USB-Stick) und entpacken, z. B. in den Ordner
     cd ~/Step2Maestro-Pi
     bash einrichten.sh --url https://www.deine-domain.de/step2maestro/ --test
 
-  --url ...      eure Adresse auf dem Webserver (mit Dekor-Bibliothek)
+  --url ...      eure Adresse auf dem Webserver oder der Diskstation
+                 (Docker: http://<diskstation>:8080/ – mit #saegen am Ende
+                 startet der Pi gleich im Sägemodus)
   --offline      statt --url: Programm vom Pi selbst, ohne Internet
                  (dann ohne Dekor-Bibliothek; Updates: neue ZIP, nochmal starten)
   --etikett 40x60   Etikettgröße in mm (Breite x Höhe), Vorgabe 40x60

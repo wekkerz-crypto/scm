@@ -1,6 +1,7 @@
 #!/bin/sh
 # Baut dist/Step2Maestro-Webserver.zip: Ordner step2maestro/ zum Hochladen auf einen Webspace
-# (index.html, js/, Schriften lokal statt Google Fonts, .htaccess, dekore/ = Dekor-Bibliothek mit PHP) plus ANLEITUNG.txt (Strato).
+# (index.html, js/, Schriften lokal statt Google Fonts, .htaccess, dekore/ = Dekor-Bibliothek, projekte/ = Projektablage,
+# ki/ = ChatGPT über den Server – alle PHP) plus ANLEITUNG.txt (Strato).
 # Aufruf: sh tools/build_web.sh   (bzw. npm run build:web)
 set -e
 cd "$(dirname "$0")/.."
@@ -15,6 +16,10 @@ mkdir -p "$OUT/step2maestro/dekore"
 cp tools/webserver/dekore/index.html tools/webserver/dekore/api.php tools/webserver/dekore/.htaccess "$OUT/step2maestro/dekore/"
 # Freigabe für das erste Passwort (api.php löscht sie nach dem Einrichten)
 : > "$OUT/step2maestro/dekore/EINRICHTEN"
+# Projektablage (PHP, Daten legt api.php in projekte/daten an) und KI über den Server (ChatGPT-Weiterleitung)
+mkdir -p "$OUT/step2maestro/projekte" "$OUT/step2maestro/ki"
+cp tools/webserver/projekte/api.php tools/webserver/projekte/.htaccess "$OUT/step2maestro/projekte/"
+cp tools/webserver/ki/openai.php tools/webserver/ki/.htaccess "$OUT/step2maestro/ki/"
 # Google Fonts -> lokale Schriften (keine Anfrage an fremde Server)
 python3 - "$OUT/step2maestro/index.html" <<'PY'
 import re, sys

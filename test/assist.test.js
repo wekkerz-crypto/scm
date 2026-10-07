@@ -107,3 +107,10 @@ test('KI-Assistent mit ChatGPT: Gespräch über previous_response_id, abgeschnit
   assert.strictEqual(r3.stop, 'refusal');
   assert.ok(Assist.openaiTools().every((t) => t.type === 'function' && t.strict === false && t.parameters.type === 'object'));
 });
+
+test('KI-Assistent: Fehler 429 unterscheidet „kein Guthaben“ und „zu viele Anfragen“', () => {
+  class RateLimitError extends Error { constructor(m, code) { super(m); this.code = code; } }
+  const A = { RateLimitError };
+  assert.match(Assist.errorText(new RateLimitError('429 You exceeded your current quota, please check your plan and billing details.', 'insufficient_quota'), A), /Kein Guthaben/);
+  assert.match(Assist.errorText(new RateLimitError('429 Rate limit reached for gpt-5.5', 'rate_limit_exceeded'), A), /Zu viele Anfragen[\s\S]*Rate limit reached/);
+});

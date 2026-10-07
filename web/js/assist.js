@@ -261,7 +261,17 @@
     const is = (n) => A && A[n] && e instanceof A[n];
     if (is('AuthenticationError')) return 'API-Schlüssel ungültig – bitte in den KI-Einstellungen prüfen.';
     if (is('PermissionDeniedError')) return 'Kein Zugriff mit diesem API-Schlüssel (Rechte/Modell prüfen).';
-    if (is('RateLimitError')) return 'Zu viele Anfragen oder Guthaben aufgebraucht – kurz warten bzw. Guthaben/Limits im Konto des Anbieters prüfen.';
+    if (is('RateLimitError')) {
+      // OpenAI: code insufficient_quota = kein Guthaben (häufigster Fall bei neuen Konten), sonst Anfragen pro Minute
+      const code = String(e.code || (e.error && e.error.code) || (e.error && e.error.error && e.error.error.code) || '');
+      const msg = String(e.message || '');
+      if (/insufficient_quota|billing|credit balance/i.test(code + ' ' + msg)) {
+        return 'Kein Guthaben für die API: Im Konto des Anbieters Guthaben aufladen (OpenAI: platform.openai.com → Settings → Billing → „Add to credit balance“; ' +
+          'ein ChatGPT-Abo zählt nicht). Danach ein paar Minuten warten und nochmal versuchen.';
+      }
+      return 'Zu viele Anfragen in kurzer Zeit (Limit des Kontos) – eine Minute warten und nochmal. Bleibt es, Limits im Konto prüfen' +
+        (msg ? ' (Meldung: ' + msg.slice(0, 160) + ')' : '') + '.';
+    }
     if (is('NotFoundError')) return 'Modell nicht gefunden – Modellnamen prüfen (⚙ Einstellungen → „Modelle laden“).';
     if (is('BadRequestError')) return 'Anfrage abgelehnt: ' + (e.message || '');
     if (is('APIConnectionError')) return 'Keine Verbindung zur KI (Internet? Firewall?).';

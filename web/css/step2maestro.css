@@ -406,6 +406,18 @@ table.bom input[type=number] { width: 4.2em; text-align: right; }
 .bomdel { padding: 3px 6px; color: var(--muted); }
 .bomdel.arm { color: #fff; background: var(--err); border-color: var(--err); }
 .edgecell .eauto { font-size: 0.7rem; color: var(--accent); border: 1px solid currentColor; border-radius: 99px; padding: 0 6px; }
+.bombar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 10px; font-size: 0.86rem; }
+.bombar .note { color: var(--muted); font-size: 0.8rem; }
+.bombar .bomselinfo { color: var(--ink); }
+.bomswap { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: auto; }
+.bomswap .swl { color: var(--muted); font-size: 0.8rem; }
+.bomswapk { display: inline-flex; align-items: center; gap: 2px; }
+.bomswapk .boardbtn small { font-family: var(--font-mono); color: var(--muted); }
+.bomswapk [data-bomselk] { padding: 3px 6px; color: var(--muted); }
+table.bom .ck { width: 1.6em; padding-right: 0; }
+table.bom tr.sel td { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+table.bom .bommat { padding: 3px 6px; text-align: left; max-width: 15em; }
+table.bom .bommat .bn { max-width: 11em; }
 .bomsum { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-top: 12px; font-size: 0.9rem; }
 .bomsum small { color: var(--muted); }
 .cutgrp { margin-bottom: 18px; }

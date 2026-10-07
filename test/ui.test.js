@@ -866,9 +866,9 @@ test('Web-Tool: Listen (Stückliste, Zuschnitt, Zeit) und Projektdatei speichern
     assert.strictEqual(await p.textContent('table.bom tbody tr:first-child .et'), 'L1 D2 · B2 D1');
     assert.match(await p.textContent('.bomsum'), /Kante Dekor 2 · 1 mm: [\d,]+ m/);
     assert.match(await p.textContent('.bomsum'), /Kante Eiche hell · 1 mm: [\d,]+ m/);
-    const before = await p.textContent('table.bom tbody tr:first-child td:nth-child(9)');
+    const before = await p.textContent('table.bom tbody tr:first-child td:nth-child(10)');
     await p.check('#ededuct');
-    const after = await p.textContent('table.bom tbody tr:first-child td:nth-child(9)');
+    const after = await p.textContent('table.bom tbody tr:first-child td:nth-child(10)');
     const nums = (t) => t.split('×').map((x) => parseFloat(x.trim().replace(',', '.')));
     assert.deepStrictEqual(nums(after), [nums(before)[0] - 1, nums(before)[1] - 1]);
     await p.uncheck('#ededuct');
@@ -1079,7 +1079,7 @@ test('Web-Tool: Kanten nach Regeln vorbelegen und Sägemodus Schritt für Schrit
     await p.waitForFunction(() => document.querySelectorAll('.part').length === 10, null, { timeout: 60000 });
     await p.click('[data-page="lists"]');
     await p.click('[data-ltab="bom"]');
-    const edgesBy = () => p.$$eval('table.bom tbody tr', (rs) => Object.fromEntries(rs.map((r) => [r.querySelector('td:nth-child(3) b').textContent.split(',')[0],
+    const edgesBy = () => p.$$eval('table.bom tbody tr', (rs) => Object.fromEntries(rs.map((r) => [r.querySelector('td:nth-child(4) b').textContent.split(',')[0],
       r.querySelector('.et').textContent + (r.querySelector('.eauto') ? ' R' : '')])));
     // Standardregeln: Türen ringsum, Rückwand keine, alle übrigen die Vorderkante im Möbel (−Y)
     let e = await edgesBy();
@@ -1302,6 +1302,67 @@ test('Web-Tool: Teil in der Stückliste anlegen und löschen, Plattenformat je M
     assert.strictEqual(await p.$eval(inp('W', 0), (e) => e.value), '2070');
     await p.click('[data-gfmtreset]');
     assert.ok(!(await p.$('[data-gfmtreset]')));
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('Web-Tool: Material in der Stückliste je Position, für mehrere gewählte und global tauschen', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1440, height: 950 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    await p.click('[data-page="lists"]');
+    await p.click('[data-ltab="bom"]');
+    const boards = () => p.evaluate(() => state.parts.map(boardKeyOf));
+    const n = (await boards()).length;
+    assert.ok(n >= 3);
+    // je Position
+    await p.click('[data-bommat="0"]');
+    await p.click('.bpick [data-bkey="nuss"]');
+    await p.keyboard.press('Escape');
+    let b = await boards();
+    assert.strictEqual(b[0], 'nuss');
+    assert.notStrictEqual(b[1], 'nuss');
+    // mehrere: Position 2 und mit Umschalt bis 3 → Material ändern gilt für beide
+    await p.click('[data-bomsel="1"]');
+    await p.click('[data-bomsel="2"]', { modifiers: ['Shift'] });
+    assert.strictEqual(await p.$$eval('table.bom tbody tr.sel', (x) => x.length), 2);
+    assert.match(await p.textContent('.bomselinfo'), /2 Positionen gewählt/);
+    assert.strictEqual(await p.$eval('#bomselall', (e) => e.indeterminate), true);
+    await p.click('#bomselmat');
+    await p.click('.bpick [data-bkey="weiss"]');
+    await p.keyboard.press('Escape');
+    b = await boards();
+    assert.deepStrictEqual(b.slice(0, 3), ['nuss', 'weiss', 'weiss']);
+    // Klick auf das Material einer gewählten Zeile ändert alle gewählten
+    await p.click('[data-bommat="1"]');
+    await p.click('.bpick [data-bkey="buche"]');
+    await p.keyboard.press('Escape');
+    b = await boards();
+    assert.deepStrictEqual(b.slice(0, 3), ['nuss', 'buche', 'buche']);
+    await p.click('#bomselnone');
+    assert.strictEqual(await p.$$eval('table.bom tbody tr.sel', (x) => x.length), 0);
+    // global tauschen: alle Buche → Anthrazit
+    const i = await p.$$eval('[data-bomswap]', (x) => x.findIndex((e) => /Buche/.test(e.textContent)));
+    await p.click(`[data-bomswap="${i}"]`);
+    await p.click('.bpick [data-bkey="anthrazit"]');
+    await p.keyboard.press('Escape');
+    b = await boards();
+    assert.deepStrictEqual(b.slice(0, 3), ['nuss', 'anthrazit', 'anthrazit']);
+    // nach Material auswählen, dann alle zurück auf die Einstellung
+    const j = await p.$$eval('[data-bomselk]', (x) => x.findIndex((e) => /Anthrazit/.test(e.getAttribute('aria-label'))));
+    await p.click(`[data-bomselk="${j}"]`);
+    assert.strictEqual(await p.$$eval('table.bom tbody tr.sel', (x) => x.length), 2);
+    await p.click('#bomselall');
+    assert.strictEqual(await p.$$eval('table.bom tbody tr.sel', (x) => x.length), await p.$$eval('table.bom tbody tr', (x) => x.length));
+    await p.click('#bomselmat');
+    await p.click('.bpick [data-binh]');
+    assert.ok((await p.evaluate(() => state.parts.every((q) => !q.board))));
     assert.deepStrictEqual(errors, []);
   } finally {
     await browser.close();

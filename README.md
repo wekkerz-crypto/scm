@@ -233,6 +233,11 @@ Dritte Seite oben (**Listen**):
   Rohteil-Aufmaß), Fläche, geschätzter Zeit und Programmname. *Gleiche Teile zusammenfassen* (gleiche Maße, Farbe und
   gleiches Programm). **Anzahl** je Position änderbar (wird mit der Teileliste bzw. im Projekt gespeichert). Summen: Teile,
   m² je Material und Dicke, Bearbeitungszeit gesamt. **CSV / Excel** (Semikolon, deutsche Kommazahlen) und **Drucken / PDF**.
+  **Material ändern:** Klick auf das Material einer Position öffnet die Farbauswahl (Dekore, Holzarten, eigene Farben, Kanten;
+  *Wie Einstellung* = wieder aus dem Namen bzw. Standard). **Mehrfachauswahl** mit den Haken vorne (Umschalt + Klick = Bereich,
+  Haken im Kopf = alle) – dann gilt *Material ändern …* bzw. der Klick auf das Material einer gewählten Zeile für alle gewählten.
+  **Material tauschen** (rechts über der Liste): je Material im Projekt ein Knopf – stellt alle Teile mit diesem Material auf ein
+  anderes um; ☑ daneben wählt alle Positionen mit diesem Material aus.
   **+ Teil anlegen:** Name, Länge, Breite, Dicke, Anzahl, Material – das Teil wird als Rechteck-Platte gerechnet (wie eine
   DXF) und landet mit **Formatfräsen** (umfräst) in den Programmen, in Zuschnitt, Sägen und Etiketten; Kanten danach in der
   Liste setzen, gespeichert mit der Projektdatei. **Löschen** je Position (Papierkorb, zweimal klicken) entfernt die Bauteile

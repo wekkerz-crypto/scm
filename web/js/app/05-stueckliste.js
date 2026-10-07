@@ -188,17 +188,45 @@ function bomTotals(rows) {
   }
   return { qty: qty, time: time, byMat: byMat, bands: bands };
 }
+// Auswahl in der Stückliste (Bauteile, nicht Zeilen – Zeilen entstehen bei jedem Zeichnen neu)
+const bomSel = new Set();
+let bomLast = -1; // zuletzt angeklickte Zeile (Umschalt-Klick wählt den Bereich)
+// Material für mehrere Bauteile: Farbauswahl öffnen, Wahl gilt sofort für alle (null = wie Einstellung / Name)
+function bomBoardPick(anchor, parts, value) {
+  boardPicker(anchor, value, state.settings.boardMaterial, (k) => {
+    for (const p of parts) p.board = k || null;
+    applyBoards();
+  });
+}
 function renderBom() {
   const rows = bomRows();
   const tot = bomTotals(rows);
+  for (const p of Array.from(bomSel)) if (!state.parts.includes(p)) bomSel.delete(p);
   if (!rows.length) { $('bomview').innerHTML = '<p class="note">Keine Teile geladen.</p>'; return; }
-  $('bomview').innerHTML = '<div class="tblwrap"><table class="bom"><thead><tr><th>Pos.</th><th class="r">Anzahl</th><th>Bezeichnung</th><th class="r">Länge</th><th class="r">Breite</th>' +
+  const isSel = (r) => r.parts.every((p) => bomSel.has(p));
+  const selRows = rows.filter(isSel);
+  const selParts = selRows.reduce((a, r) => a.concat(r.parts), []);
+  // Materialien im Projekt (für „Material tauschen“): Schlüssel → Bauteile
+  const mats = new Map();
+  for (const r of rows) { const m = mats.get(r.board) || { key: r.board, parts: [], qty: 0 }; m.parts.push(...r.parts); m.qty += r.qty; mats.set(r.board, m); }
+  const matList = Array.from(mats.values());
+  const allSel = selRows.length === rows.length;
+  $('bomview').innerHTML = '<div class="bombar">' +
+    (selRows.length ? '<span class="bomselinfo"><b>' + selRows.length + '</b> Position' + (selRows.length === 1 ? '' : 'en') + ' gewählt (' + selParts.reduce((a, p) => a + qtyOf(p), 0) + ' Teile)</span>' +
+      '<button type="button" class="btn small" id="bomselmat" aria-expanded="false" title="Material für alle gewählten Positionen ändern">Material ändern …</button>' +
+      '<button type="button" class="btn ghost small" id="bomselnone">Auswahl aufheben</button>'
+      : '<span class="note">Material je Position: Klick auf das Material · mehrere: Haken setzen (Umschalt + Klick = Bereich)</span>') +
+    '<span class="bomswap"><span class="swl">Material tauschen:</span>' + matList.map((m, i) => '<span class="bomswapk"><button type="button" class="btn small boardbtn" id="bomswap' + i + '" data-bomswap="' + i +
+      '" aria-expanded="false" title="Alle ' + m.parts.length + ' Bauteile mit „' + esc(boardName(m.key)) + '“ auf ein anderes Material umstellen">' + boardChip(m.key) + ' <small>' + m.qty + '</small></button>' +
+      '<button type="button" class="btn ghost small" data-bomselk="' + i + '" title="Alle Positionen mit diesem Material auswählen" aria-label="Positionen mit ' + esc(boardName(m.key)) + ' auswählen">☑</button></span>').join('') + '</span></div>' +
+    '<div class="tblwrap"><table class="bom"><thead><tr><th class="ck"><input type="checkbox" id="bomselall" aria-label="Alle Positionen auswählen"' + (allSel ? ' checked' : '') + '></th><th>Pos.</th><th class="r">Anzahl</th><th>Bezeichnung</th><th class="r">Länge</th><th class="r">Breite</th>' +
     '<th class="r">Dicke</th><th>Material / Kanten</th><th title="Kantenband je Seite: L1 vorne, L2 hinten (lange Seiten), B1 links, B2 rechts – Klick: keine → Dekor 1 (schwarz) → Dekor 2 (gestreift); Mitte = ringsum">Kantenband</th><th class="r">Zuschnitt (roh)</th><th class="r">m²</th><th class="r">Zeit je Stück</th><th title="Faserrichtung im Zuschnitt: Auto = nach Material (Maserung längs), längs, quer (gedreht) oder frei">Faser</th><th>Programm</th><th><span class="sr">Löschen</span></th></tr></thead><tbody>' +
-    rows.map((r, k) => '<tr><td class="no">' + (k + 1) + '</td>' +
+    rows.map((r, k) => '<tr' + (isSel(r) ? ' class="sel"' : '') + '><td class="ck"><input type="checkbox" data-bomsel="' + k + '"' + (isSel(r) ? ' checked' : '') + ' aria-label="Position ' + (k + 1) + ' auswählen"></td><td class="no">' + (k + 1) + '</td>' +
       '<td class="r"><input type="number" min="0" step="1" value="' + r.qty + '" data-bomqty="' + k + '" aria-label="Anzahl Position ' + (k + 1) + '"></td>' +
       '<td><b>' + r.names.map(esc).join(', ') + '</b><div class="sub">Bauteil ' + r.nums.join(', ') + '</div></td>' +
       '<td class="r">' + n1(r.L) + '</td><td class="r">' + n1(r.W) + '</td><td class="r">' + n1(r.T) + '</td>' +
-      '<td>' + boardSwatch(r.board) + ' ' + esc(boardName(r.board)) + '</td>' +
+      '<td><button type="button" class="btn ghost small boardbtn bommat" id="bommat' + k + '" data-bommat="' + k + '" aria-expanded="false" title="' +
+        (isSel(r) && selRows.length > 1 ? 'Material für alle ' + selRows.length + ' gewählten Positionen ändern' : 'Material ändern') + (r.parts.some((p) => p.board) ? '' : ' (jetzt: ' + (nameBoard(r.parts[0]) ? 'aus dem Namen' : 'Standard') + ')') + '">' + boardChip(r.board) + '</button></td>' +
       '<td>' + edgeWidget(r.edges, k, r.board, !r.parts[0].edges && lst.edgeAuto ? edgeRuleOf(r.parts[0]) : null) + '</td>' +
       '<td class="r">' + n1(r.raw.L) + ' × ' + n1(r.raw.W) + '</td>' +
       '<td class="r">' + fmt(Math.round((r.L * r.W * r.qty) / 1e4) / 100) + '</td>' +
@@ -212,6 +240,38 @@ function renderBom() {
     Array.from(tot.byMat).map(([k, v]) => '<span>' + esc(k) + ': <b>' + fmt(Math.round(v * 100) / 100) + ' m²</b></span>').join('') +
     Array.from(tot.bands).map(([k, v]) => '<span>Kante ' + esc(k) + ': <b>' + fmt(Math.round(v * 10) / 10) + ' m</b></span>').join('') +
     '<span>Bearbeitungszeit gesamt: <b>' + Toolpath.fmtTime(tot.time) + '</b> <small>(geschätzt, inkl. Auflegen)</small></span></div>';
+  // Auswahl
+  const selSet = (r, on) => { for (const p of r.parts) { if (on) bomSel.add(p); else bomSel.delete(p); } };
+  $('bomview').querySelectorAll('[data-bomsel]').forEach((c) => c.addEventListener('click', (e) => {
+    const k = +c.dataset.bomsel;
+    if (e.shiftKey && bomLast >= 0) for (let j = Math.min(k, bomLast); j <= Math.max(k, bomLast); j++) selSet(rows[j], c.checked);
+    else selSet(rows[k], c.checked);
+    bomLast = k;
+    renderBom();
+    const again = $('bomview').querySelector('[data-bomsel="' + k + '"]');
+    if (again) again.focus();
+  }));
+  $('bomselall').addEventListener('change', (e) => { for (const r of rows) selSet(r, e.target.checked); renderBom(); $('bomselall').focus(); });
+  const sa = $('bomselall');
+  sa.indeterminate = selRows.length > 0 && !allSel;
+  if ($('bomselnone')) $('bomselnone').addEventListener('click', () => { bomSel.clear(); renderBom(); });
+  if ($('bomselmat')) $('bomselmat').addEventListener('click', (e) => bomBoardPick(e.currentTarget, selParts, selRows[0].board));
+  // Material je Position (gehört die Zeile zur Auswahl: für alle gewählten)
+  $('bomview').querySelectorAll('[data-bommat]').forEach((b) => b.addEventListener('click', (e) => {
+    const r = rows[+b.dataset.bommat];
+    bomBoardPick(e.currentTarget, isSel(r) && selRows.length > 1 ? selParts : r.parts, r.board);
+  }));
+  // Material tauschen: alle Bauteile mit diesem Material
+  $('bomview').querySelectorAll('[data-bomswap]').forEach((b) => b.addEventListener('click', (e) => {
+    const m = matList[+b.dataset.bomswap];
+    bomBoardPick(e.currentTarget, m.parts, m.key);
+  }));
+  $('bomview').querySelectorAll('[data-bomselk]').forEach((b) => b.addEventListener('click', () => {
+    const m = matList[+b.dataset.bomselk];
+    bomSel.clear();
+    for (const p of m.parts) bomSel.add(p);
+    renderBom();
+  }));
   $('bomview').querySelectorAll('[data-bomedge]').forEach((b) => b.addEventListener('click', () => {
     const r = rows[+b.dataset.bomedge];
     const cur = edgesOf(r.parts[0]);

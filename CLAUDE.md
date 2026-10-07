@@ -58,6 +58,9 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   → Nummern am Rand `stripMarks` (Zuschnittplan, Sägemodus, PDF); Streifen-Etikett `stripLabelHtml`/`stripsOf`/`printStripLabels`
   (Etiketten-Modus `sawLabelMode(cfg)` = `SAW_CFG.labelMode` off|popup|auto, alt `labelPopup`; Umschalter `data-lmode`; auto druckt in `sawGo('next')`
   per `printLabelHtml`; Sägemodus `sawPop.strip`, `SAW_CFG.stripPopup`, `data-saw="striplbl"`; Zuschnittplan `data-striplbl`), Druck allgemein `printLabelHtml`), PDF-Datei über `web/js/pdf.js` (`MiniPdf`, ohne Druckdialog) in `cutPdf`.
+  Material in der Stückliste: Knopf je Position `data-bommat`, Auswahl `bomSel` (Set der Bauteile, Haken `data-bomsel`, Umschalt = Bereich
+  über `bomLast`, `#bomselall`, `#bomselmat`, `#bomselnone`), Tauschen je Material `data-bomswap`, Auswahl je Material `data-bomselk` –
+  alle über `bomBoardPick(anchor, parts, value)` → `boardPicker` → `p.board`.
   Teil von Hand (Stückliste `#bomnew`, `renderBomNew`/`addManualPart`): Rechteck als DXF (`rectDxf`) über `addDxf(text, name,
   {T, board, qty})` → nur Formatfräsen; Löschen `data-bomdel` (zweiter Klick).
   Eigene Farben mit Namen: Schlüssel `#rrggbb[/u]~Name`, gemerkt in `settings.customBoards`. Programmläufe `progRuns()` (Teil → Stücklisten-Position, `row.qty` × Zeit; `#pqty` oben im Teil, `.chip.runs`, `.runsum`). Zeit: `Toolpath.estimate`

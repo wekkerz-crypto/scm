@@ -1,10 +1,12 @@
 /*
- * KI-Assistent (Claude über die Anthropic-API, im Browser): hilft bei Stückliste, Sortieren, Material, Kanten und Zuschnitt.
- * Die KI ruft Werkzeuge auf (TOOLS) – ausgeführt werden sie von der Seite über die Programm-Schnittstelle
- * (window.Step2Maestro.api in index.html). Dieses Modul kennt nur die Werkzeuge, die Prüfung der Eingaben und die Schleife
- * Anfrage → Werkzeuge → Ergebnis → Anfrage …; den Client (Anthropic-SDK, js/vendor/anthropic.js) gibt die Seite mit.
- *   run({ client, model, effort, history, exec, onStep, maxSteps }) – hängt an history an (nur anhängen, nie ändern:
- *   Denkblöcke bleiben gültig), ruft exec(name, input) je Werkzeug und liefert { text, stop, steps }.
+ * KI-Assistent im Browser – ChatGPT (OpenAI, Responses-API) oder Claude (Anthropic): hilft bei Stückliste, Sortieren,
+ * Material, Kanten, Zuschnitt und steuert den Sägemodus. Die KI ruft Werkzeuge auf (TOOLS) – ausgeführt werden sie von der
+ * Seite über die Programm-Schnittstelle (window.Step2Maestro.api in index.html). Dieses Modul kennt nur die Werkzeuge, die
+ * Prüfung der Eingaben und die Schleife Anfrage → Werkzeuge → Ergebnis → Anfrage …; den Client (SDK aus js/vendor/openai.js
+ * bzw. anthropic.js) gibt die Seite mit.
+ *   runOpenAI({ client, model, effort, conv, text, exec, onStep, maxSteps }) – conv = { prevId } (Gespräch über
+ *     previous_response_id), liefert { text, stop, steps }.
+ *   run({ client, model, effort, history, … }) – Claude: hängt an history an (nur anhängen, nie ändern: Denkblöcke bleiben gültig).
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
@@ -12,6 +14,15 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
+  const PROVIDERS = [['openai', 'ChatGPT (OpenAI)'], ['anthropic', 'Claude (Anthropic)']];
+  const DEFAULT_PROVIDER = 'openai';
+  // ChatGPT: Vorschläge – der Name ist frei eintragbar, „Modelle laden“ holt die Liste des eigenen Kontos
+  const OPENAI_MODELS = [
+    ['gpt-5.5', 'GPT-5.5 (Standard)'],
+    ['gpt-5.4-mini', 'GPT-5.4 mini (schneller, günstiger)'],
+    ['gpt-5.4-nano', 'GPT-5.4 nano (am günstigsten)'],
+  ];
+  const OPENAI_DEFAULT = 'gpt-5.5';
   const MODELS = [
     ['claude-opus-5-5', 'Claude Opus 5.5 (Standard)'],
     ['claude-sonnet-5-5', 'Claude Sonnet 5.5 (schneller, günstiger)'],
@@ -37,6 +48,11 @@
     '  „Rückgängig“ zurücknehmen.',
     '- Bearbeitungen (Bohrungen, Fräsungen, Werkzeuge) änderst du nicht – nur Daten für Liste, Zuschnitt und Etiketten.',
     '- Sag am Ende in ein, zwei Sätzen, was du geändert hast (oder was noch zu tun ist).',
+    '',
+    'Sägemodus (Plattensäge, Schritt für Schritt): saegen_status liest Platte, Schritt, Streifen, Maß und was danach kommt;',
+    'saegen_steuern blättert (weiter, zurück, Streifen, Platte, gehe_zu …), druckt Etiketten und schaltet Etiketten-Modus,',
+    'Ansage und Vollbild. Kommt die Anfrage „[Gesprochen an der Säge]“, antworte in einem kurzen Satz ohne Aufzählungen –',
+    'der Text wird vorgelesen. Maße dann als Zahl mit „Millimeter“.',
   ].join('\n');
 
   const int = (d, o) => Object.assign({ type: 'integer', description: d }, o || {});
@@ -84,6 +100,13 @@
     { name: 'seite_zeigen', description: 'Wechselt die Ansicht der Seite (zum Zeigen eines Ergebnisses).',
       input_schema: obj({ seite: str('Seite', { enum: ['programme', 'moebel3d', 'stueckliste', 'zuschnitt', 'saegen', 'etiketten', 'material'] }),
         teil: int('Bauteil-Nummer, die gewählt werden soll (Programme)', { minimum: 1 }) }, ['seite']) },
+    { name: 'saegen_status', description: 'Liest den Stand im Sägemodus: aktuelle Platte (Material, Dicke, Nummer), Schritt, Streifen, Art des Schnitts, Maß am Anschlag, Richtung, fertige Teile, was danach kommt, Etiketten-Modus, Ansage, Liste aller Platten mit Haken „geschnitten“.',
+      input_schema: obj({}) },
+    { name: 'saegen_steuern', description: 'Steuert den Sägemodus (öffnet ihn bei Bedarf). gehe_zu mit schritt, streifen und/oder platte (Nummern wie angezeigt, ab 1; platte = Nummer innerhalb des aktuellen Materials, mit gruppe_material auch ein anderes). Gibt den neuen Stand zurück.',
+      input_schema: obj({ aktion: str('Aktion', { enum: ['weiter', 'zurueck', 'naechster_streifen', 'vorheriger_streifen', 'naechste_platte', 'vorherige_platte', 'von_vorn',
+        'gehe_zu', 'drucken', 'streifen_etikett', 'vollbild_an', 'vollbild_aus', 'etiketten_aus', 'etiketten_fenster', 'etiketten_automatisch', 'ansage_an', 'ansage_aus', 'vorlesen'] }),
+        schritt: int('Schritt-Nummer (gehe_zu)', { minimum: 1 }), streifen: int('Streifen-Nummer (gehe_zu)', { minimum: 1 }), platte: int('Platten-Nummer (gehe_zu)', { minimum: 1 }),
+        gruppe_material: str('Teil des Material-Namens für gehe_zu mit platte, z. B. „U708“', { maxLength: 80 }) }, ['aktion']) },
   ];
 
   // Prüfung der Eingaben nach dem Schema (die KI-Ausgabe ist ungeprüft): Fehlertext oder ''
@@ -128,6 +151,67 @@
     return t.length > 60000 ? t.slice(0, 60000) + ' … (gekürzt)' : t;
   }
 
+  // ein Werkzeugaufruf: Eingabe prüfen, ausführen → { content, isError }
+  async function callTool(name, input, exec) {
+    const tool = toolOf(name);
+    const bad = !tool ? 'unbekanntes Werkzeug ' + name : validate(input, tool.input_schema);
+    if (bad) return { content: 'Ungültige Eingabe: ' + bad, isError: true };
+    try { return { content: resultText(await exec(name, input)), isError: false }; } catch (e) { return { content: 'Fehler: ' + (e && e.message ? e.message : String(e)), isError: true }; }
+  }
+
+  /*
+   * ChatGPT (OpenAI Responses-API): das Gespräch läuft über previous_response_id (conv.prevId). Werkzeuge als „function“,
+   * Ergebnisse als function_call_output. Bei einem Fehler mitten in der Schleife zurück auf den Stand davor (sonst hinge das
+   * Gespräch an unbeantworteten Aufrufen).
+   */
+  const openaiTools = () => TOOLS.map((t) => ({ type: 'function', name: t.name, description: t.description, parameters: t.input_schema, strict: false }));
+  const reasons = (m) => /^(gpt-([5-9]|\d\d)|o\d)/.test(m);
+  async function runOpenAI(o) {
+    const conv = o.conv;
+    const startId = conv.prevId || null;
+    const maxSteps = o.maxSteps || 16;
+    const steps = [];
+    let text = '';
+    let input = [{ role: 'user', content: o.text }];
+    try {
+      for (let i = 0; i < maxSteps; i++) {
+        const req = { model: o.model || OPENAI_DEFAULT, instructions: SYSTEM, input: input, tools: openaiTools(), max_output_tokens: 16000 };
+        if (conv.prevId) req.previous_response_id = conv.prevId;
+        if (reasons(req.model)) req.reasoning = { effort: o.effort || 'medium' };
+        const r = await o.client.responses.create(req);
+        const out = Array.isArray(r.output) ? r.output : [];
+        const said = [];
+        let refusal = '';
+        for (const it of out) {
+          if (it.type !== 'message' || !Array.isArray(it.content)) continue;
+          for (const c of it.content) { if (c.type === 'output_text' && c.text) said.push(c.text); if (c.type === 'refusal') refusal = c.refusal || 'abgelehnt'; }
+        }
+        const calls = out.filter((it) => it.type === 'function_call');
+        if (said.length) { text = said.join('\n').trim(); if (o.onStep && text) o.onStep({ type: 'text', text: text }); }
+        if (refusal) { conv.prevId = r.id; return { text: text || 'Die KI hat diese Anfrage abgelehnt: ' + refusal, stop: 'refusal', steps: steps }; }
+        // abgeschnitten: angefangene Aufrufe nicht ausführen, Gespräch beim Stand davor lassen
+        if (r.status === 'incomplete') { conv.prevId = startId; return { text: text || 'Antwort zu lang – bitte die Anfrage aufteilen.', stop: 'max_tokens', steps: steps }; }
+        conv.prevId = r.id;
+        if (!calls.length) return { text: text, stop: 'end_turn', steps: steps };
+        input = [];
+        for (const c of calls) {
+          let args = null;
+          try { args = c.arguments ? JSON.parse(c.arguments) : {}; } catch (e) { args = null; }
+          const res = args === null ? { content: 'Ungültige Eingabe: kein gültiges JSON', isError: true } : await callTool(c.name, args, o.exec);
+          steps.push({ name: c.name, input: args, error: res.isError ? res.content : null });
+          if (o.onStep) o.onStep({ type: 'tool', name: c.name, input: args, error: res.isError ? res.content : null });
+          input.push({ type: 'function_call_output', call_id: c.call_id, output: res.content });
+        }
+      }
+    } catch (e) {
+      conv.prevId = startId;
+      throw e;
+    }
+    // zu viele Schritte: offene Aufrufe nicht hängen lassen
+    conv.prevId = startId;
+    return { text: text || 'Abgebrochen: zu viele Schritte in einer Anfrage.', stop: 'steps', steps: steps };
+  }
+
   /*
    * Eine Anfrage des Benutzers bis zur fertigen Antwort: Werkzeuge ausführen, Ergebnisse zurück, bis die KI fertig ist.
    * history wird nur angehängt (Antworten vollständig, mit Denkblöcken). onStep({ type: 'tool'|'text', … }) für die Anzeige.
@@ -162,14 +246,7 @@
       // alle Ergebnisse in einer Nachricht zurück (auch Fehler, als is_error)
       const results = [];
       for (const u of uses) {
-        const tool = toolOf(u.name);
-        let content;
-        let isError = false;
-        const bad = !tool ? 'unbekanntes Werkzeug ' + u.name : validate(u.input, tool.input_schema);
-        if (bad) { content = 'Ungültige Eingabe: ' + bad; isError = true; }
-        else {
-          try { content = resultText(await o.exec(u.name, u.input)); } catch (e) { content = 'Fehler: ' + (e && e.message ? e.message : String(e)); isError = true; }
-        }
+        const { content, isError } = await callTool(u.name, u.input, o.exec);
         steps.push({ name: u.name, input: u.input, error: isError ? content : null });
         if (o.onStep) o.onStep({ type: 'tool', name: u.name, input: u.input, error: isError ? content : null });
         results.push({ type: 'tool_result', tool_use_id: u.id, content: content, is_error: isError || undefined });
@@ -184,7 +261,8 @@
     const is = (n) => A && A[n] && e instanceof A[n];
     if (is('AuthenticationError')) return 'API-Schlüssel ungültig – bitte in den KI-Einstellungen prüfen.';
     if (is('PermissionDeniedError')) return 'Kein Zugriff mit diesem API-Schlüssel (Rechte/Modell prüfen).';
-    if (is('RateLimitError')) return 'Zu viele Anfragen oder Guthaben aufgebraucht – kurz warten bzw. in der Anthropic-Konsole prüfen.';
+    if (is('RateLimitError')) return 'Zu viele Anfragen oder Guthaben aufgebraucht – kurz warten bzw. Guthaben/Limits im Konto des Anbieters prüfen.';
+    if (is('NotFoundError')) return 'Modell nicht gefunden – Modellnamen prüfen (⚙ Einstellungen → „Modelle laden“).';
     if (is('BadRequestError')) return 'Anfrage abgelehnt: ' + (e.message || '');
     if (is('APIConnectionError')) return 'Keine Verbindung zur KI (Internet? Firewall?).';
     if (is('InternalServerError')) return 'Die KI ist gerade gestört – bitte gleich nochmal.';
@@ -195,15 +273,16 @@
   // kurze Beschreibung eines Werkzeugaufrufs für den Verlauf
   const TOOL_TEXT = { teile_lesen: 'Teile gelesen', stueckliste_lesen: 'Stückliste gelesen', zuschnitt_lesen: 'Zuschnitt gelesen', materialien_lesen: 'Materialien gelesen',
     teile_aendern: 'Teile geändert', teile_sortieren: 'Liste sortiert', teile_loeschen: 'Teile gelöscht', teil_anlegen: 'Teil angelegt',
-    zuschnitt_einstellen: 'Zuschnitt eingestellt', seite_zeigen: 'Ansicht gewechselt' };
+    zuschnitt_einstellen: 'Zuschnitt eingestellt', seite_zeigen: 'Ansicht gewechselt', saegen_status: 'Sägemodus gelesen', saegen_steuern: 'Säge' };
   function toolText(s) {
     let t = TOOL_TEXT[s.name] || s.name;
     const i = s.input || {};
     if (s.name === 'teile_aendern' && Array.isArray(i.aenderungen)) t += ' (' + i.aenderungen.length + ')';
     if ((s.name === 'teile_loeschen') && Array.isArray(i.teile)) t += ': Nr. ' + i.teile.join(', ');
     if (s.name === 'teil_anlegen') t += ': ' + i.name;
+    if (s.name === 'saegen_steuern') t += ': ' + String(i.aktion || '').replace(/_/g, ' ') + (i.streifen ? ' Streifen ' + i.streifen : '') + (i.platte ? ' Platte ' + i.platte : '') + (i.schritt ? ' Schritt ' + i.schritt : '');
     return t;
   }
 
-  return { MODELS, DEFAULT_MODEL, EFFORTS, SYSTEM, TOOLS, validate, run, errorText, toolText, resultText };
+  return { PROVIDERS, DEFAULT_PROVIDER, OPENAI_MODELS, OPENAI_DEFAULT, MODELS, DEFAULT_MODEL, EFFORTS, SYSTEM, TOOLS, validate, run, runOpenAI, openaiTools, errorText, toolText, resultText };
 });

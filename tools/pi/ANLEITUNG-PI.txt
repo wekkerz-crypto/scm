@@ -68,16 +68,22 @@ erscheint „Fertig geschnitten“ – Tippen druckt das Etikett.
 
 Sprachbefehle beim Sägen
 ------------------------
-Im Sägemodus „🎤 Sprache“ antippen, dann sprechen:
-  „weiter“ (auch „okay“, „fertig“)   nächster Schritt
+Im Sägemodus „🎤 Sprache“ antippen, dann sprechen (viele Wendungen gehen):
+  „weiter“ („okay“, „passt“, „fertig“, „ja“)   nächster Schritt
   „zurück“                            Schritt zurück
   „drucken“ / „Etikett“               Etiketten im offenen Fenster drucken
                                       (sonst das Streifen-Etikett)
-  „nächster Streifen“                 zum nächsten Streifen springen
-  „nächste Platte“                    nächste Platte
-  „nochmal“                           Schritt und Maß vorlesen
-  „Mikrofon aus“                      Sprache aus
+  „nächster Streifen“ / „vorheriger Streifen“
+  „Streifen drei“, „Platte zwei“, „Schritt fünf“   direkt dorthin
+  „nächste Platte“ / „vorherige Platte“, „von vorn“
+  „wie weit“                          Platte, Schritt, fertige Teile vorlesen
+  „was kommt danach“, „nochmal“       nächste Schritte / Maß vorlesen
+  „Etiketten aus“ / „Fenster“ / „automatisch“, „Ansage an“ / „aus“
+  „Vollbild“ / „Vollbild aus“, „Hilfe“, „Mikrofon aus“
 „🔊 Ansage“ liest nach jedem Schritt Maß und Richtung vor.
+„🤖 KI“: Sätze, die kein fester Befehl sind („wie viele Teile fehlen noch?“,
+„geh zur zweiten U708-Platte, Streifen 3“), beantwortet der KI-Assistent
+(ChatGPT; Schlüssel im KI-Fenster ✨ eintragen, braucht Internet).
 Die Erkennung des Browsers (Chrome/Edge am PC) braucht Internet und geht auf
 dem Pi NICHT – dort mit  --sprache  die Offline-Erkennung einrichten:
 * offline (--offline --sprache): läuft ganz auf dem Pi (eigene Adresse

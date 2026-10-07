@@ -285,14 +285,24 @@ Dritte Seite oben (**Listen**):
   Fenster (abschaltbar unter *⚙ Schnittfolge*) und als Knopf auf der Karte, im Zuschnittplan je Platte *🏷 Streifen-Etiketten*.
   Im **Vollbild** sind Platten-Umschalter, Auswahl und *Weiter / Zurück* groß für Touch; Weiter/Zurück bleiben unten stehen.
   **Weiter** ist grün und größer als *Zurück* (im Vollbild sehr groß), ebenso *Nächste Platte* und *Weiter sägen*.
-  **Sprachbefehle** (*🎤 Sprache* in der Leiste): „weiter“ (auch „okay“, „fertig“), „zurück“, „drucken“ / „Etikett“ (druckt
-  die Etiketten im offenen Fenster, sonst das Streifen-Etikett), „nächster Streifen“ (springt zum ersten Schnitt des nächsten
-  Streifens, ohne Etiketten), „nächste Platte“, „nochmal“ (Schritt und Maß vorlesen), „Vollbild“, „Mikrofon aus“. Unter der
-  Karte steht, was verstanden wurde. **🔊 Ansage** liest nach jedem Schritt „Schritt 4. Streifen 2. Querschnitt, quer.
-  604 Millimeter.“ vor (Sprachausgabe des Browsers; währenddessen zählt nichts als Befehl). Erkennung: in Chrome/Edge die
-  des Browsers (braucht Internet); **offline** mit Vosk, wenn `js/vendor/vosk/vosk.js` und `model-de.tar.gz` daliegen
-  (`tools/pi/sprache_holen.sh`; Raspberry Pi: `einrichten.sh --sprache`) – Vosk kennt nur die Befehlswörter, das ist an der
-  lauten Säge sicherer. Am besten mit Headset-Mikrofon. Seite oder Reiter verlassen schaltet das Mikrofon aus.
+  **Sprachbefehle** (*🎤 Sprache* in der Leiste) – viele Wendungen werden verstanden:
+  *weiter* („okay“, „passt“, „fertig“, „ja“, „erledigt“, „geschnitten“), *zurück* („einen zurück“), *drucken* („Etikett“,
+  „ausdrucken“ – druckt die Etiketten im offenen Fenster, sonst das Streifen-Etikett), *Streifen-Etikett*, *nächster Streifen*
+  (springt zum ersten Schnitt des nächsten Streifens, ohne Etiketten), *vorheriger Streifen*, *nächste / vorherige Platte*,
+  **mit Nummer** *„Streifen drei“, „zum dritten Streifen“, „Platte 2“, „Schritt einundzwanzig“* (Zahlen als Ziffer, Wort oder
+  Ordnungszahl; Platte = Nummer im aktuellen Material), *von vorn*, *wie weit* (sagt Platte, Schritt, Streifen, fertige Teile),
+  *was kommt danach*, *nochmal* (Schritt und Maß vorlesen), *Etiketten aus / Fenster / automatisch*, *Ansage an / aus*
+  („Ruhe“), *Vollbild / Vollbild aus*, *Hilfe* (liest die Befehle vor), *Mikrofon aus*. Unter der Karte steht, was verstanden
+  wurde; geht etwas nicht (z. B. „Streifen 5“ auf einer Platte mit 3), wird der Grund angezeigt und vorgelesen.
+  **🔊 Ansage** liest nach jedem Schritt „Schritt 4. Streifen 2. Querschnitt, quer. 604 Millimeter.“ vor (Sprachausgabe des
+  Browsers; währenddessen zählt nichts als Befehl).
+  **🤖 KI** (neben Sprache): Sätze, die kein fester Befehl sind – „bring mich zur zweiten Platte U708, Streifen 3“, „wie viele
+  Teile fehlen noch?“, „welches Teil kommt als nächstes?“ – gehen an den KI-Assistenten (ChatGPT bzw. Claude, Schlüssel im
+  KI-Fenster); er steuert den Sägemodus über `saegen_steuern` und die Antwort wird vorgelesen. Feste Befehle bleiben sofort und
+  ohne Internet. Erkennung: in Chrome/Edge die des Browsers (braucht Internet); **offline** mit Vosk, wenn
+  `js/vendor/vosk/vosk.js` und `model-de.tar.gz` daliegen (`tools/pi/sprache_holen.sh`; Raspberry Pi: `einrichten.sh
+  --sprache`) – Vosk kennt dann nur die Befehlswörter (Grammatik, sicherer im Lärm); mit *🤖 KI* den ganzen Wortschatz.
+  Am besten mit Headset-Mikrofon. Seite oder Reiter verlassen schaltet das Mikrofon aus.
   **Streifen nummeriert:** am Plattenrand (Längsstreifen links, Querstreifen vorne) steht die Nummer jedes Streifens mit
   einer Klammer über seine Breite – der aktuelle blau gefüllt, fertige blass; auf der Karte „Streifen 2/4“, in der Liste
   *Danach* „S2“. Auch im Zuschnittplan (mit *Schnittfolge*), im Druck und im PDF – so lassen sich viele Platten
@@ -370,23 +380,28 @@ bleiben: Ansicht, Zoom/Schrift und die Säge-Einstellungen (*⚙ Schnittfolge*).
 
 Ein Fenster rechts, in dem man in Werkstattsprache sagt, was zu tun ist – z. B. „Sortiere nach Material und Dicke, große
 Teile zuerst“, „Alle Fronten Kanten ringsum“, „Die Seiten 2× statt 1×“, „Plattenformat für U708 auf 2800 × 2070“, „Wie viele
-Platten brauche ich?“. Die KI (Claude von Anthropic) liest und ändert über die **Programm-Schnittstelle** nur Daten für
-Liste, Zuschnitt und Etiketten: Namen, Anzahl, Material/Dekor, Kanten, Faser, Reihenfolge, Teile von Hand anlegen/löschen,
-Zuschnitt-Einstellungen, Ansicht – **keine Bearbeitungen**. Jeder Schritt steht im Verlauf („› Teile geändert (4)“);
-**↶ Rückgängig** nimmt alle Änderungen der letzten Anfrage zurück. *Neu* beginnt ein neues Gespräch.
-Dafür braucht es einen eigenen **API-Schlüssel** von Anthropic (console.anthropic.com → API Keys, Abrechnung über dieses
-Konto) – unter *⚙ Einstellungen* im Fenster eintragen; „merken“ speichert ihn im Browser dieses Geräts (sonst nur bis zum
-Schließen). Modell wählbar (*Claude Opus 5.5* Standard, *Sonnet 5.5* schneller/günstiger, *Haiku 4.5* am günstigsten) und
-*Gründlichkeit*. Gesendet werden nur die Listendaten (Namen, Maße, Material, Kanten, Zuschnitt), keine STEP-Dateien. Braucht
-Internet; läuft in der .exe, auf dem Webserver und am Pi. Lehnt die KI eine Anfrage ab, übernimmt automatisch ein
-Ersatzmodell (`fallbacks: "default"`).
+Platten brauche ich?“, „Sägen: geh zu Platte 2, Streifen 3“. Die KI liest und ändert über die **Programm-Schnittstelle** nur
+Daten für Liste, Zuschnitt und Etiketten: Namen, Anzahl, Material/Dekor, Kanten, Faser, Reihenfolge, Teile von Hand
+anlegen/löschen, Zuschnitt-Einstellungen, Ansicht, und sie **steuert den Sägemodus** (blättern, Streifen/Platte/Schritt,
+drucken, Etiketten-Modus, Ansage, Vollbild) – **keine Bearbeitungen**. Jeder Schritt steht im Verlauf („› Teile geändert
+(4)“); **↶ Rückgängig** nimmt alle Änderungen der letzten Anfrage zurück. *Neu* beginnt ein neues Gespräch.
+
+**Anbieter** unter *⚙ Einstellungen* im Fenster: **ChatGPT (OpenAI)** – Standard – oder **Claude (Anthropic)**, je mit
+eigenem **API-Schlüssel** (ChatGPT: platform.openai.com → API keys; Claude: console.anthropic.com → API Keys; Abrechnung über
+das jeweilige Konto – ein ChatGPT-/Claude-Abo zählt dafür nicht). „merken“ speichert die Schlüssel im Browser dieses Geräts
+(sonst nur bis zum Schließen). **Modell** frei eintragbar mit Vorschlägen (ChatGPT: *gpt-5.5* Standard, *gpt-5.4-mini*,
+*gpt-5.4-nano*; Claude: *claude-opus-5-5*, *claude-sonnet-5-5*, *claude-haiku-4-5*); **Modelle laden** holt die Liste,
+die das eigene Konto benutzen darf. *Gründlichkeit* (schnell/normal/gründlich). Gesendet werden nur die Listendaten (Namen,
+Maße, Material, Kanten, Zuschnitt, Stand beim Sägen), keine STEP-Dateien. Braucht Internet; läuft in der .exe, auf dem
+Webserver und am Pi. ChatGPT läuft über die Responses-API (Werkzeuge als Funktionen, Gespräch über `previous_response_id`);
+bei Claude übernimmt bei einer Ablehnung automatisch ein Ersatzmodell (`fallbacks: "default"`).
 
 **Programm-Schnittstelle** `window.Step2Maestro.api` (auch für eigene Skripte, z. B. in der Browser-Konsole):
 `teile_lesen()`, `stueckliste_lesen()`, `zuschnitt_lesen()`, `materialien_lesen()`, `teile_aendern({aenderungen: [{teil,
 name, anzahl, material, kanten: {l1, l2, b1, b2}, kanten_auto, faser}]})`, `teile_sortieren({reihenfolge: [Nr …]})`,
 `teile_loeschen({teile: [Nr …]})`, `teil_anlegen({name, laenge, breite, dicke, anzahl, material})`,
 `zuschnitt_einstellen({platte_laenge, platte_breite, schnittfuge, besaeumen, faser, richtung, ziel, roh, gruppe, format})`,
-`seite_zeigen({seite, teil})`, `projekt()`. Eingaben und Rückgaben sind einfache Daten (JSON), Fehler als Exception mit
+`seite_zeigen({seite, teil})`, `saegen_status()`, `saegen_steuern({aktion, schritt, streifen, platte, gruppe_material})`, `projekt()`. Eingaben und Rückgaben sind einfache Daten (JSON), Fehler als Exception mit
 deutschem Text; die Schemas stehen in `web/js/assist.js` (`Assist.TOOLS`).
 
 ## Was erkannt wird
@@ -559,8 +574,11 @@ Am Sägeplatz bzw. mit echtem Konto noch nicht ausprobiert:
 - **Sprachbefehle offline (Vosk) am Pi:** Laden des deutschen Modells, Erkennung der Befehlswörter mit Headset an der
   laufenden Säge; Mikrofon-Freigabe im Kiosk (`--use-fake-ui-for-media-stream`). Getestet sind nur die Befehle, die Anbindung
   mit nachgebildeter Erkennung und dass ein defektes Modell sauber gemeldet wird.
-- **KI-Assistent mit echtem API-Schlüssel:** Verbindung aus dem Browser zur API ist geprüft (Antwort „Schlüssel ungültig“
-  kommt richtig an), der Ablauf mit nachgebildeten Antworten; eine echte Sitzung mit Schlüssel steht noch aus.
+- **KI-Assistent mit echtem API-Schlüssel:** Claude – Verbindung aus dem Browser zur API ist geprüft (Antwort „Schlüssel
+  ungültig“ kommt richtig an); ChatGPT – die Verbindung zu api.openai.com war aus der Entwicklungsumgebung nicht erreichbar,
+  also noch gar nicht geprüft (Abruf direkt aus dem Browser, CORS). Beide Abläufe sind mit nachgebildeten Antworten getestet;
+  eine echte Sitzung mit Schlüssel steht noch aus. Falls ChatGPT „Keine Verbindung zur KI“ meldet, obwohl Internet da ist:
+  dann sperrt OpenAI Aufrufe direkt aus dem Browser – Abhilfe wäre ein kleiner Vermittler auf dem Webserver.
 
 Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
 
@@ -644,7 +662,7 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
 
 | Ordner | Inhalt |
 |---|---|
-| `web/` | Web-Tool (`index.html`) und die JS-Module `step.js` (STEP-Leser), `panel.js` (Erkennung), `xcs.js` (Ausgabe), `surface.js` (Kugelfräser-Bahn), `occtmesh.js` (3D-Netz), `dxf.js` (DXF-Leser), `assist.js` (KI-Assistent), `voice.js` (Sprachbefehle); `js/vendor/anthropic.js` = Anthropic-SDK als Browser-Skript (`tools/build_anthropic.sh`) |
+| `web/` | Web-Tool (`index.html`) und die JS-Module `step.js` (STEP-Leser), `panel.js` (Erkennung), `xcs.js` (Ausgabe), `surface.js` (Kugelfräser-Bahn), `occtmesh.js` (3D-Netz), `dxf.js` (DXF-Leser), `assist.js` (KI-Assistent), `voice.js` (Sprachbefehle); `js/vendor/openai.js` / `anthropic.js` = OpenAI- bzw. Anthropic-SDK als Browser-Skript (`tools/build_openai.sh`, `tools/build_anthropic.sh`) |
 | `cli/` | Kommandozeilen-Aufruf |
 | `test/` | Tests (`npm test`) und Test-STEP/DXF-Dateien |
 | `tools/` | `make_fixtures.py` erzeugt einen Teil der Test-STEP-Dateien (CadQuery; die übrigen stammen aus Onshape/Werkstatt), `make_dxf.js` die Test-DXF, `build_defaults.js` die eingebaute Werkzeugliste und Beispiele, `build_exe.sh`/`build_web.sh` die Pakete, `webserver/` Anleitung, `.htaccess` und Schriften für den Webserver |

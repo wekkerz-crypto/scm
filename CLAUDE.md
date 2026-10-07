@@ -60,15 +60,21 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
 - Projektdatei .s2m: `data.session` (Teile) + `data.lists` (`projectLists()`, Schlüssel `PROJECT_LST_KEYS` – Ansicht/Zoom/`sawCfg` bleiben
   am Gerät) + `data.settings` (beim Öffnen Nachfrage, wenn anders; `SETTINGS_LOCAL` = Pfade bleiben); `syncListInputs()` zieht die Felder nach.
 - Programm-Schnittstelle `window.Step2Maestro.api` (index.html, `api`): teile_lesen, stueckliste_lesen, zuschnitt_lesen, materialien_lesen,
-  teile_aendern, teile_sortieren, teile_loeschen, teil_anlegen, zuschnitt_einstellen, seite_zeigen, projekt – nur Listendaten, keine Bearbeitungen.
-  KI-Assistent `web/js/assist.js` (`Assist.TOOLS` = gleiche Namen, `validate`, `run` = Schleife mit `client.beta.messages.create`, Modell
-  `claude-opus-5-5` Standard, `fallbacks: 'default'` + Beta `server-side-fallback-2026-07-01`, effort; Verlauf nur anhängen) → Fenster `#aipanel`
-  (`aiSend`/`aiUndo` = Stand vor der Anfrage über `restoreFrom`, Schlüssel `step2xcs.ai.v1.key` in local-/sessionStorage); SDK als
-  Browser-Skript `web/js/vendor/anthropic.js` (`tools/build_anthropic.sh`, lädt bei Bedarf, `dangerouslyAllowBrowser`).
-- Sprachbefehle im Sägemodus: `web/js/voice.js` (`Voice.parse` → next/prev/print/strip/sheet/say/full/off, `Voice.create`: Web Speech oder
-  Vosk offline aus `js/vendor/vosk/` (vosk.js + model-de.tar.gz, nur http; `tools/pi/sprache_holen.sh`, Pi `einrichten.sh --sprache` mit
-  lokalem http.server :8765), `Voice.say` Ansage) → `voice`/`voiceToggle`/`voiceCommand`/`sawPrintNow`/`sawSay` in index.html,
-  `sawGo('strip')` = nächster Streifen, `lst.sawSay`; Weiter-Knopf `.btn.go` (grün `--on`).
+  teile_aendern, teile_sortieren, teile_loeschen, teil_anlegen, zuschnitt_einstellen, seite_zeigen, saegen_status, saegen_steuern, projekt –
+  nur Listendaten und Sägemodus, keine Bearbeitungen.
+  KI-Assistent `web/js/assist.js` (`Assist.TOOLS` = gleiche Namen, `validate`, `callTool`; Anbieter `PROVIDERS` – Standard ChatGPT:
+  `runOpenAI` = Responses-API `client.responses.create`, Werkzeuge `openaiTools()` (function, strict false), Gespräch `conv.prevId` =
+  previous_response_id (bei Fehler/abgeschnitten zurück auf den Stand davor), `reasoning` nur gpt-5+/o-Modelle, Modell `OPENAI_DEFAULT`;
+  Claude: `run` = `client.beta.messages.create`, `claude-opus-5-5`, `fallbacks: 'default'` + Beta `server-side-fallback-2026-07-01`, Verlauf
+  nur anhängen) → Fenster `#aipanel` (`ai.provider`, `aiAsk` für Chat (`aiState.chat`) und Säge (`aiState.saw`, `aiVoice`), `aiUndo` = Stand
+  vor der Anfrage über `restoreFrom` + Hinweis an die KI, Schlüssel je Anbieter `step2xcs.ai.v1.key[.openai]`, „Modelle laden“ = models.list);
+  SDKs als Browser-Skript `web/js/vendor/openai.js` / `anthropic.js` (`tools/build_openai.sh` / `build_anthropic.sh`, `loadSdk`, `dangerouslyAllowBrowser`).
+- Sprachbefehle im Sägemodus: `web/js/voice.js` (`Voice.parseCmd` → {cmd, n, arg}: next/prev/strip/prevstrip/sheet/prevsheet/gostrip n/gosheet n/
+  gostep n/reset/print/printstrip/lmode/sayon/sayoff/say/status/preview/help/fullon/fulloff/off, Zahlen `numOf`; `Voice.create` mit
+  `onFree` (kein Befehl → KI bei `lst.sawAi`), Web Speech oder Vosk offline aus `js/vendor/vosk/` (vosk.js + model-de.tar.gz, nur http;
+  `GRAMMAR` außer bei `free()`; `tools/pi/sprache_holen.sh`, Pi `einrichten.sh --sprache` mit lokalem http.server :8765), `Voice.say` Ansage)
+  → `voiceCommand` → `sawAction(aktion, o)` (= Werkzeug saegen_steuern, Fehler als Text zum Vorlesen), `sawStatusObj`/`sawStatusText`,
+  `sawPrintNow`/`sawSay`; `lst.sawSay`, `lst.sawAi`; Weiter-Knopf `.btn.go` (grün `--on`).
 - Gekrümmte Flächen (je Teil `overrides.curved = {slant, surface}`, Schalter nur sichtbar, wenn erkannt):
   `panel.curvedSlants` (Schräge an Rundungen → `slantpath`, `offsetRun` in `xcs.js`) und `panel.curvedSurfaces`
   (→ `surface`: `surface.js` Drop-Cutter auf dem Netz aus `occtmesh.js`; Node: `OcctMesh.loadNode()`, Browser: `View3D.load()`).

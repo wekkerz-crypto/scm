@@ -558,6 +558,7 @@ svg.sheet .cuts { pointer-events: none; }
 .sawcard .sstriplbl { justify-self: start; }
 .sawcard .vstat { font-size: 0.95rem; color: var(--muted); padding: 6px 10px; border-radius: 8px; background: var(--sunken); }
 .sawcard .vstat.warn { color: var(--warn); background: var(--warn-bg); }
+.sawcard .vstat.reply { color: var(--ink); border-left: 3px solid var(--accent); }
 #sawview.sawfull .seg.vctl button { font-size: 1rem; padding: 7px 14px; }
 #sawview.sawfull .sawcard .vstat { font-size: 1.2rem; }
 #sawview.sawfull .sawcard .sstriplbl { font-size: 1.05rem; padding: 8px 14px; }
@@ -576,7 +577,9 @@ body.sawlock { overflow: hidden; }
 .aiset { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--sunken); }
 .aiset label { display: grid; gap: 3px; font-size: 0.85rem; font-weight: 600; }
 .aiset label.ck { display: flex; align-items: center; gap: 6px; font-weight: 400; }
-.aiset input[type=password], .aiset select { font-family: var(--font-mono); font-size: 0.85rem; }
+.aiset input[type=password], .aiset input[type=text], .aiset select { font-family: var(--font-mono); font-size: 0.85rem; }
+.aiset .mrow { display: flex; gap: 6px; }
+.aiset .mrow input { flex: 1; min-width: 0; }
 .aiset .note { margin: 0; font-size: 0.78rem; }
 .ailog { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 2px; }
 .ailog .m { padding: 8px 11px; border-radius: 10px; font-size: 0.9rem; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 92%; }
@@ -1024,7 +1027,7 @@ table.fmt.one .onet { display: inline; }
       <button type="button" class="btn small" id="projopen" title="Gespeichertes Projekt (.s2m) öffnen – ersetzt die Teileliste; die Datei kann auch auf die Seite gezogen werden"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1H7.5a2 2 0 0 0-1.9 1.4L3 19z"/><path d="M3 19l2.6-7.6A2 2 0 0 1 7.5 10H22l-2.7 7.6a2 2 0 0 1-1.9 1.4H3z"/></svg>Projekt öffnen</button>
       <button type="button" class="btn small" id="projsave" title="Ganzes Projekt als Datei (.s2m) speichern: STEP/DXF, alle Änderungen je Teil, Stückliste (Anzahl, Kanten, Farben), Zuschnittplan (Format, Pläne von Hand, Stand im Sägemodus), Maße und Einstellungen – später oder auf einem anderen PC weiterarbeiten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h11l4 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 1-2z"/><path d="M8 3v5h7V3M8 21v-6h8v6"/></svg>Projekt speichern</button>
     </div>
-    <button type="button" class="btn small aibtn" id="aibtn" aria-expanded="false" aria-controls="aipanel" title="KI-Assistent: Stückliste bearbeiten, sortieren, Material und Kanten setzen, Zuschnitt einstellen – mit eigenem Anthropic-API-Schlüssel"><span aria-hidden="true">✨</span> KI-Assistent</button>
+    <button type="button" class="btn small aibtn" id="aibtn" aria-expanded="false" aria-controls="aipanel" title="KI-Assistent (ChatGPT oder Claude): Stückliste bearbeiten, sortieren, Material und Kanten setzen, Zuschnitt einstellen, Sägemodus steuern – mit eigenem API-Schlüssel"><span aria-hidden="true">✨</span> KI-Assistent</button>
     <div class="theme" role="group" aria-label="Darstellung">
       <button type="button" data-theme-set="light" aria-pressed="false" title="Heller Modus"><span aria-hidden="true">☀</span> Hell</button>
       <button type="button" data-theme-set="dark" aria-pressed="false" title="Dunkler Modus"><span aria-hidden="true">☾</span> Dunkel</button>
@@ -1175,13 +1178,13 @@ table.fmt.one .onet { display: inline; }
     <button type="button" class="btn ghost small" id="aisetbtn" aria-expanded="false" aria-controls="aiset">⚙ Einstellungen</button>
     <button type="button" class="btn ghost small" id="aiclose" aria-label="KI-Assistent schließen">✕</button></div>
   <div class="aiset" id="aiset" hidden>
-    <label>Anthropic-API-Schlüssel <input type="password" id="aikey" autocomplete="off" spellcheck="false" placeholder="sk-ant-…"></label>
+    <label>Anbieter <select id="aiprov"></select></label>
+    <label><span id="aikeylbl">API-Schlüssel</span> <input type="password" id="aikey" autocomplete="off" spellcheck="false"></label>
     <label class="ck"><input type="checkbox" id="aikeep"> Schlüssel auf diesem Gerät merken</label>
-    <label>Modell <select id="aimodel"></select></label>
+    <label>Modell <span class="mrow"><input type="text" id="aimodel" list="aimodels" autocomplete="off" spellcheck="false"><datalist id="aimodels"></datalist>
+      <button type="button" class="btn ghost small" id="aimload" title="Modelle des eigenen Kontos abrufen (braucht den Schlüssel)">Modelle laden</button></span></label>
     <label>Gründlichkeit <select id="aieffort"></select></label>
-    <p class="note">Den Schlüssel gibt es in der Anthropic-Konsole (console.anthropic.com → API Keys); die Kosten laufen über dieses Konto.
-      Gesendet werden nur die Daten der Teileliste (Namen, Maße, Material, Kanten, Zuschnitt) – keine STEP-Dateien. Der Schlüssel bleibt im Browser
-      (ohne Haken nur bis zum Schließen) – auf fremden Geräten nicht merken.</p>
+    <p class="note" id="aikeynote"></p>
   </div>
   <div class="ailog" id="ailog" aria-live="polite"></div>
   <div class="aisugg" id="aisugg"></div>
@@ -4590,13 +4593,16 @@ table.fmt.one .onet { display: inline; }
         '<span class="lab">🏷 Etiketten</span>' + [['off', 'Aus'], ['popup', 'Fenster'], ['auto', 'Automatisch']].map(([k, t]) =>
         '<button type="button" data-lmode="' + k + '" aria-pressed="' + (m === k) + '">' + t + '</button>').join('') + '</span>')(sawLabelMode(cfg)) +
       '<span class="seg vctl" role="group" aria-label="Sprache"><button type="button" data-saw="voice" aria-pressed="' + voiceOn() + '" title="Sprachbefehle: „weiter“, „zurück“, „drucken“, „nächster Streifen“, „nächste Platte“, „nochmal“, „Mikrofon aus“">🎤 Sprache</button>' +
-        '<button type="button" data-saw="say" aria-pressed="' + !!lst.sawSay + '" title="Ansage: Schritt und Maß nach jedem Schritt vorlesen">🔊 Ansage</button></span>' +
+        '<button type="button" data-saw="say" aria-pressed="' + !!lst.sawSay + '" title="Ansage: Schritt und Maß nach jedem Schritt vorlesen">🔊 Ansage</button>' +
+        '<button type="button" data-saw="ai" aria-pressed="' + !!lst.sawAi + '" title="KI hört mit: Sätze, die kein fester Befehl sind (z. B. „geh zu Platte 2, Streifen 3“, „wie viele Teile fehlen noch?“), gehen an den KI-Assistenten (ChatGPT/Claude), die Antwort wird vorgelesen">🤖 KI</button></span>' +
       '<button type="button" class="btn ghost small" data-saw="cfg" aria-expanded="' + String(!!lst.sawCfgOpen) + '">⚙ Schnittfolge</button>' +
       '<button type="button" class="btn ghost small" data-saw="reset">Von vorn</button>' +
       '<button type="button" class="btn small" data-saw="full" aria-pressed="' + full + '">' + (full ? '✕ Vollbild beenden' : '⛶ Vollbild') + '</button></div>' +
       (lst.sawCfgOpen ? sawCfgHtml(cfg) : '') + sawOverHtml(list, xi) +
       (ok ? '' : '<p class="warn">Diese Anordnung ist nicht ganz mit durchgehenden Schnitten trennbar – im Zuschnittplan prüfen.</p>') +
       '<div class="saw"><div class="sawdraw">' + sawSvg(x, steps, cur, cfg, strips) + '</div><div class="sawcard" aria-live="polite">' +
+      (voice.msg || voice.heard ? '<div class="vstat' + (voice.msg ? ' warn' : '') + '" role="status">' + esc(voice.msg || '🎤 „' + voice.heard + '“' + (voice.cmd ? '' : lst.sawAi ? ' → KI' : ' – kein Befehl (z. B. „Hilfe“)')) + '</div>' : '') +
+      (voice.reply ? '<div class="vstat reply" role="status">' + esc(voice.reply) + '</div>' : '') +
       (st ? '<div class="sawhead"><span class="sk ' + t.cls + '">' + esc(t.kind) + '</span>' +
         (st.sn ? '<span class="sstrip" title="Streifen – Nummer am Rand der Platte">Streifen <b>' + st.sn + '</b>/' + strips.length + '</span>' : '') + '<span class="snum">' + (cur + 1) + '<small>/' + steps.length + '</small></span></div>' +
         '<div class="fence"><span class="fl">' + (st.kind === 'anschnitt' ? 'Abschneiden' : cfg.measure === 'remain' ? 'Anschlag einstellen · Restmaß' : 'Anschlag einstellen') + '</span>' +
@@ -4613,8 +4619,7 @@ table.fmt.one .onet { display: inline; }
           (list[xi + 1] ? '<button type="button" class="btn sawbig" data-saw="nextsheet">Nächste Platte ▶</button>' : '<div class="tx">Alle Platten fertig.</div>')) +
       '<div class="sawnav"><button type="button" class="btn ghost" data-saw="prev"' + (cur ? '' : ' disabled') + '>◀ Zurück</button>' +
       '<button type="button" class="btn go" data-saw="next"' + (st ? '' : ' disabled') + '>Weiter ▶</button></div>' +
-      '<div class="sn keys">Tasten: → oder Leertaste = weiter · ← = zurück · F = Vollbild' + (voiceOn() ? ' · Sprache: „weiter“, „zurück“, „drucken“, „nächster Streifen“, „nochmal“' : '') + '</div>' +
-      (voice.msg || voice.heard ? '<div class="vstat' + (voice.msg ? ' warn' : '') + '" role="status">' + esc(voice.msg || '🎤 „' + voice.heard + '“' + (voice.cmd ? '' : ' – kein Befehl')) + '</div>' : '') +
+      '<div class="sn keys">Tasten: → oder Leertaste = weiter · ← = zurück · F = Vollbild' + (voiceOn() ? ' · Sprache: „weiter“, „zurück“, „drucken“, „nächster Streifen“, „Streifen drei“, „Hilfe“' : '') + '</div>' +
       '<div class="sn">' + Object.entries(kindTot).map(([k2, v]) => v + ' × ' + SAW_KIND[k2]).join(' · ') + '</div></div></div>' + sawPopHtml(x);
     $('sawsheet').addEventListener('change', (e) => { lst.saw = { key: e.target.value, step: 0 }; sawPop = null; saveLst(); renderSaw(); });
     host.querySelectorAll('[data-saw]').forEach((b) => b.addEventListener('click', () => sawGo(b.dataset.saw)));
@@ -4743,6 +4748,14 @@ table.fmt.one .onet { display: inline; }
     else if (what === 'full') { sawFull(!$('sawview').classList.contains('sawfull')); return; }
     else if (what === 'voice') { voiceToggle(); return; }
     else if (what === 'say') { lst.sawSay = !lst.sawSay; saveLst(); renderSaw(); if (lst.sawSay) sawSay(); return; }
+    else if (what === 'ai') {
+      lst.sawAi = !lst.sawAi;
+      saveLst();
+      if (lst.sawAi && !aiKeyNow()) toast('🤖 Für freie Sätze im KI-Assistenten (✨ oben) den API-Schlüssel eintragen.');
+      if (voiceOn()) voice.ctl.restart(); // Offline-Erkennung: mit/ohne Befehls-Grammatik
+      renderSaw();
+      return;
+    }
     else if (what === 'strip') {
       // nächster Streifen: zum ersten Schritt eines anderen Streifens (ohne Etiketten)
       const steps = sawSteps(list[xi]).steps;
@@ -4762,30 +4775,158 @@ table.fmt.one .onet { display: inline; }
     renderSaw();
   }
   /*
-   * Sprachsteuerung (js/voice.js): Befehle wie die Knöpfe; „drucken“ druckt die Etiketten im offenen Fenster (sonst das
-   * Streifen-Etikett des aktuellen Schritts). Ansage (lst.sawSay): Schritt und Maß nach jedem Schritt vorlesen.
+   * Sprachsteuerung (js/voice.js) und Steuerung des Sägemodus von außen (Sprache, KI-Werkzeug saegen_steuern, Schnittstelle):
+   * sawAction(aktion, o) → neuer Stand (sawStatusObj). Befehle wie die Knöpfe; „drucken“ druckt die Etiketten im offenen
+   * Fenster (sonst das Streifen-Etikett). Ansage (lst.sawSay): Schritt und Maß nach jedem Schritt vorlesen. Sätze, die kein
+   * Befehl sind, gehen bei „🤖 KI“ (lst.sawAi) an den KI-Assistenten, die Antwort wird vorgelesen.
    */
-  const voice = { ctl: null, msg: '', heard: '', cmd: null };
+  const voice = { ctl: null, msg: '', heard: '', cmd: null, reply: '' };
   const voiceOn = () => !!(voice.ctl && voice.ctl.on);
+  const onSaw = () => state.page === 'lists' && lst.tab === 'saw';
   function voiceToggle() {
     if (!voice.ctl) {
       voice.ctl = Voice.create({
         voskBase: new URL('js/vendor/vosk/', location.href).href,
-        onCommand: (cmd) => voiceCommand(cmd),
-        onHeard: (t, cmd) => { voice.heard = t; voice.cmd = cmd; voice.msg = ''; if (state.page === 'lists' && lst.tab === 'saw') renderSaw(); },
-        onState: (x) => { voice.msg = x.msg; if (!x.on) voice.heard = ''; if (state.page === 'lists' && lst.tab === 'saw') renderSaw(); },
+        free: () => !!lst.sawAi,
+        onCommand: (cmd, t, c) => voiceCommand(c),
+        onFree: (t) => { if (lst.sawAi && onSaw()) aiVoice(t); },
+        onHeard: (t, cmd) => { voice.heard = t; voice.cmd = cmd; voice.msg = ''; if (cmd) voice.reply = ''; if (onSaw()) renderSaw(); },
+        onState: (x) => { voice.msg = x.msg; if (!x.on) voice.heard = ''; if (onSaw()) renderSaw(); },
       });
     }
-    if (voice.ctl.on) { voice.ctl.stop(); voice.msg = ''; voice.heard = ''; renderSaw(); toast('🎤 Sprache aus'); }
-    else { voice.msg = ''; voice.ctl.start().then(() => { if (voice.ctl.on) toast('🎤 Sprache an – „weiter“, „zurück“, „drucken“, „nächster Streifen“'); renderSaw(); }); }
+    if (voice.ctl.on) { voice.ctl.stop(); voice.msg = ''; voice.heard = ''; voice.reply = ''; renderSaw(); toast('🎤 Sprache aus'); }
+    else { voice.msg = ''; voice.ctl.start().then(() => { if (voice.ctl.on) toast('🎤 Sprache an – z. B. „weiter“, „zurück“, „drucken“, „Streifen drei“, „Hilfe“'); renderSaw(); }); }
   }
-  function voiceCommand(cmd) {
-    if (state.page !== 'lists' || lst.tab !== 'saw') return;
-    if (cmd === 'print') { sawPrintNow(); return; }
-    if (cmd === 'say') { sawSay(); return; }
-    if (cmd === 'sheet') { sawGo('nextsheet'); }
-    else sawGo(cmd); // next, prev, strip, full
-    if (lst.sawSay && cmd !== 'full') sawSay();
+  // aktuelle Platte und Schritt
+  function sawCur() {
+    const list = sawSheets();
+    if (!list.length) return null;
+    if (!lst.saw || !list.some((y) => y.key === lst.saw.key)) lst.saw = { key: list[0].key, step: 0 };
+    const xi = list.findIndex((y) => y.key === lst.saw.key);
+    const x = list[xi];
+    const sq = sawSteps(x);
+    const cur = Math.max(0, Math.min(sq.steps.length, lst.saw.step | 0));
+    return { list: list, xi: xi, x: x, steps: sq.steps, cfg: sq.cfg, strips: sq.strips, cur: cur };
+  }
+  const stepInfo = (c, st, k) => { const t = sawText(st, c.x, c.cfg); return { schritt: k + 1, art: t.kind, streifen: st.sn || null, mass_mm: Math.round(sawMeasure(st, c.cfg).v * 10) / 10, richtung: st.dir === 'h' ? 'längs' : 'quer', text: t.tx }; };
+  function sawStatusObj() {
+    const c = sawCur();
+    if (!c) return { aktiv: onSaw(), meldung: 'Keine Teile für den Zuschnitt.' };
+    const { x, steps, cur } = c;
+    const same = c.list.filter((y) => y.g.key === x.g.key);
+    const st = steps[cur];
+    return { aktiv: onSaw(), platte: { nr: x.i + 1, von: x.g.plan.sheets.length, material: x.g.name, D: x.g.T, geschnitten: sawIsDone(x) },
+      schritt: st ? cur + 1 : null, schritte: steps.length, fertig: !st, aktuell: st ? stepInfo(c, st, cur) : null, streifen_gesamt: c.strips.length,
+      teile_fertig: steps.slice(0, cur).reduce((a, q) => a + q.done.length, 0), teile_gesamt: x.s.parts.length,
+      danach: steps.slice(cur + 1, cur + 4).map((q, k) => stepInfo(c, q, cur + 1 + k)), etikett_fenster_offen: !!sawPop,
+      etiketten_modus: sawLabelMode(c.cfg), ansage: !!lst.sawSay, vollbild: $('sawview').classList.contains('sawfull'),
+      platten_dieses_materials: same.length, platten: c.list.map((y) => ({ material: y.g.name, D: y.g.T, nr: y.i + 1, geschnitten: sawIsDone(y), aktuell: y.key === x.key })) };
+  }
+  function sawStatusText() {
+    const o = sawStatusObj();
+    if (!o.platte) return o.meldung;
+    return o.platte.material + ' ' + fmt(o.platte.D) + ', Platte ' + o.platte.nr + ' von ' + o.platte.von + '. ' +
+      (o.fertig ? 'Diese Platte ist fertig.' : 'Schritt ' + o.schritt + ' von ' + o.schritte + (o.aktuell.streifen ? ', Streifen ' + o.aktuell.streifen + ' von ' + o.streifen_gesamt : '') + '.') +
+      ' ' + o.teile_fertig + ' von ' + o.teile_gesamt + ' Teilen fertig.';
+  }
+  function sawGoStep(k) { lst.saw.step = k; sawPop = null; }
+  // Steuerung wie die Knöpfe (aktion = Werkzeug saegen_steuern); Fehler als Exception mit Text zum Vorlesen
+  function sawAction(aktion, o) {
+    o = o || {};
+    if (!onSaw()) { lst.tab = 'saw'; saveLst(); setPage('lists'); }
+    let c = sawCur();
+    if (!c) throw new Error('Keine Teile für den Zuschnitt.');
+    const firstOf = (sn) => c.steps.findIndex((q) => q.sn === sn);
+    switch (aktion) {
+      case 'weiter': sawGo('next'); break;
+      case 'zurueck': sawGo('prev'); break;
+      case 'naechster_streifen': sawGo('strip'); break;
+      case 'vorheriger_streifen': {
+        const sn = c.steps[c.cur] && c.steps[c.cur].sn;
+        const from = sn ? firstOf(sn) : c.cur;
+        let j = from - 1;
+        while (j >= 0 && !(c.steps[j].sn && c.steps[j].sn !== sn)) j--;
+        sawGoStep(j >= 0 ? firstOf(c.steps[j].sn) : 0);
+        break;
+      }
+      case 'naechste_platte': if (!c.list[c.xi + 1]) throw new Error('Das ist die letzte Platte.'); lst.saw = { key: c.list[c.xi + 1].key, step: 0 }; sawPop = null; break;
+      case 'vorherige_platte': if (!c.xi) throw new Error('Das ist die erste Platte.'); lst.saw = { key: c.list[c.xi - 1].key, step: 0 }; sawPop = null; break;
+      case 'von_vorn': sawGo('reset'); break;
+      case 'gehe_zu': {
+        if (o.platte) {
+          const want = o.gruppe_material ? normWord(o.gruppe_material) : null;
+          const gk = want ? (c.list.find((y) => normWord(y.g.name + ' ' + fmt(y.g.T)).includes(want)) || {}).g : c.x.g;
+          if (!gk) throw new Error('Material „' + o.gruppe_material + '“ ist nicht im Zuschnitt.');
+          const same = c.list.filter((y) => y.g.key === gk.key);
+          const y = same[o.platte - 1];
+          if (!y) throw new Error('Platte ' + o.platte + ' gibt es nicht – ' + gk.name + ' hat ' + same.length + ' Platte' + (same.length === 1 ? '' : 'n') + '.');
+          lst.saw = { key: y.key, step: 0 };
+          sawPop = null;
+          c = sawCur();
+        }
+        if (o.streifen) {
+          const k = firstOf(o.streifen);
+          if (k < 0) throw new Error('Streifen ' + o.streifen + ' gibt es auf dieser Platte nicht – sie hat ' + c.strips.length + ' Streifen.');
+          sawGoStep(k);
+        }
+        if (o.schritt) {
+          if (o.schritt > c.steps.length) throw new Error('Schritt ' + o.schritt + ' gibt es nicht – diese Platte hat ' + c.steps.length + ' Schritte.');
+          sawGoStep(o.schritt - 1);
+        }
+        if (!o.platte && !o.streifen && !o.schritt) throw new Error('gehe_zu braucht schritt, streifen oder platte.');
+        break;
+      }
+      case 'drucken': sawPrintNow(); break;
+      case 'streifen_etikett': {
+        if (!(c.steps[c.cur] && c.steps[c.cur].sn) && !(sawPop && sawPop.strip)) throw new Error('Hier gibt es kein Streifen-Etikett.');
+        sawGo('striplbl');
+        break;
+      }
+      case 'vollbild_an': if (!$('sawview').classList.contains('sawfull')) sawFull(true); break;
+      case 'vollbild_aus': if ($('sawview').classList.contains('sawfull')) sawFull(false); break;
+      case 'etiketten_aus': case 'etiketten_fenster': case 'etiketten_automatisch':
+        lst.sawCfg = Object.assign({}, lst.sawCfg || {}, { labelMode: { etiketten_aus: 'off', etiketten_fenster: 'popup', etiketten_automatisch: 'auto' }[aktion] });
+        break;
+      case 'ansage_an': lst.sawSay = true; break;
+      case 'ansage_aus': lst.sawSay = false; break;
+      case 'vorlesen': sawSay(); break;
+      default: throw new Error('unbekannte Aktion: ' + aktion);
+    }
+    saveLst();
+    if (onSaw()) renderSaw();
+    return sawStatusObj();
+  }
+  const MOVES = new Set(['weiter', 'zurueck', 'naechster_streifen', 'vorheriger_streifen', 'naechste_platte', 'vorherige_platte', 'von_vorn', 'gehe_zu']);
+  const SAW_HELP = 'Sag zum Beispiel: weiter, zurück, drucken, nächster Streifen, Streifen drei, nächste Platte, Platte zwei, Schritt fünf, von vorn, ' +
+    'wie weit, was kommt danach, nochmal, Ansage an oder aus, Etiketten aus, Fenster oder automatisch, Vollbild, Mikrofon aus.';
+  function voiceCommand(c) {
+    if (!onSaw()) return;
+    const map = { next: 'weiter', prev: 'zurueck', strip: 'naechster_streifen', prevstrip: 'vorheriger_streifen', sheet: 'naechste_platte', prevsheet: 'vorherige_platte',
+      reset: 'von_vorn', print: 'drucken', printstrip: 'streifen_etikett', fullon: 'vollbild_an', fulloff: 'vollbild_aus', sayon: 'ansage_an', sayoff: 'ansage_aus', say: 'vorlesen' };
+    try {
+      if (c.cmd === 'status') { Voice.say(sawStatusText()); return; }
+      if (c.cmd === 'help') { Voice.say(SAW_HELP); return; }
+      if (c.cmd === 'preview') {
+        const o = sawStatusObj();
+        Voice.say(o.danach && o.danach.length ? 'Danach: ' + o.danach.slice(0, 2).map((q) => q.art + ' ' + q.richtung + ', ' + n1(q.mass_mm) + ' Millimeter').join('. Dann ') + '.' : 'Danach ist die Platte fertig.');
+        return;
+      }
+      if (c.cmd === 'lmode') { sawAction({ off: 'etiketten_aus', popup: 'etiketten_fenster', auto: 'etiketten_automatisch' }[c.arg]); Voice.say({ off: 'Etiketten aus.', popup: 'Etiketten im Fenster.', auto: 'Etiketten automatisch.' }[c.arg]); return; }
+      let a = map[c.cmd];
+      let o = {};
+      if (c.cmd === 'gostrip') { a = 'gehe_zu'; o = { streifen: c.n }; }
+      if (c.cmd === 'gosheet') { a = 'gehe_zu'; o = { platte: c.n }; }
+      if (c.cmd === 'gostep') { a = 'gehe_zu'; o = { schritt: c.n }; }
+      if (!a) return;
+      sawAction(a, o);
+      if (c.cmd === 'sayon') Voice.say('Ansage an.');
+      else if (c.cmd === 'sayoff') Voice.say('Ansage aus.');
+      else if (lst.sawSay && MOVES.has(a)) sawSay();
+    } catch (e) {
+      voice.reply = '⚠ ' + e.message;
+      renderSaw();
+      Voice.say(e.message);
+    }
   }
   // „drucken“: offenes Etikett-Fenster ganz (Streifen + Teile, ein Druckauftrag), sonst das Streifen-Etikett
   function sawPrintNow() {
@@ -4821,7 +4962,7 @@ table.fmt.one .onet { display: inline; }
     Voice.say('Schritt ' + (cur + 1) + '. ' + (st.sn ? 'Streifen ' + st.sn + '. ' : '') + t.kind + ', ' + (st.dir === 'h' ? 'längs' : 'quer') + '. ' + n1(m.v) + ' Millimeter.');
   }
   // Seite oder Reiter verlassen: Mikrofon aus
-  function voiceIdle() { if (voiceOn() && !(state.page === 'lists' && lst.tab === 'saw')) { voice.ctl.stop(true); voice.heard = ''; voice.msg = ''; } }
+  function voiceIdle() { if (voiceOn() && !onSaw()) { voice.ctl.stop(true); voice.heard = ''; voice.msg = ''; voice.reply = ''; } }
   document.addEventListener('keydown', (e) => {
     if (state.page !== 'lists' || lst.tab !== 'saw' || e.altKey || e.ctrlKey || e.metaKey) return;
     if (e.target && /^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(e.target.tagName) && e.key === ' ') return;
@@ -6904,41 +7045,99 @@ table.fmt.one .onet { display: inline; }
       render();
       return { seite: input.seite };
     },
+    saegen_status() { return sawStatusObj(); },
+    saegen_steuern(input) { return sawAction(input.aktion, input); },
     // für eigene Skripte: Projekt als Daten (wie die .s2m-Datei) und Neuberechnung
     projekt() { return { session: JSON.parse(JSON.stringify(sessionData())), lists: projectLists() }; },
   };
   window.Step2Maestro = { api: api, version: 1 };
 
-  // ---- KI-Assistent (Fenster rechts)
+  // ---- KI-Assistent (Fenster rechts): ChatGPT (OpenAI) oder Claude (Anthropic), je eigener Schlüssel und eigenes Modell
   const AI_KEY = 'step2xcs.ai.v1';
-  const ai = Object.assign({ model: Assist.DEFAULT_MODEL, effort: 'medium', keep: false }, loadJson(AI_KEY, {}) || {});
-  const aiState = { history: [], busy: false, undo: null, client: null, clientKey: null };
-  const aiKeyNow = () => { try { return ai.keep ? (localStorage.getItem(AI_KEY + '.key') || '') : (sessionStorage.getItem(AI_KEY + '.key') || ''); } catch (e) { return aiState.mem || ''; } };
-  function aiStoreKey(k) {
-    aiState.mem = k;
+  const ai = Object.assign({ provider: Assist.DEFAULT_PROVIDER, model: Assist.DEFAULT_MODEL, oaModel: Assist.OPENAI_DEFAULT, effort: 'medium', keep: false }, loadJson(AI_KEY, {}) || {});
+  if (!Assist.PROVIDERS.some(([k]) => k === ai.provider)) ai.provider = Assist.DEFAULT_PROVIDER;
+  // Gespräche: Chat-Fenster und Säge (gesprochen) getrennt; Claude = Verlauf, ChatGPT = letzte Antwort-ID
+  const newConv = () => ({ history: [], prevId: null });
+  const aiState = { chat: newConv(), saw: newConv(), busy: false, undo: null, undoHint: false, clients: {}, mem: {} };
+  const isOA = () => ai.provider === 'openai';
+  const PROV = {
+    openai: { name: 'ChatGPT', keyLabel: 'OpenAI-API-Schlüssel', ph: 'sk-…', global: 'OpenAI', file: 'js/vendor/openai.js',
+      note: 'Den Schlüssel gibt es auf platform.openai.com → API keys; die Kosten laufen über dieses Konto (ein ChatGPT-Abo zählt nicht).' },
+    anthropic: { name: 'Claude', keyLabel: 'Anthropic-API-Schlüssel', ph: 'sk-ant-…', global: 'Anthropic', file: 'js/vendor/anthropic.js',
+      note: 'Den Schlüssel gibt es in der Anthropic-Konsole (console.anthropic.com → API Keys); die Kosten laufen über dieses Konto.' },
+  };
+  const keyName = (pv) => AI_KEY + '.key' + (pv === 'openai' ? '.openai' : '');
+  const aiKeyNow = (pv) => {
+    pv = pv || ai.provider;
+    try { return (ai.keep ? localStorage.getItem(keyName(pv)) : sessionStorage.getItem(keyName(pv))) || aiState.mem[pv] || ''; } catch (e) { return aiState.mem[pv] || ''; }
+  };
+  function aiStoreKey(k, pv) {
+    pv = pv || ai.provider;
+    aiState.mem[pv] = k;
     try {
-      localStorage.removeItem(AI_KEY + '.key'); sessionStorage.removeItem(AI_KEY + '.key');
-      if (k) (ai.keep ? localStorage : sessionStorage).setItem(AI_KEY + '.key', k);
+      localStorage.removeItem(keyName(pv)); sessionStorage.removeItem(keyName(pv));
+      if (k) (ai.keep ? localStorage : sessionStorage).setItem(keyName(pv), k);
     } catch (e) { /* nur im Speicher */ }
   }
-  const aiSave = () => storeJson(AI_KEY, { model: ai.model, effort: ai.effort, keep: ai.keep });
-  let anthropicLoading = null;
-  function loadAnthropic() {
-    if (window.Anthropic) return Promise.resolve(window.Anthropic);
-    if (!anthropicLoading) {
-      anthropicLoading = new Promise((resolve, reject) => {
+  const aiSave = () => storeJson(AI_KEY, { provider: ai.provider, model: ai.model, oaModel: ai.oaModel, effort: ai.effort, keep: ai.keep });
+  const aiModel = () => (isOA() ? ai.oaModel || Assist.OPENAI_DEFAULT : ai.model || Assist.DEFAULT_MODEL);
+  const sdkLoading = {};
+  function loadSdk(pv) {
+    const P = PROV[pv];
+    if (window[P.global]) return Promise.resolve(window[P.global]);
+    if (!sdkLoading[pv]) {
+      sdkLoading[pv] = new Promise((resolve, reject) => {
         const el = document.createElement('script');
-        el.src = 'js/vendor/anthropic.js';
-        el.onload = () => (window.Anthropic ? resolve(window.Anthropic) : reject(new Error('Anthropic-SDK fehlt')));
-        el.onerror = () => reject(new Error('Datei fehlt: js/vendor/anthropic.js'));
+        el.src = P.file;
+        el.onload = () => (window[P.global] ? resolve(window[P.global]) : reject(new Error(P.name + '-SDK fehlt')));
+        el.onerror = () => reject(new Error('Datei fehlt: ' + P.file));
         document.head.appendChild(el);
       });
-      anthropicLoading.catch(() => { anthropicLoading = null; });
+      sdkLoading[pv].catch(() => { sdkLoading[pv] = null; });
     }
-    return anthropicLoading;
+    return sdkLoading[pv];
+  }
+  async function aiClient() {
+    const pv = ai.provider;
+    const key = aiKeyNow(pv);
+    const A = await loadSdk(pv);
+    const c = aiState.clients[pv];
+    if (c && c.key === key) return c.client;
+    const client = new A({ apiKey: key, dangerouslyAllowBrowser: true, maxRetries: 2 });
+    aiState.clients[pv] = { key: key, client: client };
+    return client;
+  }
+  /*
+   * Eine Anfrage an die KI (Chat-Fenster oder gesprochen an der Säge): Stand vorher merken (Rückgängig), Schleife des
+   * Anbieters laufen lassen. → { text, stop } oder { error }
+   */
+  async function aiAsk(text, conv, onStep) {
+    const snap = { session: JSON.parse(JSON.stringify(sessionData())), lists: projectLists() };
+    apiChanged = false;
+    if (aiState.undoHint) { text = '(Hinweis: Der Benutzer hat die Änderungen der letzten Anfrage mit „Rückgängig“ zurückgenommen – Stand neu lesen.)\n' + text; aiState.undoHint = false; }
+    const exec = (name, input) => { if (!api[name]) throw new Error('unbekannt: ' + name); return api[name](input); };
+    let res;
+    try {
+      const client = await aiClient();
+      if (isOA()) res = await Assist.runOpenAI({ client: client, model: aiModel(), effort: ai.effort, conv: conv, text: text, exec: exec, onStep: onStep });
+      else {
+        const n0 = conv.history.length;
+        conv.history.push({ role: 'user', content: text });
+        try { res = await Assist.run({ client: client, model: aiModel(), effort: ai.effort, history: conv.history, exec: exec, onStep: onStep }); } catch (e) {
+          // Anfrage ohne Antwort: aus dem Verlauf nehmen, damit das Gespräch gültig bleibt
+          const last = conv.history[conv.history.length - 1];
+          if (conv.history.length > n0 && last.role === 'user' && typeof last.content === 'string') conv.history.length = n0;
+          throw e;
+        }
+      }
+    } catch (e) {
+      res = { error: Assist.errorText(e, window[PROV[ai.provider].global]) };
+    }
+    if (apiChanged) { aiState.undo = snap; $('aiundo').disabled = false; }
+    return res;
   }
   const AI_SUGG = ['Sortiere die Liste nach Material und Dicke, große Teile zuerst', 'Prüf die Stückliste: fehlen Kanten oder stimmen Anzahlen nicht?',
-    'Wie viele Platten brauche ich und wie ist die Ausnutzung?', 'Setz bei allen Fronten Kanten ringsum'];
+    'Wie viele Platten brauche ich und wie ist die Ausnutzung?', 'Setz bei allen Fronten Kanten ringsum', 'Sägen: geh zu Platte 2, Streifen 3'];
   function aiLog(cls, text) {
     const log = $('ailog');
     const hello = log.querySelector('.hello');
@@ -6952,8 +7151,9 @@ table.fmt.one .onet { display: inline; }
   }
   function aiHello() {
     $('ailog').innerHTML = '<div class="hello"><p><b>Was soll ich tun?</b> Ich kann die Teileliste sortieren, Namen, Anzahl, Material, Kanten und Faser setzen, ' +
-      'Teile anlegen oder löschen und den Zuschnitt einstellen. Bearbeitungen (Bohrungen, Fräsungen) ändere ich nicht.</p>' +
-      (aiKeyNow() ? '' : '<p>Zuerst unter ⚙ Einstellungen den Anthropic-API-Schlüssel eintragen.</p>') + '</div>';
+      'Teile anlegen oder löschen, den Zuschnitt einstellen und im Sägemodus blättern und drucken. Bearbeitungen (Bohrungen, Fräsungen) ändere ich nicht.</p>' +
+      '<p>Antwortet: <b>' + esc(PROV[ai.provider].name) + '</b> (' + esc(aiModel()) + ')</p>' +
+      (aiKeyNow() ? '' : '<p>Zuerst unter ⚙ Einstellungen den ' + esc(PROV[ai.provider].keyLabel) + ' eintragen.</p>') + '</div>';
     $('aisugg').innerHTML = AI_SUGG.map((t) => '<button type="button" data-aisugg="' + esc(t) + '">' + esc(t) + '</button>').join('');
   }
   function aiOpen(on) {
@@ -6964,56 +7164,63 @@ table.fmt.one .onet { display: inline; }
     if (!aiKeyNow()) aiSetOpen(true);
     $(aiKeyNow() ? 'aiin' : 'aikey').focus();
   }
+  function aiModelList(ids) {
+    const sugg = isOA() ? Assist.OPENAI_MODELS : Assist.MODELS;
+    const list = ids && ids.length ? ids.map((id) => [id, id]) : sugg;
+    $('aimodels').innerHTML = list.map(([v, t]) => '<option value="' + esc(v) + '">' + esc(t) + '</option>').join('');
+  }
   function aiSetOpen(on) {
     $('aiset').hidden = !on;
     $('aisetbtn').setAttribute('aria-expanded', String(on));
-    if (on) {
-      $('aikey').value = aiKeyNow();
-      $('aikeep').checked = !!ai.keep;
-      $('aimodel').innerHTML = Assist.MODELS.map(([v, t]) => '<option value="' + v + '"' + (v === ai.model ? ' selected' : '') + '>' + esc(t) + '</option>').join('');
-      $('aieffort').innerHTML = Assist.EFFORTS.map(([v, t]) => '<option value="' + v + '"' + (v === ai.effort ? ' selected' : '') + '>' + esc(t) + '</option>').join('');
-    }
+    if (!on) return;
+    const P = PROV[ai.provider];
+    $('aiprov').innerHTML = Assist.PROVIDERS.map(([v, t]) => '<option value="' + v + '"' + (v === ai.provider ? ' selected' : '') + '>' + esc(t) + '</option>').join('');
+    $('aikeylbl').textContent = P.keyLabel;
+    $('aikey').placeholder = P.ph;
+    $('aikey').value = aiKeyNow();
+    $('aikeep').checked = !!ai.keep;
+    $('aimodel').value = aiModel();
+    aiModelList(null);
+    $('aieffort').innerHTML = Assist.EFFORTS.map(([v, t]) => '<option value="' + v + '"' + (v === ai.effort ? ' selected' : '') + '>' + esc(t) + '</option>').join('');
+    $('aikeynote').textContent = P.note + ' Gesendet werden nur die Daten der Teileliste (Namen, Maße, Material, Kanten, Zuschnitt, Stand beim Sägen) – keine STEP-Dateien. ' +
+      'Der Schlüssel bleibt im Browser (ohne Haken nur bis zum Schließen) – auf fremden Geräten nicht merken.';
   }
   async function aiSend(text) {
     text = String(text || '').trim();
     if (!text || aiState.busy) return;
-    const key = aiKeyNow();
-    if (!key) { aiSetOpen(true); $('aikey').focus(); toast('Bitte zuerst den API-Schlüssel eintragen.'); return; }
+    if (!aiKeyNow()) { aiSetOpen(true); $('aikey').focus(); toast('Bitte zuerst den ' + PROV[ai.provider].keyLabel + ' eintragen.'); return; }
     aiState.busy = true;
     $('aisend').disabled = true;
     $('aiin').value = '';
     aiLog('m u', text);
-    const busy = aiLog('busy', 'denkt nach …');
-    // Stand vor der Anfrage merken (Rückgängig)
-    const snap = { session: JSON.parse(JSON.stringify(sessionData())), lists: projectLists() };
-    apiChanged = false;
-    const n0 = aiState.history.length;
-    aiState.history.push({ role: 'user', content: text });
-    try {
-      const A = await loadAnthropic();
-      if (!aiState.client || aiState.clientKey !== key) {
-        aiState.client = new A({ apiKey: key, dangerouslyAllowBrowser: true, maxRetries: 2 });
-        aiState.clientKey = key;
-      }
-      const res = await Assist.run({ client: aiState.client, model: ai.model, effort: ai.effort, history: aiState.history,
-        exec: (name, input) => { if (!api[name]) throw new Error('unbekannt: ' + name); return api[name](input); },
-        onStep: (st) => {
-          if (st.type === 'tool') { const d = aiLog('t' + (st.error ? ' err' : ''), '› ' + Assist.toolText(st) + (st.error ? ' – ' + st.error : '')); $('ailog').insertBefore(d, busy); }
-          else { const d = aiLog('m a', st.text); $('ailog').insertBefore(d, busy); }
-        } });
-      busy.remove();
-      if (res.stop === 'refusal' || res.stop === 'max_tokens' || res.stop === 'steps') aiLog('m e', res.text);
-      else if (!res.text) aiLog('m a', 'Erledigt.');
-    } catch (e) {
-      busy.remove();
-      aiLog('m e', Assist.errorText(e, window.Anthropic));
-      // Anfrage ohne Antwort: aus dem Verlauf nehmen, damit das Gespräch gültig bleibt
-      if (aiState.history.length > n0 && aiState.history[aiState.history.length - 1].role === 'user' && typeof aiState.history[aiState.history.length - 1].content === 'string') aiState.history.length = n0;
-    }
-    if (apiChanged) { aiState.undo = snap; $('aiundo').disabled = false; }
+    const busy = aiLog('busy', PROV[ai.provider].name + ' denkt nach …');
+    const res = await aiAsk(text, aiState.chat, (st) => {
+      const d = st.type === 'tool' ? aiLog('t' + (st.error ? ' err' : ''), '› ' + Assist.toolText(st) + (st.error ? ' – ' + st.error : '')) : aiLog('m a', st.text);
+      $('ailog').insertBefore(d, busy);
+    });
+    busy.remove();
+    if (res.error) aiLog('m e', res.error);
+    else if (res.stop === 'refusal' || res.stop === 'max_tokens' || res.stop === 'steps') aiLog('m e', res.text);
+    else if (!res.text) aiLog('m a', 'Erledigt.');
     aiState.busy = false;
     $('aisend').disabled = false;
     $('aiin').focus();
+  }
+  // gesprochen an der Säge (kein fester Befehl, „🤖 KI“ an): an die KI, Antwort vorlesen
+  async function aiVoice(text) {
+    if (aiState.busy) { Voice.say('Moment, ich bin noch dran.'); return; }
+    if (!aiKeyNow()) { voice.msg = 'Für freie Sätze den API-Schlüssel im KI-Assistenten eintragen.'; renderSaw(); return; }
+    aiState.busy = true;
+    voice.reply = '🤖 …';
+    renderSaw();
+    if ($('ailog').children.length) aiLog('m u', '🎤 ' + text);
+    const res = await aiAsk('[Gesprochen an der Säge] ' + text, aiState.saw, (st) => { if (st.type === 'tool' && $('ailog').children.length) aiLog('t', '› ' + Assist.toolText(st)); });
+    aiState.busy = false;
+    const out = res.error || res.text || 'Erledigt.';
+    voice.reply = '🤖 ' + out;
+    if ($('ailog').children.length) aiLog(res.error ? 'm e' : 'm a', out);
+    if (state.page === 'lists' && lst.tab === 'saw') renderSaw();
+    Voice.say(out.replace(/[*_#`>]/g, ''));
   }
   function aiUndo() {
     const snap = aiState.undo;
@@ -7025,26 +7232,48 @@ table.fmt.one .onet { display: inline; }
     saveLst();
     syncListInputs();
     aiState.undo = null;
+    aiState.undoHint = true; // die KI soll wissen, dass ihr Stand nicht mehr gilt
     $('aiundo').disabled = true;
     applyBoards();
     render();
     aiLog('t', '↶ Änderungen der letzten Anfrage zurückgenommen');
-    // die KI soll wissen, dass ihr Stand nicht mehr gilt
-    if (aiState.history.length) aiState.history.push({ role: 'user', content: '(Hinweis: Der Benutzer hat die Änderungen deiner letzten Antwort mit „Rückgängig“ zurückgenommen. Lies den Stand neu, bevor du weitermachst.)' },
-      { role: 'assistant', content: 'Verstanden – ich lese den Stand vor der nächsten Änderung neu.' });
   }
   $('aibtn').addEventListener('click', () => aiOpen($('aipanel').hidden));
   $('aiclose').addEventListener('click', () => { aiOpen(false); $('aibtn').focus(); });
   $('aisetbtn').addEventListener('click', () => aiSetOpen($('aiset').hidden));
+  $('aiprov').addEventListener('change', (e) => {
+    ai.provider = e.target.value; aiSave();
+    aiState.chat = newConv(); aiState.saw = newConv(); // anderer Anbieter: neues Gespräch
+    aiSetOpen(true); aiHello();
+  });
   $('aikey').addEventListener('change', (e) => { aiStoreKey(e.target.value.trim()); if (aiKeyNow()) aiHello(); });
-  $('aikeep').addEventListener('change', (e) => { const k = aiKeyNow() || $('aikey').value.trim(); ai.keep = e.target.checked; aiSave(); aiStoreKey(k); });
-  $('aimodel').addEventListener('change', (e) => { ai.model = e.target.value; aiSave(); });
+  $('aikeep').addEventListener('change', (e) => {
+    const keys = Object.fromEntries(Assist.PROVIDERS.map(([pv]) => [pv, aiKeyNow(pv)]));
+    ai.keep = e.target.checked; aiSave();
+    for (const [pv, k] of Object.entries(keys)) aiStoreKey(k, pv);
+  });
+  $('aimodel').addEventListener('change', (e) => {
+    const v = e.target.value.trim();
+    if (isOA()) ai.oaModel = v || Assist.OPENAI_DEFAULT; else ai.model = v || Assist.DEFAULT_MODEL;
+    aiSave();
+  });
+  $('aimload').addEventListener('click', async () => {
+    if (!aiKeyNow()) { toast('Zuerst den Schlüssel eintragen.'); return; }
+    try {
+      const client = await aiClient();
+      const ids = [];
+      for await (const m of client.models.list()) ids.push(m.id);
+      const use = (isOA() ? ids.filter((id) => /^(gpt-|o\d|chatgpt)/.test(id) && !/(audio|realtime|image|tts|transcribe|search|embedding|instruct)/.test(id)) : ids).sort().reverse();
+      aiModelList(use);
+      toast(use.length + ' Modelle verfügbar – im Feld „Modell“ auswählen.');
+    } catch (e) { toast(Assist.errorText(e, window[PROV[ai.provider].global])); }
+  });
   $('aieffort').addEventListener('change', (e) => { ai.effort = e.target.value; aiSave(); });
   $('aiform').addEventListener('submit', (e) => { e.preventDefault(); aiSend($('aiin').value); });
   $('aiin').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); aiSend($('aiin').value); } });
   $('aisugg').addEventListener('click', (e) => { const b = e.target.closest('[data-aisugg]'); if (b) aiSend(b.dataset.aisugg); });
   $('aiundo').addEventListener('click', aiUndo);
-  $('ainew').addEventListener('click', () => { if (aiState.busy) return; aiState.history = []; aiHello(); });
+  $('ainew').addEventListener('click', () => { if (aiState.busy) return; aiState.chat = newConv(); aiState.saw = newConv(); aiHello(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('aipanel').hidden && !document.querySelector('.sawpop')) { aiOpen(false); } });
 
   // Start mit Beispiel aus Onshape

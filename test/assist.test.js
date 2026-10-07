@@ -70,7 +70,40 @@ test('KI-Assistent: Schemas der Werkzeuge sind geschlossen und gültig', () => {
 
 test('Sprachbefehle: Wendungen im Sägemodus', () => {
   const cases = { 'Weiter': 'next', 'okay': 'next', 'Zurück': 'prev', 'drucken': 'print', 'Etikett': 'print', 'nächster Streifen': 'strip',
-    'Nächsten Streifen bitte': 'strip', 'nächste Platte': 'sheet', 'nochmal': 'say', 'Vollbild': 'full', 'Mikrofon aus': 'off', 'Hallo Kollege': null, '': null };
+    'Nächsten Streifen bitte': 'strip', 'nächste Platte': 'sheet', 'nochmal': 'say', 'Vollbild': 'fullon', 'Vollbild aus': 'fulloff', 'Mikrofon aus': 'off',
+    'passt': 'next', 'erledigt': 'next', 'einen zurück': 'prev', 'vorheriger Streifen': 'prevstrip', 'vorherige Platte': 'prevsheet', 'von vorne': 'reset',
+    'Streifen Etikett': 'printstrip', 'Ansage aus': 'sayoff', 'Ansage an': 'sayon', 'wie weit sind wir': 'status', 'was kommt danach': 'preview',
+    'Hilfe': 'help', 'Hallo Kollege': null, 'ein Streifen': null, '': null };
   for (const [t, c] of Object.entries(cases)) assert.strictEqual(Voice.parse(t), c, t);
-  assert.ok(Voice.GRAMMAR.includes('[unk]'));
+  // mit Nummern (Ziffern, Zahlwörter, Ordnungszahlen)
+  assert.deepStrictEqual(Voice.parseCmd('Streifen drei'), { cmd: 'gostrip', n: 3 });
+  assert.deepStrictEqual(Voice.parseCmd('zum dritten Streifen'), { cmd: 'gostrip', n: 3 });
+  assert.deepStrictEqual(Voice.parseCmd('Platte Nummer 2'), { cmd: 'gosheet', n: 2 });
+  assert.deepStrictEqual(Voice.parseCmd('Schritt einundzwanzig'), { cmd: 'gostep', n: 21 });
+  assert.deepStrictEqual(Voice.parseCmd('Etiketten aus'), { cmd: 'lmode', arg: 'off' });
+  assert.deepStrictEqual(Voice.parseCmd('automatisch drucken'), { cmd: 'lmode', arg: 'auto' });
+  assert.ok(Voice.GRAMMAR.includes('[unk]') && Voice.GRAMMAR.includes('streifen fünf'));
+});
+
+test('KI-Assistent mit ChatGPT: Gespräch über previous_response_id, abgeschnittene Antwort und Fehler lassen den alten Stand', async () => {
+  const mk = (replies) => { const reqs = []; return { reqs, responses: { create: async (r) => { reqs.push(JSON.parse(JSON.stringify(r))); const x = replies[reqs.length - 1]; if (x instanceof Error) throw x; return x; } } }; };
+  const conv = { prevId: 'alt' };
+  const c = mk([{ id: 'n1', status: 'incomplete', output: [{ type: 'function_call', call_id: 'a', name: 'teile_loeschen', arguments: '{"teile":[1' }] }]);
+  let ran = 0;
+  const r = await Assist.runOpenAI({ client: c, conv, text: 'x', exec: () => { ran++; } });
+  assert.strictEqual(r.stop, 'max_tokens');
+  assert.strictEqual(ran, 0);
+  assert.strictEqual(conv.prevId, 'alt');
+  assert.strictEqual(c.reqs[0].previous_response_id, 'alt');
+  assert.strictEqual(c.reqs[0].instructions, Assist.SYSTEM);
+  // Fehler nach einem Werkzeugaufruf: zurück auf den Stand vor der Anfrage
+  const c2 = mk([{ id: 'n2', status: 'completed', output: [{ type: 'function_call', call_id: 'a', name: 'teile_lesen', arguments: '{}' }] }, new Error('Netz weg')]);
+  await assert.rejects(Assist.runOpenAI({ client: c2, conv, text: 'x', exec: () => ({}) }), /Netz weg/);
+  assert.strictEqual(conv.prevId, 'alt');
+  // Modell ohne Denkstufe (gpt-4.1): kein reasoning
+  const c3 = mk([{ id: 'n3', status: 'completed', output: [{ type: 'message', content: [{ type: 'refusal', refusal: 'nein' }] }] }]);
+  const r3 = await Assist.runOpenAI({ client: c3, conv: { prevId: null }, text: 'x', model: 'gpt-4.1', exec: () => ({}) });
+  assert.strictEqual(c3.reqs[0].reasoning, undefined);
+  assert.strictEqual(r3.stop, 'refusal');
+  assert.ok(Assist.openaiTools().every((t) => t.type === 'function' && t.strict === false && t.parameters.type === 'object'));
 });

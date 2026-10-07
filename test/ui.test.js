@@ -1434,7 +1434,45 @@ test('Web-Tool: Sägemodus per Sprache, Weiter groß und grün', { skip: !chromi
     await p.evaluate(() => window.__say('weiter'));
     const said = await p.evaluate(() => window.__said);
     assert.match(said[said.length - 1], /^Schritt \d+\. .* Millimeter\.$/);
+    // mit Nummern: Streifen drei, Schritt 1, Platte zwei (gibt es nicht → Ansage mit Grund)
+    await p.click('[data-saw="say"]'); // Ansage aus
+    await p.waitForTimeout(500);
+    await p.evaluate(() => window.__say('Streifen eins'));
+    assert.match(await p.textContent('.sawcard .sstrip'), /^Streifen 1\//);
+    await p.evaluate(() => window.__say('Streifen drei'));
+    assert.match(await p.textContent('.sawcard .vstat.reply'), /Streifen 3 gibt es auf dieser Platte nicht/);
+    await p.waitForTimeout(500);
+    await p.evaluate(() => window.__say('Schritt eins'));
+    assert.strictEqual(await step(), '1');
+    await p.evaluate(() => window.__say('Platte zwei'));
+    assert.match(await p.textContent('.sawcard .vstat.reply'), /Platte 2 gibt es nicht/);
+    await p.waitForTimeout(500);
+    await p.evaluate(() => window.__say('wie weit sind wir'));
+    let said2 = await p.evaluate(() => window.__said);
+    assert.match(said2[said2.length - 1], /Platte 1 von 1\. Schritt 1 von \d+/);
+    await p.waitForTimeout(500);
+    await p.evaluate(() => window.__say('Etiketten automatisch'));
+    assert.strictEqual(await p.getAttribute('[data-lmode="auto"]', 'aria-pressed'), 'true');
+    await p.waitForTimeout(500);
+    await p.evaluate(() => window.__say('Etiketten Fenster'));
+    // freier Satz → KI (Attrappe ChatGPT): ruft saegen_steuern auf, Antwort wird vorgelesen
+    await p.evaluate(() => {
+      sessionStorage.setItem('step2xcs.ai.v1.key.openai', 'sk-test');
+      let n = 0;
+      window.OpenAI = class { constructor() { this.responses = { create: async () => (++n === 1
+        ? { id: 'v1', status: 'completed', output: [{ type: 'function_call', call_id: 'a', name: 'saegen_steuern', arguments: '{"aktion":"gehe_zu","streifen":2}' }] }
+        : { id: 'v2', status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: 'Streifen 2, Schritt gesetzt.' }] }] }) }; } };
+    });
+    await p.click('[data-saw="ai"]');
+    assert.strictEqual(await p.getAttribute('[data-saw="ai"]', 'aria-pressed'), 'true');
+    await p.waitForTimeout(500);
+    await p.evaluate(() => window.__say('bring mich zum zweiten Teil vom Streifen'));
+    await p.waitForFunction(() => /Streifen 2, Schritt gesetzt/.test(document.querySelector('.sawcard').textContent));
+    assert.match(await p.textContent('.sawcard .sstrip'), /^Streifen 2\//);
+    said2 = await p.evaluate(() => window.__said);
+    assert.strictEqual(said2[said2.length - 1], 'Streifen 2, Schritt gesetzt.');
     // Mikrofon aus per Sprache
+    await p.waitForTimeout(500);
     await p.evaluate(() => { window.__said = []; });
     await p.waitForTimeout(500); // Ansage vorbei
     await p.evaluate(() => window.__say('Mikrofon aus'));
@@ -1445,24 +1483,28 @@ test('Web-Tool: Sägemodus per Sprache, Weiter groß und grün', { skip: !chromi
   }
 });
 
-test('Web-Tool: KI-Assistent ruft Werkzeuge der Programm-Schnittstelle auf (Attrappe der API), Rückgängig', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+test('Web-Tool: KI-Assistent mit ChatGPT (Attrappe der API) ruft Werkzeuge der Programm-Schnittstelle auf, Rückgängig; Claude wählbar', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
   const browser = await chromium.launch();
   try {
     const p = await browser.newPage({ viewport: { width: 1440, height: 950 } });
     const errors = [];
     p.on('pageerror', (e) => errors.push(e.message));
-    // Attrappe des Anthropic-SDK: erst lesen, dann umbenennen + Anzahl + sortieren, dann Antwort
+    // Attrappen der SDKs: ChatGPT (Responses-API) – erst lesen, dann umbenennen + Anzahl + sortieren, dann Antwort
     await p.addInitScript(() => {
       window.__reqs = [];
       const replies = [
-        { stop_reason: 'tool_use', content: [{ type: 'text', text: 'Ich lese die Teile.' }, { type: 'tool_use', id: 't1', name: 'teile_lesen', input: {} }] },
-        { stop_reason: 'tool_use', content: [{ type: 'tool_use', id: 't2', name: 'teile_aendern', input: { aenderungen: [{ teil: 1, name: 'Seite links', anzahl: 3, kanten: { l1: 2 } }] } },
-          { type: 'tool_use', id: 't3', name: 'teile_sortieren', input: { reihenfolge: [2] } },
-          { type: 'tool_use', id: 't4', name: 'teile_loeschen', input: { teile: [99] } }] },
-        { stop_reason: 'end_turn', content: [{ type: 'text', text: 'Fertig: Teil umbenannt, Anzahl 3, sortiert.' }] },
+        { id: 'r1', status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: 'Ich lese die Teile.' }] }, { type: 'function_call', call_id: 'c1', name: 'teile_lesen', arguments: '{}' }] },
+        { id: 'r2', status: 'completed', output: [{ type: 'function_call', call_id: 'c2', name: 'teile_aendern', arguments: JSON.stringify({ aenderungen: [{ teil: 1, name: 'Seite links', anzahl: 3, kanten: { l1: 2 } }] }) },
+          { type: 'function_call', call_id: 'c3', name: 'teile_sortieren', arguments: '{"reihenfolge":[2]}' },
+          { type: 'function_call', call_id: 'c4', name: 'teile_loeschen', arguments: '{"teile":[99]}' }] },
+        { id: 'r3', status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: 'Fertig: Teil umbenannt, Anzahl 3, sortiert.' }] }] },
       ];
+      window.OpenAI = class {
+        constructor(o) { this.opts = o; this.responses = { create: async (req) => { window.__reqs.push(JSON.parse(JSON.stringify(req))); return replies[window.__reqs.length - 1]; } }; }
+      };
+      window.__creqs = [];
       window.Anthropic = class {
-        constructor(o) { this.opts = o; this.beta = { messages: { create: async (req) => { window.__reqs.push(JSON.parse(JSON.stringify(req))); return replies[window.__reqs.length - 1]; } } }; }
+        constructor() { this.beta = { messages: { create: async (req) => { window.__creqs.push(JSON.parse(JSON.stringify(req))); return { stop_reason: 'end_turn', content: [{ type: 'text', text: 'Claude hier.' }] }; } } }; }
       };
     });
     await p.goto(page);
@@ -1470,22 +1512,26 @@ test('Web-Tool: KI-Assistent ruft Werkzeuge der Programm-Schnittstelle auf (Attr
     const names0 = await p.$$eval('.part .n', (x) => x.map((e) => e.textContent.replace(/^\d+/, '')));
     await p.click('#aibtn');
     assert.ok(await p.isVisible('#aiset')); // ohne Schlüssel: Einstellungen offen
-    await p.fill('#aikey', 'sk-ant-test');
+    assert.strictEqual(await p.inputValue('#aiprov'), 'openai');
+    assert.match(await p.textContent('#aikeylbl'), /OpenAI/);
+    assert.strictEqual(await p.inputValue('#aimodel'), 'gpt-5.5');
+    await p.fill('#aikey', 'sk-test');
     await p.dispatchEvent('#aikey', 'change');
     await p.fill('#aiin', 'Erstes Teil in Seite links umbenennen, 3 Stück, dann nach vorne sortieren');
     await p.press('#aiin', 'Enter');
     await p.waitForFunction(() => /Fertig: Teil umbenannt/.test(document.getElementById('ailog').textContent));
     const reqs = await p.evaluate(() => window.__reqs);
     assert.strictEqual(reqs.length, 3);
-    assert.strictEqual(reqs[0].model, 'claude-opus-5-5');
-    assert.strictEqual(reqs[0].fallbacks, 'default');
-    assert.deepStrictEqual(reqs[0].betas, ['server-side-fallback-2026-07-01']);
-    assert.ok(reqs[0].tools.some((t) => t.name === 'teile_aendern'));
-    // Werkzeugergebnisse gehen zurück (Fehler für Teil 99 als is_error)
-    const res2 = reqs[2].messages[reqs[2].messages.length - 1].content;
-    assert.strictEqual(res2.length, 3);
-    assert.ok(res2[2].is_error && /gibt es nicht/.test(res2[2].content));
-    assert.match(reqs[1].messages[2].content[0].content, /"teil":1/);
+    assert.strictEqual(reqs[0].model, 'gpt-5.5');
+    assert.deepStrictEqual(reqs[0].reasoning, { effort: 'medium' });
+    assert.ok(reqs[0].tools.some((t) => t.type === 'function' && t.name === 'saegen_steuern'));
+    assert.strictEqual(reqs[0].previous_response_id, undefined);
+    assert.strictEqual(reqs[1].previous_response_id, 'r1');
+    assert.strictEqual(reqs[1].input[0].type, 'function_call_output');
+    assert.match(reqs[1].input[0].output, /"teil":1/);
+    // Ergebnisse gehen zurück (Fehler für Teil 99 als Text)
+    assert.strictEqual(reqs[2].input.length, 3);
+    assert.match(reqs[2].input[2].output, /gibt es nicht/);
     // Seite geändert: Teil umbenannt und (nach Sortieren) an zweiter Stelle, Anzahl 3
     const names1 = await p.$$eval('.part .n', (x) => x.map((e) => e.textContent.replace(/^\d+/, '')));
     assert.strictEqual(names1[0], names0[1]);
@@ -1500,9 +1546,25 @@ test('Web-Tool: KI-Assistent ruft Werkzeuge der Programm-Schnittstelle auf (Attr
     assert.deepStrictEqual(await p.$$eval('.part .n', (x) => x.map((e) => e.textContent.replace(/^\d+/, ''))), names0);
     assert.strictEqual(await p.evaluate(() => window.Step2Maestro.api.teile_lesen().teile[0].anzahl), 1);
     assert.ok(await p.isDisabled('#aiundo'));
-    // Schnittstelle direkt: ungültiges Material wird abgelehnt
+    // Schnittstelle direkt: ungültiges Material wird abgelehnt; Sägemodus steuern
     const err = await p.evaluate(() => { try { window.Step2Maestro.api.teile_aendern({ aenderungen: [{ teil: 1, material: 'gibtsnicht' }] }); return ''; } catch (e) { return e.message; } });
     assert.match(err, /unbekannt/);
+    const st = await p.evaluate(() => window.Step2Maestro.api.saegen_steuern({ aktion: 'weiter' }));
+    assert.strictEqual(st.aktiv, true);
+    assert.strictEqual(st.schritt, 2);
+    const e2 = await p.evaluate(() => { try { window.Step2Maestro.api.saegen_steuern({ aktion: 'gehe_zu', streifen: 9 }); return ''; } catch (e) { return e.message; } });
+    assert.match(e2, /Streifen 9 gibt es auf dieser Platte nicht/);
+    // Claude wählen: eigener Schlüssel, Anfrage geht an Claude
+    if (await p.isHidden('#aiset')) await p.click('#aisetbtn');
+    await p.selectOption('#aiprov', 'anthropic');
+    assert.match(await p.textContent('#aikeylbl'), /Anthropic/);
+    assert.strictEqual(await p.inputValue('#aikey'), '');
+    await p.fill('#aikey', 'sk-ant-test');
+    await p.dispatchEvent('#aikey', 'change');
+    await p.fill('#aiin', 'Hallo');
+    await p.press('#aiin', 'Enter');
+    await p.waitForFunction(() => /Claude hier/.test(document.getElementById('ailog').textContent));
+    assert.strictEqual((await p.evaluate(() => window.__creqs))[0].model, 'claude-opus-5-5');
     await p.click('#aiclose');
     assert.ok(await p.isHidden('#aipanel'));
     assert.deepStrictEqual(errors, []);

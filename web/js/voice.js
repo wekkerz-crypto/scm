@@ -1,7 +1,9 @@
 /*
- * Sprachsteuerung im Sägemodus: wenige feste Befehle („weiter“, „zurück“, „drucken“, „nächster Streifen“ …).
- *   parse(text) → Befehl ('next' | 'prev' | 'print' | 'strip' | 'sheet' | 'say' | 'full' | 'off') oder null
- *   create({ onCommand, onState, onHeard, voskBase }) → { start(), stop(), on, engine }
+ * Sprachsteuerung im Sägemodus: feste Befehle mit vielen Wendungen („weiter“, „okay“, „passt“, „zurück“, „drucken“,
+ * „nächster Streifen“, „Streifen drei“, „Platte 2“, „Schritt 5“, „von vorn“, „wie weit“, „Ansage aus“ …).
+ *   parseCmd(text) → { cmd, n?, arg? } oder null (Liste bei RULES), parse(text) → nur cmd
+ *   create({ onCommand(cmd, text, c), onFree(text), onState, onHeard, voskBase, free() }) → { start(), stop(), restart(), on, engine }
+ *   onFree bekommt Sätze, die kein Befehl sind (z. B. für die KI); free() = true → Vosk ohne Grammatik (ganzer Wortschatz).
  * Erkennung: im Browser (Web Speech API – Chrome/Edge, braucht Internet) oder offline mit Vosk, wenn unter voskBase
  * vosk.js und model-de.tar.gz liegen (tools/sprache_holen.sh, Raspberry Pi: einrichten.sh --sprache). Vosk erkennt nur die
  * Befehlswörter (Grammatik) – das ist an der lauten Säge deutlich sicherer.
@@ -15,26 +17,93 @@
 
   const norm = (t) => String(t || '').toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
     .replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
-  // längere Wendungen zuerst („nächster Streifen“ vor „nächster“)
+
+  // Zahlen als Wort (1 … 39), auch Ordnungszahlen („dritter“) und „zwo“
+  const UNITS = ['', 'eins', 'zwei', 'drei', 'vier', 'fuenf', 'sechs', 'sieben', 'acht', 'neun', 'zehn', 'elf', 'zwoelf', 'dreizehn', 'vierzehn',
+    'fuenfzehn', 'sechzehn', 'siebzehn', 'achtzehn', 'neunzehn', 'zwanzig'];
+  const NUMS = new Map();
+  UNITS.forEach((w, i) => { if (w) NUMS.set(w, i); });
+  NUMS.set('ein', 1); NUMS.set('eine', 1); NUMS.set('einen', 1); NUMS.set('zwo', 2);
+  const PRE = ['', 'ein', 'zwei', 'drei', 'vier', 'fuenf', 'sechs', 'sieben', 'acht', 'neun'];
+  for (let i = 1; i <= 9; i++) { NUMS.set(PRE[i] + 'undzwanzig', 20 + i); NUMS.set(PRE[i] + 'unddreissig', 30 + i); }
+  NUMS.set('dreissig', 30);
+  const ORD = ['', 'erst', 'zweit', 'dritt', 'viert', 'fuenft', 'sechst', 'siebt', 'acht', 'neunt', 'zehnt', 'elft', 'zwoelft'];
+  function numOf(w) {
+    if (!w) return 0;
+    if (/^\d{1,3}$/.test(w)) return +w;
+    if (NUMS.has(w)) return NUMS.get(w);
+    const o = w.replace(/(e[nrsm]?)$/, '');
+    const k = ORD.indexOf(o);
+    return k > 0 ? k : 0;
+  }
+  // „Streifen 3“, „Streifen Nummer drei“, „dritter Streifen“, „zu Streifen 3“
+  function numAfter(t, word) {
+    let m = new RegExp('\\b' + word + ' (?:nummer |nr |no )?([a-z0-9]+)\\b').exec(t);
+    if (m && numOf(m[1])) return numOf(m[1]);
+    m = new RegExp('\\b([a-z0-9]+) ' + word + '\\b').exec(t);
+    if (m && numOf(m[1]) && !/^(ein|eine|einen)$/.test(m[1])) return numOf(m[1]);
+    return 0;
+  }
+
+  /*
+   * Befehle (Reihenfolge = Vorrang: längere/genauere Wendungen vor kurzen Wörtern). Ergebnis { cmd, n?, arg? }:
+   *   next, prev, strip, prevstrip, sheet, prevsheet, gostrip n, gosheet n, gostep n, reset, print, printstrip,
+   *   lmode arg (off|popup|auto), sayon, sayoff, say, status, preview, help, fullon, fulloff, off
+   */
   const RULES = [
-    ['off', /\b(mikro(fon)? aus|sprache aus|zuhoeren aus|stopp? (mikro(fon)?|sprache))\b/],
-    ['strip', /\b(naechste[nrs]? streifen|streifen weiter|neuer streifen)\b/],
-    ['sheet', /\b(naechste[nr]? platte|neue platte|platte weiter)\b/],
-    ['print', /\b(drucken?|drucke|etikett(en)?|ausdrucken)\b/],
-    ['prev', /\b(zurueck|vorher(ige[nr]?)?)\b/],
-    ['say', /\b(wiederholen|nochmal|noch ?mal|ansage|wie viel|welches mass)\b/],
-    ['full', /\b(vollbild)\b/],
-    ['next', /\b(weiter|naechste[rns]?|ok(ay)?|fertig|geschnitten|los)\b/],
+    ['off', /\b(mikro(fon)? (aus|ausschalten|stopp)|sprache (aus|ausschalten)|(nicht mehr|aufhoeren (zu|mit)) zuhoeren|zuhoeren (aus|beenden)|hoer auf zuzuhoeren)\b/],
+    ['help', /\b(hilfe|was kann ich sagen|welche befehle|befehle)\b/],
+    ['lmode', /\b(etikett(en)?|label|aufkleber) (aus|ausschalten|ab|abschalten|weg|keine)\b|\bkeine etiketten\b/, 'off'],
+    ['lmode', /\b(etikett(en)?|label) (automatisch|auto|sofort)\b|\bautomatisch drucken\b|\bautomatik\b/, 'auto'],
+    ['lmode', /\b(etikett(en)?|label) (an|ein|einschalten|fenster|anzeigen)\b/, 'popup'],
+    ['sayoff', /\b(ansagen?|vorlesen|sprachausgabe) (aus|ausschalten|ab)\b|\b(ruhe|sei still|still|leise|klappe)\b/],
+    ['sayon', /\b(ansagen?|vorlesen|sprachausgabe) (an|ein|einschalten)\b|\b(lies vor|ansagen bitte)\b/],
+    ['fulloff', /\bvollbild (aus|beenden|zu|schliessen|weg)\b|\b(kleines bild|normale ansicht)\b/],
+    ['fullon', /\b(vollbild|ganzer bildschirm|gross machen|groesser)\b/],
+    ['reset', /\b(von vorn(e)?|von anfang an|(ganz )?zum anfang|neu anfangen|nochmal von vorn(e)?|alles zurueck)\b/],
+    ['printstrip', /\b(streifen ?etikett|etikett (fuer )?(den |diesen )?streifen|streifen drucken)\b/],
+    ['prevstrip', /\b((vorherige[nrs]?|letzte[nrs]?|voriger?|vorigen) streifen|streifen zurueck)\b/],
+    ['prevsheet', /\b((vorherige[nrs]?|letzte[nrs]?|vorige[nr]?) platte|platte zurueck)\b/],
+    ['strip', /\b((naechste[nrs]?|neue[nrs]?|andere[nrs]?|folgende[nrs]?) streifen|streifen (weiter|fertig))\b/],
+    ['sheet', /\b((naechste[nrs]?|neue[nrs]?|andere[nrs]?|folgende[nrs]?) platte|platte (weiter|fertig|wechseln))\b/],
+    ['print', /\b(drucken?|drucke|druck|ausdrucken|etikett(en)?|label|aufkleber|zettel)\b/],
+    ['status', /\b(wie weit|wie viele (noch|teile|fehlen)|wieviel(e)? (noch|fehlen)|status|fortschritt|wo (bin ich|sind wir|stehen wir))\b/],
+    ['preview', /\b(was kommt (danach|dann|als naechstes|jetzt)|als naechstes|danach)\b/],
+    ['prev', /\b(zurueck|zuruck|vorherige[nrs]?|vorher|einen zurueck|schritt zurueck|back)\b/],
+    ['say', /\b(wiederhol(en|e)?|nochmal|noch mal|noch einmal|ansage|wie viel|welches mass|mass|wie bitte|was jetzt|was muss ich|sag (mal|nochmal|an)|hae)\b/],
+    ['next', /\b(weiter|naechste[rns]?|ok(ay|e)?|o k|fertig|geschnitten|abgeschnitten|los|ja|jawohl|passt|gut|erledigt|done|next|schnitt fertig|und weiter|geht s weiter)\b/],
   ];
-  function parse(text) {
+  // einfache Wörter („weiter“, „ja“, „fertig“, „zurück“, „drucken“, „nochmal“) zählen nur in kurzen Äußerungen – sonst löst
+  // ein Gespräch neben der Säge („ja, die Seiten sind schon geschnitten …“) einen Schritt aus
+  const SHORT_ONLY = new Set(['next', 'prev', 'print', 'say']);
+  const MAX_SHORT = 4;
+  function parseCmd(text) {
     const t = norm(text);
     if (!t) return null;
-    for (const [cmd, re] of RULES) if (re.test(t)) return cmd;
+    const c = parseAny(t);
+    if (c && SHORT_ONLY.has(c.cmd) && t.split(' ').length > MAX_SHORT) return null;
+    return c;
+  }
+  function parseAny(t) {
+    // mit Nummer: „Streifen 3“, „Platte zwei“, „Schritt 5“ (vor den übrigen Regeln)
+    for (const [cmd, word] of [['gostrip', 'streifen'], ['gosheet', 'platte'], ['gostep', 'schritt']]) {
+      const n = numAfter(t, word);
+      if (n) return { cmd: cmd, n: n };
+    }
+    for (const [cmd, re, arg] of RULES) if (re.test(t)) return arg ? { cmd: cmd, arg: arg } : { cmd: cmd };
     return null;
   }
-  // Grammatik für Vosk: nur diese Wörter/Wendungen (Rest = [unk])
-  const GRAMMAR = ['weiter', 'nächster', 'nächste', 'okay', 'fertig', 'geschnitten', 'zurück', 'drucken', 'etikett', 'etiketten',
-    'nächster streifen', 'nächsten streifen', 'nächste platte', 'wiederholen', 'nochmal', 'ansage', 'vollbild', 'mikrofon aus', 'sprache aus', '[unk]'];
+  const parse = (text) => { const c = parseCmd(text); return c ? c.cmd : null; };
+
+  // Grammatik für Vosk (offline): nur diese Wörter/Wendungen, Rest = [unk]
+  const NUMW = ['eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun', 'zehn', 'elf', 'zwölf', 'dreizehn', 'vierzehn', 'fünfzehn',
+    'sechzehn', 'siebzehn', 'achtzehn', 'neunzehn', 'zwanzig'];
+  const GRAMMAR = ['weiter', 'nächster', 'nächste', 'nächster schritt', 'okay', 'ok', 'fertig', 'geschnitten', 'los', 'ja', 'passt', 'erledigt', 'zurück',
+    'einen zurück', 'drucken', 'etikett', 'etiketten', 'etikett drucken', 'streifen etikett', 'nächster streifen', 'nächsten streifen', 'vorheriger streifen',
+    'nächste platte', 'vorherige platte', 'von vorne', 'von vorn', 'wiederholen', 'nochmal', 'noch einmal', 'ansage', 'ansage an', 'ansage aus', 'ruhe',
+    'etiketten aus', 'etiketten an', 'etiketten automatisch', 'vollbild', 'vollbild aus', 'wie weit', 'wie viele noch', 'was kommt danach', 'hilfe',
+    'mikrofon aus', 'sprache aus']
+    .concat(...['streifen', 'platte', 'schritt'].map((w) => NUMW.map((n) => w + ' ' + n)), ['[unk]']);
 
   const g = typeof window !== 'undefined' ? window : {};
   const webSpeech = () => g.SpeechRecognition || g.webkitSpeechRecognition || null;
@@ -75,11 +144,11 @@
     const heard = (text) => {
       const t = String(text || '').trim();
       if (!t || busy()) return;
-      const cmd = parse(t);
-      if (o.onHeard) o.onHeard(t, cmd);
-      if (!cmd) return;
-      if (cmd === 'off') { stop(); return; }
-      o.onCommand(cmd, t);
+      const c = parseCmd(t);
+      if (o.onHeard) o.onHeard(t, c ? c.cmd : null);
+      if (!c) { if (o.onFree) o.onFree(t); return; } // kein Befehl: freier Satz (z. B. an die KI)
+      if (c.cmd === 'off') { stop(); return; }
+      o.onCommand(c.cmd, t, c);
     };
 
     function startWeb() {
@@ -94,7 +163,7 @@
           if (!e.results[i].isFinal) continue;
           // erste Alternative, die ein Befehl ist (sonst die erste)
           const alts = Array.from(e.results[i]).map((a) => a.transcript);
-          heard(alts.find((a) => parse(a)) || alts[0]);
+          heard(alts.find((a) => parseCmd(a)) || alts[0]);
         }
       };
       rec.onerror = (e) => {
@@ -126,7 +195,8 @@
       if (!st.on) return; // inzwischen ausgeschaltet
       const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 } });
       const ctx = new (g.AudioContext || g.webkitAudioContext)();
-      const rec = new st.vosk.KaldiRecognizer(ctx.sampleRate, JSON.stringify(GRAMMAR));
+      // freie Sätze (KI) brauchen den ganzen Wortschatz, sonst nur die Befehle (sicherer im Lärm)
+      const rec = o.free && o.free() ? new st.vosk.KaldiRecognizer(ctx.sampleRate) : new st.vosk.KaldiRecognizer(ctx.sampleRate, JSON.stringify(GRAMMAR));
       rec.on('result', (m) => heard(m && m.result ? m.result.text : ''));
       const src = ctx.createMediaStreamSource(stream);
       const node = ctx.createScriptProcessor(4096, 1, 1);
@@ -164,9 +234,11 @@
       if (st.stream) { st.stream.getTracks().forEach((t) => t.stop()); st.stream = null; }
       if (!quiet) state('');
     }
-    return { start, stop, get on() { return st.on; }, get engine() { return st.engine; } };
+    // neu starten (z. B. nach Umschalten auf freie Sätze – Vosk-Grammatik ändert sich)
+    async function restart() { if (!st.on) return; stop(true); await start(); }
+    return { start, stop, restart, get on() { return st.on; }, get engine() { return st.engine; } };
   }
 
   const supported = () => !!webSpeech() || (typeof navigator !== 'undefined' && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
-  return { parse, norm, GRAMMAR, create, say, supported };
+  return { parse, parseCmd, norm, numOf, GRAMMAR, create, say, supported };
 });

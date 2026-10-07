@@ -5,7 +5,12 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
 
 ## Aufbau
 
-- `web/index.html` – ganzes Web-Tool (CSS + JS inline), läuft offline; Module in `web/js/` (UMD, Browser und Node):
+- `web/index.html` – nur Seitenaufbau (HTML), läuft offline; Stil `web/css/step2maestro.css`; Programm der Oberfläche in
+  `web/js/app/01-…12-….js` (klassische Skripte, gemeinsamer globaler Bereich – Reihenfolge der `<script>`-Tags einhalten;
+  beim Laden nur Funktionen aus derselben oder früheren Dateien aufrufen, Asynchrones wie `loadDecors()` erst in `12-projekte-start.js`):
+  01 Grundlagen/Einstellungen, 02 Teile/Sitzung/Projektdatei, 03 Anzeige, 04 Etiketten, 05 Stückliste, 06 Zuschnitt, 07 Sägemodus/Sprache,
+  08 PDF/Seiten/Möbel 3D/Material/Dekore, 09 Profile/Ansicht/Animation, 10 Speichern/Ereignisse, 11 Schnittstelle/KI, 12 Projekte/Start.
+  Module in `web/js/` (UMD, Browser und Node):
   `step.js` (STEP lesen), `panel.js` (Erkennung), `xcs.js` (Planung + Programm), `convert.js` (Namen, .bat),
   `toolpath.js` (Animation), `tools.js` (.tlgx). `tools-default.js` und `sample.js` erzeugt `node tools/build_defaults.js`.
 - `web/js/view3d.js` – 3D-Ansicht (three.js + OpenCascade/occt-import-js aus `web/js/vendor`, lädt bei Bedarf);
@@ -18,13 +23,13 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   Hüllquader den Bauteilen zu); Nummer = Platz in der Programmliste (`.pnum`).
   Plattenfarbe: `View3D.MATERIALS`/`boardOf` (id oder '#rrggbb', '/u' einfarbig; Kanten nach '|': `EDGES` span/multiplex/mdf
   oder '#rrggbb'; `boardMaterials` → [Oberfläche, Schmalflächen], `boardFrame` = Dicke/lange Seite → Maserung längs L), Einstellung `boardMaterial`, je Teil `part.board`
-  (Sitzung), `boardPicker` in `index.html`, `Viewer.setBoards`.
+  (Sitzung), `boardPicker` in `app/08-moebel3d-material.js`, `Viewer.setBoards`.
   Material aus dem Namen: `StepToXcs.materialOf` → `solid.material`, Farbe `solid.color` (`colorsByItem` in `step.js`)
-  → `nameBoard` in `index.html` (Einstellung `boardFromName`), Reihenfolge `part.board` < Name < Einstellung.
+  → `nameBoard` in `app/08-moebel3d-material.js` (Einstellung `boardFromName`), Reihenfolge `part.board` < Name < Einstellung.
   Dekor-Bibliothek: `tools/webserver/dekore/` (`api.php` PHP 8 + GD: list offen (Sitzung nur mit Cookie), setup nur mit Datei `EINRICHTEN`
   (in der ZIP, danach gelöscht), Login mit Sperre je Adresse (`daten/fehlversuche.json`), Ändern unter `lockDb()` + `loadDb(true)`,
   save/upload/delete mit Sitzung + X-CSRF,
-  Daten `daten/dekore.json`, Bilder `bilder/KEY.jpg` + `vorschau/`; `index.html` = Verwaltung) → `loadDecors` in `index.html` (nur http/https)
+  Daten `daten/dekore.json`, Bilder `bilder/KEY.jpg` + `vorschau/`; `index.html` = Verwaltung) → `loadDecors` in `app/08-moebel3d-material.js` (nur http/https)
   → `View3D.setDecors`, Schlüssel 'dek:KEY' (`boardOf` mit tex/thumb/scale, `surfMaterial` Bildtextur), `nameBoard` per `decorKey`.
   Schnitt `setSection` (clippingPlanes in `applyLook`), Bild `snapshot()` (Leinwand + Schilder/Maße nachgezeichnet).
 - Listen (`state.page` 'lists'): Stückliste `bomRows` (gleiche Teile zusammengefasst, Anzahl `part.qty`), CSV, Druck A4 `printA4`;
@@ -56,7 +61,7 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   Teil von Hand (Stückliste `#bomnew`, `renderBomNew`/`addManualPart`): Rechteck als DXF (`rectDxf`) über `addDxf(text, name,
   {T, board, qty})` → nur Formatfräsen; Löschen `data-bomdel` (zweiter Klick).
   Eigene Farben mit Namen: Schlüssel `#rrggbb[/u]~Name`, gemerkt in `settings.customBoards`. Programmläufe `progRuns()` (Teil → Stücklisten-Position, `row.qty` × Zeit; `#pqty` oben im Teil, `.chip.runs`, `.runsum`). Zeit: `Toolpath.estimate`
-  (Einstellungen `est*`), `partTime` in `index.html`. Projektdatei: siehe Projekte.
+  (Einstellungen `est*`), `partTime` in `app/03-anzeige.js`. Projektdatei: siehe Projekte.
 - Projekte (Startseite, `state.page` 'start', `#startpage`, `renderStart`; beim Start immer, außer Adresse `#saegen` … `HASH_PAGES`):
   aktuelles Projekt `proj` (localStorage `step2xcs.project.v1`: id, store 'server'|'local', name, kunde, notiz, basis, sig = `projSig()`
   → `projDirty`/`projMark` (• an `#projsave`), `projLeaveOk`), `projSave`/`projOpen`/`projNew`/`projCopy`/`projDelete`/`projExport`;
@@ -74,7 +79,7 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   Vosk beim Bauen), `npm run build:docker`; Pi `einrichten.sh` setzt für http-Adressen `--unsecurely-treat-insecure-origin-as-secure`.
 - Projektdatei .s2m (`projectPayload`/`applyProject`, Datei: `saveProject`/`openProject`): `data.session` (Teile) + `data.lists` (`projectLists()`, Schlüssel `PROJECT_LST_KEYS` – Ansicht/Zoom/`sawCfg` bleiben
   am Gerät) + `data.settings` (beim Öffnen Nachfrage, wenn anders; `SETTINGS_LOCAL` = Pfade bleiben); `syncListInputs()` zieht die Felder nach.
-- Programm-Schnittstelle `window.Step2Maestro.api` (index.html, `api`): teile_lesen, stueckliste_lesen, zuschnitt_lesen, materialien_lesen,
+- Programm-Schnittstelle `window.Step2Maestro.api` (`app/11-schnittstelle-ki.js`, `api`): teile_lesen, stueckliste_lesen, zuschnitt_lesen, materialien_lesen,
   teile_aendern, teile_sortieren, teile_loeschen, teil_anlegen, zuschnitt_einstellen, seite_zeigen, saegen_status, saegen_steuern, projekt –
   nur Listendaten und Sägemodus, keine Bearbeitungen.
   KI-Assistent `web/js/assist.js` (`Assist.TOOLS` = gleiche Namen, `validate`, `callTool`; Anbieter `PROVIDERS` – Standard ChatGPT:
@@ -131,7 +136,7 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   Extra-Tiefe 20; Nuten weiter mit `sawOverrun`.
 - Schnittwerte: `tools.js` liest je Werkzeug `tech = {feed, rot, descent}` (je [Standard, min, max]); je Teil/Seite
   `overrides.tech = {Gruppe: {feed, rot, descent}}` → `S3`/`SD` in `xcs.js` (sonst `-1` = Werkzeugdatei).
-- Etiketten (Browser-Druck): `labelHtml`/`labelSketch`/`openLabels` in `index.html`, Einstellungen `label*` (40 × 60 mm);
+- Etiketten (Browser-Druck): `labelHtml`/`labelSketch`/`openLabels` in `app/04-etiketten.js`, Einstellungen `label*` (40 × 60 mm);
   Kopf `.hd` (Nr. aus `lblNums` = `labelNums()` je Druck, Material), Hinweis `.two` (side2) / `.two.warn` (canTwoSided),
   Kanten-Legende `.eg`, Fußzeile `.ft`; breit: `.wrow` (Text links, Draufsicht rechts);
   Etiketten-Konfigurator: `web/js/labels.js` (`LabelLayout`: `FIELDS`, `TEMPLATES`/`layoutOf`, `scaled`, `fill`, `render`/`itemHtml`,

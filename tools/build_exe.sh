@@ -8,6 +8,7 @@ rm -rf exe/web
 mkdir -p exe/web dist
 cp web/index.html exe/web/
 cp -r web/js exe/web/js
+cp -r web/css exe/web/css
 cd exe
 # bewusst ohne -s -w (Symbole entfernen wirkt auf Virenscanner verdächtig)
 CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H windowsgui" -o ../dist/STEP2XCS.exe .
@@ -18,6 +19,7 @@ rm -rf dist/STEP2XCS-portabel dist/STEP2XCS-portabel.zip
 mkdir -p dist/STEP2XCS-portabel/STEP2XCS
 cp web/index.html dist/STEP2XCS-portabel/STEP2XCS/
 cp -r web/js dist/STEP2XCS-portabel/STEP2XCS/js
+cp -r web/css dist/STEP2XCS-portabel/STEP2XCS/css
 printf '@echo off\r\nrem Öffnet den STEP-zu-XCS Konverter im Standardbrowser\r\nstart "" "%%~dp0index.html"\r\n' > "dist/STEP2XCS-portabel/STEP2XCS/STEP2XCS starten.cmd"
 printf 'STEP-zu-XCS Konverter (ohne Installation)\r\n\r\nOrdner STEP2XCS an einen festen Ort kopieren (z. B. C:\\STEP2XCS)\r\nund index.html oder "STEP2XCS starten.cmd" doppelklicken.\r\nLäuft komplett im Browser, ohne Internet. Einstellungen bleiben erhalten,\r\nsolange der Ordner am selben Ort bleibt.\r\n' > dist/STEP2XCS-portabel/STEP2XCS/LIES-MICH.txt
 (cd dist/STEP2XCS-portabel && python3 -c "

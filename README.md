@@ -711,7 +711,7 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
 
 | Ordner | Inhalt |
 |---|---|
-| `web/` | Web-Tool (`index.html`) und die JS-Module `step.js` (STEP-Leser), `panel.js` (Erkennung), `xcs.js` (Ausgabe), `surface.js` (Kugelfräser-Bahn), `occtmesh.js` (3D-Netz), `dxf.js` (DXF-Leser), `assist.js` (KI-Assistent), `voice.js` (Sprachbefehle); `js/vendor/openai.js` / `anthropic.js` = OpenAI- bzw. Anthropic-SDK als Browser-Skript (`tools/build_openai.sh`, `tools/build_anthropic.sh`) |
+| `web/` | Web-Tool: `index.html` (Seitenaufbau), `css/step2maestro.css` (Aussehen), `js/app/01–12` (Programm der Oberfläche, nach Bereichen: Grundlagen, Teile, Anzeige, Etiketten, Stückliste, Zuschnitt, Sägemodus, Möbel 3D/Material, Ansicht, Speichern, Schnittstelle/KI, Projekte) und die JS-Module `step.js` (STEP-Leser), `panel.js` (Erkennung), `xcs.js` (Ausgabe), `surface.js` (Kugelfräser-Bahn), `occtmesh.js` (3D-Netz), `dxf.js` (DXF-Leser), `assist.js` (KI-Assistent), `voice.js` (Sprachbefehle); `js/vendor/openai.js` / `anthropic.js` = OpenAI- bzw. Anthropic-SDK als Browser-Skript (`tools/build_openai.sh`, `tools/build_anthropic.sh`) |
 | `cli/` | Kommandozeilen-Aufruf |
 | `tools/webserver/` | Webspace-Paket: `dekore/` (Dekor-Bibliothek), `projekte/` (Projektablage), `ki/` (ChatGPT über den Server), Anleitung |
 | `tools/docker/` | Docker für die Diskstation: `Dockerfile`, `docker-compose.yml`, `start.sh`, `ANLEITUNG-DOCKER.txt` |

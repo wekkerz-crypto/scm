@@ -9,6 +9,7 @@ OUT=dist/Step2Maestro-Webserver
 rm -rf "$OUT" "$OUT.zip"
 mkdir -p "$OUT/step2maestro"
 cp -r web/js "$OUT/step2maestro/js"
+cp -r web/css "$OUT/step2maestro/css"
 cp -r tools/webserver/fonts "$OUT/step2maestro/fonts"
 cp tools/webserver/.htaccess "$OUT/step2maestro/.htaccess"
 # Dekor-Bibliothek (PHP): nur Programm, keine Daten – bilder/, vorschau/, daten/ legt api.php auf dem Server an

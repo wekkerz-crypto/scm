@@ -585,7 +585,7 @@ function renderMat() {
     '<section class="matcard"><h4>Standard</h4><div class="matrows">' +
       '<label>Platte für alle Teile <button type="button" class="btn small boardbtn" id="matdef">' + boardChip(state.settings.boardMaterial) + '</button></label>' +
       '<label class="ck"><input type="checkbox" id="matname"' + (state.settings.boardFromName !== false ? ' checked' : '') + '> Material aus dem Bauteilnamen (z. B. „Seite (U708 ST9)“)</label>' +
-      '<p class="note">Reihenfolge: je Teil gewählt &gt; aus dem Namen &gt; Standard.</p></div></section>' +
+      '<p class="note">Reihenfolge: je Teil gewählt &gt; aus dem Namen &gt; gelernte Regel (Stückliste › Regeln …) &gt; Standard.</p></div></section>' +
     // Kantenband
     '<section class="matcard"><h4>Kantenband</h4><div class="matrows">' +
       num('m-emm', lst.edgeMm, 0.1, 'Dicke (alle Kanten) mm') +
@@ -593,7 +593,7 @@ function renderMat() {
       '<label>Dekor 2 <input type="text" id="m-ename2" value="' + esc(lst.edgeName2 || '') + '"> <input type="color" id="m-ecol2" value="' + esc(/^#[0-9a-f]{6}$/i.test(lst.edgeColor2 || '') ? lst.edgeColor2 : '#5b4a3a') + '" aria-label="Farbe Dekor 2"></label>' +
       num('m-eextra', lst.edgeExtra, 1, 'Zugabe je Kante mm') +
       '<label class="ck"><input type="checkbox" id="m-ededuct"' + (lst.edgeDeduct ? ' checked' : '') + '> Kantendicke vom Zuschnitt abziehen</label>' +
-      '<p class="note">Belegung je Teil in der Stückliste; automatische Vorbelegung dort unter <i>Kanten-Regeln</i>.</p></div></section>' +
+      '<p class="note">Belegung je Teil in der Stückliste; automatische Vorbelegung dort unter <i>Regeln …</i>.</p></div></section>' +
     // Platten
     '<section class="matcard"><h4>Rohplatten</h4><div class="matrows">' +
       '<label>Format <span><input type="number" id="m-sheetL" step="1" value="' + lst.sheetL + '"> × <input type="number" id="m-sheetW" step="1" value="' + lst.sheetW + '"> mm</span></label>' +

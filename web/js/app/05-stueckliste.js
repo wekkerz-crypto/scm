@@ -38,7 +38,7 @@ function printA4(html, landscape) {
 const qtyOf = (p) => (p.qty === undefined || p.qty === null ? 1 : Math.max(0, Math.round(p.qty)));
 // Faserrichtung je Teil für den Zuschnitt: auto (nach Material), long (längs), cross (quer), free (drehen erlaubt)
 const GRAIN_NAMES = { auto: 'Auto', long: 'längs', cross: 'quer', free: 'frei' };
-const grainOf = (p) => (p && GRAIN_NAMES[p.grain] ? p.grain : 'auto');
+const grainOf = (p) => (p && GRAIN_NAMES[p.grain] ? p.grain : (learnedOf(p, 'grain') || {}).grain || 'auto');
 function orientOf(p, board) {
   const g = grainOf(p);
   if (g !== 'auto') return g;
@@ -56,7 +56,7 @@ const saveLst = () => storeJson(LIST_KEY, lst);
  */
 const EDGE_SIDES = [['l1', 'L1', 'vorne'], ['l2', 'L2', 'hinten'], ['b1', 'B1', 'links'], ['b2', 'B2', 'rechts']];
 const edgesOf = (p) => {
-  const e = (p && p.edges) || (lst.edgeAuto ? autoEdges(p) : null) || {};
+  const e = (p && p.edges) || (learnedOf(p, 'edges') || {}).edges || (lst.edgeAuto ? autoEdges(p) : null) || {};
   return { l1: e.l1 | 0, l2: e.l2 | 0, b1: e.b1 | 0, b2: e.b2 | 0 };
 };
 /*
@@ -70,16 +70,68 @@ const EDGE_RULE_SIDES = { all: 'ringsum', front: 'Vorderkante im Möbel', long: 
 const FRONT_DIRS = { '-y': ['−Y (Onshape vorne)', [0, -1, 0]], '+y': ['+Y', [0, 1, 0]], '-x': ['−X', [-1, 0, 0]], '+x': ['+X', [1, 0, 0]] };
 const edgeRules = () => (Array.isArray(lst.edgeRules) ? lst.edgeRules : EDGE_RULES_DEFAULT);
 const normWord = (w) => String(w || '').toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss').trim();
+const partWordsName = (p) => normWord(p.solid ? p.solid.stepName || p.solid.name : p.label);
+// passt der Bauteilname zu „Name enthält“ (Wörter mit Komma; ganzes Wort oder ab 4 Buchstaben auch Teil des Namens; * = alle)?
+function nameMatches(p, match) {
+  const name = partWordsName(p);
+  const tokens = name.split(/[^a-z0-9]+/).filter(Boolean);
+  const words = String(match || '').split(/[,;]/).map(normWord).filter(Boolean);
+  return words.some((w) => w === '*' || tokens.includes(w) || (w.length >= 4 && name.includes(w)));
+}
 function edgeRuleOf(p) {
   if (!p) return null;
-  const name = normWord(p.solid ? p.solid.stepName || p.solid.name : p.label);
-  const tokens = name.split(/[^a-z0-9]+/).filter(Boolean);
-  for (const r of edgeRules()) {
-    const words = String(r.match || '').split(/[,;]/).map(normWord).filter(Boolean);
-    if (words.some((w) => w === '*' || tokens.includes(w) || (w.length >= 4 && name.includes(w)))) return r;
-  }
+  for (const r of edgeRules()) if (nameMatches(p, r.match)) return r;
   return null;
 }
+/*
+ * Gelernte Regeln (am Gerät, localStorage RULES_KEY, nicht je Projekt): aus Änderungen von Hand in der Stückliste
+ * („Als Regel merken“) – je Regel „Name enthält“ und eines oder mehrere von Material (board), Kanten (edges), Faser (grain).
+ * Gelten für Teile ohne eigene Wahl; Reihenfolge: je Teil gewählt > Material aus dem Namen > gelernte Regel > Kanten-Regeln/Standard.
+ * Neueste Regel zuerst; je Feld gilt die erste passende Regel, die das Feld hat.
+ */
+const RULES_KEY = 'step2xcs.regeln.v1';
+const learn = Object.assign({ on: true, ask: true, list: [] }, loadJson(RULES_KEY, {}) || {});
+if (!Array.isArray(learn.list)) learn.list = [];
+const saveLearn = () => storeJson(RULES_KEY, learn);
+function learnedOf(p, field) {
+  if (!p || !learn.on) return null;
+  for (const r of learn.list) if (r[field] != null && String(r.match || '').trim() && String(r.match).trim() !== '*' && nameMatches(p, r.match)) return r;
+  return null;
+}
+// Stichwort aus dem Namen vorschlagen: erstes sinnvolles Wort (ohne Nummern, Dekor-Codes wie W1000/ST9, „KP“, „Teil“) –
+// bei mehreren Teilen das erste Wort, das alle gemeinsam haben
+const LEARN_SKIP = new Set(['kp', 'teil', 'part', 'body', 'koerper', 'bauteil', 'platte', 'links', 'rechts', 'oben', 'unten', 'vorne', 'hinten', 'mitte', 'linke', 'rechte', 'obere', 'untere', 'vordere', 'hintere', 'mittlere', 'innen', 'aussen']);
+function learnWord(parts) {
+  const words = (p) => partWordsName(p).split(/[^a-z0-9]+/).filter((w) => w.length >= 3 && !/\d/.test(w) && !LEARN_SKIP.has(w) && !/^[a-z]{1,2}\d+$/.test(w));
+  const first = words(parts[0]);
+  const common = first.filter((w) => parts.every((p) => words(p).includes(w)));
+  return common[0] || first[0] || '';
+}
+// neue Regel bzw. Felder in eine Regel mit gleichem Stichwort übernehmen (die rückt nach vorne)
+function learnAdd(match, fields) {
+  const m = String(match || '').trim();
+  if (!m) return null;
+  const at = learn.list.findIndex((r) => normWord(r.match) === normWord(m));
+  const r = Object.assign(at >= 0 ? learn.list.splice(at, 1)[0] : { match: m }, fields, { when: new Date().toISOString().slice(0, 10) });
+  learn.list.unshift(r);
+  saveLearn();
+  return r;
+}
+// Regeln aus einer Projektdatei dazunehmen (nur Stichwörter, die es hier noch nicht gibt)
+function mergeLearned(list) {
+  if (!Array.isArray(list)) return 0;
+  let n = 0;
+  for (const r of list) {
+    if (!r || !String(r.match || '').trim() || learn.list.some((x) => normWord(x.match) === normWord(r.match))) continue;
+    learn.list.push({ match: String(r.match), board: r.board != null ? String(r.board) : undefined, edges: r.edges || undefined,
+      grain: GRAIN_NAMES[r.grain] && r.grain !== 'auto' ? r.grain : undefined, when: r.when });
+    n++;
+  }
+  if (n) saveLearn();
+  return n;
+}
+const learnText = (r) => [r.board != null ? 'Material ' + boardName(r.board) : '', r.edges ? 'Kanten ' + (edgeText(r.edges) || 'keine') : '',
+  r.grain ? 'Faser ' + GRAIN_NAMES[r.grain] : ''].filter(Boolean).join(' · ');
 function autoEdges(p) {
   const r = edgeRuleOf(p);
   if (!r || r.sides === 'none') return null;
@@ -142,7 +194,7 @@ function edgeWidget(e, k, board, rule) {
     '<button type="button" class="pc' + (EDGE_SIDES.every(([s2]) => e[s2]) ? ' all' : '') + '" data-bomedge="' + k + '" data-side="all" title="Alle vier Kanten ringsum – Klick wechselt keine → Dekor 1 → Dekor 2" aria-label="Position ' +
     (k + 1) + ' alle Kanten ringsum">ringsum<small>L ↔</small></button></span><span class="et">' +
     esc(edgeText(e)).split(' · ').map((t, i, a) => '<span>' + t + (i < a.length - 1 ? ' ·' : '') + '</span>').join(' ') + '</span>' +
-    (rule ? '<small class="eauto" title="Vorbelegt nach Regel „' + esc(rule.match) + '“ → ' + esc(EDGE_RULE_SIDES[rule.sides] || '') + ' – Klick auf eine Seite setzt die Kanten von Hand">Regel</small>' : '') + '</span>';
+    (rule ? '<small class="eauto" title="Vorbelegt nach ' + (rule.learned ? 'gelernter Regel „' + esc(rule.match) + '“' : 'Regel „' + esc(rule.match) + '“ → ' + esc(EDGE_RULE_SIDES[rule.sides] || '')) + ' – Klick auf eine Seite setzt die Kanten von Hand">Regel</small>' : '') + '</span>';
 }
 // Positionen der Stückliste: gleiche Teile (Maße, Plattenfarbe, gleiches Programm) zusammengefasst
 function bomRows() {
@@ -192,11 +244,51 @@ function bomTotals(rows) {
 const bomSel = new Set();
 let bomLast = -1; // zuletzt angeklickte Zeile (Umschalt-Klick wählt den Bereich)
 // Material für mehrere Bauteile: Farbauswahl öffnen, Wahl gilt sofort für alle (null = wie Einstellung / Name)
-function bomBoardPick(anchor, parts, value) {
+function bomBoardPick(anchor, parts, value, learnIt) {
   boardPicker(anchor, value, state.settings.boardMaterial, (k) => {
     for (const p of parts) p.board = k || null;
+    if (learnIt && k) learnOffer(parts, { board: k });
     applyBoards();
   });
+}
+// nach einer Änderung von Hand: anbieten, sie als Regel zu merken (Leiste über der Stückliste)
+let bomLearn = null;
+function learnOffer(parts, fields) {
+  if (!learn.ask || !parts.length) return;
+  const same = bomLearn && bomLearn.parts.length === parts.length && parts.every((p) => bomLearn.parts.includes(p));
+  if (same) Object.assign(bomLearn.fields, fields);
+  else bomLearn = { parts: parts.slice(), fields: Object.assign({}, fields), word: learnWord(parts) };
+}
+function learnBarHtml() {
+  if (!bomLearn) return '';
+  if (!bomLearn.parts.every((p) => state.parts.includes(p))) { bomLearn = null; return ''; }
+  const hits = state.parts.filter((p) => nameMatches(p, bomLearn.word)).length;
+  return '<div class="bomlearn" role="status"><span>Für ähnliche Teile merken – Name enthält</span>' +
+    '<input type="text" id="lrnword" value="' + esc(bomLearn.word) + '" aria-label="Stichwort im Bauteilnamen" title="Wörter mit Komma; ganzes Wort oder ab 4 Buchstaben auch Teil des Namens">' +
+    '<span>→ <b>' + esc(learnText(bomLearn.fields)) + '</b> <small id="lrnhits">(' + hits + ' Teil' + (hits === 1 ? '' : 'e') + ' hier)</small></span>' +
+    '<button type="button" class="btn small" id="lrnsave">Als Regel merken</button><button type="button" class="btn ghost small" id="lrnno">Nein</button>' +
+    '<button type="button" class="btn ghost small" id="lrnoff" title="Nicht mehr fragen – wieder einschalten unter „Regeln …“">Nicht mehr fragen</button></div>';
+}
+function learnBarWire() {
+  if (!$('lrnsave')) return;
+  $('lrnword').addEventListener('input', (e) => {
+    bomLearn.word = e.target.value;
+    const hits = e.target.value.trim() ? state.parts.filter((p) => nameMatches(p, e.target.value)).length : 0;
+    $('lrnhits').textContent = '(' + hits + ' Teil' + (hits === 1 ? '' : 'e') + ' hier)';
+  });
+  const save = () => {
+    const w = String(bomLearn.word || '').trim();
+    if (!w || w === '*') { toast('Bitte ein Stichwort aus dem Bauteilnamen eingeben.'); $('lrnword').focus(); return; }
+    const r = learnAdd(w, bomLearn.fields);
+    bomLearn = null;
+    toast('Regel gemerkt: „' + r.match + '“ → ' + learnText(r));
+    applyBoards();
+    if (!$('erpanel').hidden) renderEdgeRules();
+  };
+  $('lrnsave').addEventListener('click', save);
+  $('lrnword').addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
+  $('lrnno').addEventListener('click', () => { bomLearn = null; renderBom(); });
+  $('lrnoff').addEventListener('click', () => { bomLearn = null; learn.ask = false; saveLearn(); renderBom(); toast('Es wird nicht mehr gefragt – einschalten unter „Regeln …“.'); });
 }
 function renderBom() {
   const rows = bomRows();
@@ -211,7 +303,7 @@ function renderBom() {
   for (const r of rows) { const m = mats.get(r.board) || { key: r.board, parts: [], qty: 0 }; m.parts.push(...r.parts); m.qty += r.qty; mats.set(r.board, m); }
   const matList = Array.from(mats.values());
   const allSel = selRows.length === rows.length;
-  $('bomview').innerHTML = '<div class="bombar">' +
+  $('bomview').innerHTML = learnBarHtml() + '<div class="bombar">' +
     (selRows.length ? '<span class="bomselinfo"><b>' + selRows.length + '</b> Position' + (selRows.length === 1 ? '' : 'en') + ' gewählt (' + selParts.reduce((a, p) => a + qtyOf(p), 0) + ' Teile)</span>' +
       '<button type="button" class="btn small" id="bomselmat" aria-expanded="false" title="Material für alle gewählten Positionen ändern">Material ändern …</button>' +
       '<button type="button" class="btn ghost small" id="bomselnone">Auswahl aufheben</button>'
@@ -226,8 +318,9 @@ function renderBom() {
       '<td><b>' + r.names.map(esc).join(', ') + '</b><div class="sub">Bauteil ' + r.nums.join(', ') + '</div></td>' +
       '<td class="r">' + n1(r.L) + '</td><td class="r">' + n1(r.W) + '</td><td class="r">' + n1(r.T) + '</td>' +
       '<td><button type="button" class="btn ghost small boardbtn bommat" id="bommat' + k + '" data-bommat="' + k + '" aria-expanded="false" title="' +
-        (isSel(r) && selRows.length > 1 ? 'Material für alle ' + selRows.length + ' gewählten Positionen ändern' : 'Material ändern') + (r.parts.some((p) => p.board) ? '' : ' (jetzt: ' + (nameBoard(r.parts[0]) ? 'aus dem Namen' : 'Standard') + ')') + '">' + boardChip(r.board) + '</button></td>' +
-      '<td>' + edgeWidget(r.edges, k, r.board, !r.parts[0].edges && lst.edgeAuto ? edgeRuleOf(r.parts[0]) : null) + '</td>' +
+        (isSel(r) && selRows.length > 1 ? 'Material für alle ' + selRows.length + ' gewählten Positionen ändern' : 'Material ändern') + (r.parts.some((p) => p.board) ? '' : ' (jetzt: ' + (nameBoard(r.parts[0]) ? 'aus dem Namen' : learnedOf(r.parts[0], 'board') ? 'gelernte Regel „' + learnedOf(r.parts[0], 'board').match + '“' : 'Standard') + ')') + '">' + boardChip(r.board) + '</button>' +
+        (!r.parts.some((p) => p.board) && !nameBoard(r.parts[0]) && learnedOf(r.parts[0], 'board') ? ' <small class="eauto" title="Aus der gelernten Regel „' + esc(learnedOf(r.parts[0], 'board').match) + '“">Regel</small>' : '') + '</td>' +
+      '<td>' + edgeWidget(r.edges, k, r.board, r.parts[0].edges ? null : learnedOf(r.parts[0], 'edges') ? { match: learnedOf(r.parts[0], 'edges').match, learned: true } : lst.edgeAuto ? edgeRuleOf(r.parts[0]) : null) + '</td>' +
       '<td class="r">' + n1(r.raw.L) + ' × ' + n1(r.raw.W) + '</td>' +
       '<td class="r">' + fmt(Math.round((r.L * r.W * r.qty) / 1e4) / 100) + '</td>' +
       '<td class="r">' + (r.time ? '<span title="' + esc(timeTitle(r.time)) + '">' + Toolpath.fmtTime(r.time.total) + '</span>' : '–') + '</td>' +
@@ -255,11 +348,12 @@ function renderBom() {
   const sa = $('bomselall');
   sa.indeterminate = selRows.length > 0 && !allSel;
   if ($('bomselnone')) $('bomselnone').addEventListener('click', () => { bomSel.clear(); renderBom(); });
-  if ($('bomselmat')) $('bomselmat').addEventListener('click', (e) => bomBoardPick(e.currentTarget, selParts, selRows[0].board));
+  learnBarWire();
+  if ($('bomselmat')) $('bomselmat').addEventListener('click', (e) => bomBoardPick(e.currentTarget, selParts, selRows[0].board, true));
   // Material je Position (gehört die Zeile zur Auswahl: für alle gewählten)
   $('bomview').querySelectorAll('[data-bommat]').forEach((b) => b.addEventListener('click', (e) => {
     const r = rows[+b.dataset.bommat];
-    bomBoardPick(e.currentTarget, isSel(r) && selRows.length > 1 ? selParts : r.parts, r.board);
+    bomBoardPick(e.currentTarget, isSel(r) && selRows.length > 1 ? selParts : r.parts, r.board, true);
   }));
   // Material tauschen: alle Bauteile mit diesem Material
   $('bomview').querySelectorAll('[data-bomswap]').forEach((b) => b.addEventListener('click', (e) => {
@@ -280,6 +374,7 @@ function renderBom() {
     const vals = EDGE_SIDES.map(([k2]) => cur[k2]);
     const v = sd === 'all' ? (vals.every((x) => x === vals[0]) ? (vals[0] + 1) % 3 : 1) : (cur[sd] + 1) % 3;
     for (const p of r.parts) { p.edges = edgesOf(p); for (const [k2] of EDGE_SIDES) if (sd === 'all' || sd === k2) p.edges[k2] = v; }
+    learnOffer(r.parts, { edges: Object.assign({}, r.parts[0].edges) });
     applyBoards();
   }));
   // Löschen: erster Klick fragt („Löschen?“), zweiter löscht alle Bauteile der Position (auch aus den Programmen)
@@ -301,7 +396,9 @@ function renderBom() {
     render();
   }));
   $('bomview').querySelectorAll('[data-bomgrain]').forEach((sel) => sel.addEventListener('change', () => {
-    for (const p of rows[+sel.dataset.bomgrain].parts) p.grain = sel.value === 'auto' ? undefined : sel.value;
+    const parts = rows[+sel.dataset.bomgrain].parts;
+    for (const p of parts) p.grain = sel.value === 'auto' ? undefined : sel.value;
+    if (sel.value !== 'auto') learnOffer(parts, { grain: sel.value });
     render();
   }));
   $('bomview').querySelectorAll('[data-bomqty]').forEach((inp) => inp.addEventListener('change', () => {

@@ -128,6 +128,8 @@ function projectPayload() {
   // Stückliste/Zuschnitt (Format, Schnittfuge, Pläne von Hand, Haken im Sägemodus, Kanten) und die Einstellungen gehen mit
   data.lists = projectLists();
   data.settings = JSON.parse(JSON.stringify(state.settings));
+  // gelernte Regeln gehen mit (auf einem anderen Gerät werden fehlende dazugenommen)
+  if (learn.list.length) data.regeln = JSON.parse(JSON.stringify(learn.list));
   if (typeof proj !== 'undefined' && proj.name) data.meta = { name: proj.name, kunde: proj.kunde || '', notiz: proj.notiz || '' };
   return data;
 }
@@ -160,6 +162,7 @@ function applyProject(data) {
   state.parts = [];
   anim.result = null;
   if (Array.isArray(data.dekore)) mergeDecors(data.dekore);
+  if (Array.isArray(data.regeln)) mergeLearned(data.regeln);
   // Einstellungen des Projekts (Werkzeuge, Regeln, Sauger …): nur nach Nachfrage, wenn sie von den eigenen abweichen
   if (data.settings && typeof data.settings === 'object') {
     const strip = (o) => { const c = Object.assign({}, o); for (const k of SETTINGS_LOCAL) delete c[k]; return JSON.stringify(Object.keys(c).sort().map((k) => [k, c[k]])); };

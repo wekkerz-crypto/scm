@@ -238,6 +238,13 @@ Dritte Seite oben (**Listen**):
   Haken im Kopf = alle) – dann gilt *Material ändern …* bzw. der Klick auf das Material einer gewählten Zeile für alle gewählten.
   **Material tauschen** (rechts über der Liste): je Material im Projekt ein Knopf – stellt alle Teile mit diesem Material auf ein
   anderes um; ☑ daneben wählt alle Positionen mit diesem Material aus.
+  **Regeln lernen:** Nach einer Änderung von Hand (Material, Kanten, Faser) erscheint über der Liste *Für ähnliche Teile
+  merken – Name enthält „seite“ → Material Anthrazit · Kanten L1 D1*. Das Stichwort ist aus dem Bauteilnamen vorgeschlagen
+  (ohne Nummern und Dekor-Codes) und änderbar; *Als Regel merken* speichert es am Gerät. Ab dann bekommen alle Teile, deren
+  Name das Wort enthält, diese Werte automatisch – in jedem Projekt, solange am Teil nichts von Hand gewählt ist (ein Dekor
+  im Bauteilnamen wie „U708 ST9“ geht beim Material vor). In der Liste steht dann „Regel“. Verwalten unter **Regeln …**
+  (Stichwort ändern, Material/Kanten/Faser entfernen, löschen, abschalten, Nachfrage aus); Projektdateien nehmen die Regeln
+  mit, beim Öffnen auf einem anderen Gerät kommen fehlende dazu.
   **+ Teil anlegen:** Name, Länge, Breite, Dicke, Anzahl, Material – das Teil wird als Rechteck-Platte gerechnet (wie eine
   DXF) und landet mit **Formatfräsen** (umfräst) in den Programmen, in Zuschnitt, Sägen und Etiketten; Kanten danach in der
   Liste setzen, gespeichert mit der Projektdatei. **Löschen** je Position (Papierkorb, zweimal klicken) entfernt die Bauteile

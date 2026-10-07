@@ -306,7 +306,7 @@ const bandsOf = (part) => {
   return { m: r.panel.tf.m, e: edgesOf(part), c2: col(lst.edgeColor2, '#5b4a3a'),
     hl: hlOn ? col(state.settings.modelEdgeColor, '#22a34a') : null, hl2: hlOn ? col(state.settings.modelEdgeColor2, '#e8590c') : null };
 };
-const boardKeyOf = (part) => (part && part.board) || nameBoard(part) || state.settings.boardMaterial || 'eiche';
+const boardKeyOf = (part) => (part && part.board) || nameBoard(part) || (learnedOf(part, 'board') || {}).board || state.settings.boardMaterial || 'eiche';
 /*
  * Platte aus dem Bauteilnamen: Material/Dekor (StepToXcs.materialOf, z. B. „U708 ST9“) als eigene Farbe mit Namen; Farbe aus
  * der STEP, sonst nach dem Dekor-Code (W weiß, U uni grau, H Holz mit Maserung, F Stein). Holzdekore (H…) mit Maserung.

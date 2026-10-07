@@ -559,11 +559,45 @@ function renderBomNew() {
 }
 $('bomnewbtn').addEventListener('click', () => { const el = $('bomnew'); el.hidden = !el.hidden; $('bomnewbtn').setAttribute('aria-expanded', String(!el.hidden)); renderBomNew(); });
 // Kanten-Regeln bearbeiten (Feld unter der Leiste der Stückliste)
+// gelernte Regeln (Material, Kanten, Faser nach Stichwort im Bauteilnamen) – oben im Feld „Regeln …“
+function learnedHtml() {
+  const L = learn.list;
+  return '<h4>Gelernte Regeln <small>' + L.length + '</small></h4>' +
+    '<div class="row"><label><input type="checkbox" id="lrnon"' + (learn.on ? ' checked' : '') + '> Gelernte Regeln anwenden</label>' +
+    '<label><input type="checkbox" id="lrnask"' + (learn.ask ? ' checked' : '') + '> Nach Änderungen in der Stückliste fragen, ob gemerkt werden soll</label></div>' +
+    (L.length ? '<table class="lrntbl"><thead><tr><th>#</th><th>Name enthält</th><th>Material</th><th>Kanten</th><th>Faser</th><th>Teile hier</th><th></th></tr></thead><tbody>' +
+      L.map((r, i) => '<tr><td>' + (i + 1) + '</td><td><input type="text" data-lr="' + i + '" value="' + esc(r.match || '') + '" aria-label="Gelernte Regel ' + (i + 1) + ' Name enthält"></td>' +
+        '<td>' + (r.board != null ? '<button type="button" class="btn ghost small boardbtn" id="lrb' + i + '" data-lrb="' + i + '" aria-expanded="false" title="Material ändern">' + boardChip(r.board) + '</button>' +
+          '<button type="button" class="btn ghost small" data-lrx="' + i + '" data-f="board" aria-label="Material aus Regel ' + (i + 1) + ' entfernen">✕</button>'
+          : '<button type="button" class="btn ghost small" id="lrb' + i + '" data-lrb="' + i + '" aria-expanded="false">+ Material</button>') + '</td>' +
+        '<td>' + (r.edges ? '<span class="lrnedge">' + esc(edgeText(r.edges) || 'keine') + '</span> <button type="button" class="btn ghost small" data-lrx="' + i + '" data-f="edges" aria-label="Kanten aus Regel ' + (i + 1) + ' entfernen">✕</button>' : '<span class="note">–</span>') + '</td>' +
+        '<td><select data-lrg="' + i + '" aria-label="Gelernte Regel ' + (i + 1) + ' Faser"><option value="">–</option>' + ['long', 'cross', 'free'].map((g) => '<option value="' + g + '"' + (r.grain === g ? ' selected' : '') + '>' + GRAIN_NAMES[g] + '</option>').join('') + '</select></td>' +
+        '<td class="r">' + state.parts.filter((p) => String(r.match || '').trim() && nameMatches(p, r.match)).length + '</td>' +
+        '<td><button type="button" class="btn ghost small" data-lrdel="' + i + '" aria-label="Gelernte Regel ' + (i + 1) + ' löschen">✕</button></td></tr>').join('') + '</tbody></table>'
+      : '<p class="note">Noch keine. In der Stückliste Material, Kanten oder Faser eines Teils ändern – dann erscheint „Als Regel merken“.</p>') +
+    '<div class="row"><button type="button" class="btn small" id="lrnadd">+ Gelernte Regel</button></div>' +
+    '<p class="note">Gelten in allen Projekten an diesem Gerät für Teile ohne eigene Wahl (Projektdateien nehmen sie mit). Neueste zuerst; ' +
+    'Material im Bauteilnamen (z. B. „U708 ST9“) und von Hand Gewähltes gehen vor.</p><hr>';
+}
+function learnedWire(el) {
+  const upd = () => { saveLearn(); applyBoards(); renderEdgeRules(); };
+  $('lrnon').addEventListener('change', (e) => { learn.on = e.target.checked; upd(); });
+  $('lrnask').addEventListener('change', (e) => { learn.ask = e.target.checked; saveLearn(); });
+  $('lrnadd').addEventListener('click', () => { learn.list.unshift({ match: '' }); upd(); const f = el.querySelector('[data-lr="0"]'); if (f) f.focus(); });
+  el.querySelectorAll('[data-lr]').forEach((inp) => inp.addEventListener('change', () => { learn.list[+inp.dataset.lr].match = inp.value.trim(); upd(); }));
+  el.querySelectorAll('[data-lrg]').forEach((sel) => sel.addEventListener('change', () => { const r = learn.list[+sel.dataset.lrg]; if (sel.value) r.grain = sel.value; else delete r.grain; upd(); }));
+  el.querySelectorAll('[data-lrx]').forEach((b) => b.addEventListener('click', () => { delete learn.list[+b.dataset.lrx][b.dataset.f]; upd(); }));
+  el.querySelectorAll('[data-lrdel]').forEach((b) => b.addEventListener('click', () => { learn.list.splice(+b.dataset.lrdel, 1); upd(); }));
+  el.querySelectorAll('[data-lrb]').forEach((b) => b.addEventListener('click', (e) => {
+    const r = learn.list[+b.dataset.lrb];
+    boardPicker(e.currentTarget, r.board || state.settings.boardMaterial, null, (k) => { if (k) { r.board = k; saveLearn(); applyBoards(); } });
+  }));
+}
 function renderEdgeRules() {
   const el = $('erpanel');
   if (el.hidden) return;
   const rules = edgeRules();
-  el.innerHTML = '<h4>Kanten automatisch vorbelegen</h4>' +
+  el.innerHTML = learnedHtml() + '<h4>Kanten automatisch vorbelegen</h4>' +
     '<div class="row"><label><input type="checkbox" id="erauto"' + (lst.edgeAuto ? ' checked' : '') + '> Kanten nach Regeln vorbelegen (Teile ohne eigene Kanten)</label>' +
     '<label>Möbel vorne <select id="erfront">' + Object.entries(FRONT_DIRS).map(([k, v]) => '<option value="' + k + '"' + (k === lst.edgeFront ? ' selected' : '') + '>' + v[0] + '</option>').join('') + '</select></label></div>' +
     '<table><thead><tr><th>#</th><th>Name enthält</th><th>Kanten</th><th>Dekor</th><th></th></tr></thead><tbody>' +
@@ -590,6 +624,7 @@ function renderEdgeRules() {
   $('erdefault').addEventListener('click', () => { lst.edgeRules = null; saveLst(); applyBoards(); renderEdgeRules(); });
   $('erreset').addEventListener('click', () => { for (const p of state.parts) delete p.edges; applyBoards(); renderEdgeRules(); toast('Eigene Kanten gelöscht – es gelten wieder die Regeln.'); });
   $('erclose').addEventListener('click', () => { el.hidden = true; $('erules').setAttribute('aria-expanded', 'false'); });
+  learnedWire(el);
   $('erauto').addEventListener('change', (e) => { lst.edgeAuto = e.target.checked; saveLst(); applyBoards(); });
   $('erfront').addEventListener('change', (e) => { lst.edgeFront = e.target.value; saveLst(); applyBoards(); });
 }

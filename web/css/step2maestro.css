@@ -406,6 +406,14 @@ table.bom input[type=number] { width: 4.2em; text-align: right; }
 .bomdel { padding: 3px 6px; color: var(--muted); }
 .bomdel.arm { color: #fff; background: var(--err); border-color: var(--err); }
 .edgecell .eauto { font-size: 0.7rem; color: var(--accent); border: 1px solid currentColor; border-radius: 99px; padding: 0 6px; }
+.bomlearn { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 10px; padding: 8px 12px; font-size: 0.86rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); border-radius: 10px; background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+.bomlearn input[type=text] { width: 12em; }
+.bomlearn small { color: var(--muted); }
+.erpanel .lrntbl td input[type=text] { width: 14em; }
+.erpanel .lrntbl .lrnedge { font-family: var(--font-mono); font-size: 0.8rem; }
+.erpanel .lrntbl td.r { text-align: right; font-family: var(--font-mono); }
+.erpanel hr { border: 0; border-top: 1px solid var(--line); margin: 2px 0; width: 100%; }
 .bombar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 10px; font-size: 0.86rem; }
 .bombar .note { color: var(--muted); font-size: 0.8rem; }
 .bombar .bomselinfo { color: var(--ink); }

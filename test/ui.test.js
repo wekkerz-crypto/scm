@@ -1369,6 +1369,80 @@ test('Web-Tool: Material in der Stückliste je Position, für mehrere gewählte 
   }
 });
 
+test('Web-Tool: Änderungen in der Stückliste als Regel merken – gilt für neue Teile, Projektdatei nimmt sie mit', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 950 } });
+    const p = await ctx.newPage();
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    await p.click('[data-page="lists"]');
+    await p.click('[data-ltab="bom"]');
+    assert.ok(!(await p.$('.bomlearn')));
+    // Material und Kante von Hand → Leiste „Für ähnliche Teile merken“ mit Stichwort aus dem Namen (kp1_-_Rechte_Seite → seite)
+    await p.click('[data-bommat="0"]');
+    await p.click('.bpick [data-bkey="anthrazit"]');
+    await p.keyboard.press('Escape');
+    await p.click('[data-bomedge="0"][data-side="l2"]');
+    assert.strictEqual(await p.inputValue('#lrnword'), 'seite');
+    assert.match(await p.textContent('.bomlearn'), /Material Anthrazit · Kanten L1 D1 · L2 D1/);
+    await p.click('#lrnsave');
+    assert.match(await p.textContent('#toast'), /Regel gemerkt: „seite“/);
+    assert.ok(!(await p.$('.bomlearn')));
+    // gilt für ein Teil ohne eigene Wahl (wie ein neues aus der nächsten STEP); Name mit Dekor-Code geht vor
+    const r = await p.evaluate(() => {
+      const q = state.parts[0];
+      delete q.board; delete q.edges;
+      const a = [boardKeyOf(q), edgeText(edgesOf(q))];
+      q.solid.material = 'U708 ST9';
+      const b = boardKeyOf(q);
+      delete q.solid.material;
+      applyBoards();
+      return { a, b };
+    });
+    assert.deepStrictEqual(r.a, ['anthrazit', 'L1 D1 · L2 D1']);
+    assert.notStrictEqual(r.b, 'anthrazit');
+    assert.match(await p.textContent('table.bom tbody tr:first-child'), /Anthrazit[\s\S]*Regel/);
+    // Faser lernen und „Nein“
+    await p.selectOption('[data-bomgrain="1"]', 'cross');
+    assert.match(await p.textContent('.bomlearn'), /Faser quer/);
+    await p.click('#lrnno');
+    assert.ok(!(await p.$('.bomlearn')));
+    // Regeln-Feld: Liste, abschalten, Stichwort ändern, löschen
+    await p.click('#erules');
+    assert.strictEqual(await p.$$eval('.lrntbl tbody tr', (x) => x.length), 1);
+    await p.uncheck('#lrnon');
+    assert.strictEqual(await p.evaluate(() => boardKeyOf(state.parts[0])), await p.evaluate(() => state.settings.boardMaterial));
+    await p.check('#lrnon');
+    // bleibt nach dem Neuladen (am Gerät) und geht mit der Projektdatei
+    await p.reload();
+    await p.waitForSelector('.part');
+    assert.strictEqual(await p.evaluate(() => learn.list.length), 1);
+    const data = await p.evaluate(() => projectPayload());
+    assert.strictEqual(data.regeln[0].match, 'seite');
+    const n = await p.evaluate((d) => { learn.list = []; return mergeLearned(d.regeln.concat([{ match: 'Sockel', board: 'weiss' }, { match: 'seite', board: 'buche' }])); }, data);
+    assert.strictEqual(n, 2);
+    assert.deepStrictEqual(await p.evaluate(() => learn.list.map((x) => x.match + ':' + x.board)), ['seite:anthrazit', 'Sockel:weiss']);
+    // „Nicht mehr fragen“
+    await p.click('[data-page="lists"]');
+    await p.click('[data-ltab="bom"]');
+    await p.click('[data-bommat="1"]');
+    await p.click('.bpick [data-bkey="weiss"]');
+    await p.keyboard.press('Escape');
+    await p.click('#lrnoff');
+    assert.strictEqual(await p.evaluate(() => learn.ask), false);
+    await p.click('[data-bommat="1"]');
+    await p.click('.bpick [data-bkey="buche"]');
+    await p.keyboard.press('Escape');
+    assert.ok(!(await p.$('.bomlearn')));
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});
+
 // Dekor-Bibliothek (PHP auf dem Webspace): eingebauter PHP-Server mit web/ + tools/webserver/dekore in einem Testordner
 const { execFileSync, spawn } = require('child_process');
 let hasPhp = false;

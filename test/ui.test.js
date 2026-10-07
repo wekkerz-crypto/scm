@@ -1443,6 +1443,52 @@ test('Web-Tool: Änderungen in der Stückliste als Regel merken – gilt für ne
   }
 });
 
+test('Web-Tool: mehrere Dekore auf einmal – Name ersetzen, Bildbreite (Maserung skalieren), Maserung an/aus', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1440, height: 950 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    await p.click('[data-page="material"]');
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+    await p.setInputFiles('#decfile', ['H1180 ST37.png', 'H3303 ST10.png', 'U708 ST9.png'].map((name) => ({ name, mimeType: 'image/png', buffer: png })));
+    await p.waitForFunction(() => localDecors.length === 3);
+    await p.evaluate(() => { localDecors[0].name = 'Egger Eiche Halifax'; localDecors[1].name = 'Egger Eiche Hamilton'; localDecors[2].name = 'Egger Lichtgrau'; renderMat(); });
+    // ohne Auswahl gesperrt
+    assert.strictEqual(await p.$eval('#decren', (b) => b.disabled), true);
+    await p.check('[data-decsel="0"]');
+    await p.check('[data-decsel="1"]');
+    assert.match(await p.textContent('#decbulk'), /2 gewählt/);
+    assert.strictEqual(await p.$eval('#decall', (e) => e.indeterminate), true);
+    await p.fill('#decfind', 'Egger');
+    await p.fill('#decrepl', 'EGGER Eurodekor');
+    await p.click('#decren');
+    assert.match(await p.textContent('#toast'), /2 Namen geändert/);
+    await p.fill('#decscale', '2400');
+    await p.click('#decsetscale');
+    await p.click('[data-decfac="0.8"]');
+    await p.click('[data-decgrain="0"]');
+    let d = await p.evaluate(() => localDecors.map((x) => [x.name, x.scale, x.grain]));
+    assert.deepStrictEqual(d, [['EGGER Eurodekor Eiche Halifax', 1920, false], ['EGGER Eurodekor Eiche Hamilton', 1920, false], ['Egger Lichtgrau', 1000, false]]);
+    // alle wählen, ganzen Namen setzen (Suchen leer)
+    await p.check('#decall');
+    assert.match(await p.textContent('#decbulk'), /3 gewählt/);
+    await p.click('[data-decgrain="1"]');
+    await p.fill('#decfind', '');
+    await p.fill('#decrepl', 'Muster');
+    await p.click('#decren');
+    d = await p.evaluate(() => localDecors.map((x) => [x.name, x.grain]));
+    assert.deepStrictEqual(d, [['Muster', true], ['Muster', true], ['Muster', true]]);
+    // Bildbreite gilt in Möbel 3D (View3D.boardOf)
+    assert.strictEqual(await p.evaluate(() => View3D.boardOf('dek:' + localDecors[0].key).scale), 1920);
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});
+
 // Dekor-Bibliothek (PHP auf dem Webspace): eingebauter PHP-Server mit web/ + tools/webserver/dekore in einem Testordner
 const { execFileSync, spawn } = require('child_process');
 let hasPhp = false;

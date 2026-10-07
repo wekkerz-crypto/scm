@@ -155,7 +155,7 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   Seite 'material' (`#matpage`, `renderMat`): Materialien im Projekt, Standard, Kantenband, Rohplatten, eigene Farben, Dekore – Felder
   gekoppelt an `lst`/`settings` (Zwillinge in Stückliste/Zuschnitt werden nachgezogen); Dekor-Bilder lokal: `localDecors`
   (IndexedDB `DECOR_KEY`, je {key, code, name, grain, scale, color, img, thumb} als Data-URL), `decorImage`/`addDecorFiles`,
-  `decorSectionHtml`/`decorWire`, `mergeDecors` (Import, Projektdatei `data.dekore`), `applyDecors` = Server (`serverDecors`) + lokal;
+  `decorSectionHtml`/`decorWire` (Sammeländerung: Auswahl `decSel` (Schlüssel), `decBulkHtml`/`decBulkWire` – Name suchen/ersetzen, `scale` setzen/×0,8/×1,25, `grain`), `mergeDecors` (Import, Projektdatei `data.dekore`), `applyDecors` = Server (`serverDecors`) + lokal;
   auf der Material-Seite gehen abgelegte Bilder in die Dekore statt an `loadFiles`;
   gedruckt wird nur `#printarea` mit `@page` in Etikettgröße (`#labelpage`), schwarz-weiß für Thermodrucker.
 - `exe/` – kleine Windows-.exe (Go), bettet `web/` ein und öffnet es im Browser; bauen mit `npm run build:exe` → `dist/`.

@@ -131,6 +131,16 @@ header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: 
 .decdrop.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); color: var(--ink); }
 .decgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 10px; }
 .dectile { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 8px; border: 1px solid var(--line); border-radius: 10px; }
+.dectile { position: relative; }
+.dectile .decck { position: absolute; left: 12px; top: 12px; z-index: 1; width: 18px; height: 18px; margin: 0; }
+.dectile.sel { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.decbulk { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 10px; padding: 8px 10px; font-size: 0.84rem;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.decbulk .grp { display: inline-flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.decbulk input[type=text] { width: 9em; }
+.decbulk input[type=number] { width: 5.5em; font-family: var(--font-mono); }
+.decbulk .decn { color: var(--muted); }
+.decbulk .decn b { color: var(--ink); }
 .dectile > i { width: 72px; height: 72px; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15); }
 .decf { display: grid; gap: 4px; min-width: 0; font-size: 0.82rem; }
 .decf input[type=text] { width: 100%; box-sizing: border-box; }

@@ -52,7 +52,10 @@ der Dateiname wird zum Code („U708 ST9.jpg“ → U708 ST9), dazu Name, Maseru
 Programm verkleinert die Bilder (≤ 1200 px, JPEG) und speichert sie im Browser – geht auch offline (.exe, Pi). Teile mit dem
 Code im Namen bekommen das Bild in Möbel 3D; *Exportieren*/*Importieren* (.json) für andere PCs oder den Pi; in der
 Projektdatei (.s2m) gehen die benutzten Dekor-Bilder mit. Liegt das Programm auf dem Webserver, kommen die Dekore der
-Server-Bibliothek dazu (eigene Bilder gehen bei gleichem Code vor). Es sind dieselben Werte wie in Stückliste, Zuschnitt und
+Server-Bibliothek dazu (eigene Bilder gehen bei gleichem Code vor). **Mehrere Dekore auf einmal:** Haken an den Dekoren
+(oder *Alle*), dann in der Leiste darüber *Name* suchen → ersetzen (z. B. „Egger“ → „EGGER Eurodekor“; *Suchen* leer = ganzen
+Namen setzen), *Bild* in mm setzen oder − 20 % / + 25 % (Maserung feiner/gröber) und *Maserung* an/aus – gilt sofort in
+Möbel 3D, Listen und Etiketten. Dekore der Server-Bibliothek ändert man dort (*Server-Bibliothek ↗*). Es sind dieselben Werte wie in Stückliste, Zuschnitt und
 Einstellungen – Änderung an einer Stelle gilt überall.
 
 **DXF (2D-Zeichnung):** wird wie STEP geladen, ohne Layer-Steuerung. Die größte geschlossene Kontur ist das Teil

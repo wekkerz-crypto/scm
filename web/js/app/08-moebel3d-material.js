@@ -211,6 +211,53 @@ async function addDecorFiles(files) {
   toast(n + ' Dekor-Bild' + (n === 1 ? '' : 'er') + ' übernommen.');
   render();
 }
+// Mehrere eigene Dekore auf einmal ändern: Auswahl (Schlüssel), Name suchen/ersetzen, Bildbreite (Maserung skalieren), Maserung an/aus
+const decSel = new Set();
+function decBulkHtml() {
+  for (const k of Array.from(decSel)) if (!localDecors.some((d) => d.key === k)) decSel.delete(k);
+  const n = decSel.size;
+  const all = n === localDecors.length;
+  const dis = n ? '' : ' disabled';
+  return '<div class="decbulk" id="decbulk"><label class="ck"><input type="checkbox" id="decall"' + (all ? ' checked' : '') + '> Alle</label>' +
+    '<span class="decn">' + (n ? '<b>' + n + '</b> gewählt' : 'Dekore wählen (Haken), dann für alle gewählten:') + '</span>' +
+    '<span class="grp" title="Im Namen ersetzen – „Suchen“ leer: ganzen Namen setzen">Name <input type="text" id="decfind" placeholder="Suchen" aria-label="Im Namen suchen"' + dis + '> → ' +
+      '<input type="text" id="decrepl" placeholder="Ersetzen durch" aria-label="Ersetzen durch"' + dis + '> <button type="button" class="btn small" id="decren"' + dis + '>Ersetzen</button></span>' +
+    '<span class="grp" title="Wie breit das Bild auf der Platte ist – größer = gröbere Maserung">Bild <input type="number" id="decscale" min="50" max="6000" step="10" placeholder="mm" aria-label="Bildbreite in mm"' + dis + '> mm ' +
+      '<button type="button" class="btn small" id="decsetscale"' + dis + '>Setzen</button>' +
+      '<button type="button" class="btn ghost small" data-decfac="0.8"' + dis + ' title="Maserung feiner (Bild 20 % schmaler)">− 20 %</button>' +
+      '<button type="button" class="btn ghost small" data-decfac="1.25"' + dis + ' title="Maserung gröber (Bild 25 % breiter)">+ 25 %</button></span>' +
+    '<span class="grp">Maserung <button type="button" class="btn ghost small" data-decgrain="1"' + dis + '>an</button><button type="button" class="btn ghost small" data-decgrain="0"' + dis + '>aus</button></span></div>';
+}
+function decBulkWire(host) {
+  if (!$('decbulk')) return;
+  const chosen = () => localDecors.filter((d) => decSel.has(d.key));
+  const done = (msg) => { saveLocalDecors(); applyDecors(); applyBoards(); render(); if (msg) toast(msg); };
+  $('decall').addEventListener('change', (e) => { decSel.clear(); if (e.target.checked) for (const d of localDecors) decSel.add(d.key); renderMat(); });
+  $('decall').indeterminate = decSel.size > 0 && decSel.size < localDecors.length;
+  host.querySelectorAll('[data-decsel]').forEach((c) => c.addEventListener('change', () => {
+    const d = localDecors[+c.dataset.decsel];
+    if (c.checked) decSel.add(d.key); else decSel.delete(d.key);
+    renderMat();
+  }));
+  const ren = () => {
+    const find = $('decfind').value;
+    const repl = $('decrepl').value.trim();
+    let n = 0;
+    for (const d of chosen()) {
+      const old = d.name || '';
+      const nu = (find ? old.split(find).join(repl) : repl).replace(/\s+/g, ' ').trim().slice(0, 80);
+      if (nu !== old) { d.name = nu; n++; }
+    }
+    done(n + ' Name' + (n === 1 ? '' : 'n') + ' geändert.');
+  };
+  $('decren').addEventListener('click', ren);
+  $('decrepl').addEventListener('keydown', (e) => { if (e.key === 'Enter') ren(); });
+  const setScale = (fn) => { const c = chosen(); for (const d of c) d.scale = Math.round(Math.max(50, Math.min(6000, fn(d.scale || 1000)))); done('Bildbreite bei ' + c.length + ' Dekor' + (c.length === 1 ? '' : 'en') + ' geändert.'); };
+  $('decsetscale').addEventListener('click', () => { const v = parseFloat(String($('decscale').value).replace(',', '.')); if (!(v >= 50)) { toast('Bildbreite ab 50 mm eingeben.'); return; } setScale(() => v); });
+  $('decscale').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('decsetscale').click(); });
+  host.querySelectorAll('[data-decfac]').forEach((b) => b.addEventListener('click', () => setScale((v) => v * +b.dataset.decfac)));
+  host.querySelectorAll('[data-decgrain]').forEach((b) => b.addEventListener('click', () => { const c = chosen(); for (const d of c) d.grain = b.dataset.decgrain === '1'; done('Maserung ' + (b.dataset.decgrain === '1' ? 'an' : 'aus') + ' bei ' + c.length + ' Dekor' + (c.length === 1 ? '' : 'en') + '.'); }));
+}
 function decorSectionHtml(decs) {
   const loc = new Set(localDecors.map((d) => d.key));
   const srv = serverDecors.filter((d) => !loc.has(d.key));
@@ -220,7 +267,9 @@ function decorSectionHtml(decs) {
     '<label class="btn ghost small" title="Dekor-Datei (.json) laden">Importieren <input type="file" id="decimp" accept=".json,application/json" hidden></label>' +
     (decorBase ? '<a class="btn ghost small" href="' + esc(decorBase) + '" target="_blank" rel="noopener">Server-Bibliothek ↗</a>' : '') + '</h4>' +
     '<div class="decdrop" id="decdrop">Dekor-Bilder hierher ziehen – der Dateiname wird zum Code (z. B. „U708 ST9.jpg“). Teile mit dem Code im Namen bekommen das Bild in Möbel 3D.</div>' +
-    (localDecors.length ? '<div class="decgrid">' + localDecors.map((d, i) => '<div class="dectile"><i style="background:' + esc(d.color) + ' url(\'' + esc(d.thumb) + '\') center / cover"></i>' +
+    (localDecors.length ? decBulkHtml() : '') +
+    (localDecors.length ? '<div class="decgrid">' + localDecors.map((d, i) => '<div class="dectile' + (decSel.has(d.key) ? ' sel' : '') + '"><input type="checkbox" class="decck" data-decsel="' + i + '"' +
+      (decSel.has(d.key) ? ' checked' : '') + ' aria-label="' + esc(d.code) + ' auswählen"><i style="background:' + esc(d.color) + ' url(\'' + esc(d.thumb) + '\') center / cover"></i>' +
       '<div class="decf"><input type="text" data-decf="code" data-i="' + i + '" value="' + esc(d.code) + '" aria-label="Code" title="Code (wie im Bauteilnamen)">' +
       '<input type="text" data-decf="name" data-i="' + i + '" value="' + esc(d.name || '') + '" placeholder="Name (z. B. Schiefer)" aria-label="Name">' +
       '<span><label class="ck"><input type="checkbox" data-decf="grain" data-i="' + i + '"' + (d.grain ? ' checked' : '') + '> Maserung</label>' +
@@ -232,6 +281,7 @@ function decorSectionHtml(decs) {
 }
 function decorWire(host) {
   if (!$('decsec')) return;
+  decBulkWire(host);
   $('decfile').addEventListener('change', (e) => { addDecorFiles(e.target.files); e.target.value = ''; });
   const dz = $('decdrop');
   dz.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); dz.classList.add('over'); });
@@ -263,6 +313,7 @@ function decorWire(host) {
       const ren = (b) => (typeof b === 'string' && b.split('|')[0] === 'dek:' + d.key ? 'dek:' + key + b.slice(('dek:' + d.key).length) : b);
       for (const p of state.parts) p.board = ren(p.board);
       if (ren(state.settings.boardMaterial) !== state.settings.boardMaterial) { state.settings.boardMaterial = ren(state.settings.boardMaterial); saveSettings(); }
+      if (decSel.delete(d.key)) decSel.add(key);
       d.code = code;
       d.key = key;
     } else d.name = inp.value.trim().slice(0, 80);

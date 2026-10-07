@@ -174,3 +174,15 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
 - Nach Änderungen: `npm test`; Ausgabe aller Testteile vorher/nachher vergleichen (nur gewollte Unterschiede);
   Oberfläche mit Playwright-Screenshot hell und dunkel ansehen.
 - Noch nicht in Maestro bestätigte Befehle stehen im README unter „Noch zu prüfen an der Maschine“ – dort pflegen.
+
+## Stand (Tag `stand-2026-10-07`)
+
+- Gesichert am 7.10.2026, Zweig `claude/blissful-wright-70n9um`: Programm aufgeteilt (index.html 245 Zeilen, `css/step2maestro.css`,
+  `js/app/01–12`), sonst gleiche Funktion wie zuvor.
+- Enthalten: Projekte/Startseite (Server/Browser, Projektordner, Sicherungsordner, STEP aktualisieren), Projektdatei .s2m mit
+  Stückliste/Zuschnitt/Einstellungen, KI-Assistent (ChatGPT Standard, Claude), `window.Step2Maestro.api`, Sprachbefehle im Sägemodus
+  (Web Speech/Vosk, „🤖 KI“), großer grüner Weiter-Knopf, Docker (Diskstation), Pi mit `--sprache`.
+- Prüfstand: `npm test` 108/108 grün; Ausgabe aller Testteile unverändert gegenüber dem Stand vor der Aufteilung; alle 6 Seiten
+  laden ohne Fehler, hell/dunkel geprüft.
+- Pakete: `npm run build:exe`, `build:web`, `build:pi`, `build:docker` – alle enthalten `css/` und `js/app/`.
+- Angeboten, noch nicht gebaut: kostenlose KI (Ollama), Reststück-Lager, .pgmx automatisch, Strichcode-Verfolgung, Kalkulation, Bestellliste.

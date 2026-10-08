@@ -1,0 +1,217 @@
+WECKWOP AUF EINEM WEBSERVER (TESTSERVER) – ANLEITUNG
+==========================================================
+
+Inhalt der ZIP
+--------------
+  ANLEITUNG.txt        diese Datei
+  step2maestro/        DIESEN ORDNER auf den Server laden
+    index.html         das ganze Programm (Oberfläche)
+    js/                Rechenteile, 3D-Ansicht (three.js, OpenCascade)
+    fonts/             Schriften (lokal, damit nichts von Google geladen wird)
+    .htaccess          Server-Einstellungen (Zeichensatz, Komprimierung,
+                       nicht in Suchmaschinen, immer aktuelle Dateien)
+    dekore/            Dekor-Bibliothek (Egger-Dekore: Bilder, Namen) –
+                       Verwaltung im Browser, braucht PHP (bei Strato da)
+    projekte/          Projektablage (Startseite „Projekte“): Projekte auf
+                       dem Server für alle Geräte – mit dem Passwort der
+                       Dekor-Verwaltung (PHP)
+    ki/                ChatGPT über den Server (optional, Schlüssel in
+                       ki/schluessel.php)
+
+Wichtig zu wissen
+-----------------
+* Das Programm selbst ist "statisch": nur HTML und JavaScript, keine
+  Datenbank, nichts zu installieren. Nur die Dekor-Bibliothek (Ordner
+  "dekore") nutzt PHP – bei Strato Webhosting immer dabei.
+* Alles läuft im Browser des Benutzers. STEP-/DXF-Dateien und .xcs-Programme
+  werden NICHT auf den Server hochgeladen. Es werden keine fremden Server
+  angefragt. Ein Cookie gibt es nur für die Anmeldung in der Dekor-Verwaltung.
+* Einstellungen, Profile, die geladene Werkzeugdatei (.tlgx) und die Teileliste
+  (mit allen Änderungen je Teil) speichert der Browser automatisch – je Gerät,
+  Browser und Adresse. Nach dem Neuladen ist alles wieder da. Auf dem Server gelten also andere
+  Einstellungen als in der Weckwop.exe. Werkzeugdatei auf dem Server einmal
+  neu laden (Abschnitt "Werkzeugliste & Favoriten").
+* KI-Assistent (✨ oben rechts): fragt direkt aus dem Browser bei OpenAI
+  (ChatGPT, api.openai.com) oder Anthropic (Claude, api.anthropic.com) an –
+  mit dem eigenen API-Schlüssel, den jeder Benutzer im Fenster einträgt. Auf
+  dem Server liegt dafür nichts.
+* Sprachbefehle im Sägemodus offline (z. B. für den Pi): Ordner „vosk“ mit
+  sprache_holen.sh (aus dem Pi-Paket) holen und als step2maestro/js/vendor/vosk/
+  hochladen (ca. 50 MB). Ohne den Ordner nimmt Chrome/Edge seine eigene
+  Erkennung (braucht Internet).
+* HTTPS verwenden (bei Strato im Paket enthalten). Ohne HTTPS funktioniert
+  z. B. "Kopieren" in die Zwischenablage nicht.
+
+
+WEG A – Strato Webhosting (Webspace)   <- so wird das Programm gehostet
+---------------------------------------------------------------------------
+Der Webspace ist der Speicherplatz deines Strato-Pakets. Dort muss der Ordner
+"step2maestro" liegen. (Die Menünamen bei Strato ändern sich gelegentlich –
+sinngemäß suchen.)
+
+1. ZIP auf dem PC entpacken.
+
+2. Hochladen – eine der beiden Möglichkeiten:
+
+   a) Im Browser: STRATO Kunden-Login -> Paket wählen -> "Hosting" /
+      "Webspace" -> Datei-Manager (Webspace Explorer). Dort den Ordner
+      "step2maestro" hochladen (ggf. als ZIP hochladen und im Datei-Manager
+      entpacken, falls angeboten).
+
+   b) Per SFTP mit FileZilla (empfohlen, zuverlässig bei vielen Dateien):
+        Server:    ssh.strato.de   (Protokoll SFTP, Port 22)
+        Benutzer:  deine Domain bzw. der SFTP-Benutzer aus dem Kunden-Login
+        Passwort:  das Master-/SFTP-Passwort aus dem Kunden-Login
+      Den Ordner "step2maestro" ins Hauptverzeichnis ziehen.
+      ACHTUNG: In FileZilla unter "Server -> Anzeigen versteckter Dateien
+      erzwingen" einschalten, sonst wird die ".htaccess" leicht vergessen.
+
+3. Aufrufen:   https://www.deine-domain.de/step2maestro/
+
+4. Optional eigene Test-Adresse (Subdomain):
+   Kunden-Login -> "Domains" -> "Subdomain anlegen", z. B.
+   test.deine-domain.de, und als Ziel das Verzeichnis "/step2maestro"
+   einstellen. Danach SSL-Zertifikat für die Subdomain aktivieren.
+   Aufruf dann:  https://test.deine-domain.de/
+
+5. Optional Passwortschutz (empfohlen für einen Testserver):
+   Kunden-Login -> Webspace/Hosting -> "Verzeichnisschutz" (Schutz für den
+   Ordner "step2maestro" mit Benutzer und Passwort einrichten).
+
+Update auf eine neue Version: den neuen Ordner "step2maestro" hochladen und
+alle Dateien ÜBERSCHREIBEN – den alten Ordner NICHT vorher löschen (sonst sind
+die Dekore in dekore/daten, dekore/bilder, dekore/vorschau weg). Die Datei
+dekore/EINRICHTEN aus der neuen ZIP dabei weglassen bzw. danach löschen. Einstellungen im Browser bleiben
+erhalten. Falls der Browser noch die alte Version zeigt: Strg + F5.
+
+
+WEG B – Strato KI-Website-Builder (Website-Baukasten)
+-----------------------------------------------------
+Der KI-Builder baut Webseiten aus Bausteinen. Eigene Programmdateien
+(JavaScript-Ordner) kann man dort NICHT hochladen – das Programm selbst muss
+deshalb wie bei WEG A auf einem Webspace liegen. Im Builder wird es nur
+verlinkt oder eingebettet.
+
+Prüfen: Gehört zu deinem Paket ein Webspace (SFTP-Zugang / Datei-Manager)?
+  - Ja  -> WEG A machen, dann im Builder verlinken (unten).
+  - Nein -> Webspace dazubuchen (z. B. kleinstes Strato Hosting-Paket) oder
+           einen anderen Webspace nutzen; die Adresse wird dann im Builder
+           verlinkt.
+
+1. Seite im Builder anlegen
+   Im KI-Builder z. B. diesen Text als Wunsch (Prompt) eingeben:
+
+     "Erstelle eine schlichte Unterseite 'Weckwop' für eine Schreinerei.
+      Überschrift: Weckwop – STEP/DXF zu SCM Maestro. Kurzer Text: Das
+      Werkzeug wandelt STEP- und DXF-Dateien in Xilog-Programme (.xcs) für die
+      SCM Maestro um. Es läuft komplett im Browser, Dateien bleiben auf dem
+      eigenen Rechner. Darunter ein großer Button 'Programm öffnen'."
+
+2. Button verlinken (EMPFOHLEN)
+   Button anklicken -> Link -> "Externe Adresse/URL":
+     https://www.deine-domain.de/step2maestro/   (bzw. die Subdomain)
+   und "In neuem Fenster/Tab öffnen" einschalten.
+   So läuft das Programm in voller Fenstergröße, Drucken (Etiketten),
+   Speichern und Kopieren funktionieren ohne Einschränkung.
+
+3. Alternativ einbetten (nur wenn es unbedingt auf der Seite sein soll)
+   Im Builder ein "HTML/Code/Embed"-Element einfügen und diesen Code
+   einsetzen (Adresse anpassen):
+
+     <iframe src="https://www.deine-domain.de/step2maestro/"
+             style="width:100%;height:90vh;border:0"
+             allow="clipboard-write; fullscreen"
+             title="Weckwop"></iframe>
+
+   Einschränkungen eingebettet: kleineres Fenster; je nach Builder können
+   Etikettendruck, Datei-Download oder Kopieren blockiert sein. Dann den
+   Button-Link (Punkt 2) nehmen.
+
+   Hinweis: Programm und Builder-Seite sollten beide über https laufen,
+   sonst blockiert der Browser die Einbettung.
+
+
+PROJEKTE AUF DEM SERVER (Ordner projekte/)
+------------------------------------------
+Auf der Startseite „Projekte“ werden Projekte auf dem Server gespeichert und
+auf jedem Gerät geöffnet. Anmelden mit dem Passwort der Dekor-Verwaltung
+(erst dort einrichten, siehe unten). Gespeichert wird in projekte/daten (legt
+das Programm an; ein Update überschreibt es nicht – beim Sichern mitnehmen).
+Zusätzlich je Projekt ein lesbarer Ordner in projekte/daten/ordner/<Name>
+(STEP, Programme .xcs + konvertieren.bat, Stückliste, Zuschnitt-PDF,
+Versionen) – per FileZilla herunterladbar, z. B. als Sicherung.
+Große Projekte (viele STEP-Dateien): im Strato-Kunden-Login die PHP-Grenzen
+upload_max_filesize und post_max_size auf z. B. 80M stellen.
+Tipp: Für die Werkstatt ist eine Diskstation mit Docker oft besser (alles im
+eigenen Netz, schnell, ein KI-Schlüssel für alle) – siehe Docker-Paket.
+
+CHATGPT ÜBER DEN SERVER (Ordner ki/, optional)
+----------------------------------------------
+Statt den OpenAI-Schlüssel an jedem Gerät einzutragen: Datei
+ki/schluessel.php mit dem Inhalt   <?php return 'sk-…';   hochladen. Dann
+nutzt der KI-Assistent ihn für alle angemeldeten Benutzer.
+
+DEKOR-BIBLIOTHEK (Ordner dekore/)
+---------------------------------
+Hier liegen eure Standard-Dekore (z. B. Egger) mit Bild, Code, Name und
+Maserung. Weckwop holt sie sich beim Start: Heißt ein Bauteil in der
+STEP z. B. "KP_1_ OB (U708 ST9)", bekommt es automatisch das Dekor U708 ST9 –
+mit Bild in "Möbel 3D", Namen in Stückliste/Zuschnitt, Maserung im Zuschnitt.
+Auch von Hand in jeder Plattenauswahl unter "Dekore (Bibliothek)".
+
+1. Aufrufen:  https://www.deine-domain.de/step2maestro/dekore/
+   (oder in Weckwop: Plattenfarbe -> "Dekore verwalten").
+2. Beim ersten Aufruf ein Passwort festlegen (mind. 8 Zeichen). Ansehen
+   kann jeder, hochladen/ändern/löschen nur mit Passwort. Das Festlegen geht
+   nur, solange die (leere) Datei dekore/EINRICHTEN da ist – sie liegt in der
+   ZIP und wird danach automatisch gelöscht. So kann kein Fremder zuerst ein
+   Passwort setzen. Nach 5 falschen Passwörtern ist die Anmeldung von dieser
+   Adresse 15 Minuten gesperrt.
+3. Bilder hochladen: hineinziehen oder anklicken, mehrere auf einmal.
+   DATEINAME = DEKOR-CODE:  U708_ST9.jpg -> "U708 ST9",  H1145_ST10.jpg
+   -> "H1145 ST10". Gleicher Code nochmal hochladen = Bild ersetzen.
+   Die Bilder werden auf dem Server verkleinert (max. 2048 Pixel) – die
+   Original-Dekorbilder vom Hersteller (Egger "Dekor-Download") gehen direkt.
+4. Auf ein Dekor klicken: Name (z. B. "Lichtgrau"), Hersteller, Maserung
+   (Holzdekor -> im Zuschnitt lange Seite längs), Farbe für Listen,
+   Bildbreite in mm (wie viel Platte das Bild zeigt -> Größe der Maserung in
+   3D; Vorgabe 1000 mm), Notiz.
+
+Gespeichert wird in dekore/bilder, dekore/vorschau und dekore/daten (legt
+das Programm selbst an). Ein Update von Weckwop (Ordner neu hochladen)
+überschreibt diese Ordner NICHT – die Dekore bleiben. Zum Sichern diese drei
+Ordner per FileZilla herunterladen. Passwort vergessen: die Datei
+dekore/daten/passwort.php per FileZilla löschen UND eine leere Datei
+EINRICHTEN in den Ordner dekore/ hochladen, dann neu festlegen.
+Upload-Grenze: Bilder bis 25 MB (falls der Server weniger erlaubt, im
+Strato-Kunden-Login bei den PHP-Einstellungen erhöhen oder Bilder kleiner
+speichern). In der .exe (ohne Server) gibt es die Bibliothek nicht – dort
+gelten die Farben wie bisher.
+
+
+TEST NACH DEM HOCHLADEN (Checkliste)
+------------------------------------
+[ ] Adresse öffnen -> Weckwop erscheint mit den Beispielteilen links.
+[ ] Schrift sieht aus wie in der .exe (sonst fehlt der Ordner "fonts").
+[ ] Ein Teil anklicken -> "3D" -> 3D-Ansicht lädt (beim ersten Mal ein paar
+    Sekunden, die 3D-Bibliothek ist mehrere MB groß).
+[ ] Eigene STEP- oder DXF-Datei laden -> Bearbeitungen erscheinen.
+[ ] "Speichern" -> .xcs-Datei wird heruntergeladen.
+[ ] "Etikett" -> Druckvorschau 40 x 60 mm.
+[ ] Auf dem Handy öffnen -> Bedienung passt auf den Bildschirm.
+[ ] .../step2maestro/dekore/ öffnen -> "Passwort festlegen" erscheint, ein
+    Bild hochladen -> erscheint in der Liste und in Weckwop unter
+    Plattenfarbe -> "Dekore (Bibliothek)".
+
+Probleme
+--------
+* Seite bleibt weiß / "Fehler 500": .htaccess vorübergehend umbenennen
+  (z. B. in "htaccess.txt"). Läuft es dann, unterstützt der Server eine der
+  Einstellungen nicht – die Seite funktioniert auch ohne .htaccess.
+* 404 "nicht gefunden": Ordnername/Adresse prüfen; index.html muss direkt im
+  Ordner "step2maestro" liegen (nicht step2maestro/step2maestro/index.html).
+* Alte Version wird angezeigt: Strg + F5 (bzw. Browser-Cache leeren).
+* Dekor-Bibliothek meldet "Server antwortet nicht wie erwartet": PHP für die
+  Domain aktiv? api.php mit hochgeladen? "Ordner kann nicht angelegt
+  werden": Schreibrechte für den Ordner dekore/ setzen (FileZilla:
+  Rechtsklick -> Dateiberechtigungen 755).

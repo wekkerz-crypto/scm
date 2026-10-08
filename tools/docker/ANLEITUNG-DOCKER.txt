@@ -1,0 +1,110 @@
+WECKWOP AUF DER DISKSTATION (DOCKER) – ANLEITUNG
+=====================================================
+
+Was man davon hat
+-----------------
+Ein Rechner in der Werkstatt (die Diskstation) stellt Weckwop für alle
+Geräte bereit – Büro-PC, Laptop, Pi an der Säge:
+* Projekte zentral: auf der Startseite „Projekte“ speichern und auf jedem Gerät
+  öffnen (Stückliste, Zuschnitt, Stand beim Sägen – alles dabei).
+* Dekor-Bibliothek (Bilder, Namen) für alle.
+* ChatGPT über den Server: der OpenAI-Schlüssel steht nur einmal auf der
+  Diskstation, die Geräte brauchen keinen eigenen.
+* Sprachbefehle an der Säge offline (Vosk wird im Container mitgeliefert).
+* Läuft ohne Internet (außer ChatGPT); Daten bleiben in der Werkstatt.
+Voraussetzung: Synology mit „Container Manager“ (DSM 7.2, Modelle mit Intel/
+AMD- oder ARM64-Prozessor, z. B. DS220+, DS923+, DS224+). Ältere Geräte mit
+32-Bit-ARM (z. B. DS218j) können kein Docker.
+
+1. Ordner anlegen und Dateien kopieren
+--------------------------------------
+* In der File Station im Ordner „docker“ einen Ordner „step2maestro“ anlegen
+  (also /volume1/docker/step2maestro).
+* Den Inhalt des Ordners „step2maestro-docker“ aus der ZIP dort hineinkopieren:
+  Dockerfile, docker-compose.yml, start.sh, ANLEITUNG-DOCKER.txt, step2maestro/
+
+2. Einstellen (docker-compose.yml, mit dem Texteditor der Diskstation)
+---------------------------------------------------------------------
+  ports  "8080:80"        Adresse wird http://<diskstation>:8080/
+                          (8080 belegt? links eine andere Zahl, z. B. 8090)
+  S2M_OFFEN "1"           Projekte ohne Passwort – nur, wenn die Diskstation
+                          NICHT aus dem Internet erreichbar ist. "0" = mit dem
+                          Passwort der Dekor-Verwaltung (auf der Startseite
+                          anmelden).
+  OPENAI_API_KEY ""       euren OpenAI-Schlüssel eintragen (sk-…), dann läuft
+                          ChatGPT auf allen Geräten ohne eigenen Schlüssel.
+                          Alternativ Datei daten/ki/openai-key (eine Zeile).
+  SPRACHE "1"             Offline-Sprache für den Pi mitbauen (0 = ohne)
+
+3. Starten
+----------
+Container Manager -> „Projekt“ -> „Erstellen“:
+  Projektname:  step2maestro
+  Pfad:         /docker/step2maestro
+  Quelle:       „Vorhandene docker-compose.yml verwenden“
+-> Weiter -> Fertig. Beim ersten Mal wird das Abbild gebaut (lädt PHP/Apache,
+dauert einige Minuten, braucht Internet). Danach im Browser:
+      http://<name-oder-IP-der-diskstation>:8080/
+(Per SSH geht es auch: im Ordner  sudo docker compose up -d --build)
+
+4. Dekor-Bibliothek einrichten
+------------------------------
+http://<diskstation>:8080/dekore/ öffnen -> Passwort festlegen (mind. 8
+Zeichen). Mit S2M_OFFEN=0 gilt dieses Passwort auch für die Projekte.
+
+5. Geräte
+---------
+* Büro-PC / Laptop: Adresse im Browser als Lesezeichen (Chrome oder Edge).
+* Pi an der Säge:  bash einrichten.sh --url http://<diskstation>:8080/
+  (Pi-Paket). Sprachbefehle laufen dann offline über die Diskstation. Das
+  Skript erlaubt dem Pi das Mikrofon auch ohne https für diese Adresse.
+* Am PC braucht der Browser für das Mikrofon https (Sprache nur an der Säge
+  nötig) – wer es trotzdem am PC will: in DSM unter Systemsteuerung ->
+  Anmeldeportal -> Erweitert -> Reverse Proxy eine https-Adresse auf
+  localhost:8080 einrichten.
+
+Projektordner (lesbar, ohne Programm)
+-------------------------------------
+Bei jedem Speichern legt Weckwop je Projekt einen normalen Ordner an:
+  Küche Müller/
+    Projekt.s2m           das ganze Projekt (zum Öffnen in Weckwop)
+    Info.txt              Name, Kunde, Datum
+    STEP/                 die STEP-/DXF-Dateien
+    Programme/            alle .xcs + konvertieren.bat (Doppelklick am PC mit
+                          Maestro = .pgmx)
+    Stueckliste.csv/.pdf, Zuschnittplan.pdf
+    Versionen/            die letzten 20 Stände
+Standard: daten/ordner. Besser in einen freigegebenen Ordner, den man vom
+Büro-PC im Netzwerk öffnet: in docker-compose.yml die Zeile
+  # - /volume1/Werkstatt/Weckwop-Projekte:/daten/ordner
+aktivieren (# weg, Pfad anpassen, Ordner vorher in der File Station anlegen)
+und das Projekt neu erstellen. Am PC dann z. B.
+  \\diskstation\Werkstatt\Weckwop-Projekte\Küche Müller\Programme
+Die Ordner werden beim Speichern überschrieben – eigene Dateien darin nicht
+ablegen (außer in einem eigenen Unterordner).
+
+Daten und Sicherung
+-------------------
+Alles liegt in /docker/step2maestro/daten:
+  projekte/daten/   Projekte (*.s2m.gz) + projekte.json, papierkorb/ (gelöschte)
+  ordner/           lesbare Projektordner (wenn nicht anders eingestellt)
+  dekore/           Dekor-Liste, Bilder, Vorschau, Passwort (Hash)
+  ki/openai-key     (falls so eingetragen)
+Diesen Ordner mit Hyper Backup sichern. Ein gelöschtes Projekt liegt noch im
+papierkorb/ – zurückholen: Datei und Eintrag von Hand zurückschieben oder die
+.s2m.gz am PC entpacken (z. B. 7-Zip) und in Weckwop „Datei öffnen“.
+
+Update auf eine neue Version
+----------------------------
+Neue ZIP: den Ordner step2maestro/ und Dockerfile/start.sh ersetzen (den Ordner
+daten/ NICHT löschen), dann im Container Manager das Projekt „Erstellen“ bzw.
+„Neu erstellen“ (Build). Die Daten bleiben.
+
+Probleme
+--------
+* Seite lädt nicht: Port in der Synology-Firewall freigeben; Container läuft?
+  (Container Manager -> Container -> step2maestro -> Protokoll)
+* „Speichern nicht möglich“: Schreibrechte – der Container setzt sie beim
+  Start selbst; einmal neu starten.
+* Projekt sehr groß (viele STEP-Dateien): Grenze 80 MB (gepackt) je Projekt.
+* ChatGPT „kein Schlüssel“: OPENAI_API_KEY setzen und Projekt neu starten.

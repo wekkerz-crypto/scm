@@ -1,0 +1,201 @@
+#!/bin/bash
+# Weckwop am Sägeplatz – Raspberry Pi 5 einrichten (Raspberry Pi OS Bookworm, 64 Bit, mit Desktop; Pi 5 oder Pi 4)
+#
+#   bash einrichten.sh                         fragt nach Adresse und Etikettgröße
+#   bash einrichten.sh --url https://www.deine-domain.de/step2maestro/
+#   bash einrichten.sh --offline               Programm vom Pi selbst (ohne Internet, ohne Dekor-Bibliothek)
+#   weitere: --etikett 40x60  --dpi 203|300  --nur-drucker  --test
+#   --sprache                                  Sprachbefehle im Sägemodus offline (Vosk, Modell ca. 45 MB, USB-Mikrofon)
+#   Diskstation (Docker):  bash einrichten.sh --url http://diskstation:8080/ --sprache
+#
+# Macht: CUPS + Zebra (USB, Treiber „Zebra ZPL Label Printer“) als Standarddrucker mit Etikettgröße, Bildschirm-
+# abschaltung aus, Chromium beim Anmelden im Vollbild mit --kiosk-printing (Etiketten ohne Druckdialog).
+# Rückgängig: ~/.config/autostart/step2maestro.desktop löschen (und die Zeile in ~/.config/labwc/autostart).
+set -u
+
+URL=""
+OFFLINE=0
+ETIKETT="40x60"
+DPI="203"
+NUR_DRUCKER=0
+TEST=0
+SPRACHE=0
+PORT=8765
+HIER="$(cd "$(dirname "$0")" && pwd)"
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --url) URL="${2:-}"; shift ;;
+    --offline) OFFLINE=1 ;;
+    --etikett) ETIKETT="${2:-40x60}"; shift ;;
+    --dpi) DPI="${2:-203}"; shift ;;
+    --nur-drucker) NUR_DRUCKER=1 ;;
+    --test) TEST=1 ;;
+    --sprache) SPRACHE=1 ;;
+    -h|--help) sed -n '2,14p' "$0"; exit 0 ;;
+    *) echo "Unbekannte Angabe: $1 (Hilfe: bash einrichten.sh --help)"; exit 1 ;;
+  esac
+  shift
+done
+
+ok() { echo "  ✓ $*"; }
+warn() { echo "  ! $*"; }
+step() { echo; echo "== $*"; }
+
+if [ "$(id -u)" -eq 0 ]; then
+  echo "Bitte als normaler Benutzer starten (nicht mit sudo) – das Skript fragt selbst nach dem Passwort, wo nötig."
+  exit 1
+fi
+if ! command -v apt-get >/dev/null; then echo "Das ist kein Raspberry Pi OS / Debian."; exit 1; fi
+if ! [[ "$ETIKETT" =~ ^[0-9]+x[0-9]+$ ]]; then echo "Etikettgröße bitte als BREITExHÖHE in mm, z. B. 40x60."; exit 1; fi
+if [ "$DPI" != "203" ] && [ "$DPI" != "300" ]; then echo "--dpi bitte 203 oder 300 (steht auf dem Typenschild der Zebra)."; exit 1; fi
+
+# ---------------------------------------------------------------- Adresse
+if [ "$NUR_DRUCKER" -eq 0 ] && [ -z "$URL" ] && [ "$OFFLINE" -eq 0 ]; then
+  echo "Welche Adresse soll am Sägeplatz geöffnet werden?"
+  echo "  Webserver, z. B. https://www.deine-domain.de/step2maestro/   (mit Dekor-Bibliothek)"
+  echo "  oder leer lassen = Programm vom Pi selbst (offline)"
+  read -r -p "Adresse: " URL
+  [ -z "$URL" ] && OFFLINE=1
+fi
+# Adresse landet im Startskript: nur gewöhnliche http(s)-Adressen (keine Anführungszeichen, $, ` oder Leerzeichen)
+if [ -n "$URL" ] && [ "$OFFLINE" -eq 0 ] && ! [[ "$URL" =~ ^https?://[A-Za-z0-9._~:/?#@!\&\'()*+,\;=%-]+$ ]] || [[ "$URL" == *[\"\$\`\'\ ]* ]]; then
+  echo "Die Adresse sieht nicht richtig aus: $URL"
+  echo "Bitte so angeben: https://www.deine-domain.de/step2maestro/"
+  exit 1
+fi
+if [ "$OFFLINE" -eq 1 ]; then
+  if [ ! -f "$HIER/step2maestro/index.html" ]; then
+    echo "Für --offline muss der Ordner step2maestro neben diesem Skript liegen (aus der ZIP)."; exit 1
+  fi
+  step "Programm nach /opt/step2maestro kopieren"
+  sudo mkdir -p /opt/step2maestro && sudo cp -r "$HIER/step2maestro/." /opt/step2maestro/ && ok "kopiert"
+  URL="file:///opt/step2maestro/index.html"
+  # Offline-Spracherkennung liest ihr Modell nur über http: kleiner Webserver nur für diesen Pi (127.0.0.1)
+  [ "$SPRACHE" -eq 1 ] && URL="http://127.0.0.1:$PORT/index.html"
+fi
+
+# ---------------------------------------------------------------- Sprache (offline)
+if [ "$SPRACHE" -eq 1 ] && [ "$NUR_DRUCKER" -eq 0 ]; then
+  step "Offline-Spracherkennung holen (Vosk + deutsches Modell)"
+  if [ "$OFFLINE" -eq 1 ]; then
+    if bash "$HIER/sprache_holen.sh" "$HOME/.cache/step2maestro-vosk"; then
+      sudo mkdir -p /opt/step2maestro/js/vendor/vosk && sudo cp "$HOME/.cache/step2maestro-vosk/." -r /opt/step2maestro/js/vendor/vosk/ && ok "abgelegt in /opt/step2maestro/js/vendor/vosk"
+    else
+      warn "Download fehlgeschlagen – Internet prüfen und erneut starten. Sprache geht dann nur online (Chrome) oder gar nicht."
+    fi
+    warn "Neue Adresse $URL: Einstellungen aus der bisherigen Datei-Version (file://) sind dort nicht – einmal neu einstellen."
+  elif U0="${URL%%#*}"; U0="${U0%index.html}"; curl -fsI "${U0%/}/js/vendor/vosk/model-de.tar.gz" >/dev/null 2>&1; then
+    ok "Der Server hat die Offline-Erkennung schon (z. B. Diskstation/Docker) – nichts zu holen"
+  else
+    if bash "$HIER/sprache_holen.sh" "$HIER/vosk-fuer-webserver"; then
+      ok "geholt: $HIER/vosk-fuer-webserver"
+      warn "Diesen Ordner auf den Webserver laden als  step2maestro/js/vendor/vosk/  (FileZilla) – dann erkennt der Pi"
+      warn "die Sprachbefehle über $URL offline."
+    else
+      warn "Download fehlgeschlagen – Internet prüfen."
+    fi
+  fi
+fi
+
+# http-Adresse im eigenen Netz (nicht 127.0.0.1): Mikrofon trotzdem erlauben
+INSECURE=""
+if [[ "$URL" =~ ^http://([^/]+) ]]; then
+  HOSTPORT="${BASH_REMATCH[1]}"
+  [[ "$HOSTPORT" =~ ^(127\.0\.0\.1|localhost)(:|$) ]] || INSECURE="--unsecurely-treat-insecure-origin-as-secure=http://$HOSTPORT"
+fi
+
+# ---------------------------------------------------------------- Pakete
+step "Pakete installieren (CUPS, Chromium)"
+sudo apt-get update -qq
+BROWSER_PKG=""
+command -v chromium-browser >/dev/null || command -v chromium >/dev/null || BROWSER_PKG="chromium-browser"
+sudo apt-get install -y -qq cups cups-client $BROWSER_PKG >/dev/null && ok "installiert" || warn "apt-get meldet einen Fehler – Internetverbindung prüfen"
+sudo usermod -aG lpadmin "$USER"
+sudo systemctl enable --now cups >/dev/null 2>&1 && ok "CUPS läuft" || warn "CUPS startet nicht – „sudo systemctl status cups“ zeigt den Grund"
+
+# ---------------------------------------------------------------- Zebra an USB
+step "Zebra-Etikettendrucker (USB) einrichten"
+URI="$(sudo lpinfo -v 2>/dev/null | grep -io 'usb://zebra[^ ]*' | head -n 1)"
+if [ -z "$URI" ]; then
+  warn "Keine Zebra an USB gefunden. Drucker einschalten, USB einstecken und dann:"
+  warn "  bash einrichten.sh --nur-drucker"
+else
+  ok "gefunden: $URI"
+  MODEL="drv:///sample.drv/zebra.ppd"
+  if ! sudo lpinfo -m 2>/dev/null | grep -q "sample.drv/zebra.ppd"; then
+    warn "Treiber „Zebra ZPL Label Printer“ fehlt in CUPS – Drucker wird roh angelegt (dann nur ZPL)."
+    MODEL="raw"
+  fi
+  W="${ETIKETT%x*}"
+  H="${ETIKETT#*x}"
+  if ! sudo lpadmin -p Zebra -E -v "$URI" -m "$MODEL" -D "Zebra Etiketten" -L "Sägeplatz"; then
+    warn "Drucker konnte nicht angelegt werden (lpadmin) – Meldung oben beachten."
+    exit 1
+  fi
+  if [ "$MODEL" != "raw" ]; then
+    # Etikettgröße, Auflösung, Etiketten mit Lücke (Web = Gap), etwas dunkler für gut lesbare Schrift – jede Einstellung einzeln,
+    # damit eine unbekannte Option (anderes Modell) die übrigen nicht verhindert
+    for o in "PageSize=Custom.${W}x${H}mm" "Resolution=${DPI}dpi" "zeMediaTracking=Web" "Darkness=20"; do
+      sudo lpadmin -p Zebra -o "$o" 2>/dev/null || warn "Einstellung $o nicht übernommen (anderes Zebra-Modell?)"
+    done
+  fi
+  sudo lpadmin -d Zebra || warn "Zebra nicht als Standarddrucker gesetzt"
+  sudo cupsenable Zebra 2>/dev/null; sudo cupsaccept Zebra 2>/dev/null
+  if lpstat -p Zebra >/dev/null 2>&1; then ok "Zebra ist Standarddrucker – Etikett ${W} × ${H} mm, ${DPI} dpi"; else warn "Zebra ist in CUPS nicht zu sehen – lpstat -p prüfen"; fi
+  if [ "$TEST" -eq 1 ]; then
+    printf 'Weckwop\nTestetikett\n%s\n' "$(date '+%d.%m.%Y %H:%M')" | lp -d Zebra -o media="Custom.${W}x${H}mm" >/dev/null && ok "Testetikett gedruckt"
+  fi
+fi
+[ "$NUR_DRUCKER" -eq 1 ] && { echo; echo "Fertig (nur Drucker)."; exit 0; }
+
+# ---------------------------------------------------------------- Bildschirm an lassen
+step "Bildschirmabschaltung aus"
+if command -v raspi-config >/dev/null; then sudo raspi-config nonint do_blanking 1 && ok "aus"; else warn "raspi-config fehlt – Bildschirmschoner von Hand ausschalten"; fi
+
+# ---------------------------------------------------------------- Kiosk-Start
+step "Weckwop beim Anmelden im Vollbild starten"
+mkdir -p "$HOME/.local/bin" "$HOME/.config/autostart"
+START="$HOME/.local/bin/step2maestro-kiosk.sh"
+cat > "$START" <<EOF
+#!/bin/bash
+# Startet Weckwop im Vollbild (Kiosk), Etiketten ohne Druckdialog auf den Standarddrucker (Zebra).
+# Beenden: Alt+F4 (Tastatur). Adresse ändern: unten URL anpassen.
+URL="$URL"
+exec 9>/tmp/step2maestro-kiosk.lock
+flock -n 9 || exit 0   # nur einmal starten (Autostart kann doppelt auslösen)
+sleep 4                # Netzwerk und Oberfläche abwarten
+B="\$(command -v chromium-browser || command -v chromium)"
+SERVE="$([ "$SPRACHE" -eq 1 ] && [ "$OFFLINE" -eq 1 ] && echo 1 || echo 0)"
+# Offline mit Sprache: kleiner Webserver nur für diesen Pi
+if [ "\$SERVE" = 1 ]; then python3 -m http.server $PORT --bind 127.0.0.1 --directory /opt/step2maestro >/dev/null 2>&1 9>&- & sleep 1; fi
+# nach Stromausfall keine „Wiederherstellen?“-Meldung
+P="\$HOME/.config/chromium/Default/Preferences"
+[ -f "\$P" ] && sed -i 's/"exited_cleanly":false/"exited_cleanly":true/; s/"exit_type":"[^"]*"/"exit_type":"Normal"/' "\$P"
+# Sprache: Mikrofon ohne Nachfrage erlauben (sonst bleibt die Abfrage im Vollbild hängen); Server im eigenen Netz ohne https
+# (z. B. Diskstation http://…:8080): für diese Adresse wie https behandeln, sonst sperrt Chromium das Mikrofon
+MIC="$([ "$SPRACHE" -eq 1 ] && echo --use-fake-ui-for-media-stream) $INSECURE"
+exec "\$B" --kiosk --kiosk-printing --noerrdialogs --disable-infobars --disable-session-crashed-bubble \\
+  --no-first-run --password-store=basic --check-for-update-interval=31536000 --ozone-platform-hint=auto \$MIC "\$URL"
+EOF
+chmod +x "$START"
+cat > "$HOME/.config/autostart/step2maestro.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Weckwop Sägeplatz
+Exec=$START
+X-GNOME-Autostart-enabled=true
+EOF
+# neue Oberfläche (labwc, Wayland) – zusätzlich, die Sperre verhindert Doppelstart
+if [ -d /etc/xdg/labwc ] || [ -d "$HOME/.config/labwc" ]; then
+  mkdir -p "$HOME/.config/labwc"
+  grep -qs "step2maestro-kiosk.sh" "$HOME/.config/labwc/autostart" || echo "$START &" >> "$HOME/.config/labwc/autostart"
+fi
+ok "Autostart eingerichtet: $URL"
+
+echo
+echo "Fertig. Jetzt neu starten:  sudo reboot"
+echo "Danach startet Weckwop von selbst. In Weckwop unter „Werkzeuge & Regeln → Etiketten“ dieselbe"
+echo "Etikettgröße einstellen (${ETIKETT/x/ × } mm). Beenden des Vollbilds: Alt+F4."
+[ "$SPRACHE" -eq 1 ] && echo "Sprache: USB-Mikrofon oder Headset anschließen, im Sägemodus „🎤 Sprache“ antippen."
+true

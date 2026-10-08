@@ -1,0 +1,23 @@
+# Weckwop – Einstellungen für Apache-Webspace (z. B. Strato Webhosting)
+# Das Programm ist statisch (HTML + JavaScript); nur die Dekor-Bibliothek (dekore/api.php) braucht PHP, keine Datenbank.
+
+AddDefaultCharset UTF-8
+AddType text/javascript .js
+AddCharset UTF-8 .js .css .html
+DirectoryIndex index.html
+# keine Dateilisten von Ordnern (js/, fonts/ …)
+Options -Indexes
+
+# Testserver: nicht in Suchmaschinen aufnehmen
+<IfModule mod_headers.c>
+  Header set X-Robots-Tag "noindex, nofollow"
+  # nach einem Update immer die neuen Dateien holen (Browser fragt kurz nach, lädt nur Geändertes)
+  <FilesMatch "\.(html|js)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
+
+# komprimiert übertragen (die 3D-Bibliothek ist ein paar MB groß)
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/javascript application/javascript text/plain
+</IfModule>

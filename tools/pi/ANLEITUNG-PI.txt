@@ -1,0 +1,120 @@
+WECKWOP AM SÄGEPLATZ – RASPBERRY PI 5 MIT ZEBRA (USB)
+=========================================================
+
+Ziel: Pi einschalten -> Weckwop startet im Vollbild (Sägemodus, Zuschnitt,
+Stückliste). Tippen auf „Etikett drucken“ -> Etikett kommt sofort aus der Zebra,
+ohne Druckdialog. Keine Zwangsupdates, kein ungefragter Neustart.
+
+Inhalt der ZIP
+--------------
+  ANLEITUNG-PI.txt     diese Datei
+  einrichten.sh        richtet alles ein (Drucker, Vollbild-Start)
+  sprache_holen.sh     holt die Offline-Spracherkennung (für --sprache)
+  step2maestro/        das Programm zum Offline-Betrieb (ohne Server)
+
+Einkaufsliste
+-------------
+* Raspberry Pi 5, 4 GB (reicht für Sägemodus, Zuschnitt, Listen, Etiketten);
+  8 GB nur, wenn am Pi auch große STEP-Dateien in 3D geöffnet werden.
+  2 GB nicht empfohlen (Chromium + 3D wird knapp).
+  Ein Pi 4 (4 GB) geht auch – etwas langsamer, 3D zäh; Netzteil 15 W (5 V / 3 A),
+  statt NVMe eine SSD am USB-3-Anschluss (blau) oder SD-Karte.
+* Offizielles Netzteil 27 W (USB-C) – andere führen oft zu Abstürzen
+* Kühlung: offizieller „Active Cooler“ oder Alu-Gehäuse mit Lüfter
+  (Gehäuse möglichst geschlossen – Sägestaub)
+* Speicher: NVMe-SSD mit M.2-Aufsatz (HAT) – hält länger als eine SD-Karte;
+  sonst eine gute SD-Karte (A2, 64 GB)
+* Touch-Monitor 15,6" mit HDMI und USB-Touch (Full HD), Kabel Micro-HDMI auf HDMI
+* Die Zebra hängt per USB direkt am Pi
+* Für Sprachbefehle: USB-Headset mit Mikrofon am Kopf (an der Säge ist es laut –
+  ein Tischmikrofon versteht im Lärm wenig), z. B. ein einfaches USB-Headset
+
+1. Raspberry Pi OS installieren
+-------------------------------
+Am PC den „Raspberry Pi Imager“ (raspberrypi.com/software) starten:
+  Gerät: Raspberry Pi 5 – System: „Raspberry Pi OS (64-bit)“ (mit Desktop)
+  Zahnrad/Einstellungen: Benutzername + Passwort, WLAN (oder LAN-Kabel),
+  Zeitzone Europe/Berlin, Tastatur de.
+Auf SSD/SD schreiben, in den Pi stecken, Monitor, Tastatur (nur zum Einrichten),
+Zebra (eingeschaltet, Etiketten eingelegt) anschließen, starten.
+
+2. Einrichten
+-------------
+ZIP auf den Pi kopieren (USB-Stick) und entpacken, z. B. in den Ordner
+„Weckwop-Pi“. Dann Terminal öffnen und:
+
+    cd ~/Weckwop-Pi
+    bash einrichten.sh --url https://www.deine-domain.de/step2maestro/ --test
+
+  --url ...      eure Adresse auf dem Webserver oder der Diskstation
+                 (Docker: http://<diskstation>:8080/ – mit #saegen am Ende
+                 startet der Pi gleich im Sägemodus)
+  --offline      statt --url: Programm vom Pi selbst, ohne Internet
+                 (dann ohne Dekor-Bibliothek; Updates: neue ZIP, nochmal starten)
+  --etikett 40x60   Etikettgröße in mm (Breite x Höhe), Vorgabe 40x60
+  --dpi 203      Auflösung der Zebra (steht auf dem Typenschild: 203 oder 300)
+  --test         druckt am Ende ein Testetikett
+  --sprache      Sprachbefehle offline („weiter“, „zurück“, „drucken“,
+                 „nächster Streifen“) – lädt Vosk + deutsches Modell (45 MB)
+
+Das Skript fragt nach dem Passwort (für die Installation). Danach:
+
+    sudo reboot
+
+3. In Weckwop
+------------------
+Nach dem Neustart öffnet sich Weckwop im Vollbild. Einmal unter
+„Werkzeuge & Regeln -> Etiketten“ die gleiche Etikettgröße einstellen wie oben
+(z. B. 40 x 60 mm). Dann: Listen -> Sägen -> Vollbild. Nach jedem fertigen Teil
+erscheint „Fertig geschnitten“ – Tippen druckt das Etikett.
+
+Sprachbefehle beim Sägen
+------------------------
+Im Sägemodus „🎤 Sprache“ antippen, dann sprechen (viele Wendungen gehen):
+  „weiter“ („okay“, „passt“, „fertig“, „ja“)   nächster Schritt
+  „zurück“                            Schritt zurück
+  „drucken“ / „Etikett“               Etiketten im offenen Fenster drucken
+                                      (sonst das Streifen-Etikett)
+  „nächster Streifen“ / „vorheriger Streifen“
+  „Streifen drei“, „Platte zwei“, „Schritt fünf“   direkt dorthin
+  „nächste Platte“ / „vorherige Platte“, „von vorn“
+  „wie weit“                          Platte, Schritt, fertige Teile vorlesen
+  „was kommt danach“, „nochmal“       nächste Schritte / Maß vorlesen
+  „Etiketten aus“ / „Fenster“ / „automatisch“, „Ansage an“ / „aus“
+  „Vollbild“ / „Vollbild aus“, „Hilfe“, „Mikrofon aus“
+„🔊 Ansage“ liest nach jedem Schritt Maß und Richtung vor.
+„🤖 KI“: Sätze, die kein fester Befehl sind („wie viele Teile fehlen noch?“,
+„geh zur zweiten U708-Platte, Streifen 3“), beantwortet der KI-Assistent
+(ChatGPT; Schlüssel im KI-Fenster ✨ eintragen, braucht Internet).
+Die Erkennung des Browsers (Chrome/Edge am PC) braucht Internet und geht auf
+dem Pi NICHT – dort mit  --sprache  die Offline-Erkennung einrichten:
+* offline (--offline --sprache): läuft ganz auf dem Pi (eigene Adresse
+  http://127.0.0.1:8765 – Einstellungen einmal neu machen).
+* Webserver (--url … --sprache): das Skript legt den Ordner
+  „vosk-fuer-webserver“ an – auf den Server laden als step2maestro/js/vendor/vosk/
+
+Gut zu wissen
+-------------
+* Vollbild verlassen: Alt+F4 (Tastatur). Wieder starten: Pi neu starten oder
+  im Terminal  ~/.local/bin/step2maestro-kiosk.sh
+* Jeder Ausdruck aus diesem Fenster geht ohne Nachfrage auf die Zebra. Große
+  Pläne (Zuschnitt A4) daher am Büro-PC drucken oder als PDF speichern.
+* Updates macht der Pi nur, wenn man sie anstößt (sinnvoll ab und zu):
+      sudo apt update && sudo apt full-upgrade
+* Zebra später anschließen oder gewechselt:  bash einrichten.sh --nur-drucker
+* Adresse ändern: einrichten.sh nochmal mit neuer --url starten.
+* Autostart abschalten: Datei ~/.config/autostart/step2maestro.desktop löschen
+  (und die Zeile mit step2maestro in ~/.config/labwc/autostart).
+
+Probleme
+--------
+* „Keine Zebra an USB gefunden“: Drucker an? USB-Kabel direkt am Pi (nicht über
+  einen passiven Hub)? Im Terminal  lpinfo -v  zeigt alle erkannten Drucker.
+* Etikett zu blass / zu dunkel: Browser http://localhost:631 -> Drucker ->
+  Zebra -> Standardeinstellungen -> „Darkness“ anpassen.
+* Etikett verschoben oder über zwei Etiketten: an der Zebra einmal die
+  Etiketten einmessen (Kalibrieren – meist Taste FEED gedrückt halten, bis
+  sie zweimal blinkt) und prüfen, ob die Größe in Weckwop und im Skript
+  gleich ist.
+* Ältere Zebras, die nur EPL können (nicht ZPL): Modell durchgeben, dann
+  passen wir den Treiber an.

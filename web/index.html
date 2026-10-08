@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+</head>
+<body>
+<!--page-->
+<title>Weckwop</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2064%2064%27%3E%3Crect%20x=%279%27%20y=%276%27%20width=%2746%27%20height=%2752%27%20rx=%272.5%27%20fill=%27none%27%20stroke=%27%231b2321%27%20stroke-width=%275%27/%3E%3Crect%20x=%2711.5%27%20y=%278.5%27%20width=%2720.5%27%20height=%2747%27%20fill=%27%23e6d5b3%27%20stroke=%27%238c7450%27%20stroke-width=%271.6%27/%3E%3Cpath%20d=%27M34%2031h18.5%27%20stroke=%27%231b2321%27%20stroke-width=%274%27/%3E%3Crect%20x=%2725.5%27%20y=%2725%27%20width=%274.5%27%20height=%2714%27%20rx=%272%27%20fill=%27%231f5fbf%27/%3E%3Cpath%20d=%27M14%2058v4M50%2058v4%27%20stroke=%27%231b2321%27%20stroke-width=%274.5%27%20stroke-linecap=%27round%27/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="css/step2maestro.css">
+
+<div class="wrap">
+  <nav class="profilebar" id="profilebar" aria-label="Werkstück-Profil"></nav>
+  <header class="top">
+    <div>
+      <h1 class="brand"><svg class="logo" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+        <rect x="9" y="6" width="46" height="52" rx="2.5" fill="none" stroke="currentColor" stroke-width="4.5"/>
+        <rect x="11.5" y="8.5" width="20.5" height="47" fill="var(--board)" stroke="var(--board-edge)" stroke-width="1.6"/>
+        <path d="M34 31h18.5" stroke="currentColor" stroke-width="3.5"/>
+        <rect x="26" y="26" width="3.6" height="12" rx="1.6" fill="var(--accent)"/>
+        <path d="M14 58v4M50 58v4" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+      </svg><span class="word">Weck<b>wop</b></span></h1>
+      <p>STEP oder DXF laden, Bearbeitungen prüfen, .xcs speichern – läuft offline, die Dateien bleiben im Browser.</p>
+    </div>
+    <div class="topright">
+    <div class="toprow">
+    <div class="proj" role="group" aria-label="Projekt">
+      <button type="button" class="btn small" id="projopen" title="Projekte: gespeicherte Projekte öffnen, neues Projekt, .s2m-Datei öffnen (Startseite)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1H7.5a2 2 0 0 0-1.9 1.4L3 19z"/><path d="M3 19l2.6-7.6A2 2 0 0 1 7.5 10H22l-2.7 7.6a2 2 0 0 1-1.9 1.4H3z"/></svg>Projekte</button>
+      <button type="button" class="btn small" id="projsave" title="Projekt speichern – auf dem Server bzw. in diesem Browser (Name auf der Projektseite)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h11l4 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 1-2z"/><path d="M8 3v5h7V3M8 21v-6h8v6"/></svg>Speichern</button>
+    </div>
+    <button type="button" class="btn small aibtn" id="aibtn" aria-expanded="false" aria-controls="aipanel" title="KI-Assistent (ChatGPT oder Claude): Stückliste bearbeiten, sortieren, Material und Kanten setzen, Zuschnitt einstellen, Sägemodus steuern – mit eigenem API-Schlüssel"><span aria-hidden="true">✨</span> KI-Assistent</button>
+    <div class="theme" role="group" aria-label="Darstellung">
+      <button type="button" data-theme-set="light" aria-pressed="false" title="Heller Modus"><span aria-hidden="true">☀</span> Hell</button>
+      <button type="button" data-theme-set="dark" aria-pressed="false" title="Dunkler Modus"><span aria-hidden="true">☾</span> Dunkel</button>
+    </div>
+    </div>
+    </div>
+  </header>
+
+  <nav class="pagetabs" role="tablist" aria-label="Ansicht">
+    <button type="button" role="tab" data-page="start" aria-selected="false"><svg class="pti" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 10h18"/></svg><span class="ptt"><b>Projekte</b><small>öffnen, speichern, verwalten</small></span></button>
+    <button type="button" role="tab" data-page="pgmx" aria-selected="true"><svg class="pti" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M9.5 12.5 7.5 15l2 2.5M14.5 12.5l2 2.5-2 2.5"/></svg><span class="ptt"><b>Programme</b><small>Teile prüfen, .xcs/.pgmx</small></span><span class="ptn" id="ptn-pgmx"></span></button>
+    <button type="button" role="tab" data-page="model" aria-selected="false"><svg class="pti" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 20.5 7v10L12 21.5 3.5 17V7z"/><path d="M12 21.5V12M20.5 7 12 12 3.5 7"/></svg><span class="ptt"><b>Möbel 3D</b><small>ansehen, messen, bemaßen</small></span><span class="ptn" id="ptn-model"></span></button>
+    <button type="button" role="tab" data-page="lists" aria-selected="false"><svg class="pti" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span class="ptt"><b>Listen</b><small>Stückliste, Zuschnitt, Zeit</small></span><span class="ptn" id="ptn-lists"></span></button>
+    <button type="button" role="tab" data-page="labels" aria-selected="false"><svg class="pti" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1.4 1.4 0 0 1 0 2l-6.6 6.6a1.4 1.4 0 0 1-2 0z"/><circle cx="8" cy="8" r="1.6"/></svg><span class="ptt"><b>Etiketten</b><small>gestalten, drucken</small></span></button>
+    <button type="button" role="tab" data-page="material" aria-selected="false"><svg class="pti" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5 12 3l9 4.5-9 4.5z"/><path d="M3 12l9 4.5 9-4.5M3 16.5 12 21l9-4.5"/></svg><span class="ptt"><b>Material</b><small>Platten, Dekore, Kanten</small></span></button>
+    <button type="button" role="tab" data-page="drawings" aria-selected="false"><svg class="pti" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M15 3v4h4"/><path d="M8 17l3-4 2 2.5 1.5-2L17 17z"/></svg><span class="ptt"><b>Zeichnungen</b><small>PDF zum Projekt, blättern</small></span><span class="ptn" id="ptn-drw"></span></button>
+  </nav>
+
+  <section class="card startpage" id="startpage" hidden></section>
+  <section class="card drwpage" id="drwpage" hidden></section>
+  <section class="card labelpage" id="lblpage" hidden></section>
+  <section class="card matpage" id="matpage" hidden></section>
+
+  <section class="card listpage" id="listpage" hidden>
+    <div class="lbar">
+      <span class="seg ltabs" role="group" aria-label="Liste"><button type="button" data-ltab="bom" aria-pressed="true">Stückliste</button><button type="button" data-ltab="cut" aria-pressed="false">Zuschnittplan</button><button type="button" data-ltab="saw" aria-pressed="false" title="Schritt für Schritt an der Plattensäge: Anschnitt, Streifen, Querschnitte, Nachschnitte">Sägen</button></span>
+      <span id="bomopts"><label><input type="checkbox" id="lgroup"> Gleiche Teile zusammenfassen</label>
+        <label title="Kantendicke (alle Kanten gleich)">Kante <input type="number" id="emm" min="0" step="0.1" aria-label="Kantendicke"> mm</label>
+        <label title="Dekor 1 – leer = wie die Platte (z. B. U708 ST9)">Dekor 1 <input type="text" id="ename1" placeholder="wie Platte" aria-label="Name Dekor 1"></label>
+        <label title="Dekor 2 – zweites Kantendekor, Farbe für Möbel 3D">Dekor 2 <input type="text" id="ename2" placeholder="Dekor 2" aria-label="Name Dekor 2"> <input type="color" id="ecol2" aria-label="Farbe Dekor 2"></label>
+        <label title="Zugabe je Kante für die Laufmeter (Überstand zum Kappen)">Zugabe <input type="number" id="eextra" min="0" step="1" aria-label="Zugabe je Kante"> mm</label>
+        <label><input type="checkbox" id="ededuct"> Kantendicke vom Zuschnitt abziehen</label>
+        <button type="button" class="btn small" id="erules" aria-expanded="false" aria-controls="erpanel" title="Gelernte Regeln (Material, Kanten, Faser) und Kanten-Regeln nach dem Bauteilnamen">Regeln …</button></span>
+      <span id="cutopts" hidden>
+        <label>Platte <input type="number" id="csheetL" min="100" step="1" aria-label="Plattenlänge"> × <input type="number" id="csheetW" min="100" step="1" aria-label="Plattenbreite"> mm</label>
+        <label>Schnittfuge <input type="number" id="ckerf" min="0" step="0.1"> mm</label>
+        <label>Besäumen <input type="number" id="ctrim" min="0" step="1"> mm</label>
+        <label><input type="checkbox" id="craw"> Rohmaß (mit Aufmaß)</label>
+        <label><input type="checkbox" id="cgrain"> Maserung beachten</label>
+        <label title="Welche Schnitte zuerst: längs = Streifen über die ganze Plattenlänge, quer = über die Plattenbreite">Erster Schnitt <select id="cdir"><option value="auto">automatisch</option><option value="long">längs bevorzugt</option><option value="cross">quer bevorzugt</option></select></label>
+        <label title="Minimaler Verschnitt: wenig Platten, großes Reststück · Optimale Schnitte: wenig Schnitte, einfach zu sägen">Ziel <select id="cgoal"><option value="waste">minimaler Verschnitt</option><option value="cuts">optimale Schnitte</option></select></label>
+        <label><input type="checkbox" id="ccuts"> Schnittfolge</label>
+        <span class="czoom" id="czoomg" role="group" aria-label="Zoom Platte" title="Größe der Platten – auch Strg + Mausrad über der Platte"><span>Platte</span>
+          <button type="button" class="btn small" data-czoom="-1" aria-label="Platte kleiner">−</button><output id="czoomv">70 %</output>
+          <button type="button" class="btn small" data-czoom="1" aria-label="Platte größer">+</button><button type="button" class="btn ghost small" data-czoom="fit" title="So groß wie das Fenster">Einpassen</button></span>
+        <span class="czoom" id="cfontg" role="group" aria-label="Zoom Schrift" title="Schriftgröße der Beschriftung im Plan – auch Strg + Umschalt + Mausrad"><span>Schrift</span>
+          <button type="button" class="btn small" data-cfont="-1" aria-label="Schrift kleiner">−</button><output id="cfontv">100 %</output>
+          <button type="button" class="btn small" data-cfont="1" aria-label="Schrift größer">+</button></span>
+      </span>
+      <span class="sp"></span>
+      <button type="button" class="btn small" id="lcsv">CSV / Excel</button>
+      <button type="button" class="btn small" id="lpdf" title="Als PDF-Datei speichern (ohne Druckdialog)">PDF speichern</button>
+      <button type="button" class="btn small" id="lprintbtn">Drucken</button>
+      <button type="button" class="btn primary newpart" id="bomnewbtn" aria-expanded="false" aria-controls="bomnew" title="Bauteil von Hand anlegen – wird als Platte mit Formatfräsen (umfräst) zum Programm">+ Neues Bauteil anlegen</button>
+    </div>
+    <div id="erpanel" class="erpanel" hidden></div>
+    <div id="bomnew" class="erpanel bomnew" hidden></div>
+    <div id="bomview"></div>
+    <div id="sawview" hidden></div>
+    <div id="cutview" hidden><div id="cutsheets"></div>
+      <p class="note">Teile mit der Maus verschieben (rasten an Rand und Nachbarteilen mit Schnittfuge ein, auch auf eine andere Platte); Klick wählt ein Teil – „↻ Drehen“ oder Doppelklick dreht es. Faserrichtung je Position (längs / quer / frei) in der Stückliste. Durchgehende Schnitte wie an der Plattensäge; Teile mit Maserung bleiben mit der langen Seite längs der Plattenlänge, Dekore ohne Maserung werden bei Bedarf gedreht. Material und Kanten wie in „Möbel 3D“ (Plattenfarbe).</p></div>
+  </section>
+
+  <section class="modelpage" id="modelpage" hidden>
+    <div class="card mview">
+      <div class="mbar">
+        <div class="mrow">
+          <span class="v3bar static" role="group" aria-label="Ansicht"><button type="button" data-mview="iso">Iso</button><button type="button" data-mview="top">Oben</button><button type="button" data-mview="front">Vorne</button><button type="button" data-mview="right">Rechts</button><button type="button" data-mview="fit" title="Alles einpassen (bzw. gewähltes Bauteil)">Einpassen</button></span>
+          <label class="mopac" title="Transparenz der Bauteile (das gewählte bleibt deckend)">Transparenz <input type="range" id="mopac" autocomplete="off" min="0" max="85" step="5" value="0"> <span id="mopacv">0 %</span></label>
+          <label class="mopac" title="Explosionsansicht: Bauteile auseinanderziehen (Maße bleiben wie zusammengebaut)">Explosion <input type="range" id="mexpl" autocomplete="off" min="0" max="100" step="5" value="0"> <span id="mexplv">0 %</span></label><button type="button" class="btn small iconbtn" id="mexplplay" title="Explosion abspielen (auseinander bzw. zusammen)" aria-label="Explosion abspielen">▶</button>
+          <label class="mchk"><input type="checkbox" id="mlabels" autocomplete="off" checked> Nummern</label>
+        </div>
+        <div class="mrow">
+          <span class="mopac msec">Schnitt <span class="v3bar static" role="group" aria-label="Schnittebene"><button type="button" data-msec="" aria-pressed="true">aus</button><button type="button" data-msec="x" aria-pressed="false" title="Schnitt quer zur Breite (X)">X</button><button type="button" data-msec="y" aria-pressed="false" title="Schnitt quer zur Tiefe (Y)">Y</button><button type="button" data-msec="z" aria-pressed="false" title="Schnitt waagerecht (Höhe Z)">Z</button></span>
+          <input type="range" id="msecpos" autocomplete="off" min="0" max="100" step="1" value="50" aria-label="Lage der Schnittebene" disabled><button type="button" class="btn small iconbtn" id="msecflip" title="Andere Seite zeigen" aria-label="Andere Seite zeigen" disabled>⇄</button></span>
+          <span class="msep" aria-hidden="true"></span>
+          <button type="button" class="btn small" id="mmeasure" aria-pressed="false" title="Zwei Punkte anklicken – Fang auf Endpunkt, Mitte, Kreismitte, Kante, Fläche; Alt = ohne Fang; Esc beendet">📏 Messen</button>
+          <button type="button" class="btn small" id="mdim" aria-pressed="false" title="Maße setzen, die stehen bleiben: zwei Punkte anklicken (mit Fang); Entf löscht das letzte; Esc beendet">📐 Bemaßen</button>
+          <span class="v3bar static" id="mdimaxis" role="group" aria-label="Maßrichtung" hidden><button type="button" data-dimaxis="aligned" aria-pressed="true" title="Direkter Abstand der Punkte">Direkt</button><button type="button" data-dimaxis="x" aria-pressed="false" title="Abstand in X">X</button><button type="button" data-dimaxis="y" aria-pressed="false" title="Abstand in Y">Y</button><button type="button" data-dimaxis="z" aria-pressed="false" title="Abstand in Z (Höhe)">Z</button></span>
+          <span class="sp"></span>
+          <button type="button" class="btn small" id="msnap" title="Bild der Ansicht mit Nummern und Maßen als PNG speichern">Bild</button>
+          <button type="button" class="btn small" id="mpdf" title="Ansicht, Maße und Stückliste als PDF-Datei speichern (ohne Druckdialog)">PDF</button>
+        <button type="button" class="btn small" id="mprint" title="Ansicht mit Stückliste und Maßen drucken">Drucken</button>
+        </div>
+        <div class="mrow mlook">
+          <span class="mopac">Platten <button type="button" class="btn small boardbtn" id="mboard" title="Plattenfarbe für alle Bauteile (je Bauteil: Farbfeld in der Liste)"></button></span>
+          <label class="mchk" title="Kantenbelegung anzeigen: Seiten mit Kantenband im Dekor, offene Seiten als Rohkante (Spanplatte) – Kanten in „Listen › Stückliste“ setzen"><input type="checkbox" id="medges" autocomplete="off"> Kanten</label>
+          <label class="mchk" title="Kanten mit Kantenband zusätzlich in einer eigenen Farbe hervorheben"><input type="checkbox" id="medgehl" autocomplete="off"> hervorheben <input type="color" id="medgecol" value="#22a34a" aria-label="Farbe Dekor 1 hervorgehoben" title="Dekor 1"> <input type="color" id="medgecol2" value="#e8590c" aria-label="Farbe Dekor 2 hervorgehoben" title="Dekor 2"></label>
+        </div>
+      </div>
+      <div class="mhost" id="mhost"><div class="mlabelwrap" id="mlabelwrap"></div><div class="v3msg" id="mmsg">3D-Ansicht wird geladen …</div></div>
+      <div class="mhud" id="mhud">Linke Maustaste: drehen · rechte Maustaste/Shift: verschieben · Mausrad: zoomen · Klick: Bauteil wählen</div>
+    </div>
+    <aside class="card mlist">
+      <div class="mlisthead"><h2>Bauteile <small id="mcount"></small></h2><span class="mlact"><button type="button" class="btn ghost small" id="mall" hidden>Alle zeigen</button></span></div>
+      <div class="msolo" id="msolo" hidden></div>
+      <table class="mtable" id="mtable"></table>
+      <p class="note">Nummern wie in der Programmliste. Klick auf eine Zeile wählt das Bauteil, Doppelklick zoomt hin. Auge: ein-/ausblenden · Fokus: nur dieses Bauteil (nochmal: wieder alle).</p>
+      <div class="mlisthead mdimhead"><h2>Maße</h2><span class="mlact"><button type="button" class="btn ghost small" id="mdimclear" hidden>Alle löschen</button></span></div>
+      <ol class="mdimlist" id="mdimlist"></ol>
+    </aside>
+  </section>
+
+  <input id="file" type="file" accept=".step,.stp,.dxf,.s2m,.STEP,.STP,.DXF,.S2M" multiple hidden>
+  <input id="stepupd" type="file" accept=".step,.stp,.STEP,.STP" hidden>
+  <div class="dropover" id="dropover" hidden>STEP- oder DXF-Dateien hier ablegen</div>
+
+  <section class="bench">
+    <aside class="parts" id="parts" aria-label="Teile"></aside>
+    <main class="detail" id="detail"></main>
+  </section>
+
+  <details class="card settings" id="settings">
+    <summary><span class="sumtitle">Werkzeuge &amp; Regeln<small>Bohrer, Fräser, Zugaben, Sauger, Clamex, Etiketten …</small></span><span class="savebar" id="savebar"><span class="state" id="savestate" aria-live="polite">Automatisch gespeichert</span>
+      <button class="btn primary" id="savesettings" type="button">Erneut versuchen</button></span></summary>
+    <p class="note">Voreinstellungen aus den Beispielprogrammen und der Werkzeugliste def.tlgx. Änderungen gelten sofort für alle Teile und werden automatisch gespeichert.</p>
+    <div class="grid-set" id="setgrid"></div>
+    <div style="margin-top:12px"><button class="btn" id="reset" type="button">Auf Standard zurücksetzen</button></div>
+  </details>
+  <!-- eigene aufklappbare Bereiche: Werkstück-Profile, Reihenfolge-Regel, Werkzeugliste mit Favoriten -->
+  <details class="card settings" id="profilebox">
+    <summary><span class="sumtitle">Werkstück-Profile<small>Die fünf Knöpfe oben benennen und belegen</small></span><span class="savebar"><span class="state" aria-live="polite">Automatisch gespeichert</span>
+      <button class="btn primary" data-save type="button">Erneut versuchen</button></span></summary>
+    <p class="note">Fünf Profile für die Knöpfe oben (z. B. Spanplatte, Massivholz). Ein Profil legt nur die Werte fest, die hier gesetzt sind –
+      leere Felder nehmen die Einstellung aus <i>Werkzeuge &amp; Regeln</i>. Was du bei einem Teil von Hand änderst, geht dem Profil vor.</p>
+    <div class="profedit" id="profedit"></div>
+  </details>
+  <details class="card settings" id="rulebox">
+    <summary><span class="sumtitle">Reihenfolge-Regel<small>In welcher Folge die Bearbeitungsarten ins Programm kommen</small></span><span class="savebar"><span class="state" aria-live="polite">Automatisch gespeichert</span>
+      <button class="btn primary" data-save type="button">Erneut versuchen</button></span></summary>
+    <div class="rule" id="rule">
+      <div class="bar"><label class="ruleon"><input type="checkbox" id="ruleon"> Regel verwenden</label>
+        <button class="btn ghost small" id="ruledefault" type="button">Standardfolge</button></div>
+      <p class="note">Die Bearbeitungsarten kommen in dieser Folge ins Programm. Ist die Regel aus, bleibt die erkannte Reihenfolge.
+        Zeile mit der Maus packen und an die richtige Stelle ziehen (oder ↑/↓). Was du bei einem Teil von Hand verschiebst, hat Vorrang.</p>
+      <ol class="rulelist" id="rulelist"></ol>
+    </div>
+  </details>
+  <details class="card settings" id="toolbox">
+    <summary><span class="sumtitle">Werkzeugliste &amp; Favoriten<small>Werkzeugdatei (.tlgx) laden, Favoriten markieren</small></span><span class="note" id="toolsrc"></span></summary>
+    <div class="toollib">
+      <div class="bar"><span class="tools"><button class="btn" id="loadtools" type="button">Werkzeugliste laden (.tlgx)</button>
+        <button class="btn ghost" id="resettools" type="button">Standardliste</button></span>
+        <input id="tlgx" type="file" accept=".tlgx,.xml" hidden></div>
+      <p class="note">Mit ★ markierte Werkzeuge stehen in allen Auswahllisten oben. Favoriten und geladene Liste werden sofort gespeichert.</p>
+      <div class="toolgrid" id="toolgrid"></div>
+    </div>
+  </details>
+</div>
+<div class="toast" id="toast" hidden></div>
+<aside class="aipanel" id="aipanel" hidden aria-label="KI-Assistent">
+  <div class="aihead"><h2><span aria-hidden="true">✨</span> KI-Assistent</h2>
+    <button type="button" class="btn ghost small" id="aisetbtn" aria-expanded="false" aria-controls="aiset">⚙ Einstellungen</button>
+    <button type="button" class="btn ghost small" id="aiclose" aria-label="KI-Assistent schließen">✕</button></div>
+  <div class="aiset" id="aiset" hidden>
+    <label>Anbieter <select id="aiprov"></select></label>
+    <label><span id="aikeylbl">API-Schlüssel</span> <input type="password" id="aikey" autocomplete="off" spellcheck="false"></label>
+    <label class="ck"><input type="checkbox" id="aikeep"> Schlüssel auf diesem Gerät merken</label>
+    <label>Modell <span class="mrow"><input type="text" id="aimodel" list="aimodels" autocomplete="off" spellcheck="false"><datalist id="aimodels"></datalist>
+      <button type="button" class="btn ghost small" id="aimload" title="Modelle des eigenen Kontos abrufen (braucht den Schlüssel)">Modelle laden</button></span></label>
+    <label>Gründlichkeit <select id="aieffort"></select></label>
+    <p class="note" id="aikeynote"></p>
+  </div>
+  <div class="ailog" id="ailog" aria-live="polite"></div>
+  <div class="aisugg" id="aisugg"></div>
+  <form class="aiform" id="aiform">
+    <textarea id="aiin" rows="3" placeholder="z. B. „Sortiere nach Material und Dicke, große Teile zuerst“ – Enter sendet, Umschalt + Enter = neue Zeile" aria-label="Frage oder Auftrag an den KI-Assistenten"></textarea>
+    <div class="row"><button type="submit" class="btn primary" id="aisend">Senden</button>
+      <button type="button" class="btn ghost small" id="aiundo" disabled title="Änderungen der letzten Anfrage zurücknehmen">↶ Rückgängig</button>
+      <button type="button" class="btn ghost small" id="ainew" title="Neues Gespräch (Verlauf leeren)">Neu</button></div>
+  </form>
+</aside>
+
+<script src="js/step.js"></script>
+<script src="js/panel.js"></script>
+<script src="js/xcs.js"></script>
+<script src="js/dxf.js"></script>
+<script src="js/convert.js"></script>
+<script src="js/tools.js"></script>
+<script src="js/toolpath.js"></script>
+<script src="js/tools-default.js"></script>
+<script src="js/sample.js"></script>
+<script src="js/surface.js"></script>
+<script src="js/model3d.js"></script>
+<script src="js/cutplan.js"></script>
+<script src="js/pdf.js"></script>
+<script src="js/labels.js"></script>
+<script src="js/voice.js"></script>
+<script src="js/assist.js"></script>
+<script src="js/occtmesh.js"></script>
+<script src="js/view3d.js"></script>
+<script src="js/app/01-grundlagen.js"></script>
+<script src="js/app/02-teile-sitzung.js"></script>
+<script src="js/app/03-anzeige.js"></script>
+<script src="js/app/04-etiketten.js"></script>
+<script src="js/app/05-stueckliste.js"></script>
+<script src="js/app/06-zuschnitt.js"></script>
+<script src="js/app/07-saegemodus.js"></script>
+<script src="js/app/08-moebel3d-material.js"></script>
+<script src="js/app/09-profile-ansicht.js"></script>
+<script src="js/app/10-speichern-ereignisse.js"></script>
+<script src="js/app/11-schnittstelle-ki.js"></script>
+<script src="js/app/12-zeichnungen.js"></script>
+<script src="js/app/13-projekte-start.js"></script>
+<!--/page-->
+</body>
+</html>

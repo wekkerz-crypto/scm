@@ -1,4 +1,4 @@
-# Step2Maestro – Docker (z. B. Synology Container Manager → Projekt → „docker-compose.yml“ hochladen)
+# Weckwop – Docker (z. B. Synology Container Manager → Projekt → „docker-compose.yml“ hochladen)
 # Aufruf danach im Browser: http://<diskstation>:8080/
 services:
   step2maestro:
@@ -15,7 +15,7 @@ services:
       - ./daten:/daten          # Projekte, Dekore, Bilder – hier sichern (Hyper Backup)
       # lesbare Projektordner (STEP, Programme .xcs + konvertieren.bat, Stückliste, Zuschnitt-PDF, Versionen) in einen
       # freigegebenen Ordner legen, den man vom PC aus öffnet – Zeile aktivieren und Pfad anpassen (sonst ./daten/ordner):
-      # - /volume1/Werkstatt/Step2Maestro-Projekte:/daten/ordner
+      # - /volume1/Werkstatt/Weckwop-Projekte:/daten/ordner
     environment:
       S2M_OFFEN: "1"            # 1 = Projekte ohne Passwort (nur im eigenen Netz!), 0 = Passwort der Dekor-Verwaltung
       OPENAI_API_KEY: ""        # ChatGPT über den Server: Schlüssel hier eintragen (sk-…), dann brauchen die Geräte keinen

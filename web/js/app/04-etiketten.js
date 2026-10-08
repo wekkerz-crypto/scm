@@ -1,5 +1,5 @@
 /*
- * Step2Maestro – Etiketten (04-etiketten.js)
+ * Weckwop – Etiketten (04-etiketten.js)
  * Etiketten drucken (40 × 60 mm …), Etiketten-Konfigurator (Seite „Etiketten“), Druck nur von #printarea.
  * Teil des Programms in web/index.html: alle Dateien unter js/app/ teilen sich die obersten Namen (state, lst, $, render …)
  * und werden dort der Reihenfolge nach (01 … 12) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder

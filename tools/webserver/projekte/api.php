@@ -1,6 +1,6 @@
 <?php
 /*
- * Step2Maestro – Projektablage auf dem Server (Webspace oder Diskstation/Docker, PHP 8).
+ * Weckwop – Projektablage auf dem Server (Webspace oder Diskstation/Docker, PHP 8).
  *
  * Projekte sind die .s2m-Daten (STEP/DXF, Teile, Stückliste, Zuschnitt, Einstellungen), gzip-gepackt in daten/<id>.s2m.gz,
  * dazu die Liste daten/projekte.json (Name, Kunde, Notiz, Teile, Stück, Materialien, Zeiten). Gelöschte gehen in

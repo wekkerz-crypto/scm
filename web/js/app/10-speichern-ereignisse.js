@@ -1,5 +1,5 @@
 /*
- * Step2Maestro – Speichern und Ereignisse (10-speichern-ereignisse.js)
+ * Weckwop – Speichern und Ereignisse (10-speichern-ereignisse.js)
  * Speichern (.xcs, ZIP mit konvertieren.bat), Meldungen (`toast`), Datei ablegen/wählen, Reihenfolge-Regel, Werkzeugdatei.
  * Teil des Programms in web/index.html: alle Dateien unter js/app/ teilen sich die obersten Namen (state, lst, $, render …)
  * und werden dort der Reihenfolge nach (01 … 12) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder

@@ -1,5 +1,5 @@
 /*
- * Step2Maestro – Sägemodus und Listen-Seite (07-saegemodus.js)
+ * Weckwop – Sägemodus und Listen-Seite (07-saegemodus.js)
  * Sägemodus (Schritte, Karte, Vollbild, Etiketten beim Sägen), Sprachsteuerung (`sawAction`), Seite „Listen“ (Reiter, Zoom).
  * Teil des Programms in web/index.html: alle Dateien unter js/app/ teilen sich die obersten Namen (state, lst, $, render …)
  * und werden dort der Reihenfolge nach (01 … 12) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder

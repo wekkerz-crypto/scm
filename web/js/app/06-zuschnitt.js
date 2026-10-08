@@ -1,5 +1,5 @@
 /*
- * Step2Maestro – Zuschnittplan (06-zuschnitt.js)
+ * Weckwop – Zuschnittplan (06-zuschnitt.js)
  * Zuschnittplan je Material und Dicke, Zeichnung, PDF, Teile von Hand verschieben, Teil von Hand anlegen, Kantenregeln.
  * Teil des Programms in web/index.html: alle Dateien unter js/app/ teilen sich die obersten Namen (state, lst, $, render …)
  * und werden dort der Reihenfolge nach (01 … 12) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder

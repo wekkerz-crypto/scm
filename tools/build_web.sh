@@ -1,11 +1,11 @@
 #!/bin/sh
-# Baut dist/Step2Maestro-Webserver.zip: Ordner step2maestro/ zum Hochladen auf einen Webspace
+# Baut dist/Weckwop-Webserver.zip: Ordner step2maestro/ zum Hochladen auf einen Webspace
 # (index.html, js/, Schriften lokal statt Google Fonts, .htaccess, dekore/ = Dekor-Bibliothek, projekte/ = Projektablage,
 # ki/ = ChatGPT über den Server – alle PHP) plus ANLEITUNG.txt (Strato).
 # Aufruf: sh tools/build_web.sh   (bzw. npm run build:web)
 set -e
 cd "$(dirname "$0")/.."
-OUT=dist/Step2Maestro-Webserver
+OUT=dist/Weckwop-Webserver
 rm -rf "$OUT" "$OUT.zip"
 mkdir -p "$OUT/step2maestro"
 cp -r web/js "$OUT/step2maestro/js"
@@ -34,7 +34,7 @@ PY
 sed 's/$/\r/' tools/webserver/ANLEITUNG.txt > "$OUT/ANLEITUNG.txt"
 (cd "$OUT" && python3 -c "
 import zipfile, os
-z = zipfile.ZipFile('../Step2Maestro-Webserver.zip', 'w', zipfile.ZIP_DEFLATED)
+z = zipfile.ZipFile('../Weckwop-Webserver.zip', 'w', zipfile.ZIP_DEFLATED)
 z.write('ANLEITUNG.txt')
 for r, ds, fs in os.walk('step2maestro'):
     for f in sorted(fs): z.write(os.path.join(r, f))

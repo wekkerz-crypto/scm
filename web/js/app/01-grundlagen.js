@@ -1,5 +1,5 @@
 /*
- * Step2Maestro – Grundlagen (01-grundlagen.js)
+ * Weckwop – Grundlagen (01-grundlagen.js)
  * Hilfsfunktionen, Einstellungen (Felder, Laden/Speichern), Zustand `state`, Werkzeugliste und Favoriten, Hell/Dunkel.
  * Teil des Programms in web/index.html: alle Dateien unter js/app/ teilen sich die obersten Namen (state, lst, $, render …)
  * und werden dort der Reihenfolge nach (01 … 12) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder

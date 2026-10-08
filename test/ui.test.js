@@ -1493,7 +1493,7 @@ test('Web-Tool: mehrere Dekore auf einmal – Name ersetzen, Bildbreite (Maserun
 const { execFileSync, spawn } = require('child_process');
 let hasPhp = false;
 try { execFileSync('php', ['-v'], { stdio: 'ignore' }); hasPhp = true; } catch (e) { /* ohne PHP überspringen */ }
-test('Dekor-Bibliothek: Passwort, Hochladen, Bearbeiten – Step2Maestro übernimmt Namen per Code', { skip: (!chromium && 'Playwright nicht installiert') || (!hasPhp && 'PHP nicht installiert') }, async () => {
+test('Dekor-Bibliothek: Passwort, Hochladen, Bearbeiten – Weckwop übernimmt Namen per Code', { skip: (!chromium && 'Playwright nicht installiert') || (!hasPhp && 'PHP nicht installiert') }, async () => {
   const fs = require('fs');
   const os = require('os');
   const zlib = require('zlib');
@@ -1541,7 +1541,7 @@ test('Dekor-Bibliothek: Passwort, Hochladen, Bearbeiten – Step2Maestro überni
     const list = await (await fetch(base + 'dekore/api.php?a=list')).json();
     assert.deepStrictEqual(list.dekore.map((d) => [d.code, d.name]), [['U708 ST9', 'Lichtgrau']]);
     assert.ok(/^#[0-9a-f]{6}$/.test(list.dekore[0].color) && list.dekore[0].bild);
-    // Step2Maestro über http: Bauteile „… (U708 ST9)“ bekommen das Dekor aus der Bibliothek
+    // Weckwop über http: Bauteile „… (U708 ST9)“ bekommen das Dekor aus der Bibliothek
     await p.goto(base + '#programme');
     await p.waitForSelector('.part');
     await p.click('#clear');
@@ -1721,7 +1721,8 @@ test('Web-Tool: KI-Assistent mit ChatGPT (Attrappe der API) ruft Werkzeuge der P
     const names1 = await p.$$eval('.part .n', (x) => x.map((e) => e.textContent.replace(/^\d+/, '')));
     assert.strictEqual(names1[0], names0[1]);
     assert.strictEqual(names1[1], 'Seite_links');
-    const api = await p.evaluate(() => window.Step2Maestro.api.teile_lesen().teile[1]);
+    const api = await p.evaluate(() => window.Weckwop.api.teile_lesen().teile[1]);
+    assert.strictEqual(await p.evaluate(() => window.Step2Maestro === window.Weckwop), true); // alter Name bleibt
     assert.strictEqual(api.anzahl, 3);
     assert.strictEqual(api.kanten.l1, 2);
     assert.match(await p.textContent('#ailog'), /Teile gelesen[\s\S]*Teile geändert[\s\S]*Liste sortiert/);
@@ -1729,15 +1730,15 @@ test('Web-Tool: KI-Assistent mit ChatGPT (Attrappe der API) ruft Werkzeuge der P
     await p.click('#aiundo');
     await p.waitForFunction((n) => document.querySelector('.part .n').textContent.replace(/^\d+/, '') === n, names0[0]);
     assert.deepStrictEqual(await p.$$eval('.part .n', (x) => x.map((e) => e.textContent.replace(/^\d+/, ''))), names0);
-    assert.strictEqual(await p.evaluate(() => window.Step2Maestro.api.teile_lesen().teile[0].anzahl), 1);
+    assert.strictEqual(await p.evaluate(() => window.Weckwop.api.teile_lesen().teile[0].anzahl), 1);
     assert.ok(await p.isDisabled('#aiundo'));
     // Schnittstelle direkt: ungültiges Material wird abgelehnt; Sägemodus steuern
-    const err = await p.evaluate(() => { try { window.Step2Maestro.api.teile_aendern({ aenderungen: [{ teil: 1, material: 'gibtsnicht' }] }); return ''; } catch (e) { return e.message; } });
+    const err = await p.evaluate(() => { try { window.Weckwop.api.teile_aendern({ aenderungen: [{ teil: 1, material: 'gibtsnicht' }] }); return ''; } catch (e) { return e.message; } });
     assert.match(err, /unbekannt/);
-    const st = await p.evaluate(() => window.Step2Maestro.api.saegen_steuern({ aktion: 'weiter' }));
+    const st = await p.evaluate(() => window.Weckwop.api.saegen_steuern({ aktion: 'weiter' }));
     assert.strictEqual(st.aktiv, true);
     assert.strictEqual(st.schritt, 2);
-    const e2 = await p.evaluate(() => { try { window.Step2Maestro.api.saegen_steuern({ aktion: 'gehe_zu', streifen: 9 }); return ''; } catch (e) { return e.message; } });
+    const e2 = await p.evaluate(() => { try { window.Weckwop.api.saegen_steuern({ aktion: 'gehe_zu', streifen: 9 }); return ''; } catch (e) { return e.message; } });
     assert.match(e2, /Streifen 9 gibt es auf dieser Platte nicht/);
     // Claude wählen: eigener Schlüssel, Anfrage geht an Claude
     if (await p.isHidden('#aiset')) await p.click('#aisetbtn');
@@ -1785,7 +1786,7 @@ test('Web-Tool: Projektseite beim Start – im Browser speichern, ungespeicherte
     await p.click('#pj-go');
     assert.strictEqual(await p.evaluate(() => document.body.dataset.page), 'pgmx');
     assert.ok(!(await p.$eval('#projsave', (b) => b.classList.contains('dirty'))));
-    await p.evaluate(() => window.Step2Maestro.api.teile_aendern({ aenderungen: [{ teil: 1, anzahl: 4 }] }));
+    await p.evaluate(() => window.Weckwop.api.teile_aendern({ aenderungen: [{ teil: 1, anzahl: 4 }] }));
     await p.waitForFunction(() => document.getElementById('projsave').classList.contains('dirty'));
     await p.click('#projsave'); // speichert ins selbe Projekt
     await p.waitForFunction(() => !document.getElementById('projsave').classList.contains('dirty'));
@@ -1797,7 +1798,7 @@ test('Web-Tool: Projektseite beim Start – im Browser speichern, ungespeicherte
     assert.deepStrictEqual(dialogs, []); // nichts Ungespeichertes → keine Nachfrage
     await p.click('[data-pjopen]');
     await p.waitForFunction(() => document.body.dataset.page === 'pgmx' && document.querySelectorAll('.part').length === 3);
-    assert.strictEqual(await p.evaluate(() => window.Step2Maestro.api.teile_lesen().teile[0].anzahl), 4);
+    assert.strictEqual(await p.evaluate(() => window.Weckwop.api.teile_lesen().teile[0].anzahl), 4);
     // Kopie, dann die Kopie löschen (zweiter Klick)
     await p.click('#projopen');
     await p.click('[data-pjcopy]');
@@ -1814,7 +1815,7 @@ test('Web-Tool: Projektseite beim Start – im Browser speichern, ungespeicherte
     await p.fill('#pj-q', 'müller');
     assert.strictEqual(await p.$$eval('.pjtbl tbody tr', (x) => x.length), 1);
     // ungespeicherte Änderung + neues Projekt → Nachfrage
-    await p.evaluate(() => window.Step2Maestro.api.teile_aendern({ aenderungen: [{ teil: 2, anzahl: 2 }] }));
+    await p.evaluate(() => window.Weckwop.api.teile_aendern({ aenderungen: [{ teil: 2, anzahl: 2 }] }));
     await p.click('#pj-new');
     assert.ok(dialogs.some((d) => /ungespeicherte Änderungen/.test(d)));
     // nach dem Neuladen: Projektseite, Projekt noch gemerkt; #saegen öffnet den Sägemodus
@@ -1900,11 +1901,11 @@ test('Projektablage auf dem Server (PHP): offen im Netz, mit Passwort, zwei Ger�
     await q.waitForSelector('[data-pjopen]');
     await q.click('[data-pjopen]');
     await q.waitForFunction(() => document.body.dataset.page === 'pgmx' && document.querySelectorAll('.part').length === 3);
-    await q.evaluate(() => window.Step2Maestro.api.teile_aendern({ aenderungen: [{ teil: 1, anzahl: 7 }] }));
+    await q.evaluate(() => window.Weckwop.api.teile_aendern({ aenderungen: [{ teil: 1, anzahl: 7 }] }));
     await q.click('#projsave');
     await q.waitForFunction(() => !document.getElementById('projsave').classList.contains('dirty'));
     // erstes Gerät speichert danach auf altem Stand → Konflikt-Nachfrage (angenommen = überschreiben)
-    await p.evaluate(() => { window.Step2Maestro.api.teile_aendern({ aenderungen: [{ teil: 2, anzahl: 2 }] }); document.getElementById('toast').textContent = ''; });
+    await p.evaluate(() => { window.Weckwop.api.teile_aendern({ aenderungen: [{ teil: 2, anzahl: 2 }] }); document.getElementById('toast').textContent = ''; });
     await p.click('#projsave');
     await p.waitForFunction(() => /Gespeichert/.test(document.getElementById('toast').textContent));
     assert.match(p.lastDialog || '', /anderen Gerät/);
@@ -1957,8 +1958,8 @@ test('Web-Tool: STEP aktualisieren (Einstellungen der Teile bleiben) und Sicheru
     await chooser.setFiles(fixture('schrank3.step'));
     await p.waitForFunction(() => document.querySelectorAll('.part').length === 10, null, { timeout: 60000 });
     // Einstellungen an Teilen: Rückwand 3×, Seite links umbenannt mit Kanten
-    const idx = await p.evaluate(() => { const t = window.Step2Maestro.api.teile_lesen().teile; return { rw: t.find((x) => /RW/.test(x.name)).teil, sw: t.find((x) => /SW_L/.test(x.name)).teil }; });
-    await p.evaluate((i) => window.Step2Maestro.api.teile_aendern({ aenderungen: [{ teil: i.rw, anzahl: 3 }, { teil: i.sw, name: 'Seite links', kanten: { l1: 2, l2: 0, b1: 0, b2: 0 } }] }), idx);
+    const idx = await p.evaluate(() => { const t = window.Weckwop.api.teile_lesen().teile; return { rw: t.find((x) => /RW/.test(x.name)).teil, sw: t.find((x) => /SW_L/.test(x.name)).teil }; });
+    await p.evaluate((i) => window.Weckwop.api.teile_aendern({ aenderungen: [{ teil: i.rw, anzahl: 3 }, { teil: i.sw, name: 'Seite links', kanten: { l1: 2, l2: 0, b1: 0, b2: 0 } }] }), idx);
     // neue Version: Einlegeboden 2 umbenannt (fällt weg, kommt als neues Teil dazu)
     const v2 = fs.readFileSync(fixture('schrank3.step'), 'utf8').split('KP_1_ EB 2 (U708 ST9)').join('KP_1_ EB 9 (U708 ST9)');
     await p.click('.pagetabs [data-page="start"]');
@@ -1968,7 +1969,7 @@ test('Web-Tool: STEP aktualisieren (Einstellungen der Teile bleiben) und Sicheru
     await p.waitForFunction(() => /STEP aktualisiert/.test(document.getElementById('toast').textContent));
     assert.match(await p.textContent('#toast'), /9 Teile übernommen, 1 neu, 1 entfernt/);
     assert.ok(dialogs.some((d) => /fehlen 1 Teil:[\s\S]*EB_2/.test(d)), dialogs.join(' | '));
-    const t = await p.evaluate(() => window.Step2Maestro.api.teile_lesen().teile);
+    const t = await p.evaluate(() => window.Weckwop.api.teile_lesen().teile);
     assert.strictEqual(t.length, 10);
     assert.strictEqual(t.find((x) => /RW/.test(x.name)).anzahl, 3);
     const sw = t.find((x) => x.name === 'Seite_links');

@@ -1,6 +1,6 @@
 <?php
 /*
- * Step2Maestro – KI über den Server (ChatGPT/OpenAI): der API-Schlüssel liegt nur auf dem Server, die Geräte (PC, Pi an der
+ * Weckwop – KI über den Server (ChatGPT/OpenAI): der API-Schlüssel liegt nur auf dem Server, die Geräte (PC, Pi an der
  * Säge) brauchen keinen eigenen. Das Programm ruft das OpenAI-SDK mit baseURL = ki/openai.php/v1 auf; hier wird nur
  * weitergereicht:
  *   GET  openai.php?a=status   → { ok, aktiv (Schlüssel da), zugang, csrf? }

@@ -1,4 +1,4 @@
-# Step2Maestro auf der Diskstation (Synology Container Manager) oder jedem Docker-Rechner:
+# Weckwop auf der Diskstation (Synology Container Manager) oder jedem Docker-Rechner:
 # Programm + Projektablage + Dekor-Bibliothek + KI über den Server (+ Offline-Spracherkennung für den Pi).
 # Bauen und starten: docker compose up -d --build   (Daten liegen im Ordner ./daten neben dieser Datei)
 FROM php:8.3-apache

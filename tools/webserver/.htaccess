@@ -1,4 +1,4 @@
-# Step2Maestro – Einstellungen für Apache-Webspace (z. B. Strato Webhosting)
+# Weckwop – Einstellungen für Apache-Webspace (z. B. Strato Webhosting)
 # Das Programm ist statisch (HTML + JavaScript); nur die Dekor-Bibliothek (dekore/api.php) braucht PHP, keine Datenbank.
 
 AddDefaultCharset UTF-8

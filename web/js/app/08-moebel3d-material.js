@@ -1,5 +1,5 @@
 /*
- * Step2Maestro – Möbel 3D und Material (08-moebel3d-material.js)
+ * Weckwop – Möbel 3D und Material (08-moebel3d-material.js)
  * PDF-Dateien, Seitenwechsel (`setPage`), Möbel 3D (Baugruppe, Maße), Plattenfarben und Dekore (Bibliothek und lokal), Seite „Material“.
  * Teil des Programms in web/index.html: alle Dateien unter js/app/ teilen sich die obersten Namen (state, lst, $, render …)
  * und werden dort der Reihenfolge nach (01 … 12) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder

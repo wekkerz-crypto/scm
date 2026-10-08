@@ -1,5 +1,5 @@
 /*
- * Step2Maestro – Stückliste (05-stueckliste.js)
+ * Weckwop – Stückliste (05-stueckliste.js)
  * Listen-Einstellungen `lst`, Kantenband, Stückliste (`bomRows`), CSV, Druck A4.
  * Teil des Programms in web/index.html: alle Dateien unter js/app/ teilen sich die obersten Namen (state, lst, $, render …)
  * und werden dort der Reihenfolge nach (01 … 12) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder

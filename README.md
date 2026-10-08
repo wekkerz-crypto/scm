@@ -1,6 +1,8 @@
-# STEP → XCS für SCM Maestro
+# Weckwop
 
-Werkzeug, das aus Plattenteilen (STEP) automatisch Xilog-Skripte (`.xcs`) erzeugt.
+Werkstatt-Programm für Plattenteile – vom 3D-Modell bis zum fertigen, beschrifteten Teil: Projekte, CNC-Programme für
+SCM Maestro, Stückliste, Zuschnittplan, Sägemodus, Etiketten, Möbel 3D und Material (früher „Step2Maestro“ bzw. „STEP2XCS“).
+Aus Plattenteilen (STEP/DXF) erzeugt es automatisch Xilog-Skripte (`.xcs`).
 Der X-Konverter von Maestro übersetzt sie anschließend in `.pgmx`.
 
 ```
@@ -69,16 +71,20 @@ Papierbereich (Layouts, Zeichnungsrahmen) werden übergangen, doppelt gezeichnet
 aus Bögen/Polylinien als Kreis erkannt, offene Linienzüge und Konturen außerhalb des Teils als Hinweis gemeldet. 3D-Ansicht und *Wenden*
 gibt es nur für STEP.
 
-**Als Programm (Windows):** `STEP2XCS.exe` doppelklicken. Die .exe (ca. 2 MB, keine Installation) enthält das
+**Als Programm (Windows):** `Weckwop.exe` doppelklicken. Die .exe (ca. 2 MB, keine Installation) enthält das
 komplette Web-Tool, entpackt es nach `%LOCALAPPDATA%\STEP2XCS\app` und öffnet es im Standardbrowser – ohne Internet,
-ohne Server. Einstellungen und Favoriten bleiben erhalten, weil der Ort immer gleich ist. Beim ersten Start meldet
+ohne Server. Einstellungen und Favoriten bleiben erhalten, weil der Ort immer gleich ist (der Ordner heißt weiter
+`STEP2XCS` – so sind nach dem Umstieg von `STEP2XCS.exe` alle Projekte, Einstellungen und Dekore gleich wieder da). Beim ersten Start meldet
 Windows ggf. „Der Computer wurde durch Windows geschützt“ (unsigniert) → *Weitere Informationen* → *Trotzdem ausführen*.
 Meldet der Virenscanner die unsignierte .exe fälschlich als Virus, die **portable Variante** nehmen
-(`STEP2XCS-portabel.zip`: Ordner an festen Ort kopieren, `index.html` bzw. `STEP2XCS starten.cmd` doppelklicken) –
+(`Weckwop-portabel.zip`: Ordner an festen Ort kopieren, `index.html` bzw. `Weckwop starten.cmd` doppelklicken) –
 gleicher Funktionsumfang, ohne .exe. Dauerhaft hilft nur eine Code-Signatur.
-Bauen: `npm run build:exe` (Go ≥ 1.21) → `dist/STEP2XCS.exe`; Quelltext in `exe/`.
+Bauen: `npm run build:exe` (Go ≥ 1.21) → `dist/Weckwop.exe`; Quelltext in `exe/`.
+Interne Namen bleiben wegen der gespeicherten Daten und laufender Installationen: Speicher-Schlüssel `step2xcs.*`,
+Dateiformat `step2maestro-projekt`, Ordner `step2maestro/` im Webserver-Paket, Docker-Container `step2maestro`,
+`window.Step2Maestro.api` (neu: `window.Weckwop.api`) und der Programmkopf `SetComment("STEP2XCS: …")`.
 
-**Auf einem Webserver** (z. B. Strato-Webspace, Testserver): `npm run build:web` → `dist/Step2Maestro-Webserver.zip`
+**Auf einem Webserver** (z. B. Strato-Webspace, Testserver): `npm run build:web` → `dist/Weckwop-Webserver.zip`
 mit dem Ordner `step2maestro/` zum Hochladen und `ANLEITUNG.txt` (Hochladen per SFTP/Datei-Manager, Subdomain,
 Verzeichnisschutz, Einbinden in den Strato KI-Website-Builder per Link oder iframe). Rein statisch, kein PHP; die Schriften
 liegen lokal bei (`tools/webserver/fonts`, statt Google Fonts), `.htaccess` sperrt Suchmaschinen und Browser-Cache.
@@ -252,7 +258,7 @@ Dritte Seite oben (**Listen**):
   DXF) und landet mit **Formatfräsen** (umfräst) in den Programmen, in Zuschnitt, Sägen und Etiketten; Kanten danach in der
   Liste setzen, gespeichert mit der Projektdatei. **Löschen** je Position (Papierkorb, zweimal klicken) entfernt die Bauteile
   ganz – auch aus den Programmen.
-- **Sägeplatz mit Raspberry Pi 5:** `npm run build:pi` → `dist/Step2Maestro-Pi.zip` mit `einrichten.sh` (Zebra an USB über
+- **Sägeplatz mit Raspberry Pi 5:** `npm run build:pi` → `dist/Weckwop-Pi.zip` mit `einrichten.sh` (Zebra an USB über
   CUPS mit Treiber „Zebra ZPL Label Printer“ als Standarddrucker in Etikettgröße, Bildschirm bleibt an, Chromium startet beim
   Anmelden im Vollbild mit `--kiosk-printing` → Etiketten ohne Druckdialog), `ANLEITUNG-PI.txt` (Einkaufsliste, Schritte,
   Probleme) und `step2maestro/` für den Offline-Betrieb (`--offline`, ohne Dekor-Bibliothek).
@@ -261,7 +267,7 @@ Dritte Seite oben (**Listen**):
   gesperrt; Änderungen laufen unter einer Sperre, eine beschädigte Liste wird nie überschrieben; beim reinen Lesen kein Cookie.
 - **Dekor-Bibliothek (Webserver):** Im Webserver-Paket liegt `dekore/` – eine Verwaltung im Browser (PHP, Passwort) zum
   Hochladen, Benennen und Pflegen eurer Standard-Dekore (Bild, Code, Name, Hersteller, Maserung, Farbe, Bildbreite in mm).
-  Dateiname = Code (`U708_ST9.jpg` → „U708 ST9“). Step2Maestro lädt die Liste beim Start: Bauteile mit diesem Code im
+  Dateiname = Code (`U708_ST9.jpg` → „U708 ST9“). Weckwop lädt die Liste beim Start: Bauteile mit diesem Code im
   Namen bekommen das Dekor mit Bild (Möbel 3D), Namen (Listen) und Maserung (Zuschnitt); in jeder Plattenauswahl unter
   *Dekore (Bibliothek)*. Anleitung in der `ANLEITUNG.txt` des Pakets; offline (.exe) wie bisher Farben.
 - **Material aus dem Bauteilnamen:** Steht im Namen ein Dekor in Klammern (z. B. „KP_1_ OB (U708 ST9)“) oder ein Dekor-Code
@@ -381,7 +387,7 @@ Dritte Seite oben (**Listen**):
 
 ### Projekte (Startseite)
 
-Beim Öffnen zeigt Step2Maestro die **Projektseite** (erster Reiter *Projekte*): oben das **aktuelle Projekt** mit Name,
+Beim Öffnen zeigt Weckwop die **Projektseite** (erster Reiter *Projekte*): oben das **aktuelle Projekt** mit Name,
 Kunde/Auftrag und Notiz, Zustand („gespeichert 07.10. 10:42 · Server“ bzw. „ungespeicherte Änderungen“), **💾 Speichern**,
 *Als neues Projekt speichern*, *＋ Neues Projekt* und **Weiter bearbeiten ▶** (zur zuletzt benutzten Seite). Darunter die
 **Liste der Projekte** mit Suche (Name, Kunde, Material), Teile/Stück, Material, Platten und Änderungsdatum; je Projekt
@@ -396,13 +402,13 @@ inzwischen gespeichert, fragt *Speichern* nach (überschreiben oder nicht). Zuga
 (Anmelden auf der Projektseite) oder – nur für einen Server im eigenen Netz – offen (`S2M_OFFEN=1` bzw. Datei
 `projekte/OFFEN`).
 
-**Projektordner (lesbar, als Sicherung):** Beim Speichern auf dem Server schreibt Step2Maestro zusätzlich einen normalen
+**Projektordner (lesbar, als Sicherung):** Beim Speichern auf dem Server schreibt Weckwop zusätzlich einen normalen
 Ordner je Projekt (Name = Projektname, bei Umbenennen mit umbenannt): `Projekt.s2m` (das ganze Projekt als lesbares JSON),
 `Info.txt`, `STEP/` (die geladenen STEP-/DXF-Dateien, Stand beim Speichern), `Programme/` (alle .xcs inkl. `_S1`/`_S2` und
 `konvertieren.bat` für den X-Konverter), `Stueckliste.csv`, `Stueckliste.pdf`, `Zuschnittplan.pdf` und `Versionen/` (die
 letzten 20 Stände von `Projekt.s2m`). STEP und Programme werden bei jedem Speichern neu geschrieben (keine alten Programme);
 gelöschte Projekte: Ordner wird in „… (gelöscht Datum)“ umbenannt. Ort: `S2M_ORDNER` (Docker: `/daten/ordner`, per Volume
-in einen freigegebenen Ordner der Diskstation legbar, z. B. `\\diskstation\Werkstatt\Step2Maestro-Projekte`), sonst
+in einen freigegebenen Ordner der Diskstation legbar, z. B. `\\diskstation\Werkstatt\Weckwop-Projekte`), sonst
 `projekte/daten/ordner`. **Sicherungsordner am PC** (Chrome/Edge, *💾 Sicherungsordner am PC wählen …* auf der
 Projektseite): denselben Ordner bei jedem Speichern zusätzlich in einen Ordner auf dem PC bzw. ein Netzlaufwerk – auch ohne
 Server (Projekte im Browser); der Browser fragt nach dem Neustart einmal nach der Erlaubnis.
@@ -427,7 +433,7 @@ Säge-Einstellungen (*⚙ Schnittfolge*). Ältere .s2m-Dateien (ohne Listen) geh
 
 ### Docker / Diskstation
 
-`npm run build:docker` → `dist/Step2Maestro-Docker.zip` (Ordner `step2maestro-docker/`: `Dockerfile`, `docker-compose.yml`,
+`npm run build:docker` → `dist/Weckwop-Docker.zip` (Ordner `step2maestro-docker/`: `Dockerfile`, `docker-compose.yml`,
 `start.sh`, `ANLEITUNG-DOCKER.txt`, Programm). Ein Container (PHP 8.3 + Apache + GD) stellt alles für die Werkstatt bereit:
 Programm, **Projektablage**, Dekor-Bibliothek, **ChatGPT über den Server** (`OPENAI_API_KEY` in `docker-compose.yml` – die
 Geräte brauchen keinen eigenen Schlüssel; `ki/openai.php` reicht nur `POST /v1/responses` und `GET /v1/models` weiter) und
@@ -457,7 +463,7 @@ Maße, Material, Kanten, Zuschnitt, Stand beim Sägen), keine STEP-Dateien. Brau
 Webserver und am Pi. ChatGPT läuft über die Responses-API (Werkzeuge als Funktionen, Gespräch über `previous_response_id`);
 bei Claude übernimmt bei einer Ablehnung automatisch ein Ersatzmodell (`fallbacks: "default"`).
 
-**Programm-Schnittstelle** `window.Step2Maestro.api` (auch für eigene Skripte, z. B. in der Browser-Konsole):
+**Programm-Schnittstelle** `window.Weckwop.api` (auch für eigene Skripte, z. B. in der Browser-Konsole):
 `teile_lesen()`, `stueckliste_lesen()`, `zuschnitt_lesen()`, `materialien_lesen()`, `teile_aendern({aenderungen: [{teil,
 name, anzahl, material, kanten: {l1, l2, b1, b2}, kanten_auto, faser}]})`, `teile_sortieren({reihenfolge: [Nr …]})`,
 `teile_loeschen({teile: [Nr …]})`, `teil_anlegen({name, laenge, breite, dicke, anzahl, material})`,

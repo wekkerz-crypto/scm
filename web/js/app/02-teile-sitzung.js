@@ -1,5 +1,5 @@
 /*
- * Step2Maestro – Teile laden, Sitzung, Projektdatei (02-teile-sitzung.js)
+ * Weckwop – Teile laden, Sitzung, Projektdatei (02-teile-sitzung.js)
  * STEP/DXF laden (`addStep`/`addDxf`), Berechnung je Teil (`compute`), Sitzung im Browser (IndexedDB), Projektdatei .s2m (`projectPayload`/`applyProject`).
  * Teil des Programms in web/index.html: alle Dateien unter js/app/ teilen sich die obersten Namen (state, lst, $, render …)
  * und werden dort der Reihenfolge nach (01 … 12) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder
@@ -154,7 +154,7 @@ function projectLists() {
 function parseProject(text, name) {
   let data;
   try { data = JSON.parse(text); } catch (e) { toast(name + ': keine gültige Projektdatei.'); return null; }
-  if (!data || data.format !== PROJECT_FORMAT || !data.session || data.session.v !== 1) { toast(name + ': keine Step2Maestro-Projektdatei.'); return null; }
+  if (!data || data.format !== PROJECT_FORMAT || !data.session || data.session.v !== 1) { toast(name + ': keine Weckwop-Projektdatei.'); return null; }
   return data;
 }
 // Projekt-Daten übernehmen (ersetzt die Teileliste)

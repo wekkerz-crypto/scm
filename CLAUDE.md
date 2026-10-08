@@ -1,4 +1,4 @@
-# STEP → XCS für SCM Maestro – Hinweise für die Arbeit am Projekt
+# Weckwop (früher Step2Maestro / STEP → XCS für SCM Maestro) – Hinweise für die Arbeit am Projekt
 
 Ausgangsbasis (Tag `basis-1.0`) für weitere Projekte rund um SCM Xilog Maestro, X-Konverter und 5-Achs-Maschine.
 Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commit-Nachrichten auf Deutsch.
@@ -87,7 +87,7 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   Vosk beim Bauen), `npm run build:docker`; Pi `einrichten.sh` setzt für http-Adressen `--unsecurely-treat-insecure-origin-as-secure`.
 - Projektdatei .s2m (`projectPayload`/`applyProject`, Datei: `saveProject`/`openProject`): `data.session` (Teile) + `data.lists` (`projectLists()`, Schlüssel `PROJECT_LST_KEYS` – Ansicht/Zoom/`sawCfg` bleiben
   am Gerät) + `data.settings` (beim Öffnen Nachfrage, wenn anders; `SETTINGS_LOCAL` = Pfade bleiben); `syncListInputs()` zieht die Felder nach.
-- Programm-Schnittstelle `window.Step2Maestro.api` (`app/11-schnittstelle-ki.js`, `api`): teile_lesen, stueckliste_lesen, zuschnitt_lesen, materialien_lesen,
+- Programm-Schnittstelle `window.Weckwop.api` (`app/11-schnittstelle-ki.js`, `api`): teile_lesen, stueckliste_lesen, zuschnitt_lesen, materialien_lesen,
   teile_aendern, teile_sortieren, teile_loeschen, teil_anlegen, zuschnitt_einstellen, seite_zeigen, saegen_status, saegen_steuern, projekt –
   nur Listendaten und Sägemodus, keine Bearbeitungen.
   KI-Assistent `web/js/assist.js` (`Assist.TOOLS` = gleiche Namen, `validate`, `callTool`; Anbieter `PROVIDERS` – Standard ChatGPT:
@@ -158,12 +158,15 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   `decorSectionHtml`/`decorWire` (Sammeländerung: Auswahl `decSel` (Schlüssel), `decBulkHtml`/`decBulkWire` – Name suchen/ersetzen, `scale` setzen/×0,8/×1,25, `grain`), `mergeDecors` (Import, Projektdatei `data.dekore`), `applyDecors` = Server (`serverDecors`) + lokal;
   auf der Material-Seite gehen abgelegte Bilder in die Dekore statt an `loadFiles`;
   gedruckt wird nur `#printarea` mit `@page` in Etikettgröße (`#labelpage`), schwarz-weiß für Thermodrucker.
-- `exe/` – kleine Windows-.exe (Go), bettet `web/` ein und öffnet es im Browser; bauen mit `npm run build:exe` → `dist/`.
-  Webserver-Paket: `npm run build:web` → `dist/Step2Maestro-Webserver.zip` (`tools/webserver/`: ANLEITUNG.txt für Strato,
+- Name „Weckwop“, Logo = Korpus (Kopf in `index.html`, Favicon, `exe/winres/icon.png` → `go-winres make` → `rsrc_windows_amd64.syso`).
+  Interne Namen bleiben (Daten/Installationen): `step2xcs.*` (localStorage/IndexedDB), `step2maestro-projekt`/`-dekore`, Ordner
+  `step2maestro/` (Webserver/Pi/Docker), `%LOCALAPPDATA%\STEP2XCS\app`, `SetComment("STEP2XCS: …")`, `window.Step2Maestro` (= `window.Weckwop`).
+- `exe/` – kleine Windows-.exe `Weckwop.exe` (Go), bettet `web/` ein und öffnet es im Browser; bauen mit `npm run build:exe` → `dist/`.
+  Webserver-Paket: `npm run build:web` → `dist/Weckwop-Webserver.zip` (`tools/webserver/`: ANLEITUNG.txt für Strato,
   `.htaccess`, Schriften lokal – Google-Fonts-Link wird dabei ersetzt).
 - Raspberry Pi am Sägeplatz: `tools/pi/einrichten.sh` (CUPS + Zebra USB `drv:///sample.drv/zebra.ppd`, Autostart
   `~/.local/bin/step2maestro-kiosk.sh` per XDG-Autostart und labwc, Chromium `--kiosk --kiosk-printing`), `ANLEITUNG-PI.txt`;
-  Paket `npm run build:pi` → `dist/Step2Maestro-Pi.zip` (`tools/build_pi.sh`, nutzt das Webserver-Paket ohne PHP).
+  Paket `npm run build:pi` → `dist/Weckwop-Pi.zip` (`tools/build_pi.sh`, nutzt das Webserver-Paket ohne PHP).
 - `cli/step2xcs.js` – Kommandozeile. `test/` – `npm test` (node:test; UI-Tests mit Playwright, werden ohne übersprungen).
 - `maestro/doku/Maestro_MSL_KI_Referenz.pdf` – Handbuch der Script-Sprache; Befehlsparameter **immer** dort prüfen
   (`pdftotext -layout`). `maestro/beispiele/*.xcs` – Programme aus der Werkstatt, in Maestro bestätigt.
@@ -188,7 +191,7 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
 - Gesichert am 7.10.2026, Zweig `claude/blissful-wright-70n9um`: Programm aufgeteilt (index.html 245 Zeilen, `css/step2maestro.css`,
   `js/app/01–12`), sonst gleiche Funktion wie zuvor.
 - Enthalten: Projekte/Startseite (Server/Browser, Projektordner, Sicherungsordner, STEP aktualisieren), Projektdatei .s2m mit
-  Stückliste/Zuschnitt/Einstellungen, KI-Assistent (ChatGPT Standard, Claude), `window.Step2Maestro.api`, Sprachbefehle im Sägemodus
+  Stückliste/Zuschnitt/Einstellungen, KI-Assistent (ChatGPT Standard, Claude), `window.Weckwop.api`, Sprachbefehle im Sägemodus
   (Web Speech/Vosk, „🤖 KI“), großer grüner Weiter-Knopf, Docker (Diskstation), Pi mit `--sprache`.
 - Prüfstand: `npm test` 108/108 grün; Ausgabe aller Testteile unverändert gegenüber dem Stand vor der Aufteilung; alle 6 Seiten
   laden ohne Fehler, hell/dunkel geprüft.

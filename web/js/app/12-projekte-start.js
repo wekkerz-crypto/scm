@@ -1,5 +1,5 @@
 /*
- * Step2Maestro – Projekte und Start (12-projekte-start.js)
+ * Weckwop – Projekte und Start (12-projekte-start.js)
  * Projektseite (Server/Browser), Projektordner, Sicherungsordner, STEP aktualisieren – und der Start des Programms (läuft als letztes).
  * Teil des Programms in web/index.html: alle Dateien unter js/app/ teilen sich die obersten Namen (state, lst, $, render …)
  * und werden dort der Reihenfolge nach (01 … 12) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder
@@ -256,7 +256,7 @@ function projFolderFiles(data) {
   const d = new Date();
   files.push({ name: 'Info.txt', text: ['Projekt: ' + (proj.name || ''), 'Kunde/Auftrag: ' + (proj.kunde || ''), 'Notiz: ' + (proj.notiz || ''),
     'Gespeichert: ' + d.toLocaleString('de-DE'), 'Teile: ' + state.parts.length, '',
-    'Projekt.s2m     – das ganze Projekt; in Step2Maestro auf der Projektseite „Datei öffnen (.s2m)“',
+    'Projekt.s2m     – das ganze Projekt; in Weckwop auf der Projektseite „Datei öffnen (.s2m)“',
     'STEP/           – die geladenen STEP-/DXF-Dateien (Stand beim Speichern)',
     'Programme/      – die .xcs-Programme und konvertieren.bat (wandelt sie mit dem X-Konverter in .pgmx)',
     'Versionen/      – frühere Stände von Projekt.s2m (nur auf dem Server)', ''].join('\r\n') });

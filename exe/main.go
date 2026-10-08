@@ -1,8 +1,9 @@
-// STEP2XCS.exe – startet das Web-Tool (STEP → XCS für SCM Maestro) im Standardbrowser.
+// Weckwop.exe – startet Weckwop (Web-Tool: STEP/DXF → Programme, Listen, Zuschnitt, Sägen) im Standardbrowser.
 //
 // Die Seite ist eingebettet. Beim Start wird sie nach %LOCALAPPDATA%\STEP2XCS\app entpackt (nur wenn sich
 // der Inhalt geändert hat) und als Datei geöffnet. Fester Ort = Einstellungen und Favoriten bleiben im Browser
-// erhalten. Kein Server, kein Internet nötig.
+// erhalten. Kein Server, kein Internet nötig. Der Ordner heißt weiter STEP2XCS (früherer Name) – sonst wären
+// die im Browser gespeicherten Projekte, Einstellungen und Dekore nach dem Umbenennen nicht mehr da.
 package main
 
 import (
@@ -89,6 +90,6 @@ func extract(dir string) error {
 }
 
 func fail(msg string) {
-	messageBox("STEP2XCS", msg)
+	messageBox("Weckwop", msg)
 	os.Exit(1)
 }

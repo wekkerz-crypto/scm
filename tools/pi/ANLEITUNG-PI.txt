@@ -1,7 +1,7 @@
-STEP2MAESTRO AM SÄGEPLATZ – RASPBERRY PI 5 MIT ZEBRA (USB)
+WECKWOP AM SÄGEPLATZ – RASPBERRY PI 5 MIT ZEBRA (USB)
 =========================================================
 
-Ziel: Pi einschalten -> Step2Maestro startet im Vollbild (Sägemodus, Zuschnitt,
+Ziel: Pi einschalten -> Weckwop startet im Vollbild (Sägemodus, Zuschnitt,
 Stückliste). Tippen auf „Etikett drucken“ -> Etikett kommt sofort aus der Zebra,
 ohne Druckdialog. Keine Zwangsupdates, kein ungefragter Neustart.
 
@@ -41,9 +41,9 @@ Zebra (eingeschaltet, Etiketten eingelegt) anschließen, starten.
 2. Einrichten
 -------------
 ZIP auf den Pi kopieren (USB-Stick) und entpacken, z. B. in den Ordner
-„Step2Maestro-Pi“. Dann Terminal öffnen und:
+„Weckwop-Pi“. Dann Terminal öffnen und:
 
-    cd ~/Step2Maestro-Pi
+    cd ~/Weckwop-Pi
     bash einrichten.sh --url https://www.deine-domain.de/step2maestro/ --test
 
   --url ...      eure Adresse auf dem Webserver oder der Diskstation
@@ -61,9 +61,9 @@ Das Skript fragt nach dem Passwort (für die Installation). Danach:
 
     sudo reboot
 
-3. In Step2Maestro
+3. In Weckwop
 ------------------
-Nach dem Neustart öffnet sich Step2Maestro im Vollbild. Einmal unter
+Nach dem Neustart öffnet sich Weckwop im Vollbild. Einmal unter
 „Werkzeuge & Regeln -> Etiketten“ die gleiche Etikettgröße einstellen wie oben
 (z. B. 40 x 60 mm). Dann: Listen -> Sägen -> Vollbild. Nach jedem fertigen Teil
 erscheint „Fertig geschnitten“ – Tippen druckt das Etikett.
@@ -114,7 +114,7 @@ Probleme
   Zebra -> Standardeinstellungen -> „Darkness“ anpassen.
 * Etikett verschoben oder über zwei Etiketten: an der Zebra einmal die
   Etiketten einmessen (Kalibrieren – meist Taste FEED gedrückt halten, bis
-  sie zweimal blinkt) und prüfen, ob die Größe in Step2Maestro und im Skript
+  sie zweimal blinkt) und prüfen, ob die Größe in Weckwop und im Skript
   gleich ist.
 * Ältere Zebras, die nur EPL können (nicht ZPL): Modell durchgeben, dann
   passen wir den Treiber an.

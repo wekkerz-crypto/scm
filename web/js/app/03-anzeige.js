@@ -1,5 +1,5 @@
 /*
- * Step2Maestro – Anzeige der Teile (03-anzeige.js)
+ * Weckwop – Anzeige der Teile (03-anzeige.js)
  * Teileliste links, Detail eines Teils (Bearbeitungen, Werkzeuge, Schnittwerte, Drehen/Wenden/Kippen), Draufsicht.
  * Teil des Programms in web/index.html: alle Dateien unter js/app/ teilen sich die obersten Namen (state, lst, $, render …)
  * und werden dort der Reihenfolge nach (01 … 12) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder

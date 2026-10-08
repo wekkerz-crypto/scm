@@ -1,8 +1,8 @@
 <?php
 /*
- * Step2Maestro – Dekor-Bibliothek auf dem Webspace (z. B. Strato, PHP 8).
+ * Weckwop – Dekor-Bibliothek auf dem Webspace (z. B. Strato, PHP 8).
  *
- * Lesen ist offen (Step2Maestro holt sich die Liste), Ändern nur nach Anmeldung.
+ * Lesen ist offen (Weckwop holt sich die Liste), Ändern nur nach Anmeldung.
  *   GET  api.php?a=list                       → { ok, dekore: [...], login, setup, csrf? }
  *   POST a=setup    passwort                  → erstes Passwort festlegen (nur solange keins gesetzt ist UND die Datei
  *                                                EINRICHTEN neben api.php liegt – sie wird danach gelöscht; so kann niemand
@@ -197,7 +197,7 @@ ensureDirs();
 $a = $_GET['a'] ?? $_POST['a'] ?? 'list';
 if (!is_string($a)) $a = '';
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-// Nur Lesen ohne Anmeldung (Step2Maestro beim Start): kein Sitzungs-Cookie anlegen
+// Nur Lesen ohne Anmeldung (Weckwop beim Start): kein Sitzungs-Cookie anlegen
 if ($a !== 'list' || !empty($_COOKIE['s2m_dekore'])) startSession();
 $setupOpen = fn() => pwHash() === '' && is_file($setupFile);
 
@@ -205,7 +205,7 @@ if ($a === 'list') {
   $res = ['ok' => true, 'dekore' => array_map('withUrls', loadDb()), 'login' => loggedIn(), 'setup' => $setupOpen(),
     'ohnePasswort' => pwHash() === '' && !$setupOpen()];
   if (loggedIn()) $res['csrf'] = csrf();
-  // Step2Maestro darf die Liste auch von einer anderen Adresse holen (nur lesen)
+  // Weckwop darf die Liste auch von einer anderen Adresse holen (nur lesen)
   header('Access-Control-Allow-Origin: *');
   out($res);
 }

@@ -1,13 +1,13 @@
 /*
- * Step2Maestro – Programm-Schnittstelle und KI-Assistent (11-schnittstelle-ki.js)
- * `window.Step2Maestro.api` (Werkzeuge der KI), KI-Fenster (ChatGPT/Claude, auch über den Server), Rückgängig.
+ * Weckwop – Programm-Schnittstelle und KI-Assistent (11-schnittstelle-ki.js)
+ * `window.Weckwop.api` (Werkzeuge der KI), KI-Fenster (ChatGPT/Claude, auch über den Server), Rückgängig.
  * Teil des Programms in web/index.html: alle Dateien unter js/app/ teilen sich die obersten Namen (state, lst, $, render …)
  * und werden dort der Reihenfolge nach (01 … 12) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder
  * früheren Dateien benutzen – Funktionen aus späteren Dateien nur in Ereignissen (Klick …), die erst danach kommen.
  */
 'use strict';
 
-// ------------------------------------------------ Programm-Schnittstelle (window.Step2Maestro.api) und KI-Assistent
+// ------------------------------------------------ Programm-Schnittstelle (window.Weckwop.api) und KI-Assistent
 /*
  * Die Schnittstelle bedient Teileliste, Stückliste und Zuschnitt mit einfachen Daten (JSON) – der KI-Assistent (js/assist.js)
  * ruft genau diese Funktionen als Werkzeuge auf; sie lassen sich auch aus der Browser-Konsole oder einem eigenen Skript nutzen.
@@ -166,7 +166,7 @@ const api = {
   // für eigene Skripte: Projekt als Daten (wie die .s2m-Datei) und Neuberechnung
   projekt() { return { session: JSON.parse(JSON.stringify(sessionData())), lists: projectLists() }; },
 };
-window.Step2Maestro = { api: api, version: 1 };
+window.Weckwop = window.Step2Maestro = { api: api, version: 1 }; // „Step2Maestro“ = alter Name, bleibt für bestehende Anbindungen
 
 // ---- KI-Assistent (Fenster rechts): ChatGPT (OpenAI) oder Claude (Anthropic), je eigener Schlüssel und eigenes Modell
 const AI_KEY = 'step2xcs.ai.v1';

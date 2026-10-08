@@ -1,5 +1,5 @@
 #!/bin/bash
-# Step2Maestro am Sägeplatz – Raspberry Pi 5 einrichten (Raspberry Pi OS Bookworm, 64 Bit, mit Desktop; Pi 5 oder Pi 4)
+# Weckwop am Sägeplatz – Raspberry Pi 5 einrichten (Raspberry Pi OS Bookworm, 64 Bit, mit Desktop; Pi 5 oder Pi 4)
 #
 #   bash einrichten.sh                         fragt nach Adresse und Etikettgröße
 #   bash einrichten.sh --url https://www.deine-domain.de/step2maestro/
@@ -144,7 +144,7 @@ else
   sudo cupsenable Zebra 2>/dev/null; sudo cupsaccept Zebra 2>/dev/null
   if lpstat -p Zebra >/dev/null 2>&1; then ok "Zebra ist Standarddrucker – Etikett ${W} × ${H} mm, ${DPI} dpi"; else warn "Zebra ist in CUPS nicht zu sehen – lpstat -p prüfen"; fi
   if [ "$TEST" -eq 1 ]; then
-    printf 'Step2Maestro\nTestetikett\n%s\n' "$(date '+%d.%m.%Y %H:%M')" | lp -d Zebra -o media="Custom.${W}x${H}mm" >/dev/null && ok "Testetikett gedruckt"
+    printf 'Weckwop\nTestetikett\n%s\n' "$(date '+%d.%m.%Y %H:%M')" | lp -d Zebra -o media="Custom.${W}x${H}mm" >/dev/null && ok "Testetikett gedruckt"
   fi
 fi
 [ "$NUR_DRUCKER" -eq 1 ] && { echo; echo "Fertig (nur Drucker)."; exit 0; }
@@ -154,12 +154,12 @@ step "Bildschirmabschaltung aus"
 if command -v raspi-config >/dev/null; then sudo raspi-config nonint do_blanking 1 && ok "aus"; else warn "raspi-config fehlt – Bildschirmschoner von Hand ausschalten"; fi
 
 # ---------------------------------------------------------------- Kiosk-Start
-step "Step2Maestro beim Anmelden im Vollbild starten"
+step "Weckwop beim Anmelden im Vollbild starten"
 mkdir -p "$HOME/.local/bin" "$HOME/.config/autostart"
 START="$HOME/.local/bin/step2maestro-kiosk.sh"
 cat > "$START" <<EOF
 #!/bin/bash
-# Startet Step2Maestro im Vollbild (Kiosk), Etiketten ohne Druckdialog auf den Standarddrucker (Zebra).
+# Startet Weckwop im Vollbild (Kiosk), Etiketten ohne Druckdialog auf den Standarddrucker (Zebra).
 # Beenden: Alt+F4 (Tastatur). Adresse ändern: unten URL anpassen.
 URL="$URL"
 exec 9>/tmp/step2maestro-kiosk.lock
@@ -182,7 +182,7 @@ chmod +x "$START"
 cat > "$HOME/.config/autostart/step2maestro.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Step2Maestro Sägeplatz
+Name=Weckwop Sägeplatz
 Exec=$START
 X-GNOME-Autostart-enabled=true
 EOF
@@ -195,7 +195,7 @@ ok "Autostart eingerichtet: $URL"
 
 echo
 echo "Fertig. Jetzt neu starten:  sudo reboot"
-echo "Danach startet Step2Maestro von selbst. In Step2Maestro unter „Werkzeuge & Regeln → Etiketten“ dieselbe"
+echo "Danach startet Weckwop von selbst. In Weckwop unter „Werkzeuge & Regeln → Etiketten“ dieselbe"
 echo "Etikettgröße einstellen (${ETIKETT/x/ × } mm). Beenden des Vollbilds: Alt+F4."
 [ "$SPRACHE" -eq 1 ] && echo "Sprache: USB-Mikrofon oder Headset anschließen, im Sägemodus „🎤 Sprache“ antippen."
 true

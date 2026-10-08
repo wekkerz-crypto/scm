@@ -1,4 +1,4 @@
-STEP2MAESTRO AUF EINEM WEBSERVER (TESTSERVER) – ANLEITUNG
+WECKWOP AUF EINEM WEBSERVER (TESTSERVER) – ANLEITUNG
 ==========================================================
 
 Inhalt der ZIP
@@ -29,7 +29,7 @@ Wichtig zu wissen
 * Einstellungen, Profile, die geladene Werkzeugdatei (.tlgx) und die Teileliste
   (mit allen Änderungen je Teil) speichert der Browser automatisch – je Gerät,
   Browser und Adresse. Nach dem Neuladen ist alles wieder da. Auf dem Server gelten also andere
-  Einstellungen als in der STEP2XCS.exe. Werkzeugdatei auf dem Server einmal
+  Einstellungen als in der Weckwop.exe. Werkzeugdatei auf dem Server einmal
   neu laden (Abschnitt "Werkzeugliste & Favoriten").
 * KI-Assistent (✨ oben rechts): fragt direkt aus dem Browser bei OpenAI
   (ChatGPT, api.openai.com) oder Anthropic (Claude, api.anthropic.com) an –
@@ -101,8 +101,8 @@ Prüfen: Gehört zu deinem Paket ein Webspace (SFTP-Zugang / Datei-Manager)?
 1. Seite im Builder anlegen
    Im KI-Builder z. B. diesen Text als Wunsch (Prompt) eingeben:
 
-     "Erstelle eine schlichte Unterseite 'Step2Maestro' für eine Schreinerei.
-      Überschrift: Step2Maestro – STEP/DXF zu SCM Maestro. Kurzer Text: Das
+     "Erstelle eine schlichte Unterseite 'Weckwop' für eine Schreinerei.
+      Überschrift: Weckwop – STEP/DXF zu SCM Maestro. Kurzer Text: Das
       Werkzeug wandelt STEP- und DXF-Dateien in Xilog-Programme (.xcs) für die
       SCM Maestro um. Es läuft komplett im Browser, Dateien bleiben auf dem
       eigenen Rechner. Darunter ein großer Button 'Programm öffnen'."
@@ -121,7 +121,7 @@ Prüfen: Gehört zu deinem Paket ein Webspace (SFTP-Zugang / Datei-Manager)?
      <iframe src="https://www.deine-domain.de/step2maestro/"
              style="width:100%;height:90vh;border:0"
              allow="clipboard-write; fullscreen"
-             title="Step2Maestro"></iframe>
+             title="Weckwop"></iframe>
 
    Einschränkungen eingebettet: kleineres Fenster; je nach Builder können
    Etikettendruck, Datei-Download oder Kopieren blockiert sein. Dann den
@@ -154,13 +154,13 @@ nutzt der KI-Assistent ihn für alle angemeldeten Benutzer.
 DEKOR-BIBLIOTHEK (Ordner dekore/)
 ---------------------------------
 Hier liegen eure Standard-Dekore (z. B. Egger) mit Bild, Code, Name und
-Maserung. Step2Maestro holt sie sich beim Start: Heißt ein Bauteil in der
+Maserung. Weckwop holt sie sich beim Start: Heißt ein Bauteil in der
 STEP z. B. "KP_1_ OB (U708 ST9)", bekommt es automatisch das Dekor U708 ST9 –
 mit Bild in "Möbel 3D", Namen in Stückliste/Zuschnitt, Maserung im Zuschnitt.
 Auch von Hand in jeder Plattenauswahl unter "Dekore (Bibliothek)".
 
 1. Aufrufen:  https://www.deine-domain.de/step2maestro/dekore/
-   (oder in Step2Maestro: Plattenfarbe -> "Dekore verwalten").
+   (oder in Weckwop: Plattenfarbe -> "Dekore verwalten").
 2. Beim ersten Aufruf ein Passwort festlegen (mind. 8 Zeichen). Ansehen
    kann jeder, hochladen/ändern/löschen nur mit Passwort. Das Festlegen geht
    nur, solange die (leere) Datei dekore/EINRICHTEN da ist – sie liegt in der
@@ -178,7 +178,7 @@ Auch von Hand in jeder Plattenauswahl unter "Dekore (Bibliothek)".
    3D; Vorgabe 1000 mm), Notiz.
 
 Gespeichert wird in dekore/bilder, dekore/vorschau und dekore/daten (legt
-das Programm selbst an). Ein Update von Step2Maestro (Ordner neu hochladen)
+das Programm selbst an). Ein Update von Weckwop (Ordner neu hochladen)
 überschreibt diese Ordner NICHT – die Dekore bleiben. Zum Sichern diese drei
 Ordner per FileZilla herunterladen. Passwort vergessen: die Datei
 dekore/daten/passwort.php per FileZilla löschen UND eine leere Datei
@@ -191,7 +191,7 @@ gelten die Farben wie bisher.
 
 TEST NACH DEM HOCHLADEN (Checkliste)
 ------------------------------------
-[ ] Adresse öffnen -> Step2Maestro erscheint mit den Beispielteilen links.
+[ ] Adresse öffnen -> Weckwop erscheint mit den Beispielteilen links.
 [ ] Schrift sieht aus wie in der .exe (sonst fehlt der Ordner "fonts").
 [ ] Ein Teil anklicken -> "3D" -> 3D-Ansicht lädt (beim ersten Mal ein paar
     Sekunden, die 3D-Bibliothek ist mehrere MB groß).
@@ -200,7 +200,7 @@ TEST NACH DEM HOCHLADEN (Checkliste)
 [ ] "Etikett" -> Druckvorschau 40 x 60 mm.
 [ ] Auf dem Handy öffnen -> Bedienung passt auf den Bildschirm.
 [ ] .../step2maestro/dekore/ öffnen -> "Passwort festlegen" erscheint, ein
-    Bild hochladen -> erscheint in der Liste und in Step2Maestro unter
+    Bild hochladen -> erscheint in der Liste und in Weckwop unter
     Plattenfarbe -> "Dekore (Bibliothek)".
 
 Probleme

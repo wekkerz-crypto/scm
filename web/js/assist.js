@@ -1,7 +1,7 @@
 /*
  * KI-Assistent im Browser – ChatGPT (OpenAI, Responses-API) oder Claude (Anthropic): hilft bei Stückliste, Sortieren,
  * Material, Kanten, Zuschnitt und steuert den Sägemodus. Die KI ruft Werkzeuge auf (TOOLS) – ausgeführt werden sie von der
- * Seite über die Programm-Schnittstelle (window.Step2Maestro.api in index.html). Dieses Modul kennt nur die Werkzeuge, die
+ * Seite über die Programm-Schnittstelle (window.Weckwop.api in index.html). Dieses Modul kennt nur die Werkzeuge, die
  * Prüfung der Eingaben und die Schleife Anfrage → Werkzeuge → Ergebnis → Anfrage …; den Client (SDK aus js/vendor/openai.js
  * bzw. anthropic.js) gibt die Seite mit.
  *   runOpenAI({ client, model, effort, conv, text, exec, onStep, maxSteps }) – conv = { prevId } (Gespräch über
@@ -32,7 +32,7 @@
   const EFFORTS = [['low', 'schnell'], ['medium', 'normal'], ['high', 'gründlich']];
 
   const SYSTEM = [
-    'Du bist der Assistent in „Step2Maestro“, einem Werkzeug einer Schreinerei: STEP/DXF-Bauteile werden zu Programmen für die',
+    'Du bist der Assistent in „Weckwop“, einem Werkzeug einer Schreinerei: STEP/DXF-Bauteile werden zu Programmen für die',
     'CNC SCM Maestro, dazu Stückliste, Kantenband, Zuschnittplan für die Plattensäge und Etiketten.',
     'Du hilfst beim Bearbeiten, Sortieren und Prüfen: Namen, Anzahl, Material/Dekor, Kanten, Faserrichtung, Reihenfolge,',
     'Teile von Hand anlegen oder löschen, Plattenformat und Zuschnitt-Einstellungen.',

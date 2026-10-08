@@ -1,9 +1,9 @@
-STEP2MAESTRO AUF DER DISKSTATION (DOCKER) – ANLEITUNG
+WECKWOP AUF DER DISKSTATION (DOCKER) – ANLEITUNG
 =====================================================
 
 Was man davon hat
 -----------------
-Ein Rechner in der Werkstatt (die Diskstation) stellt Step2Maestro für alle
+Ein Rechner in der Werkstatt (die Diskstation) stellt Weckwop für alle
 Geräte bereit – Büro-PC, Laptop, Pi an der Säge:
 * Projekte zentral: auf der Startseite „Projekte“ speichern und auf jedem Gerät
   öffnen (Stückliste, Zuschnitt, Stand beim Sägen – alles dabei).
@@ -65,9 +65,9 @@ Zeichen). Mit S2M_OFFEN=0 gilt dieses Passwort auch für die Projekte.
 
 Projektordner (lesbar, ohne Programm)
 -------------------------------------
-Bei jedem Speichern legt Step2Maestro je Projekt einen normalen Ordner an:
+Bei jedem Speichern legt Weckwop je Projekt einen normalen Ordner an:
   Küche Müller/
-    Projekt.s2m           das ganze Projekt (zum Öffnen in Step2Maestro)
+    Projekt.s2m           das ganze Projekt (zum Öffnen in Weckwop)
     Info.txt              Name, Kunde, Datum
     STEP/                 die STEP-/DXF-Dateien
     Programme/            alle .xcs + konvertieren.bat (Doppelklick am PC mit
@@ -76,10 +76,10 @@ Bei jedem Speichern legt Step2Maestro je Projekt einen normalen Ordner an:
     Versionen/            die letzten 20 Stände
 Standard: daten/ordner. Besser in einen freigegebenen Ordner, den man vom
 Büro-PC im Netzwerk öffnet: in docker-compose.yml die Zeile
-  # - /volume1/Werkstatt/Step2Maestro-Projekte:/daten/ordner
+  # - /volume1/Werkstatt/Weckwop-Projekte:/daten/ordner
 aktivieren (# weg, Pfad anpassen, Ordner vorher in der File Station anlegen)
 und das Projekt neu erstellen. Am PC dann z. B.
-  \\diskstation\Werkstatt\Step2Maestro-Projekte\Küche Müller\Programme
+  \\diskstation\Werkstatt\Weckwop-Projekte\Küche Müller\Programme
 Die Ordner werden beim Speichern überschrieben – eigene Dateien darin nicht
 ablegen (außer in einem eigenen Unterordner).
 
@@ -92,7 +92,7 @@ Alles liegt in /docker/step2maestro/daten:
   ki/openai-key     (falls so eingetragen)
 Diesen Ordner mit Hyper Backup sichern. Ein gelöschtes Projekt liegt noch im
 papierkorb/ – zurückholen: Datei und Eintrag von Hand zurückschieben oder die
-.s2m.gz am PC entpacken (z. B. 7-Zip) und in Step2Maestro „Datei öffnen“.
+.s2m.gz am PC entpacken (z. B. 7-Zip) und in Weckwop „Datei öffnen“.
 
 Update auf eine neue Version
 ----------------------------

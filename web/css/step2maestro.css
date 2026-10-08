@@ -1,4 +1,4 @@
-/* Step2Maestro – Aussehen der Seite (hell/dunkel über :root und data-theme) */
+/* Weckwop – Aussehen der Seite (hell/dunkel über :root und data-theme) */
 /* Layout: Werkbank – links Teileliste, rechts Draufsicht + Programm; schmal: gestapelt */
 :root {
   --bg: #eceee9;

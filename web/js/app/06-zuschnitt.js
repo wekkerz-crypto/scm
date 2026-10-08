@@ -535,7 +535,7 @@ function renderBomNew() {
   if (!boards.some((b) => b[0] === def)) boards.push([def, 19]);
   const last = lst.newPart || {};
   const bsel = last.board && boards.some((b) => b[0] === last.board) ? last.board : boards[0][0];
-  el.innerHTML = '<h4>Teil von Hand anlegen</h4><p class="note">Wird als Platte mit Formatfräsen (umfräst) zum Programm – auch in Zuschnitt, Sägen und Etiketten. ' +
+  el.innerHTML = '<h4>Neues Bauteil anlegen</h4><p class="note">Wird als Platte mit Formatfräsen (umfräst) zum Programm – auch in Zuschnitt, Sägen und Etiketten. ' +
     'Kanten danach in der Liste setzen.</p><div class="row">' +
     '<label>Name <input type="text" id="np-name" value="' + esc(last.name || '') + '" placeholder="z. B. Fachboden" aria-label="Name des Teils"></label>' +
     '<label>Länge <input type="number" id="np-L" min="10" step="0.1" value="' + esc(last.L || '') + '" aria-label="Länge"> mm</label>' +

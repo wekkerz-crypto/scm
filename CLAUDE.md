@@ -66,7 +66,7 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   wie Kanten-Regeln); Angebot nach Änderung von Hand `learnOffer` → Leiste `.bomlearn` (`learnBarHtml`/`learnBarWire`, Stichwort
   `learnWord`, `learnAdd`), Verwaltung `learnedHtml`/`learnedWire` oben im Feld „Regeln …“ (`#erpanel`); Projektdatei `data.regeln`
   → `mergeLearned` (nur fehlende Stichwörter).
-  Teil von Hand (Stückliste `#bomnew`, `renderBomNew`/`addManualPart`): Rechteck als DXF (`rectDxf`) über `addDxf(text, name,
+  Neues Bauteil anlegen (Knopf `#bomnewbtn` rechts in `.lbar`, nur Stückliste; Feld `#bomnew`, `renderBomNew`/`addManualPart`): Rechteck als DXF (`rectDxf`) über `addDxf(text, name,
   {T, board, qty})` → nur Formatfräsen; Löschen `data-bomdel` (zweiter Klick).
   Eigene Farben mit Namen: Schlüssel `#rrggbb[/u]~Name`, gemerkt in `settings.customBoards`. Programmläufe `progRuns()` (Teil → Stücklisten-Position, `row.qty` × Zeit; `#pqty` oben im Teil, `.chip.runs`, `.runsum`). Zeit: `Toolpath.estimate`
   (Einstellungen `est*`), `partTime` in `app/03-anzeige.js`. Projektdatei: siehe Projekte.

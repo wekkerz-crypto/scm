@@ -254,7 +254,7 @@ Dritte Seite oben (**Listen**):
   im Bauteilnamen wie „U708 ST9“ geht beim Material vor). In der Liste steht dann „Regel“. Verwalten unter **Regeln …**
   (Stichwort ändern, Material/Kanten/Faser entfernen, löschen, abschalten, Nachfrage aus); Projektdateien nehmen die Regeln
   mit, beim Öffnen auf einem anderen Gerät kommen fehlende dazu.
-  **+ Teil anlegen:** Name, Länge, Breite, Dicke, Anzahl, Material – das Teil wird als Rechteck-Platte gerechnet (wie eine
+  **+ Neues Bauteil anlegen** (großer Knopf rechts in der Leiste): Name, Länge, Breite, Dicke, Anzahl, Material – das Teil wird als Rechteck-Platte gerechnet (wie eine
   DXF) und landet mit **Formatfräsen** (umfräst) in den Programmen, in Zuschnitt, Sägen und Etiketten; Kanten danach in der
   Liste setzen, gespeichert mit der Projektdatei. **Löschen** je Position (Papierkorb, zweimal klicken) entfernt die Bauteile
   ganz – auch aus den Programmen.

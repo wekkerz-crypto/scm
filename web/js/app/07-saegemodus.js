@@ -551,6 +551,7 @@ function renderLists() {
   $('sawview').hidden = lst.tab !== 'saw';
   if (lst.tab !== 'bom') { $('erpanel').hidden = true; $('bomnew').hidden = true; }
   $('bomopts').hidden = lst.tab !== 'bom';
+  $('bomnewbtn').hidden = lst.tab !== 'bom';
   $('cutopts').hidden = lst.tab === 'bom';
   $('czoomg').hidden = $('cfontg').hidden = lst.tab !== 'cut'; // Sägemodus: eigene Regler oben in der Leiste
   $('lcsv').hidden = lst.tab !== 'bom';

@@ -83,6 +83,12 @@ test('Sprachbefehle: Wendungen im Sägemodus', () => {
   assert.deepStrictEqual(Voice.parseCmd('Etiketten aus'), { cmd: 'lmode', arg: 'off' });
   assert.deepStrictEqual(Voice.parseCmd('automatisch drucken'), { cmd: 'lmode', arg: 'auto' });
   assert.ok(Voice.GRAMMAR.includes('[unk]') && Voice.GRAMMAR.includes('streifen fünf'));
+  // Zeichnungen
+  const dc = { 'Zeichnung': 'drawon', 'zeig mir die Zeichnung': 'drawon', 'Zeichnung zu': 'drawoff', 'Zeichnung schließen': 'drawoff', 'nächste Seite': 'pagenext',
+    'umblättern': 'pagenext', 'vorherige Seite': 'pageprev', 'Seite zurück': 'pageprev' };
+  for (const [t, c] of Object.entries(dc)) assert.strictEqual(Voice.parse(t), c, t);
+  assert.deepStrictEqual(Voice.parseCmd('Seite drei'), { cmd: 'gopage', n: 3 });
+  assert.ok(Voice.GRAMMAR.includes('seite zwei') && Voice.GRAMMAR.includes('zeichnung zu'));
 });
 
 test('KI-Assistent mit ChatGPT: Gespräch über previous_response_id, abgeschnittene Antwort und Fehler lassen den alten Stand', async () => {

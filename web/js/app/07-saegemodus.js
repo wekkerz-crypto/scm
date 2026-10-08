@@ -2,7 +2,7 @@
  * Weckwop – Sägemodus und Listen-Seite (07-saegemodus.js)
  * Sägemodus (Schritte, Karte, Vollbild, Etiketten beim Sägen), Sprachsteuerung (`sawAction`), Seite „Listen“ (Reiter, Zoom).
  * Teil des Programms in web/index.html: alle Dateien unter js/app/ teilen sich die obersten Namen (state, lst, $, render …)
- * und werden dort der Reihenfolge nach (01 … 12) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder
+ * und werden dort der Reihenfolge nach (01 … 13) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder
  * früheren Dateien benutzen – Funktionen aus späteren Dateien nur in Ereignissen (Klick …), die erst danach kommen.
  */
 'use strict';
@@ -167,6 +167,7 @@ function renderSaw() {
       '<button type="button" data-saw="ai" aria-pressed="' + !!lst.sawAi + '" title="KI hört mit: Sätze, die kein fester Befehl sind (z. B. „geh zu Platte 2, Streifen 3“, „wie viele Teile fehlen noch?“), gehen an den KI-Assistenten (ChatGPT/Claude), die Antwort wird vorgelesen">🤖 KI</button></span>' +
     '<button type="button" class="btn ghost small" data-saw="cfg" aria-expanded="' + String(!!lst.sawCfgOpen) + '">⚙ Schnittfolge</button>' +
     '<button type="button" class="btn ghost small" data-saw="reset">Von vorn</button>' +
+    '<button type="button" class="btn small drwbtn" data-saw="drw" title="Zeichnungen zum Projekt bildschirmfüllend (Z) – blättern mit ← →, Sprache „Zeichnung“, „nächste Seite“, „Zeichnung zu“">📄 Zeichnungen' + (drw.list.length ? ' <small>' + drw.list.length + '</small>' : '') + '</button>' +
     '<button type="button" class="btn small" data-saw="full" aria-pressed="' + full + '">' + (full ? '✕ Vollbild beenden' : '⛶ Vollbild') + '</button></div>' +
     (lst.sawCfgOpen ? sawCfgHtml(cfg) : '') + sawOverHtml(list, xi) +
     (ok ? '' : '<p class="warn">Diese Anordnung ist nicht ganz mit durchgehenden Schnitten trennbar – im Zuschnittplan prüfen.</p>') +
@@ -316,6 +317,7 @@ function sawGo(what) {
   }
   else if (what === 'nextsheet' && list[xi + 1]) lst.saw = { key: list[xi + 1].key, step: 0 };
   else if (what === 'full') { sawFull(!$('sawview').classList.contains('sawfull')); return; }
+  else if (what === 'drw') { drwOverlay(true); return; }
   else if (what === 'voice') { voiceToggle(); return; }
   else if (what === 'say') { lst.sawSay = !lst.sawSay; saveLst(); renderSaw(); if (lst.sawSay) sawSay(); return; }
   else if (what === 'ai') {
@@ -403,6 +405,7 @@ function sawGoStep(k) { lst.saw.step = k; sawPop = null; }
 // Steuerung wie die Knöpfe (aktion = Werkzeug saegen_steuern); Fehler als Exception mit Text zum Vorlesen
 function sawAction(aktion, o) {
   o = o || {};
+  if (/^zeichnung_/.test(aktion)) return drwAction(aktion, o); // Zeichnungen gehen auch ohne Zuschnitt
   if (!onSaw()) { lst.tab = 'saw'; saveLst(); setPage('lists'); }
   let c = sawCur();
   if (!c) throw new Error('Keine Teile für den Zuschnitt.');
@@ -468,11 +471,14 @@ function sawAction(aktion, o) {
 }
 const MOVES = new Set(['weiter', 'zurueck', 'naechster_streifen', 'vorheriger_streifen', 'naechste_platte', 'vorherige_platte', 'von_vorn', 'gehe_zu']);
 const SAW_HELP = 'Sag zum Beispiel: weiter, zurück, drucken, nächster Streifen, Streifen drei, nächste Platte, Platte zwei, Schritt fünf, von vorn, ' +
-  'wie weit, was kommt danach, nochmal, Ansage an oder aus, Etiketten aus, Fenster oder automatisch, Vollbild, Mikrofon aus.';
+  'wie weit, was kommt danach, nochmal, Ansage an oder aus, Etiketten aus, Fenster oder automatisch, Vollbild, Zeichnung, nächste Seite, Seite zwei, Zeichnung zu, Mikrofon aus.';
 function voiceCommand(c) {
   if (!onSaw()) return;
   const map = { next: 'weiter', prev: 'zurueck', strip: 'naechster_streifen', prevstrip: 'vorheriger_streifen', sheet: 'naechste_platte', prevsheet: 'vorherige_platte',
-    reset: 'von_vorn', print: 'drucken', printstrip: 'streifen_etikett', fullon: 'vollbild_an', fulloff: 'vollbild_aus', sayon: 'ansage_an', sayoff: 'ansage_aus', say: 'vorlesen' };
+    reset: 'von_vorn', print: 'drucken', printstrip: 'streifen_etikett', fullon: 'vollbild_an', fulloff: 'vollbild_aus', sayon: 'ansage_an', sayoff: 'ansage_aus', say: 'vorlesen',
+    drawon: 'zeichnung_an', drawoff: 'zeichnung_aus', pagenext: 'zeichnung_weiter', pageprev: 'zeichnung_zurueck' };
+  // Zeichnung offen: „weiter“/„zurück“ blättern in der Zeichnung, „Seite 3“ springt dorthin
+  if (drw.over && (c.cmd === 'next' || c.cmd === 'prev')) c = { cmd: c.cmd === 'next' ? 'pagenext' : 'pageprev' };
   try {
     if (c.cmd === 'status') { Voice.say(sawStatusText()); return; }
     if (c.cmd === 'help') { Voice.say(SAW_HELP); return; }
@@ -487,6 +493,7 @@ function voiceCommand(c) {
     if (c.cmd === 'gostrip') { a = 'gehe_zu'; o = { streifen: c.n }; }
     if (c.cmd === 'gosheet') { a = 'gehe_zu'; o = { platte: c.n }; }
     if (c.cmd === 'gostep') { a = 'gehe_zu'; o = { schritt: c.n }; }
+    if (c.cmd === 'gopage') { a = 'zeichnung_seite'; o = { seite: c.n }; }
     if (!a) return;
     sawAction(a, o);
     if (c.cmd === 'sayon') Voice.say('Ansage an.');
@@ -534,12 +541,13 @@ function sawSay() {
 // Seite oder Reiter verlassen: Mikrofon aus
 function voiceIdle() { if (voiceOn() && !onSaw()) { voice.ctl.stop(true); voice.heard = ''; voice.msg = ''; voice.reply = ''; } }
 document.addEventListener('keydown', (e) => {
-  if (state.page !== 'lists' || lst.tab !== 'saw' || e.altKey || e.ctrlKey || e.metaKey) return;
+  if (state.page !== 'lists' || lst.tab !== 'saw' || e.altKey || e.ctrlKey || e.metaKey || drw.over) return;
   if (e.target && /^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(e.target.tagName) && e.key === ' ') return;
   if (e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
   if (e.key === 'Escape' && sawPop) { sawGo('popclose'); return; }
   if (e.key === 'Escape' && $('sawview').classList.contains('sawfull')) { sawFull(false); return; }
   if (e.key === 'f' || e.key === 'F') { e.preventDefault(); sawGo('full'); return; }
+  if (e.key === 'z' || e.key === 'Z') { e.preventDefault(); sawGo('drw'); return; }
   if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); sawGo('next'); }
   else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); sawGo('prev'); }
 });

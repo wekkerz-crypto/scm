@@ -98,15 +98,16 @@
         gruppe: str('Gruppen-Schlüssel aus zuschnitt_lesen', { maxLength: 200 }),
         format: { type: ['object', 'null'], properties: { L: num('Länge', { minimum: 100, maximum: 10000 }), W: num('Breite', { minimum: 100, maximum: 5000 }) }, required: ['L', 'W'], additionalProperties: false, description: 'Format nur für die Gruppe; null = Standard' } }) },
     { name: 'seite_zeigen', description: 'Wechselt die Ansicht der Seite (zum Zeigen eines Ergebnisses).',
-      input_schema: obj({ seite: str('Seite', { enum: ['programme', 'moebel3d', 'stueckliste', 'zuschnitt', 'saegen', 'etiketten', 'material'] }),
+      input_schema: obj({ seite: str('Seite', { enum: ['programme', 'moebel3d', 'stueckliste', 'zuschnitt', 'saegen', 'etiketten', 'material', 'zeichnungen'] }),
         teil: int('Bauteil-Nummer, die gewählt werden soll (Programme)', { minimum: 1 }) }, ['seite']) },
     { name: 'saegen_status', description: 'Liest den Stand im Sägemodus: aktuelle Platte (Material, Dicke, Nummer), Schritt, Streifen, Art des Schnitts, Maß am Anschlag, Richtung, fertige Teile, was danach kommt, Etiketten-Modus, Ansage, Liste aller Platten mit Haken „geschnitten“.',
       input_schema: obj({}) },
-    { name: 'saegen_steuern', description: 'Steuert den Sägemodus (öffnet ihn bei Bedarf). gehe_zu mit schritt, streifen und/oder platte (Nummern wie angezeigt, ab 1; platte = Nummer innerhalb des aktuellen Materials, mit gruppe_material auch ein anderes). Gibt den neuen Stand zurück.',
+    { name: 'saegen_steuern', description: 'Steuert den Sägemodus (öffnet ihn bei Bedarf). gehe_zu mit schritt, streifen und/oder platte (Nummern wie angezeigt, ab 1; platte = Nummer innerhalb des aktuellen Materials, mit gruppe_material auch ein anderes). zeichnung_an/aus/weiter/zurueck/seite zeigt die PDF-Zeichnungen des Projekts bildschirmfüllend und blättert darin. Gibt den neuen Stand zurück.',
       input_schema: obj({ aktion: str('Aktion', { enum: ['weiter', 'zurueck', 'naechster_streifen', 'vorheriger_streifen', 'naechste_platte', 'vorherige_platte', 'von_vorn',
-        'gehe_zu', 'drucken', 'streifen_etikett', 'vollbild_an', 'vollbild_aus', 'etiketten_aus', 'etiketten_fenster', 'etiketten_automatisch', 'ansage_an', 'ansage_aus', 'vorlesen'] }),
+        'gehe_zu', 'drucken', 'streifen_etikett', 'vollbild_an', 'vollbild_aus', 'etiketten_aus', 'etiketten_fenster', 'etiketten_automatisch', 'ansage_an', 'ansage_aus', 'vorlesen', 'zeichnung_an', 'zeichnung_aus', 'zeichnung_weiter', 'zeichnung_zurueck', 'zeichnung_seite'] }),
         schritt: int('Schritt-Nummer (gehe_zu)', { minimum: 1 }), streifen: int('Streifen-Nummer (gehe_zu)', { minimum: 1 }), platte: int('Platten-Nummer (gehe_zu)', { minimum: 1 }),
-        gruppe_material: str('Teil des Material-Namens für gehe_zu mit platte, z. B. „U708“', { maxLength: 80 }) }, ['aktion']) },
+        gruppe_material: str('Teil des Material-Namens für gehe_zu mit platte, z. B. „U708“', { maxLength: 80 }),
+        seite: int('Seite in der Zeichnung (zeichnung_seite)', { minimum: 1 }), zeichnung: int('Nummer der Zeichnung (zeichnung_seite, sonst die offene)', { minimum: 1 }) }, ['aktion']) },
   ];
 
   // Prüfung der Eingaben nach dem Schema (die KI-Ausgabe ist ungeprüft): Fehlertext oder ''

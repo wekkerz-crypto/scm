@@ -2,7 +2,7 @@
  * Weckwop – Möbel 3D und Material (08-moebel3d-material.js)
  * PDF-Dateien, Seitenwechsel (`setPage`), Möbel 3D (Baugruppe, Maße), Plattenfarben und Dekore (Bibliothek und lokal), Seite „Material“.
  * Teil des Programms in web/index.html: alle Dateien unter js/app/ teilen sich die obersten Namen (state, lst, $, render …)
- * und werden dort der Reihenfolge nach (01 … 12) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder
+ * und werden dort der Reihenfolge nach (01 … 13) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder
  * früheren Dateien benutzen – Funktionen aus späteren Dateien nur in Ereignissen (Klick …), die erst danach kommen.
  */
 'use strict';
@@ -89,12 +89,14 @@ function setPage(pg) {
   $('lblpage').hidden = pg !== 'labels';
   $('matpage').hidden = pg !== 'material';
   $('startpage').hidden = pg !== 'start';
+  $('drwpage').hidden = pg !== 'drawings';
   document.querySelectorAll('.pagetabs [data-page]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.page === pg)));
   if (pg === 'model') renderModel();
   if (pg === 'lists') renderLists();
   if (pg === 'labels') renderLD();
   if (pg === 'material') renderMat();
   if (pg === 'start') renderStart();
+  if (pg === 'drawings') renderDrw();
 }
 document.querySelectorAll('.pagetabs [data-page]').forEach((b) => b.addEventListener('click', () => setPage(b.dataset.page)));
 // Bauteile mit STEP (DXF hat kein 3D-Modell); Nummer = Platz in der Programmliste

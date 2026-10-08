@@ -2,7 +2,7 @@
  * Weckwop – Programm-Schnittstelle und KI-Assistent (11-schnittstelle-ki.js)
  * `window.Weckwop.api` (Werkzeuge der KI), KI-Fenster (ChatGPT/Claude, auch über den Server), Rückgängig.
  * Teil des Programms in web/index.html: alle Dateien unter js/app/ teilen sich die obersten Namen (state, lst, $, render …)
- * und werden dort der Reihenfolge nach (01 … 12) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder
+ * und werden dort der Reihenfolge nach (01 … 13) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder
  * früheren Dateien benutzen – Funktionen aus späteren Dateien nur in Ereignissen (Klick …), die erst danach kommen.
  */
 'use strict';
@@ -153,7 +153,7 @@ const api = {
     return api.zuschnitt_lesen();
   },
   seite_zeigen(input) {
-    const to = { programme: ['pgmx'], moebel3d: ['model'], stueckliste: ['lists', 'bom'], zuschnitt: ['lists', 'cut'], saegen: ['lists', 'saw'], etiketten: ['labels'], material: ['material'] }[input.seite];
+    const to = { programme: ['pgmx'], moebel3d: ['model'], stueckliste: ['lists', 'bom'], zuschnitt: ['lists', 'cut'], saegen: ['lists', 'saw'], etiketten: ['labels'], material: ['material'], zeichnungen: ['drawings'] }[input.seite];
     if (!to) throw new Error('unbekannte Seite');
     if (input.teil) { apiPartOf(input.teil); state.sel = input.teil - 1; }
     if (to[1]) { lst.tab = to[1]; saveLst(); }

@@ -2,7 +2,7 @@
  * Weckwop – Teile laden, Sitzung, Projektdatei (02-teile-sitzung.js)
  * STEP/DXF laden (`addStep`/`addDxf`), Berechnung je Teil (`compute`), Sitzung im Browser (IndexedDB), Projektdatei .s2m (`projectPayload`/`applyProject`).
  * Teil des Programms in web/index.html: alle Dateien unter js/app/ teilen sich die obersten Namen (state, lst, $, render …)
- * und werden dort der Reihenfolge nach (01 … 12) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder
+ * und werden dort der Reihenfolge nach (01 … 13) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder
  * früheren Dateien benutzen – Funktionen aus späteren Dateien nur in Ereignissen (Klick …), die erst danach kommen.
  */
 'use strict';
@@ -130,6 +130,8 @@ function projectPayload() {
   data.settings = JSON.parse(JSON.stringify(state.settings));
   // gelernte Regeln gehen mit (auf einem anderen Gerät werden fehlende dazugenommen)
   if (learn.list.length) data.regeln = JSON.parse(JSON.stringify(learn.list));
+  // Zeichnungen (PDF/Bilder) gehören zum Projekt
+  if (drw.list.length) data.zeichnungen = drwPayload();
   if (typeof proj !== 'undefined' && proj.name) data.meta = { name: proj.name, kunde: proj.kunde || '', notiz: proj.notiz || '' };
   return data;
 }
@@ -163,6 +165,7 @@ function applyProject(data) {
   anim.result = null;
   if (Array.isArray(data.dekore)) mergeDecors(data.dekore);
   if (Array.isArray(data.regeln)) mergeLearned(data.regeln);
+  drwSet(data.zeichnungen);
   // Einstellungen des Projekts (Werkzeuge, Regeln, Sauger …): nur nach Nachfrage, wenn sie von den eigenen abweichen
   if (data.settings && typeof data.settings === 'object') {
     const strip = (o) => { const c = Object.assign({}, o); for (const k of SETTINGS_LOCAL) delete c[k]; return JSON.stringify(Object.keys(c).sort().map((k) => [k, c[k]])); };

@@ -7,9 +7,9 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
 
 - `web/index.html` – nur Seitenaufbau (HTML), läuft offline; Stil `web/css/step2maestro.css`; Programm der Oberfläche in
   `web/js/app/01-…12-….js` (klassische Skripte, gemeinsamer globaler Bereich – Reihenfolge der `<script>`-Tags einhalten;
-  beim Laden nur Funktionen aus derselben oder früheren Dateien aufrufen, Asynchrones wie `loadDecors()` erst in `12-projekte-start.js`):
+  beim Laden nur Funktionen aus derselben oder früheren Dateien aufrufen, Asynchrones wie `loadDecors()` erst in `13-projekte-start.js`):
   01 Grundlagen/Einstellungen, 02 Teile/Sitzung/Projektdatei, 03 Anzeige, 04 Etiketten, 05 Stückliste, 06 Zuschnitt, 07 Sägemodus/Sprache,
-  08 PDF/Seiten/Möbel 3D/Material/Dekore, 09 Profile/Ansicht/Animation, 10 Speichern/Ereignisse, 11 Schnittstelle/KI, 12 Projekte/Start.
+  08 PDF/Seiten/Möbel 3D/Material/Dekore, 09 Profile/Ansicht/Animation, 10 Speichern/Ereignisse, 11 Schnittstelle/KI, 12 Zeichnungen, 13 Projekte/Start.
   Module in `web/js/` (UMD, Browser und Node):
   `step.js` (STEP lesen), `panel.js` (Erkennung), `xcs.js` (Planung + Programm), `convert.js` (Namen, .bat),
   `toolpath.js` (Animation), `tools.js` (.tlgx). `tools-default.js` und `sample.js` erzeugt `node tools/build_defaults.js`.
@@ -70,6 +70,14 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   {T, board, qty})` → nur Formatfräsen; Löschen `data-bomdel` (zweiter Klick).
   Eigene Farben mit Namen: Schlüssel `#rrggbb[/u]~Name`, gemerkt in `settings.customBoards`. Programmläufe `progRuns()` (Teil → Stücklisten-Position, `row.qty` × Zeit; `#pqty` oben im Teil, `.chip.runs`, `.runsum`). Zeit: `Toolpath.estimate`
   (Einstellungen `est*`), `partTime` in `app/03-anzeige.js`. Projektdatei: siehe Projekte.
+- Zeichnungen (`state.page` 'drawings', `#drwpage`, Reiter mit Zähler `#ptn-drw`, Adresse `#zeichnungen`): `app/12-zeichnungen.js` –
+  `drw` = {list [{id, name, mime, size, data (Data-URL)}], i, page, fit page|width, zoom, over}; IndexedDB `DRW_KEY` (nicht localStorage),
+  `drwClean` (nur PDF/PNG/JPG/WebP/GIF), `addDrawingFiles` (auch PDF-Ablegen auf jeder Seite in `10-…`), `drwSet` (applyProject/projNew),
+  Projektdatei `data.zeichnungen` (`drwPayload`), `projSig` zählt mit, Projektordner `Zeichnungen/` (`drwBytes`, PHP `rmTree` + `backupWrite`);
+  Anzeige pdf.js 3.11 (`js/vendor/pdfjs`, `drwLib` lädt pdf.worker.min.js als Skript = Hauptfaden, auch file://; `isEvalSupported: false`),
+  `drwViewHtml(big)`/`drwWire`/`drwPaint` (Leinwand × devicePixelRatio, ≤ 16 MP), `drwGo(±1)` über Dateigrenzen, `drwGoto`; Fenster
+  `#drwover` (`drwOverlay`, Esc, Tasten mit Vorrang vor dem Sägemodus) – Sägemodus `data-saw="drw"`/Taste Z, `sawAction('zeichnung_…')` →
+  `drwAction`; Sprache drawon/drawoff/pagenext/pageprev/gopage n (offen: next/prev blättern). Reiter oben: 7 Spalten ab 1300 px, sonst umbrechend.
 - Projekte (Startseite, `state.page` 'start', `#startpage`, `renderStart`; beim Start immer, außer Adresse `#saegen` … `HASH_PAGES`):
   aktuelles Projekt `proj` (localStorage `step2xcs.project.v1`: id, store 'server'|'local', name, kunde, notiz, basis, sig = `projSig()`
   → `projDirty`/`projMark` (• an `#projsave`), `projLeaveOk`), `projSave`/`projOpen`/`projNew`/`projCopy`/`projDelete`/`projExport`;

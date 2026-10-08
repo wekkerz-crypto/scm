@@ -2,7 +2,7 @@
  * Weckwop – Zuschnittplan (06-zuschnitt.js)
  * Zuschnittplan je Material und Dicke, Zeichnung, PDF, Teile von Hand verschieben, Teil von Hand anlegen, Kantenregeln.
  * Teil des Programms in web/index.html: alle Dateien unter js/app/ teilen sich die obersten Namen (state, lst, $, render …)
- * und werden dort der Reihenfolge nach (01 … 12) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder
+ * und werden dort der Reihenfolge nach (01 … 13) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder
  * früheren Dateien benutzen – Funktionen aus späteren Dateien nur in Ereignissen (Klick …), die erst danach kommen.
  */
 'use strict';

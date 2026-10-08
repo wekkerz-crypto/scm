@@ -1489,6 +1489,97 @@ test('Web-Tool: mehrere Dekore auf einmal – Name ersetzen, Bildbreite (Maserun
   }
 });
 
+test('Web-Tool: Zeichnungen (PDF) zum Projekt – Seite, blättern, Projektdatei, Projektordner, Fenster im Sägemodus mit Sprache', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  // Test-PDF mit drei Seiten (eigener PDF-Schreiber) und eine zweite mit einer Seite
+  const MiniPdf = require('../web/js/pdf.js');
+  const mk = (n, title) => { const d = MiniPdf.doc(297, 210); for (let k = 1; k <= n; k++) { d.page(); d.rect(10, 10, 277, 190, { stroke: [0, 0, 0], lw: 0.5 }); d.text(20, 30, title + ' Blatt ' + k, { size: 20 }); } return Buffer.from(d.save()); };
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1440, height: 950 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page.replace('#programme', '#zeichnungen'));
+    await p.waitForSelector('#drwpage:not([hidden])');
+    assert.match(await p.textContent('#drwpage'), /Keine Zeichnung geladen/);
+    await p.setInputFiles('#drwfile', [{ name: 'Unterschrank.pdf', mimeType: 'application/pdf', buffer: mk(3, 'Unterschrank') }, { name: 'Detail.pdf', mimeType: 'application/pdf', buffer: mk(1, 'Detail') }]);
+    await p.waitForFunction(() => drw.list.length === 2);
+    assert.strictEqual(await p.textContent('#ptn-drw'), '2');
+    await p.click('[data-drwsel="0"]');
+    const painted = () => p.waitForFunction(() => { const c = document.querySelector('.drwcv'); return c && c.width > 300; }, null, { timeout: 20000 });
+    await painted();
+    assert.match(await p.textContent('.drwpos'), /Unterschrank\s+Seite 1 \/ 3/);
+    // blättern: Knopf, Tasten, Klick rechts in die Zeichnung; über das Ende zur nächsten Zeichnung
+    await p.click('[data-drw="next"]');
+    await p.waitForFunction(() => /Seite 2 \/ 3/.test(document.querySelector('.drwpos').textContent));
+    await p.keyboard.press('ArrowRight');
+    await p.waitForFunction(() => /Seite 3 \/ 3/.test(document.querySelector('.drwpos').textContent));
+    const box = await p.$eval('.drwstage', (e) => { const r = e.getBoundingClientRect(); return { x: r.right - 40, y: r.top + r.height / 2 }; });
+    await p.mouse.click(box.x, box.y);
+    await p.waitForFunction(() => /Detail\s+Seite 1 \/ 1/.test(document.querySelector('.drwpos').textContent));
+    await p.keyboard.press('ArrowLeft');
+    await p.waitForFunction(() => /Unterschrank\s+Seite 3 \/ 3/.test(document.querySelector('.drwpos').textContent));
+    // Reihenfolge und Name
+    await p.click('[data-drwdown="0"]');
+    assert.deepStrictEqual(await p.evaluate(() => drw.list.map((d) => d.name)), ['Detail', 'Unterschrank']);
+    await p.click('[data-drwren="1"]');
+    await p.fill('.drwname', 'Unterschrank 600');
+    await p.press('.drwname', 'Enter');
+    assert.strictEqual(await p.evaluate(() => drw.list[1].name), 'Unterschrank 600');
+    // Projektdatei und Projektordner nehmen die Zeichnungen mit; neues Projekt leert, Öffnen bringt sie zurück
+    const data = await p.evaluate(() => projectPayload());
+    assert.strictEqual(data.zeichnungen.length, 2);
+    assert.match(data.zeichnungen[1].data, /^data:application\/pdf;base64,/);
+    const names = await p.evaluate((d) => projFolderFiles(d).map((f) => f.name).filter((n) => /^Zeichnungen\//.test(n)), data);
+    assert.deepStrictEqual(names, ['Zeichnungen/Detail.pdf', 'Zeichnungen/Unterschrank 600.pdf']);
+    await p.evaluate(() => { drwSet([]); });
+    assert.strictEqual(await p.textContent('#ptn-drw'), '');
+    await p.evaluate((d) => applyProject(d), data);
+    assert.deepStrictEqual(await p.evaluate(() => drw.list.map((d) => d.name)), ['Detail', 'Unterschrank 600']);
+    // ungültige Einträge aus einer Datei werden verworfen
+    assert.strictEqual(await p.evaluate(() => drwClean([{ name: 'x', data: 'data:text/html;base64,PGI+' }, { name: 'y', data: 'javascript:alert(1)' }]).length), 0);
+    // bleibt nach dem Neuladen (im Browser gespeichert)
+    await p.waitForTimeout(400);
+    await p.reload();
+    await p.waitForFunction(() => typeof drw !== 'undefined' && drw.list.length === 2);
+    // Sägemodus: Knopf öffnet das Fenster, Tasten blättern dort (nicht im Sägen), Esc schließt
+    await p.evaluate(() => { lst.tab = 'saw'; saveLst(); setPage('lists'); });
+    const step0 = await p.evaluate(() => lst.saw && lst.saw.step);
+    assert.match(await p.textContent('[data-saw="drw"]'), /Zeichnungen\s*2/);
+    await p.click('[data-saw="drw"]');
+    await p.waitForSelector('#drwover .drwview.big');
+    await p.waitForFunction(() => { const c = document.querySelector('#drwover .drwcv'); return c && c.width > 300; }, null, { timeout: 20000 });
+    await p.keyboard.press('ArrowRight');
+    await p.waitForFunction(() => /Unterschrank 600\s+Seite 1 \/ 3/.test(document.querySelector('#drwover .drwpos').textContent));
+    assert.strictEqual(await p.evaluate(() => lst.saw && lst.saw.step), step0);
+    await p.keyboard.press('Escape');
+    assert.ok(!(await p.$('#drwover')));
+    // Sprache: „Zeichnung“ öffnet, „weiter“ blättert in der offenen Zeichnung, „Seite 3“, „Zeichnung zu“
+    await p.evaluate(() => voiceCommand(Voice.parseCmd('Zeichnung zeigen')));
+    await p.waitForSelector('#drwover');
+    await p.evaluate(() => voiceCommand(Voice.parseCmd('Seite drei')));
+    await p.waitForFunction(() => drw.page === 3);
+    await p.evaluate(() => voiceCommand(Voice.parseCmd('zurück')));
+    await p.waitForFunction(() => drw.page === 2);
+    assert.strictEqual(await p.evaluate(() => lst.saw && lst.saw.step), step0);
+    await p.evaluate(() => voiceCommand(Voice.parseCmd('Zeichnung zu')));
+    assert.ok(!(await p.$('#drwover')));
+    // KI-Werkzeug (saegen_steuern)
+    const st = await p.evaluate(() => window.Weckwop.api.saegen_steuern({ aktion: 'zeichnung_seite', zeichnung: 1, seite: 1 }));
+    assert.strictEqual(st.zeichnung_offen, true);
+    await p.waitForFunction(() => drw.i === 0 && drw.page === 1);
+    await p.keyboard.press('Escape');
+    // Löschen: zweiter Klick
+    await p.evaluate(() => setPage('drawings'));
+    await p.click('[data-drwdel="0"]');
+    assert.match(await p.textContent('[data-drwdel="0"]'), /Löschen\?/);
+    await p.click('[data-drwdel="0"]');
+    assert.deepStrictEqual(await p.evaluate(() => drw.list.map((d) => d.name)), ['Unterschrank 600']);
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});
+
 // Dekor-Bibliothek (PHP auf dem Webspace): eingebauter PHP-Server mit web/ + tools/webserver/dekore in einem Testordner
 const { execFileSync, spawn } = require('child_process');
 let hasPhp = false;

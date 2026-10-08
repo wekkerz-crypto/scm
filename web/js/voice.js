@@ -48,11 +48,16 @@
   /*
    * Befehle (Reihenfolge = Vorrang: längere/genauere Wendungen vor kurzen Wörtern). Ergebnis { cmd, n?, arg? }:
    *   next, prev, strip, prevstrip, sheet, prevsheet, gostrip n, gosheet n, gostep n, reset, print, printstrip,
-   *   lmode arg (off|popup|auto), sayon, sayoff, say, status, preview, help, fullon, fulloff, off
+   *   lmode arg (off|popup|auto), sayon, sayoff, say, status, preview, help, fullon, fulloff, off,
+   *   drawon, drawoff (Zeichnung), pagenext, pageprev, gopage n (Seite in der Zeichnung)
    */
   const RULES = [
     ['off', /\b(mikro(fon)? (aus|ausschalten|stopp)|sprache (aus|ausschalten)|(nicht mehr|aufhoeren (zu|mit)) zuhoeren|zuhoeren (aus|beenden)|hoer auf zuzuhoeren)\b/],
     ['help', /\b(hilfe|was kann ich sagen|welche befehle|befehle)\b/],
+    ['drawoff', /\b(zeichnung(en)?|plan|pdf) (zu|aus|schliessen|weg|beenden|ausblenden)\b|\bzurueck zur saege\b/],
+    ['drawon', /\b(zeichnung(en)?|pdf)( (zeigen|an|auf|oeffnen|anzeigen))?\b|\b(zeig|zeige) (mir )?(die )?(zeichnung(en)?|pdf)\b/],
+    ['pageprev', /\b((vorherige[nrs]?|letzte[nrs]?|vorige[nr]?) seite|seite zurueck|zurueckblaettern)\b/],
+    ['pagenext', /\b((naechste[nrs]?|neue[nrs]?|folgende[nrs]?) seite|seite (weiter|vor)|umblaettern|weiterblaettern|blaettern)\b/],
     ['lmode', /\b(etikett(en)?|label|aufkleber) (aus|ausschalten|ab|abschalten|weg|keine)\b|\bkeine etiketten\b/, 'off'],
     ['lmode', /\b(etikett(en)?|label) (automatisch|auto|sofort)\b|\bautomatisch drucken\b|\bautomatik\b/, 'auto'],
     ['lmode', /\b(etikett(en)?|label) (an|ein|einschalten|fenster|anzeigen)\b/, 'popup'],
@@ -86,7 +91,7 @@
   }
   function parseAny(t) {
     // mit Nummer: „Streifen 3“, „Platte zwei“, „Schritt 5“ (vor den übrigen Regeln)
-    for (const [cmd, word] of [['gostrip', 'streifen'], ['gosheet', 'platte'], ['gostep', 'schritt']]) {
+    for (const [cmd, word] of [['gostrip', 'streifen'], ['gosheet', 'platte'], ['gostep', 'schritt'], ['gopage', 'seite']]) {
       const n = numAfter(t, word);
       if (n) return { cmd: cmd, n: n };
     }
@@ -102,8 +107,9 @@
     'einen zurück', 'drucken', 'etikett', 'etiketten', 'etikett drucken', 'streifen etikett', 'nächster streifen', 'nächsten streifen', 'vorheriger streifen',
     'nächste platte', 'vorherige platte', 'von vorne', 'von vorn', 'wiederholen', 'nochmal', 'noch einmal', 'ansage', 'ansage an', 'ansage aus', 'ruhe',
     'etiketten aus', 'etiketten an', 'etiketten automatisch', 'vollbild', 'vollbild aus', 'wie weit', 'wie viele noch', 'was kommt danach', 'hilfe',
-    'mikrofon aus', 'sprache aus']
-    .concat(...['streifen', 'platte', 'schritt'].map((w) => NUMW.map((n) => w + ' ' + n)), ['[unk]']);
+    'mikrofon aus', 'sprache aus', 'zeichnung', 'zeichnungen', 'zeichnung zeigen', 'zeichnung zu', 'zeichnung schließen', 'nächste seite',
+    'vorherige seite', 'seite zurück', 'umblättern']
+    .concat(...['streifen', 'platte', 'schritt', 'seite'].map((w) => NUMW.map((n) => w + ' ' + n)), ['[unk]']);
 
   const g = typeof window !== 'undefined' ? window : {};
   const webSpeech = () => g.SpeechRecognition || g.webkitSpeechRecognition || null;

@@ -1,8 +1,8 @@
 /*
- * Weckwop – Projekte und Start (12-projekte-start.js)
+ * Weckwop – Projekte und Start (13-projekte-start.js)
  * Projektseite (Server/Browser), Projektordner, Sicherungsordner, STEP aktualisieren – und der Start des Programms (läuft als letztes).
  * Teil des Programms in web/index.html: alle Dateien unter js/app/ teilen sich die obersten Namen (state, lst, $, render …)
- * und werden dort der Reihenfolge nach (01 … 12) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder
+ * und werden dort der Reihenfolge nach (01 … 13) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder
  * früheren Dateien benutzen – Funktionen aus späteren Dateien nur in Ereignissen (Klick …), die erst danach kommen.
  */
 'use strict';
@@ -25,7 +25,7 @@ function projSet(o) { Object.assign(proj, o); storeJson(PROJ_KEY, proj); projMar
 function projSig() {
   const d = sessionData();
   delete d.sel;
-  const t = JSON.stringify([d, projectLists(), proj.name, proj.kunde, proj.notiz]);
+  const t = JSON.stringify([d, projectLists(), proj.name, proj.kunde, proj.notiz, drw.list.map((z) => z.id + ':' + z.name + ':' + z.size)]);
   let h = 0;
   for (let i = 0; i < t.length; i++) h = (Math.imul(h, 31) + t.charCodeAt(i)) | 0;
   return (h >>> 0).toString(36) + ':' + t.length;
@@ -193,6 +193,7 @@ function projNew() {
   saveLst();
   if (mdl.viewer) mdl.viewer.clearDims();
   mdl.dimsSaved = null;
+  drwSet([]);
   projSet({ id: null, store: null, name: '', kunde: '', notiz: '', basis: '', saved: null, sig: null, ordner: '' });
   render();
   renderStart();
@@ -259,6 +260,7 @@ function projFolderFiles(data) {
     'Projekt.s2m     – das ganze Projekt; in Weckwop auf der Projektseite „Datei öffnen (.s2m)“',
     'STEP/           – die geladenen STEP-/DXF-Dateien (Stand beim Speichern)',
     'Programme/      – die .xcs-Programme und konvertieren.bat (wandelt sie mit dem X-Konverter in .pgmx)',
+    'Zeichnungen/    – die PDF-Zeichnungen und Bilder zum Projekt',
     'Versionen/      – frühere Stände von Projekt.s2m (nur auf dem Server)', ''].join('\r\n') });
   const seen = new Set();
   for (const f of data.session.files || []) {
@@ -267,6 +269,13 @@ function projFolderFiles(data) {
     for (let k = 2; seen.has(n.toLowerCase()); k++) n = n.replace(/(\.\w+)$/, '_' + k + '$1');
     seen.add(n.toLowerCase());
     files.push({ name: 'STEP/' + n, text: f.text });
+  }
+  const seenZ = new Set();
+  for (const z of drwClean(data.zeichnungen)) {
+    let n = fileSafe(z.name) + drwFileExt(z);
+    for (let k = 2; seenZ.has(n.toLowerCase()); k++) n = fileSafe(z.name) + '_' + k + drwFileExt(z);
+    seenZ.add(n.toLowerCase());
+    files.push({ name: 'Zeichnungen/' + n, data: drwBytes(z) });
   }
   const progs = state.parts.flatMap(partFiles);
   for (const f of progs) files.push({ name: 'Programme/' + fileSafe(f.name), text: f.text });
@@ -323,7 +332,7 @@ async function backupReady(ask) {
 async function backupWrite(data) {
   const dir = await backup.handle.getDirectoryHandle(fileSafe(proj.name), { create: true });
   // Programme und STEP frisch (alte Programme nicht liegen lassen)
-  for (const sub of ['Programme', 'STEP']) { try { await dir.removeEntry(sub, { recursive: true }); } catch (e) { /* gab es nicht */ } }
+  for (const sub of ['Programme', 'STEP', 'Zeichnungen']) { try { await dir.removeEntry(sub, { recursive: true }); } catch (e) { /* gab es nicht */ } }
   for (const f of projFolderFiles(data)) {
     const parts = f.name.split('/');
     let d = dir;
@@ -413,7 +422,7 @@ $('stepupd').addEventListener('change', async (e) => {
 // zuletzt benutzte Arbeitsseite (nicht die Projektseite)
 // Startadressen: index.html#saegen öffnet gleich den Sägemodus (z. B. am Pi), #programme, #listen, #zuschnitt …
 const HASH_PAGES = { projekte: ['start'], programme: ['pgmx'], moebel: ['model'], moebel3d: ['model'], listen: ['lists', 'bom'], stueckliste: ['lists', 'bom'],
-  zuschnitt: ['lists', 'cut'], saegen: ['lists', 'saw'], etiketten: ['labels'], material: ['material'] };
+  zuschnitt: ['lists', 'cut'], saegen: ['lists', 'saw'], etiketten: ['labels'], material: ['material'], zeichnungen: ['drawings'] };
 const lastWorkPage = () => { const p = loadJson(PAGE_KEY, 'pgmx'); return p && p !== 'start' ? p : 'pgmx'; };
 
 // --- Darstellung
@@ -518,6 +527,7 @@ renderProfileEditor();
 (async () => {
   // gespeicherte Sitzung (auch eine geleerte Liste) – sonst beim ersten Öffnen die Beispielteile
   const had = await restoreSession();
+  await drwLoadSaved();
   if (!had) for (const s of (window.SAMPLE_STEPS || [])) addStep(s.text, 'Beispiel: ' + s.name);
   if (!had) projSet({ sig: projSig() }); // Beispielteile zählen nicht als ungespeichertes Projekt
   sessionReady = true;

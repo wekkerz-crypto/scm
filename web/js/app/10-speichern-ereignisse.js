@@ -2,7 +2,7 @@
  * Weckwop – Speichern und Ereignisse (10-speichern-ereignisse.js)
  * Speichern (.xcs, ZIP mit konvertieren.bat), Meldungen (`toast`), Datei ablegen/wählen, Reihenfolge-Regel, Werkzeugdatei.
  * Teil des Programms in web/index.html: alle Dateien unter js/app/ teilen sich die obersten Namen (state, lst, $, render …)
- * und werden dort der Reihenfolge nach (01 … 12) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder
+ * und werden dort der Reihenfolge nach (01 … 13) geladen. Beim Laden ausgeführter Code darf nur Namen aus dieser oder
  * früheren Dateien benutzen – Funktionen aus späteren Dateien nur in Ereignissen (Klick …), die erst danach kommen.
  */
 'use strict';
@@ -99,14 +99,19 @@ const over = $('dropover');
 const hasFiles = (e) => e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
 // Material-Seite: Bilder werden zu Dekoren (Feld „Dekor-Bilder hierher ziehen“), STEP/DXF wie sonst
 const isImg = (f) => /^image\//.test(f.type) || /\.(jpe?g|png|webp|gif|bmp)$/i.test(f.name);
-['dragenter', 'dragover'].forEach((t) => document.addEventListener(t, (e) => { if (!hasFiles(e)) return; e.preventDefault(); if (state.page !== 'material') over.hidden = false; }));
+['dragenter', 'dragover'].forEach((t) => document.addEventListener(t, (e) => { if (!hasFiles(e)) return; e.preventDefault(); if (state.page !== 'material' && state.page !== 'drawings') over.hidden = false; }));
 document.addEventListener('dragleave', (e) => { if (!e.relatedTarget) over.hidden = true; });
 document.addEventListener('drop', (e) => { e.preventDefault(); over.hidden = true; });
 document.addEventListener('drop', (e) => {
   if (!e.dataTransfer || !e.dataTransfer.files.length) return;
-  const fs = Array.from(e.dataTransfer.files);
+  let fs = Array.from(e.dataTransfer.files);
+  // PDF (überall) und auf der Seite „Zeichnungen“ auch Bilder → Zeichnungen zum Projekt
+  const isPdf = (f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+  const toDrw = fs.filter((f) => isPdf(f) || (state.page === 'drawings' && isImg(f)));
+  if (toDrw.length) { addDrawingFiles(toDrw); fs = fs.filter((f) => !toDrw.includes(f)); }
+  if (!fs.length) return;
   if (state.page === 'material' && fs.some(isImg)) { addDecorFiles(fs.filter(isImg)); if (fs.some((f) => !isImg(f))) loadFiles(fs.filter((f) => !isImg(f))); return; }
-  loadFiles(e.dataTransfer.files);
+  loadFiles(fs);
 });
 $('reset').addEventListener('click', () => {
   if (!confirm('Alle Werkzeuge & Regeln auf Standard zurücksetzen?\n(Eigene Farben, Etikett-Layout und Werkstück-Profile bleiben.)')) return;

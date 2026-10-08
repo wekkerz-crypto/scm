@@ -271,8 +271,8 @@ switch ($a) {
     }
     $dir = $base . '/' . $cur;
     if (!is_dir($dir) && !@mkdir($dir, 0755, true)) fail('Projektordner kann nicht angelegt werden.', 500);
-    // Programme und STEP immer frisch (keine alten Programme liegen lassen); Versionen bleiben
-    foreach (['STEP', 'Programme'] as $sub) rmTree($dir . '/' . $sub);
+    // Programme, STEP und Zeichnungen immer frisch (nichts Altes liegen lassen); Versionen bleiben
+    foreach (['STEP', 'Programme', 'Zeichnungen'] as $sub) rmTree($dir . '/' . $sub);
     $n = 0;
     foreach ($entries as $path => $data) {
       $sp = safePath((string) $path);

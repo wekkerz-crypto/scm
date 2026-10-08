@@ -385,6 +385,21 @@ Dritte Seite oben (**Listen**):
   Eilgang und Werkzeugwechsel; Werte unter Einstellungen → *Zeitschätzung*. Mit dem **Korrekturfaktor** an die echte
   Maschinenzeit anpassen (gemessene ÷ geschätzte Zeit an 2–3 Teilen).
 
+### Zeichnungen (PDF zum Projekt)
+
+Reiter **Zeichnungen**: PDF-Zeichnungen (auch Bilder, PNG/JPG) mit *+ PDF / Bild hinzufügen* oder einfach auf die Seite
+ziehen (PDF werden auf jeder Seite als Zeichnung übernommen). Links die Liste (umbenennen ✎, Reihenfolge ↑↓, löschen mit
+zweitem Klick), rechts die Zeichnung seitenfüllend: **Zurück / Weiter**, Klick rechts bzw. links in die Zeichnung, ← → oder
+Bild ↑/↓ – am Ende einer PDF geht es mit der nächsten weiter. *Ganz*/*Breite*, − / + zum Vergrößern, **⛶ Vollbild** (F).
+Die Zeichnungen gehören zum Projekt: sie gehen mit in die Projektdatei (.s2m), auf den Server (damit auch auf den Pi) und in
+den Projektordner unter `Zeichnungen/`; bis zum Speichern bleiben sie im Browser. Neues Projekt = keine Zeichnungen.
+
+**Im Sägemodus:** Knopf **📄 Zeichnungen** (oder Taste Z) legt die Zeichnung bildschirmfüllend über die Säge-Ansicht, mit
+großen Knöpfen, Reitern je Zeichnung und *✕ Schließen* (Esc); der Stand beim Sägen bleibt dabei unverändert. Sprache:
+„Zeichnung“, „nächste Seite“ / „Seite zurück“, „Seite drei“, „Zeichnung zu“ – solange die Zeichnung offen ist, blättern
+auch „weiter“ und „zurück“ darin. Der KI-Assistent kann sie über `saegen_steuern` (zeichnung_an/…/seite) zeigen.
+PDF-Anzeige: pdf.js 3.11 (`js/vendor/pdfjs`, offline, ohne Ausführung von Skripten aus der PDF).
+
 ### Projekte (Startseite)
 
 Beim Öffnen zeigt Weckwop die **Projektseite** (erster Reiter *Projekte*): oben das **aktuelle Projekt** mit Name,
@@ -419,7 +434,7 @@ Material, Anzahl, Kanten und Faser (auch einen umbenannten Namen); neue Teile ko
 fehlende werden nach Nachfrage entfernt. Danach speichern.
 
 **Startadressen:** `…/index.html#saegen` öffnet gleich den Sägemodus (für den Pi), ebenso `#programme`, `#moebel`,
-`#listen`, `#zuschnitt`, `#etiketten`, `#material`, `#projekte`.
+`#listen`, `#zuschnitt`, `#etiketten`, `#material`, `#zeichnungen`, `#projekte`.
 
 **Projektdatei (.s2m)** zum Weitergeben/Sichern: *Aktuelles als Datei* bzw. *Datei* in der Liste; *Datei öffnen (.s2m)*
 (oder auf die Seite ziehen) lädt eine. Inhalt: alle STEP/DXF-Dateien, alle Änderungen je Teil (Drehung, Feld, Werkzeuge,
@@ -732,7 +747,7 @@ Aus den Beispielen abgeleitet, aber noch nicht in Maestro getestet:
 
 | Ordner | Inhalt |
 |---|---|
-| `web/` | Web-Tool: `index.html` (Seitenaufbau), `css/step2maestro.css` (Aussehen), `js/app/01–12` (Programm der Oberfläche, nach Bereichen: Grundlagen, Teile, Anzeige, Etiketten, Stückliste, Zuschnitt, Sägemodus, Möbel 3D/Material, Ansicht, Speichern, Schnittstelle/KI, Projekte) und die JS-Module `step.js` (STEP-Leser), `panel.js` (Erkennung), `xcs.js` (Ausgabe), `surface.js` (Kugelfräser-Bahn), `occtmesh.js` (3D-Netz), `dxf.js` (DXF-Leser), `assist.js` (KI-Assistent), `voice.js` (Sprachbefehle); `js/vendor/openai.js` / `anthropic.js` = OpenAI- bzw. Anthropic-SDK als Browser-Skript (`tools/build_openai.sh`, `tools/build_anthropic.sh`) |
+| `web/` | Web-Tool: `index.html` (Seitenaufbau), `css/step2maestro.css` (Aussehen), `js/app/01–13` (Programm der Oberfläche, nach Bereichen: Grundlagen, Teile, Anzeige, Etiketten, Stückliste, Zuschnitt, Sägemodus, Möbel 3D/Material, Ansicht, Speichern, Schnittstelle/KI, Zeichnungen, Projekte) und die JS-Module `step.js` (STEP-Leser), `panel.js` (Erkennung), `xcs.js` (Ausgabe), `surface.js` (Kugelfräser-Bahn), `occtmesh.js` (3D-Netz), `dxf.js` (DXF-Leser), `assist.js` (KI-Assistent), `voice.js` (Sprachbefehle), `js/vendor/pdfjs` (pdf.js für die Zeichnungen); `js/vendor/openai.js` / `anthropic.js` = OpenAI- bzw. Anthropic-SDK als Browser-Skript (`tools/build_openai.sh`, `tools/build_anthropic.sh`) |
 | `cli/` | Kommandozeilen-Aufruf |
 | `tools/webserver/` | Webspace-Paket: `dekore/` (Dekor-Bibliothek), `projekte/` (Projektablage), `ki/` (ChatGPT über den Server), Anleitung |
 | `tools/docker/` | Docker für die Diskstation: `Dockerfile`, `docker-compose.yml`, `start.sh`, `ANLEITUNG-DOCKER.txt` |

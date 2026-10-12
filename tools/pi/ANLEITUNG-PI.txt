@@ -102,6 +102,7 @@ Im Sägemodus „🎤 Sprache“ antippen, dann sprechen (viele Wendungen gehen)
   „was kommt danach“, „nochmal“       nächste Schritte / Maß vorlesen
   „Etiketten aus“ / „Fenster“ / „automatisch“, „Ansage an“ / „aus“
   „Vollbild“ / „Vollbild aus“, „Hilfe“, „Mikrofon aus“
+  „Zeichnung“ / „Zeichnung zu“, „nächste Seite“, „Seite drei“   PDF-Zeichnungen
 „🔊 Ansage“ liest nach jedem Schritt Maß und Richtung vor.
 „🤖 KI“: Sätze, die kein fester Befehl sind („wie viele Teile fehlen noch?“,
 „geh zur zweiten U708-Platte, Streifen 3“), beantwortet der KI-Assistent
@@ -112,6 +113,36 @@ dem Pi NICHT – dort mit  --sprache  die Offline-Erkennung einrichten:
   http://127.0.0.1:8765 – Einstellungen einmal neu machen).
 * Webserver (--url … --sprache): das Skript legt den Ordner
   „vosk-fuer-webserver“ an – auf den Server laden als step2maestro/js/vendor/vosk/
+
+Mikrofon / Headset anschließen
+------------------------------
+* USB-Headset (am sichersten): einstecken – fertig. Ist mehr als ein Mikrofon da,
+  oben rechts in der Leiste auf das Mikrofon-Symbol (rechte Maustaste) und das
+  Headset als Eingang wählen.
+* Bluetooth-Headset geht auch:
+    1. Headset in den Kopplungsmodus bringen (meist Einschalter lange drücken,
+       bis die Lampe blau/rot blinkt).
+    2. Am Pi oben rechts auf das Bluetooth-Symbol -> „Gerät hinzufügen“
+       (Add Device), Headset wählen -> „Koppeln“ (Pair).
+    3. Oben rechts Lautsprecher- und Mikrofon-Symbol (rechte Maustaste): das
+       Headset als Ausgang UND Eingang wählen.
+    4. In Weckwop „🎤 Sprache“ antippen und „Hilfe“ sagen – die Ansage kommt
+       dann im Headset.
+  Nach dem Einschalten verbindet sich ein gekoppeltes Headset von selbst neu
+  (Headset vor oder nach dem Pi einschalten, beides geht). Bluetooth überträgt
+  das Mikrofon nur in Telefonqualität – für die Befehle reicht das. Bricht die
+  Verbindung oft ab: USB-Headset oder Headset mit eigenem USB-Funkstecker nehmen.
+* Probieren: Terminal  arecord -d 5 test.wav && aplay test.wav  (5 s sprechen,
+  dann hört man sich selbst).
+
+Ausschalten
+-----------
+Oben rechts (und im Sägemodus in der Leiste) „⏻ Ausschalten“: fährt den Pi
+sauber herunter (oder „Neu starten“). Der Sägestand bleibt erhalten. Strom erst
+trennen, wenn der Bildschirm dunkel und die grüne Lampe am Pi aus ist.
+(Der Knopf erscheint nur am Pi – ein kleiner Dienst nur für diesen Rechner,
+127.0.0.1:8766, den einrichten.sh mit anlegt. Am Büro-PC gibt es ihn nicht.)
+Ohne Bildschirm: kurz auf den Ein-Knopf am Pi 5 drücken fährt ebenfalls herunter.
 
 Gut zu wissen
 -------------

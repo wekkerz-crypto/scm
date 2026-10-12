@@ -515,6 +515,56 @@ async function startInit() {
 $('projsave').addEventListener('click', () => projSave());
 $('projopen').addEventListener('click', () => setPage('start'));
 
+// --- Sägeplatz (Raspberry Pi): Knopf „⏻ Ausschalten“, nur wenn dort der Weckwop-Dienst läuft (127.0.0.1:8766, tools/pi/weckwop-dienst.py)
+const PI_DIENST = 'http://127.0.0.1:8766';
+const piFetch = (path, method) => {
+  const c = typeof AbortController === 'function' ? new AbortController() : null;
+  const t = c ? setTimeout(() => c.abort(), 2500) : 0;
+  return fetch(PI_DIENST + path, { method: method || 'GET', headers: { 'X-Weckwop': '1' }, cache: 'no-store', signal: c ? c.signal : undefined })
+    .then((r) => r.json()).finally(() => clearTimeout(t));
+};
+async function piCheck() {
+  try { const j = await piFetch('/status'); $('pioff').hidden = !(j && j.ok && j.dienst === 'weckwop'); } catch (e) { $('pioff').hidden = true; }
+  if (!$('pioff').hidden && onSaw()) renderSaw();
+}
+function piDialog() {
+  const old = $('pidlg');
+  if (old) old.remove();
+  const box = document.createElement('div');
+  box.id = 'pidlg';
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-modal', 'true');
+  box.setAttribute('aria-label', 'Sägeplatz ausschalten');
+  const dirty = projDirty();
+  box.innerHTML = '<div class="pidlg"><h3>Sägeplatz ausschalten?</h3>' +
+    (dirty ? '<p class="warn">Das Projekt' + (proj.name ? ' „' + esc(proj.name) + '“' : '') + ' hat ungespeicherte Änderungen. Der Sägestand bleibt im Browser erhalten.</p>' :
+      '<p>Der Stand im Sägemodus bleibt erhalten und ist nach dem Einschalten wieder da.</p>') +
+    '<div class="row">' + (dirty ? '<button type="button" class="btn" data-pi="save">Speichern und ausschalten</button>' : '') +
+    '<button type="button" class="btn danger" data-pi="off">⏻ Ausschalten</button><button type="button" class="btn" data-pi="reboot">↻ Neu starten</button>' +
+    '<button type="button" class="btn ghost" data-pi="no">Abbrechen</button></div></div>';
+  document.body.appendChild(box);
+  const close = () => { box.remove(); document.removeEventListener('keydown', key, true); };
+  const key = (e) => { if (e.key === 'Escape') { e.stopImmediatePropagation(); close(); } };
+  document.addEventListener('keydown', key, true);
+  box.addEventListener('click', async (e) => {
+    if (e.target === box) { close(); return; }
+    const a = e.target.closest('[data-pi]');
+    if (!a) return;
+    if (a.dataset.pi === 'no') { close(); return; }
+    if (a.dataset.pi === 'save') { await projSave(); if (projDirty()) { toast('Nicht gespeichert – bitte erst speichern.'); return; } }
+    const what = a.dataset.pi === 'reboot' ? 'neustart' : 'ausschalten';
+    try {
+      saveLst();
+      const j = await piFetch('/' + what, 'POST');
+      if (!j || !j.ok) throw new Error('abgelehnt');
+      box.innerHTML = '<div class="pidlg bye"><h3>' + (what === 'neustart' ? '↻ Startet neu …' : '⏻ Wird ausgeschaltet …') + '</h3>' +
+        (what === 'neustart' ? '<p>Weckwop ist gleich wieder da.</p>' : '<p>Strom erst trennen, wenn der Bildschirm dunkel ist und die grüne Lampe am Pi aus ist.</p>') + '</div>';
+    } catch (err) { close(); toast('Ausschalten nicht möglich: der Dienst am Pi antwortet nicht.'); }
+  });
+  (box.querySelector('[data-pi="off"]') || box).focus();
+}
+$('pioff').addEventListener('click', piDialog);
+
 // Dekore laden (Bibliothek auf dem Server, eigene Bilder im Browser) – asynchron, darum erst hier, wenn alle Programmteile da sind
 loadDecors();
 loadLocalDecors();
@@ -536,5 +586,6 @@ renderProfileEditor();
   if (fromHash && fromHash[1]) { lst.tab = fromHash[1]; saveLst(); }
   setPage(fromHash ? fromHash[0] : 'start');
   startInit();
+  piCheck();
   render();
 })();

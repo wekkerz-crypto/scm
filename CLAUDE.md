@@ -177,6 +177,9 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   Paket `npm run build:pi` → `dist/Weckwop-Pi.zip` (`tools/build_pi.sh`, nutzt das Webserver-Paket ohne PHP) und
   `dist/Weckwop-Pi-Installer.sh` (Kopf `tools/pi/installer-kopf.sh` mit @STAND@/@PRUEF@ + tar.gz als base64 nach `__WECKWOP_PAKET__`;
   fragt per whiptail bzw. Text, merkt Antworten in `~/.config/weckwop/pi-installer.conf`, packt nach `~/weckwop-pi`, ruft `einrichten.sh`).
+  Ausschalten: `tools/pi/weckwop-dienst.py` (127.0.0.1:8766, GET /status, POST /ausschalten|/neustart, Kopf `X-Weckwop: 1`, Origin = eingerichtete
+  Adresse/null/127.0.0.1:8765, Private-Network-Kopf, Probe `WECKWOP_TROCKEN`) – vom Kiosk-Skript gestartet; Seite: `piCheck`/`piDialog`
+  in `13-…`, Knopf `#pioff` (nur wenn der Dienst antwortet) und `data-saw="pioff"` in der Säge-Leiste.
 - `cli/step2xcs.js` – Kommandozeile. `test/` – `npm test` (node:test; UI-Tests mit Playwright, werden ohne übersprungen).
 - `maestro/doku/Maestro_MSL_KI_Referenz.pdf` – Handbuch der Script-Sprache; Befehlsparameter **immer** dort prüfen
   (`pdftotext -layout`). `maestro/beispiele/*.xcs` – Programme aus der Werkstatt, in Maestro bestätigt.

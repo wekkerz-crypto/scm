@@ -156,6 +156,8 @@ if command -v raspi-config >/dev/null; then sudo raspi-config nonint do_blanking
 # ---------------------------------------------------------------- Kiosk-Start
 step "Weckwop beim Anmelden im Vollbild starten"
 mkdir -p "$HOME/.local/bin" "$HOME/.config/autostart"
+# kleiner Dienst nur für diesen Pi (127.0.0.1:8766): Knopf „⏻ Ausschalten“ in Weckwop fährt den Pi herunter
+if [ -f "$HIER/weckwop-dienst.py" ]; then cp "$HIER/weckwop-dienst.py" "$HOME/.local/bin/weckwop-dienst.py" && chmod +x "$HOME/.local/bin/weckwop-dienst.py" && ok "Ausschalt-Knopf eingerichtet"; fi
 START="$HOME/.local/bin/step2maestro-kiosk.sh"
 cat > "$START" <<EOF
 #!/bin/bash
@@ -169,6 +171,8 @@ B="\$(command -v chromium-browser || command -v chromium)"
 SERVE="$([ "$SPRACHE" -eq 1 ] && [ "$OFFLINE" -eq 1 ] && echo 1 || echo 0)"
 # Offline mit Sprache: kleiner Webserver nur für diesen Pi
 if [ "\$SERVE" = 1 ]; then python3 -m http.server $PORT --bind 127.0.0.1 --directory /opt/step2maestro >/dev/null 2>&1 9>&- & sleep 1; fi
+# Ausschalten/Neustart aus Weckwop (nur von dieser Seite, nur 127.0.0.1)
+[ -f "\$HOME/.local/bin/weckwop-dienst.py" ] && python3 "\$HOME/.local/bin/weckwop-dienst.py" "\$URL" >/dev/null 2>&1 9>&- &
 # nach Stromausfall keine „Wiederherstellen?“-Meldung
 P="\$HOME/.config/chromium/Default/Preferences"
 [ -f "\$P" ] && sed -i 's/"exited_cleanly":false/"exited_cleanly":true/; s/"exit_type":"[^"]*"/"exit_type":"Normal"/' "\$P"
@@ -196,6 +200,6 @@ ok "Autostart eingerichtet: $URL"
 echo
 echo "Fertig. Jetzt neu starten:  sudo reboot"
 echo "Danach startet Weckwop von selbst. In Weckwop unter „Werkzeuge & Regeln → Etiketten“ dieselbe"
-echo "Etikettgröße einstellen (${ETIKETT/x/ × } mm). Beenden des Vollbilds: Alt+F4."
+echo "Etikettgröße einstellen (${ETIKETT/x/ × } mm). Beenden des Vollbilds: Alt+F4. Ausschalten: Knopf „⏻“ oben rechts."
 [ "$SPRACHE" -eq 1 ] && echo "Sprache: USB-Mikrofon oder Headset anschließen, im Sägemodus „🎤 Sprache“ antippen."
 true

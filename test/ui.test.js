@@ -1580,6 +1580,53 @@ test('Web-Tool: Zeichnungen (PDF) zum Projekt – Seite, blättern, Projektdatei
   }
 });
 
+test('Sägeplatz (Pi): Knopf „Ausschalten“ nur mit Weckwop-Dienst, Neustart/Ausschalten, fremde Seiten abgewiesen', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const fs = require('fs');
+  const os = require('os');
+  const { spawn } = require('child_process');
+  const log = path.join(os.tmpdir(), 'weckwop-trocken-' + process.pid + '.log');
+  try { fs.unlinkSync(log); } catch (e) { /* neu */ }
+  const browser = await chromium.launch();
+  let d = null;
+  try {
+    // ohne Dienst: kein Knopf
+    let p = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    await p.waitForTimeout(600);
+    assert.strictEqual(await p.$eval('#pioff', (e) => e.hidden), true);
+    await p.close();
+    // mit Dienst (Probe: schaltet nicht aus, schreibt nur in die Datei)
+    d = spawn('python3', [path.join(__dirname, '..', 'tools', 'pi', 'weckwop-dienst.py'), 'http://diskstation:8080/#saegen'], { env: Object.assign({}, process.env, { WECKWOP_TROCKEN: log }), stdio: 'ignore' });
+    for (let i = 0; i < 40; i++) { try { const r = await fetch('http://127.0.0.1:8766/status', { headers: { 'X-Weckwop': '1' } }); if (r.ok) break; } catch (e) { /* startet */ } await new Promise((r) => setTimeout(r, 100)); }
+    p = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page.replace('#programme', '#saegen'));
+    await p.waitForSelector('#pioff:not([hidden])', { timeout: 10000 });
+    await p.waitForSelector('[data-saw="pioff"]');
+    // Abbrechen, dann Neu starten aus der Säge-Leiste
+    await p.click('#pioff');
+    await p.click('[data-pi="no"]');
+    assert.ok(!(await p.$('#pidlg')));
+    await p.click('[data-saw="pioff"]');
+    await p.click('[data-pi="reboot"]');
+    await p.waitForSelector('.pidlg.bye');
+    assert.match(await p.textContent('.pidlg.bye'), /Startet neu/);
+    for (let i = 0; i < 40 && !fs.existsSync(log); i++) await new Promise((r) => setTimeout(r, 100));
+    assert.strictEqual(fs.readFileSync(log, 'utf8'), 'neustart\n');
+    // andere Seiten und Anfragen ohne Kopfzeile werden abgewiesen
+    assert.strictEqual((await fetch('http://127.0.0.1:8766/ausschalten', { method: 'POST', headers: { Origin: 'https://fremd.example', 'X-Weckwop': '1' } })).status, 403);
+    assert.strictEqual((await fetch('http://127.0.0.1:8766/ausschalten', { method: 'POST', headers: { Origin: 'http://diskstation:8080' } })).status, 403);
+    assert.strictEqual(fs.readFileSync(log, 'utf8'), 'neustart\n');
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    if (d) d.kill();
+    try { fs.unlinkSync(log); } catch (e) { /* weg */ }
+    await browser.close();
+  }
+});
+
 // Dekor-Bibliothek (PHP auf dem Webspace): eingebauter PHP-Server mit web/ + tools/webserver/dekore in einem Testordner
 const { execFileSync, spawn } = require('child_process');
 let hasPhp = false;

@@ -168,7 +168,8 @@ function renderSaw() {
     '<button type="button" class="btn ghost small" data-saw="cfg" aria-expanded="' + String(!!lst.sawCfgOpen) + '">⚙ Schnittfolge</button>' +
     '<button type="button" class="btn ghost small" data-saw="reset">Von vorn</button>' +
     '<button type="button" class="btn small drwbtn" data-saw="drw" title="Zeichnungen zum Projekt bildschirmfüllend (Z) – blättern mit ← →, Sprache „Zeichnung“, „nächste Seite“, „Zeichnung zu“">📄 Zeichnungen' + (drw.list.length ? ' <small>' + drw.list.length + '</small>' : '') + '</button>' +
-    '<button type="button" class="btn small" data-saw="full" aria-pressed="' + full + '">' + (full ? '✕ Vollbild beenden' : '⛶ Vollbild') + '</button></div>' +
+    '<button type="button" class="btn small" data-saw="full" aria-pressed="' + full + '">' + (full ? '✕ Vollbild beenden' : '⛶ Vollbild') + '</button>' +
+    ($('pioff').hidden ? '' : '<button type="button" class="btn small pioff" data-saw="pioff" title="Sägeplatz ausschalten oder neu starten">⏻ Aus</button>') + '</div>' +
     (lst.sawCfgOpen ? sawCfgHtml(cfg) : '') + sawOverHtml(list, xi) +
     (ok ? '' : '<p class="warn">Diese Anordnung ist nicht ganz mit durchgehenden Schnitten trennbar – im Zuschnittplan prüfen.</p>') +
     '<div class="saw"><div class="sawdraw">' + sawSvg(x, steps, cur, cfg, strips) + '</div><div class="sawcard" aria-live="polite">' +
@@ -318,6 +319,7 @@ function sawGo(what) {
   else if (what === 'nextsheet' && list[xi + 1]) lst.saw = { key: list[xi + 1].key, step: 0 };
   else if (what === 'full') { sawFull(!$('sawview').classList.contains('sawfull')); return; }
   else if (what === 'drw') { drwOverlay(true); return; }
+  else if (what === 'pioff') { piDialog(); return; }
   else if (what === 'voice') { voiceToggle(); return; }
   else if (what === 'say') { lst.sawSay = !lst.sawSay; saveLst(); renderSaw(); if (lst.sawSay) sawSay(); return; }
   else if (what === 'ai') {

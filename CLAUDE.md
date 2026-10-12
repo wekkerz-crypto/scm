@@ -174,7 +174,9 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   `.htaccess`, Schriften lokal – Google-Fonts-Link wird dabei ersetzt).
 - Raspberry Pi am Sägeplatz: `tools/pi/einrichten.sh` (CUPS + Zebra USB `drv:///sample.drv/zebra.ppd`, Autostart
   `~/.local/bin/step2maestro-kiosk.sh` per XDG-Autostart und labwc, Chromium `--kiosk --kiosk-printing`), `ANLEITUNG-PI.txt`;
-  Paket `npm run build:pi` → `dist/Weckwop-Pi.zip` (`tools/build_pi.sh`, nutzt das Webserver-Paket ohne PHP).
+  Paket `npm run build:pi` → `dist/Weckwop-Pi.zip` (`tools/build_pi.sh`, nutzt das Webserver-Paket ohne PHP) und
+  `dist/Weckwop-Pi-Installer.sh` (Kopf `tools/pi/installer-kopf.sh` mit @STAND@/@PRUEF@ + tar.gz als base64 nach `__WECKWOP_PAKET__`;
+  fragt per whiptail bzw. Text, merkt Antworten in `~/.config/weckwop/pi-installer.conf`, packt nach `~/weckwop-pi`, ruft `einrichten.sh`).
 - `cli/step2xcs.js` – Kommandozeile. `test/` – `npm test` (node:test; UI-Tests mit Playwright, werden ohne übersprungen).
 - `maestro/doku/Maestro_MSL_KI_Referenz.pdf` – Handbuch der Script-Sprache; Befehlsparameter **immer** dort prüfen
   (`pdftotext -layout`). `maestro/beispiele/*.xcs` – Programme aus der Werkstatt, in Maestro bestätigt.

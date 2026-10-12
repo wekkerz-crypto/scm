@@ -11,6 +11,7 @@ Inhalt der ZIP
   einrichten.sh        richtet alles ein (Drucker, Vollbild-Start)
   sprache_holen.sh     holt die Offline-Spracherkennung (für --sprache)
   step2maestro/        das Programm zum Offline-Betrieb (ohne Server)
+  (dasselbe in einer Datei: Weckwop-Pi-Installer.sh – siehe Punkt 2)
 
 Einkaufsliste
 -------------
@@ -38,8 +39,27 @@ Am PC den „Raspberry Pi Imager“ (raspberrypi.com/software) starten:
 Auf SSD/SD schreiben, in den Pi stecken, Monitor, Tastatur (nur zum Einrichten),
 Zebra (eingeschaltet, Etiketten eingelegt) anschließen, starten.
 
-2. Einrichten
--------------
+2. Einrichten – am einfachsten mit EINER Datei
+----------------------------------------------
+„Weckwop-Pi-Installer.sh“ auf einen USB-Stick kopieren, am Pi einstecken,
+Terminal öffnen (Symbol oben links) und eingeben:
+
+    bash /media/$USER/*/Weckwop-Pi-Installer.sh
+
+(oder die Datei vorher in den Ordner „Downloads“ ziehen: bash ~/Downloads/Weckwop-Pi-Installer.sh)
+
+Der Installer fragt der Reihe nach:
+  * woher das Programm kommt: Diskstation/Docker im eigenen Netz (empfohlen,
+    z. B. http://diskstation:8080/), Webserver im Internet, oder offline vom Pi
+  * Etikettgröße (z. B. 40x60) und Auflösung der Zebra (203 oder 300 dpi)
+  * Sprachbefehle offline (ja/nein) und ob ein Testetikett gedruckt werden soll
+Dann richtet er alles ein (Passwort des Pi eingeben, wenn gefragt), legt
+„Weckwop“ auf den Schreibtisch und bietet den Neustart an. Fertig.
+Aktualisieren: neue Datei, nochmal starten – die Antworten vom letzten Mal
+sind vorbelegt („Mit denselben Einstellungen aktualisieren? Ja“).
+Protokoll: ~/weckwop-pi/installation.log
+
+Von Hand (Fachleute) – mit der ZIP:
 ZIP auf den Pi kopieren (USB-Stick) und entpacken, z. B. in den Ordner
 „Weckwop-Pi“. Dann Terminal öffnen und:
 

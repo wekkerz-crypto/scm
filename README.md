@@ -258,7 +258,11 @@ Dritte Seite oben (**Listen**):
   DXF) und landet mit **Formatfräsen** (umfräst) in den Programmen, in Zuschnitt, Sägen und Etiketten; Kanten danach in der
   Liste setzen, gespeichert mit der Projektdatei. **Löschen** je Position (Papierkorb, zweimal klicken) entfernt die Bauteile
   ganz – auch aus den Programmen.
-- **Sägeplatz mit Raspberry Pi 5:** `npm run build:pi` → `dist/Weckwop-Pi.zip` mit `einrichten.sh` (Zebra an USB über
+- **Sägeplatz mit Raspberry Pi 5:** am einfachsten `dist/Weckwop-Pi-Installer.sh` (eine Datei, entsteht mit `npm run build:pi`):
+  per USB-Stick auf den Pi, im Terminal `bash Weckwop-Pi-Installer.sh` – fragt Adresse (Diskstation/Webserver/offline), Etikett,
+  dpi, Sprache und Testetikett, richtet alles ein, Verknüpfung auf dem Schreibtisch, Neustart; nochmal starten = aktualisieren
+  (Antworten in `~/.config/weckwop/pi-installer.conf`), mit Angaben (`--url … --sprache`) ohne Fragen. Daneben
+  `dist/Weckwop-Pi.zip` mit `einrichten.sh` (Zebra an USB über
   CUPS mit Treiber „Zebra ZPL Label Printer“ als Standarddrucker in Etikettgröße, Bildschirm bleibt an, Chromium startet beim
   Anmelden im Vollbild mit `--kiosk-printing` → Etiketten ohne Druckdialog), `ANLEITUNG-PI.txt` (Einkaufsliste, Schritte,
   Probleme) und `step2maestro/` für den Offline-Betrieb (`--offline`, ohne Dekor-Bibliothek).

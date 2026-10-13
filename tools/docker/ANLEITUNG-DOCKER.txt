@@ -63,6 +63,15 @@ Zeichen). Mit S2M_OFFEN=0 gilt dieses Passwort auch für die Projekte.
   Anmeldeportal -> Erweitert -> Reverse Proxy eine https-Adresse auf
   localhost:8080 einrichten.
 
+Mehrere Geräte im selben Projekt
+--------------------------------
+Weckwop zeigt oben neben „Speichern“, wer das Projekt gerade noch offen hat
+(„👥 Pi Säge“, mit „sägt“ / „ungespeicherte Änderungen“). Speichert ein anderes
+Gerät, erscheint „⟳ Neuer Stand“ zum Nachladen. Wer auf einem alten Stand
+speichert, wird gefragt (überschreiben oder nicht) – nichts geht still verloren;
+die letzten 20 Stände liegen im Projektordner unter Versionen/.
+Gerätename: Projektseite › „🖥 Dieses Gerät“ (z. B. Büro-PC, Pi Säge).
+
 Projektordner (lesbar, ohne Programm)
 -------------------------------------
 Bei jedem Speichern legt Weckwop je Projekt einen normalen Ordner an:

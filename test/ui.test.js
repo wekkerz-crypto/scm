@@ -2100,20 +2100,42 @@ test('Projektablage auf dem Server (PHP): offen im Netz, mit Passwort, zwei Ger�
     assert.strictEqual(fs.readdirSync(path.join(od, 'Versionen')).length, 1);
     assert.strictEqual(JSON.parse(fs.readFileSync(path.join(od, 'Projekt.s2m'), 'utf8')).meta.name, 'Bad Meier');
     assert.match(await p.textContent('.pjextra'), /Projektordner: Bad Meier/);
+    await p.fill('#pj-geraet', 'Büro-PC');
+    await p.press('#pj-geraet', 'Tab');
     // 2) offen im Netz (Datei OFFEN): zweites Gerät ohne Anmeldung, öffnet, ändert, speichert
     fs.writeFileSync(path.join(dir, 'projekte', 'OFFEN'), '');
     const q = await mk();
     await q.waitForSelector('[data-pjopen]');
     await q.click('[data-pjopen]');
     await q.waitForFunction(() => document.body.dataset.page === 'pgmx' && document.querySelectorAll('.part').length === 3);
+    // wer ist im selben Projekt: q sieht das erste Gerät (Name auf der Projektseite gesetzt) gleich beim Öffnen
+    await q.waitForFunction(() => !document.getElementById('projwho').hidden);
+    assert.match(await q.getAttribute('#projwho', 'title'), /auch offen an: Büro-PC/);
+    assert.match(await q.textContent('#toast'), /Achtung: Projekt ist gerade auch offen an Büro-PC/);
+    // … und das erste Gerät q beim nächsten Melden (Gerätename geraten: Linux-PC), auch in der Projektliste
+    await p.evaluate(() => presenceTick());
+    await p.waitForFunction(() => !document.getElementById('projwho').hidden && /Linux-PC/.test(document.getElementById('projwho').title));
+    await p.evaluate(() => srvRefresh());
+    assert.strictEqual(await p.evaluate(() => Object.values(who.anwesend).flat().map((e) => e.geraet).join()), 'Linux-PC');
     await q.evaluate(() => window.Weckwop.api.teile_aendern({ aenderungen: [{ teil: 1, anzahl: 7 }] }));
     await q.click('#projsave');
     await q.waitForFunction(() => !document.getElementById('projsave').classList.contains('dirty'));
-    // erstes Gerät speichert danach auf altem Stand → Konflikt-Nachfrage (angenommen = überschreiben)
+    // erstes Gerät: „⟳ Neuer Stand“ (q hat gespeichert)
+    await p.evaluate(() => presenceTick());
+    await p.waitForFunction(() => !document.getElementById('projnew').hidden);
+    assert.match(await p.getAttribute('#projnew', 'title'), /Linux-PC/);
+    // erstes Gerät speichert trotzdem auf altem Stand → Konflikt-Nachfrage mit Gerätename (angenommen = überschreiben)
     await p.evaluate(() => { window.Weckwop.api.teile_aendern({ aenderungen: [{ teil: 2, anzahl: 2 }] }); document.getElementById('toast').textContent = ''; });
     await p.click('#projsave');
     await p.waitForFunction(() => /Gespeichert/.test(document.getElementById('toast').textContent));
-    assert.match(p.lastDialog || '', /anderen Gerät/);
+    assert.match(p.lastDialog || '', /anderen Gerät gespeichert \(Linux-PC, /);
+    await p.waitForFunction(() => document.getElementById('projnew').hidden);
+    // q: neuer Stand vom ersten Gerät → laden übernimmt dessen Änderung
+    await q.evaluate(() => presenceTick());
+    await q.waitForFunction(() => !document.getElementById('projnew').hidden);
+    await q.click('#projnew');
+    await q.waitForFunction(() => /Neuer Stand geladen/.test(document.getElementById('toast').textContent) && document.getElementById('projnew').hidden);
+    assert.strictEqual(await q.evaluate(() => window.Weckwop.api.teile_lesen().teile[1].anzahl), 2);
     // ChatGPT über den Server: ohne eigenen Schlüssel, der Server schickt seinen
     await q.click('#aibtn');
     await q.waitForFunction(() => /vom Server/.test(document.getElementById('ailog').textContent));

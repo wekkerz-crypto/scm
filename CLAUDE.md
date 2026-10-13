@@ -81,7 +81,10 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
 - Projekte (Startseite, `state.page` 'start', `#startpage`, `renderStart`; beim Start immer, außer Adresse `#saegen` … `HASH_PAGES`):
   aktuelles Projekt `proj` (localStorage `step2xcs.project.v1`: id, store 'server'|'local', name, kunde, notiz, basis, sig = `projSig()`
   → `projDirty`/`projMark` (• an `#projsave`), `projLeaveOk`), `projSave`/`projOpen`/`projNew`/`projCopy`/`projDelete`/`projExport`;
-  Server `projekte/api.php` (list/get/save mit basis → 409/meta/copy/delete → papierkorb; gzip `*.s2m.gz`; Zugang = Sitzung der
+  Server `projekte/api.php` (list/get/save mit basis → 409 (geaendert auf ms)/meta/copy/delete → papierkorb; gzip `*.s2m.gz`;
+  wer ist im Projekt: `a=da` (`daten/anwesend.json`, `DA_SEK` 75, `daLoad`/`daPublic`, list `&sitzung=` → `anwesend`) ← `presenceTick` alle 30 s
+  (`who`, `SITZUNG` je Fenster, `geraetName()`/`GERAET_KEY` – Feld `#pj-geraet`, `presenceShow` → `#projwho`/`#projnew` (`projOpen(…, reload)`),
+  `whoChip` in der Liste, Abmelden bei `pagehide` per keepalive); Zugang = Sitzung der
   Dekor-Verwaltung (Cookie-Pfad = Programmordner) oder offen `S2M_OFFEN=1`/Datei `projekte/OFFEN`, X-CSRF), Browser = IndexedDB
   `projekte.v1` + `projekt:<id>`; `srvRefresh` prüft auch `ki/openai.php` (ChatGPT über den Server: `kiSrv`, `aiServer()` →
   SDK mit baseURL `ki/openai.php/v1` + X-CSRF; Schlüssel `OPENAI_API_KEY` bzw. `ki/schluessel.php`; Test-Ziel `S2M_OPENAI_URL`).

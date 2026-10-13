@@ -20,7 +20,14 @@ const srv = { checked: false, ok: false, login: false, offen: false, passwort: f
 const kiSrv = { aktiv: false, zugang: false, csrf: '' };
 const pst = { tab: null, q: '', local: [], del: null, busy: false };
 const serverPossible = () => /^https?:$/.test(location.protocol);
-function projSet(o) { Object.assign(proj, o); storeJson(PROJ_KEY, proj); projMark(); }
+// Wer ist gerade im selben Projekt (Server)? Jedes Fenster meldet sich mit SITZUNG + Gerätename (projekte/api.php a=da)
+const GERAET_KEY = 'step2xcs.geraet.v1';
+const SITZUNG = 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+const who = { id: null, andere: [], neu: false, von: '', seen: null, timer: null, soon: null, anwesend: {} };
+function projSet(o) {
+  Object.assign(proj, o); storeJson(PROJ_KEY, proj); projMark();
+  if ('id' in o || 'store' in o || 'basis' in o) presenceSoon();
+}
 // Prüfsumme des Projekts (ohne Auswahl): gleich = nichts geändert seit dem Speichern
 function projSig() {
   const d = sessionData();
@@ -75,8 +82,9 @@ async function srvJson(r) {
 async function srvRefresh() {
   if (!serverPossible()) { srv.checked = true; srv.ok = false; return; }
   try {
-    const j = await srvJson(await srvCall('list'));
+    const j = await srvJson(await srvCall('list', { q: 'sitzung=' + SITZUNG }));
     srv.ok = !!j.ok; srv.login = !!j.login; srv.offen = !!j.offen; srv.passwort = !!j.passwort; srv.csrf = j.csrf || ''; srv.list = j.projekte || []; srv.err = '';
+    who.anwesend = j.anwesend || {};
   } catch (e) { srv.ok = false; srv.err = ''; }
   srv.checked = true;
   // KI über den Server (Schlüssel auf der Diskstation)?
@@ -126,7 +134,7 @@ async function projSave(opts) {
       if (!asNew) { fd.append('id', proj.id); if (!opts.force) fd.append('basis', proj.basis || ''); }
       fd.append('name', meta.name); fd.append('kunde', meta.kunde); fd.append('notiz', meta.notiz);
       fd.append('info', JSON.stringify(info));
-      fd.append('geraet', (navigator.platform || '').slice(0, 30));
+      fd.append('geraet', geraetName());
       fd.append('datei', await gzBlob(JSON.stringify(data)), 'projekt.s2m.gz');
       const r = await srvCall('save', { body: fd });
       const j = await srvJson(r);
@@ -163,11 +171,11 @@ async function projSave(opts) {
     if (state.page === 'start') renderStart();
   }
 }
-async function projOpen(store, id) {
+async function projOpen(store, id, reload) {
   const meta = (store === 'server' ? srv.list : pst.local).find((m) => m.id === id);
   if (!meta) return;
-  if (proj.id === id && proj.store === store && !projDirty()) { toast('Projekt ist schon offen.'); setPage(lastWorkPage()); return; }
-  if (!projLeaveOk()) return;
+  if (!reload && proj.id === id && proj.store === store && !projDirty()) { toast('Projekt ist schon offen.'); setPage(lastWorkPage()); return; }
+  if (!projLeaveOk(reload ? 'Den neuen Stand vom Server laden?' : '')) return;
   let data = null;
   try {
     if (store === 'server') {
@@ -180,9 +188,9 @@ async function projOpen(store, id) {
   applyProject(data);
   projSet({ id: id, store: store, name: meta.name, kunde: meta.kunde || '', notiz: meta.notiz || '', basis: meta.geaendert || '', saved: meta.geaendert || '', ordner: meta.ordner || '' });
   projSet({ sig: projSig() });
-  toast('Projekt geöffnet: ' + meta.name);
+  toast(reload ? 'Neuer Stand geladen: ' + meta.name : 'Projekt geöffnet: ' + meta.name);
   render();
-  setPage(lastWorkPage());
+  setPage(reload ? state.page : lastWorkPage());
 }
 function projNew() {
   if (!projLeaveOk('Neues Projekt beginnen? Die aktuelle Teileliste wird geleert.')) return;
@@ -456,6 +464,7 @@ async function renderStart() {
     (proj.store === 'server' && proj.ordner ? '<span class="pjinfo" title="Auf dem Server: Projekt.s2m, STEP/, Programme/ (xcs + konvertieren.bat), Stückliste, Zuschnittplan, Versionen/">📂 Projektordner: <b>' + esc(proj.ordner) + '</b></span>' : '') +
     (backupPossible() ? (backup.handle ? '<span class="pjinfo">💾 Sicherung am PC: <b>' + esc(backup.name) + '/' + esc(fileSafe(proj.name || 'Projekt')) + '</b> <button type="button" class="btn ghost small" id="pj-bk">ändern</button><button type="button" class="btn ghost small" id="pj-bkoff">aus</button></span>'
       : '<button type="button" class="btn ghost small" id="pj-bk" title="Beim Speichern zusätzlich einen lesbaren Ordner (STEP, Programme, Listen) in einen Ordner auf diesem PC bzw. Netzlaufwerk schreiben">💾 Sicherungsordner am PC wählen …</button>') : '') +
+    (srv.ok && srv.login ? '<label class="pjinfo pjdev" title="So sehen die anderen Geräte dieses Fenster („auch offen an …“) – z. B. Büro-PC, Pi Säge">🖥 Dieses Gerät <input type="text" id="pj-geraet" maxlength="40" value="' + esc(geraetName()) + '"></label>' : '') +
     (stepFilesInProject().length ? '<span class="pjinfo pjsteps">STEP aktualisieren: ' + stepFilesInProject().map((f) => '<button type="button" class="btn ghost small" data-stepupd="' + f.id + '" title="Neue Version dieser Datei einlesen – Einstellungen der Teile bleiben (Zuordnung über den Teilenamen)">↻ ' +
       esc(String(f.label).replace(/^Beispiel: /, '').replace(/^.*[\\/]/, '')) + ' <small>' + f.n + '</small></button>').join('') + '</span>' : '') +
     '</div></div>' +
@@ -468,7 +477,7 @@ async function renderStart() {
     (pst.tab === 'server' && srv.ok && !srv.login ? '<form class="pjlogin" id="pj-login"><b>Anmelden</b> – Projekte auf dem Server: Passwort wie in der Dekor-Verwaltung' +
       '<input type="password" id="pj-pw" autocomplete="current-password" aria-label="Passwort"><button type="submit" class="btn primary">Anmelden</button></form>' : '') +
     (list.length ? '<div class="tblwrap"><table class="pjtbl"><thead><tr><th>Projekt</th><th class="r">Teile</th><th>Material</th><th>Geändert</th><th></th></tr></thead><tbody>' +
-      list.map((m) => { const cur = proj.id === m.id && proj.store === pst.tab; const k = pst.tab + m.id; return '<tr' + (cur ? ' class="cur"' : '') + '><td><b>' + esc(m.name) + '</b>' + (cur ? ' <span class="chip ok">offen</span>' : '') +
+      list.map((m) => { const cur = proj.id === m.id && proj.store === pst.tab; const k = pst.tab + m.id; return '<tr' + (cur ? ' class="cur"' : '') + '><td><b>' + esc(m.name) + '</b>' + (cur ? ' <span class="chip ok">offen</span>' : '') + (pst.tab === 'server' ? whoChip(who.anwesend[m.id]) : '') +
         (m.kunde ? '<div class="sub">' + esc(m.kunde) + '</div>' : '') + (m.notiz ? '<div class="sub n">' + esc(m.notiz) + '</div>' : '') +
         (m.ordner ? '<div class="sub">📂 ' + esc(m.ordner) + '</div>' : '') + '</td>' +
         '<td class="r">' + (m.teile !== undefined ? m.teile + (m.stueck && m.stueck !== m.teile ? '<div class="sub">' + m.stueck + ' Stück</div>' : '') : '') + '</td>' +
@@ -488,6 +497,7 @@ async function renderStart() {
   $('pj-save').addEventListener('click', () => projSave(Object.assign(nm(), { store: $('pj-store') ? $('pj-store').value : undefined })));
   if ($('pj-saveas')) $('pj-saveas').addEventListener('click', () => projSave(Object.assign(nm(), { asNew: true, store: srv.ok && srv.login ? 'server' : 'local' })));
   $('pj-new').addEventListener('click', projNew);
+  if ($('pj-geraet')) $('pj-geraet').addEventListener('change', (e) => { storeJson(GERAET_KEY, e.target.value.trim()); e.target.value = geraetName(); presenceSoon(); });
   $('pj-go').addEventListener('click', () => setPage(lastWorkPage()));
   if ($('pj-bk')) $('pj-bk').addEventListener('click', backupPick);
   if ($('pj-bkoff')) $('pj-bkoff').addEventListener('click', backupOff);
@@ -511,8 +521,77 @@ async function startInit() {
   await backupLoad();
   await srvRefresh();
   if (state.page === 'start') renderStart();
+  presenceTick();
+  // alle 30 s melden; die Projektliste (👥 je Projekt) nur auf der Projektseite nachladen
+  who.timer = setInterval(async () => { presenceTick(); if (state.page === 'start' && srv.ok && !pst.busy && !(document.activeElement && document.activeElement.closest('#startpage input'))) { await srvRefresh(); renderStart(); } }, 30000);
 }
 $('projsave').addEventListener('click', () => projSave());
+
+// --- Wer ist gerade im selben Projekt? Nur bei Projekten auf dem Server: Herzschlag alle 30 s, der Server vergisst nach 75 s.
+// Oben neben „Speichern“: 👥 Gerät (sägt / ungespeicherte Änderungen) und ⟳ Neuer Stand, wenn ein anderes Gerät gespeichert hat.
+function geraetGuess() {
+  const u = navigator.userAgent || '';
+  return /Windows/.test(u) ? 'Windows-PC' : /Linux (aarch64|armv)/.test(u) ? 'Raspberry Pi' : /iPhone|Android.*Mobile/.test(u) ? 'Handy' :
+    /iPad|Android/.test(u) ? 'Tablet' : /Mac/.test(u) ? 'Mac' : /Linux/.test(u) ? 'Linux-PC' : 'Browser';
+}
+const geraetName = () => String(loadJson(GERAET_KEY, '') || '').trim().slice(0, 40) || geraetGuess();
+const whoText = (e) => (e.geraet || 'Gerät') + (e.geraet === geraetName() ? ' – anderes Fenster' : '') + (e.modus === 'saegen' ? ' (sägt)' : '') + (e.ungespeichert ? ' (ungespeicherte Änderungen)' : '');
+const whoChip = (l) => l && l.length ? ' <span class="chip who" title="Gerade offen an: ' + esc(l.map(whoText).join(', ')) + '">👥 ' + esc(l.length === 1 ? l[0].geraet || 'Gerät' : l.length + ' Geräte') + '</span>' : '';
+const whoProject = () => (proj.store === 'server' && srv.ok && srv.login && proj.id) || null;
+function presenceSoon() { clearTimeout(who.soon); who.soon = setTimeout(presenceTick, 250); }
+function presenceForm(id, weg) {
+  const fd = new FormData();
+  fd.append('id', id); fd.append('sitzung', SITZUNG); fd.append('geraet', geraetName());
+  fd.append('modus', state.page === 'lists' && lst.tab === 'saw' ? 'saegen' : 'bearbeiten');
+  fd.append('ungespeichert', projDirty() ? '1' : '0');
+  if (weg) fd.append('weg', '1');
+  return fd;
+}
+async function presenceTick() {
+  const id = whoProject();
+  if (who.id !== id) { who.andere = []; who.neu = false; who.seen = null; }
+  who.id = id;
+  if (!id) { presenceShow(); return; } // Projekt verlassen: der Server ordnet das Fenster beim nächsten Melden neu zu bzw. vergisst es
+  try {
+    const j = await srvJson(await srvCall('da', { body: presenceForm(id) }));
+    if (!j.ok || whoProject() !== id) return;
+    const andere = j.andere || [];
+    // neu dazugekommen? (beim ersten Melden: alle, die schon drin sind)
+    const fresh = andere.filter((e) => !who.seen || !who.seen.has(e.k));
+    if (fresh.length) toast((who.seen ? fresh.map((e) => e.geraet || 'Gerät').join(', ') + ' hat das Projekt jetzt auch offen.' : '👥 Achtung: Projekt ist gerade auch offen an ' + fresh.map(whoText).join(', ') + '.') + ' Wer zuletzt speichert, wird gefragt.');
+    who.seen = new Set(andere.map((e) => e.k));
+    who.andere = andere;
+    who.neu = !!(j.geaendert && proj.basis && j.geaendert !== proj.basis);
+    who.von = j.geraet || '';
+    who.wann = j.geaendert || '';
+  } catch (e) { /* Server kurz nicht erreichbar: Anzeige bleibt */ }
+  presenceShow();
+}
+function presenceShow() {
+  const w = $('projwho');
+  const n = $('projnew');
+  if (!w || !n) return;
+  const a = who.id ? who.andere : [];
+  w.hidden = !a.length;
+  w.innerHTML = a.length ? '<span aria-hidden="true">👥</span> ' + esc(a.length === 1 ? a[0].geraet || 'Gerät' : a.length + ' Geräte') : '';
+  w.title = a.length ? 'Dieses Projekt ist gerade auch offen an: ' + a.map(whoText).join(', ') + '. Wer danach speichert, wird gefragt, ob er den anderen Stand überschreibt.' : '';
+  n.hidden = !(who.id && who.neu);
+  n.title = 'Ein anderes Gerät hat das Projekt gespeichert' + (who.von ? ' (' + who.von + (who.wann ? ', ' + dateText(who.wann) : '') + ')' : '') + ' – klicken lädt den neuen Stand';
+}
+$('projwho').addEventListener('click', () => toast($('projwho').title));
+$('projnew').addEventListener('click', async () => {
+  const id = who.id;
+  if (!id) return;
+  await srvRefresh();
+  await projOpen('server', id, true);
+  presenceSoon();
+});
+// Fenster zu: gleich abmelden (sonst vergisst der Server es nach 75 s)
+window.addEventListener('pagehide', () => {
+  if (!who.id) return;
+  try { fetch('projekte/api.php?a=da', { method: 'POST', body: presenceForm(who.id, true), keepalive: true, credentials: 'same-origin', headers: { 'X-CSRF': srv.csrf } }); } catch (e) { /* egal */ }
+});
+window.addEventListener('pageshow', (e) => { if (e.persisted) presenceSoon(); });
 $('projopen').addEventListener('click', () => setPage('start'));
 
 // --- Sägeplatz (Raspberry Pi): Knopf „⏻ Ausschalten“, nur wenn dort der Weckwop-Dienst läuft (127.0.0.1:8766, tools/pi/weckwop-dienst.py)

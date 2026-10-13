@@ -427,7 +427,13 @@ Kunde/Auftrag und Notiz, Zustand („gespeichert 07.10. 10:42 · Server“ bzw. 
 diesem Browser** (nur dieses Gerät, ohne Server). Gibt es einen Server, ist er vorgewählt; der Umschalter *🖧 Server / 💻
 Dieser Browser* zeigt beide Listen. Auf dem Server werden Projekte gepackt gespeichert (`projekte/daten/*.s2m.gz` +
 `projekte.json`), gelöschte kommen in den Papierkorb (`projekte/daten/papierkorb/`). Hat ein anderes Gerät dasselbe Projekt
-inzwischen gespeichert, fragt *Speichern* nach (überschreiben oder nicht). Zugang: mit dem Passwort der Dekor-Verwaltung
+inzwischen gespeichert, fragt *Speichern* nach (überschreiben oder nicht – mit Gerätename und Uhrzeit).
+**Wer ist gerade drin:** Ist ein Server-Projekt an mehreren Geräten offen, steht oben neben *Speichern* „👥 Pi Säge“ bzw.
+„👥 2 Geräte“ (Tipp darauf: wer, „sägt“, „ungespeicherte Änderungen“), beim Öffnen kommt ein Hinweis, ebenso, wenn ein Gerät
+dazukommt; in der Projektliste steht es je Projekt. Hat ein anderes Gerät gespeichert, erscheint *⟳ Neuer Stand* – ein Klick
+lädt ihn (eigene ungespeicherte Änderungen nach Nachfrage). Den Namen dieses Geräts stellt man auf der Projektseite ein
+(*🖥 Dieses Gerät*, z. B. „Büro-PC“, „Pi Säge“; sonst geraten: Windows-PC, Raspberry Pi …). Jedes Fenster meldet sich alle
+30 s (`projekte/daten/anwesend.json`), nach 75 s ohne Meldung gilt es als zu. Zugang: mit dem Passwort der Dekor-Verwaltung
 (Anmelden auf der Projektseite) oder – nur für einen Server im eigenen Netz – offen (`S2M_OFFEN=1` bzw. Datei
 `projekte/OFFEN`).
 

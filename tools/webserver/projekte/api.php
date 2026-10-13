@@ -11,6 +11,10 @@
  *                 basis = „geaendert“ des Stands, auf dem die Änderung beruht: ist das Projekt inzwischen von einem anderen
  *                 Gerät gespeichert worden, kommt 409 (nichts überschrieben) – ohne basis wird nicht geprüft (erzwingen).
  *   POST a=meta   id, name, kunde, notiz  /  a=copy id, name  /  a=delete id
+ *   POST a=da     id, sitzung, geraet, modus (bearbeiten|saegen), ungespeichert (1|0), weg (1 = Projekt verlassen)
+ *                 → { ok, andere: [{k, geraet, modus, ungespeichert, seit}], geaendert, geraet } – „wer ist gerade im selben
+ *                 Projekt“: jedes offene Fenster meldet sich alle 30 s (daten/anwesend.json), nach DA_SEK ohne Meldung vergessen.
+ *                 list mit &sitzung=… liefert dazu anwesend: { projektId: [{k, geraet, modus, ungespeichert, seit}] } (ohne die eigene).
  *   POST a=ordner id, paket (ZIP, unkomprimiert, vom Programm gebaut)  → lesbarer Projektordner (Sicherung):
  *                 <S2M_ORDNER bzw. daten/ordner>/<Projektname>/ mit Projekt.s2m, Info.txt, STEP/, Programme/ (xcs +
  *                 konvertieren.bat), Stückliste/Zuschnitt, Versionen/ (die letzten 20 Stände von Projekt.s2m)
@@ -136,6 +140,27 @@ function infoOf(string $json): array {
 }
 
 // --- Zugriff
+// --- Wer ist gerade in welchem Projekt (Fenster melden sich regelmäßig; eigene Sperre, damit die Projektliste nicht wartet)
+const DA_SEK = 75;
+function daLoad(): array {
+  global $dataDir;
+  $j = json_decode((string) @file_get_contents($dataDir . '/anwesend.json'), true);
+  $d = is_array($j) ? $j : [];
+  $t = time() - DA_SEK;
+  foreach ($d as $pid => $ss) {
+    if (!is_array($ss)) { unset($d[$pid]); continue; }
+    foreach ($ss as $sz => $e) if (!is_array($e) || ($e['zeit'] ?? 0) < $t) unset($d[$pid][$sz]);
+    if (!$d[$pid]) unset($d[$pid]);
+  }
+  return $d;
+}
+// für andere sichtbar: ohne Sitzungs-Kennung (nur ein Kürzel zum Wiedererkennen)
+function daPublic(array $ss, string $own): array {
+  $out = [];
+  foreach ($ss as $sz => $e) if ($sz !== $own) $out[] = ['k' => substr(sha1((string) $sz), 0, 10), 'geraet' => $e['geraet'] ?? '', 'modus' => $e['modus'] ?? '',
+    'ungespeichert' => !empty($e['ungespeichert']), 'seit' => $e['seit'] ?? ''];
+  return $out;
+}
 function offen(): bool { return getenv('S2M_OFFEN') === '1' || is_file(__DIR__ . '/OFFEN'); }
 function startSession(): void {
   $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
@@ -166,7 +191,10 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 if ($a === 'list') {
   if (!loggedIn()) out(['ok' => true, 'projekte' => [], 'offen' => false, 'login' => false, 'passwort' => is_file($pwFile)]);
-  out(['ok' => true, 'projekte' => loadDb(), 'offen' => offen(), 'login' => true, 'csrf' => csrf()]);
+  $own = idOk((string) ($_GET['sitzung'] ?? ''));
+  $da = [];
+  foreach (daLoad() as $pid => $ss) { $v = daPublic($ss, $own); if ($v) $da[$pid] = $v; }
+  out(['ok' => true, 'projekte' => loadDb(), 'offen' => offen(), 'login' => true, 'csrf' => csrf(), 'anwesend' => (object) $da]);
 }
 if ($a === 'get') {
   needAccess(false);
@@ -197,10 +225,12 @@ switch ($a) {
     $idx = null;
     if ($id !== '') foreach ($list as $i => $p) if ($p['id'] === $id) $idx = $i;
     if ($idx !== null && post('basis') !== '' && post('basis') !== ($list[$idx]['geaendert'] ?? '')) {
-      fail('Das Projekt wurde inzwischen auf einem anderen Gerät gespeichert (' . ($list[$idx]['geaendert'] ?? '') . ').', 409, ['projekt' => $list[$idx]]);
+      $von = $list[$idx]['geraet'] ?? '';
+      fail('Das Projekt wurde inzwischen auf einem anderen Gerät gespeichert (' . ($von !== '' ? $von . ', ' : '') . date('d.m.Y H:i:s', (int) strtotime($list[$idx]['geaendert'] ?? '')) . ').', 409, ['projekt' => $list[$idx]]);
     }
     if ($idx === null) $id = $id !== '' ? $id : newId();
-    $now = date('c');
+    // auf die Millisekunde: zwei Speichern in derselben Sekunde sind verschiedene Stände (basis-Prüfung, „Neuer Stand“)
+    $now = (new DateTime())->format('Y-m-d\\TH:i:s.vP');
     $p = $idx !== null ? $list[$idx] : ['id' => $id, 'erstellt' => $now];
     $p['name'] = $name;
     $p['kunde'] = clean(post('kunde'), 120);
@@ -214,6 +244,25 @@ switch ($a) {
     if ($idx !== null) $list[$idx] = $p; else $list[] = $p;
     saveDb($list);
     out(['ok' => true, 'projekt' => $p]);
+
+  case 'da':
+    $id = idOk(post('id'));
+    $sz = idOk(post('sitzung'));
+    if ($id === '' || $sz === '') fail('Projekt oder Sitzung fehlt.');
+    $h = @fopen($dataDir . '/.anwesend', 'c');
+    if (!$h || !flock($h, LOCK_EX)) fail('Bitte nochmal versuchen.', 503);
+    $d = daLoad();
+    $seit = $d[$id][$sz]['seit'] ?? date('c');
+    foreach ($d as $pid => $ss) if (isset($ss[$sz])) { unset($d[$pid][$sz]); if (!$d[$pid]) unset($d[$pid]); } // ein Fenster = ein Projekt
+    if (post('weg') !== '1') {
+      $modus = post('modus') === 'saegen' ? 'saegen' : 'bearbeiten';
+      $d[$id][$sz] = ['geraet' => clean(post('geraet'), 40) ?: 'Gerät', 'modus' => $modus, 'ungespeichert' => post('ungespeichert') === '1', 'seit' => $seit, 'zeit' => time()];
+    }
+    writeAtomic($dataDir . '/anwesend.json', (string) json_encode((object) $d, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    flock($h, LOCK_UN);
+    $meta = null;
+    foreach (loadDb() as $p) if ($p['id'] === $id) $meta = $p;
+    out(['ok' => true, 'andere' => daPublic($d[$id] ?? [], $sz), 'geaendert' => $meta['geaendert'] ?? '', 'geraet' => $meta['geraet'] ?? '', 'da' => $meta !== null]);
 
   case 'meta':
     $id = idOk(post('id'));

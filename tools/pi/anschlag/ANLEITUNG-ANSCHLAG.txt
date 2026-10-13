@@ -102,6 +102,17 @@ Sicherheit
 
 Probleme
 --------
+* Beim Start „Input pin(s) active on startup: XR“, „ALARM:1“/„ALARM:11“,
+  im Status „Pn:XR“: Die Eingänge sind Öffner gegen GND – offen = ausgelöst.
+    X = Endschalter (GPIO 32) offen bzw. nicht angeschlossen
+    R = Not-Aus-Meldekontakt (GPIO 33) offen bzw. nicht angeschlossen
+  Solange R aktiv ist, setzt sich der ESP32 dauernd zurück – $X hilft nicht.
+  Am Tisch ohne Schalter: GPIO 32 → GND und GPIO 33 → GND je mit einer
+  Drahtbrücke verbinden, ESP32 neu starten. Dann „?“ im Terminal: kein „Pn:“
+  mehr, nur noch „ALARM:14 Unhomed“ (= Referenzfahrt nötig, das ist richtig).
+  Weckwop zeigt das im Anschlag-Kasten als „⚠ Endschalter … / Not-Aus …“.
+* „E (…) esp_core_dump_flash: No core dump partition found!“ beim Start ist
+  harmlos. „Axis count 3“ ebenso (Y und Z ohne Pins werden nicht benutzt).
 * „Anschlag nicht verbunden“: USB-Kabel (Datenkabel?), im Terminal
   ls /dev/serial/by-id/  – erscheint dort etwas? Nach dem ersten Einrichten
   einmal neu starten (Benutzer braucht die Gruppe „dialout“).

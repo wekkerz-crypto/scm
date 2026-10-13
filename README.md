@@ -269,7 +269,8 @@ Dritte Seite oben (**Listen**):
   „▶ Anschlag auf 534 fahren“ (Knopf, Taste A/Fußtaster, Sprache „Anschlag“), *■ STOPP* (Sprache „Stopp“), *⌂ Referenzfahrt*, „✓ steht“ –
   fährt nie von selbst, nicht über die KI. *⚙ Anschlag*: alle Werte am Pi (Spindelsteigung, Motorschritte, Mikroschritte →
   Schritte/mm, Geschwindigkeiten, Beschleunigung, Spielausgleich, Verfahrweg, Endschalter-Seite, Referenzmaß, Such-/Feingeschwindigkeit,
-  Freifahren, Versatz), Kalibrieren mit gemessenem Maß, Fahren auf ein Maß, Simulator. Installer-Frage bzw. `einrichten.sh --anschlag`. Daneben
+  Freifahren, Versatz), Kalibrieren mit gemessenem Maß, Fahren auf ein Maß, Simulator. Offene Eingänge am ESP32 (Endschalter bzw.
+  Not-Aus-Meldekontakt, FluidNC „Pn:XR“) zeigt der Kasten als „⚠ Endschalter … / Not-Aus …“. Installer-Frage bzw. `einrichten.sh --anschlag`. Daneben
   `dist/Weckwop-Pi.zip` mit `einrichten.sh` (Zebra an USB über
   CUPS mit Treiber „Zebra ZPL Label Printer“ als Standarddrucker in Etikettgröße, Bildschirm bleibt an, Chromium startet beim
   Anmelden im Vollbild mit `--kiosk-printing` → Etiketten ohne Druckdialog), `ANLEITUNG-PI.txt` (Einkaufsliste, Schritte,

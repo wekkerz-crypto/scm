@@ -39,7 +39,12 @@ while True:
     for ch in d:
         c = bytes([ch])
         if c == b'?':
-            send('<%s|MPos:%.3f,0.000,0.000|FS:0,0>\r\n' % (st['state'], st['mpos']))
+            # aktive Eingänge (Pn:) aus der Datei <protokoll>.pins, z. B. „XR“
+            try:
+                pn = open(sys.argv[2] + '.pins').read().strip()
+            except OSError:
+                pn = ''
+            send('<%s|MPos:%.3f,0.000,0.000|FS:0,0%s>\r\n' % (st['state'], st['mpos'], '|Pn:' + pn if pn else ''))
             continue
         if c == b'!':
             st['targets'] = []

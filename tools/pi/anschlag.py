@@ -40,6 +40,7 @@ PARAMS = [
 ]
 VORGABE = dict({p[0]: p[5] for p in PARAMS}, port='auto', baud=115200, richtung=1, sim=False)
 STATUS_RE = re.compile(r'^<([A-Za-z]+)(?::\d+)?\|.*?(?:MPos|WPos):(-?[\d.]+)')
+PN_RE = re.compile(r'\|Pn:([A-Za-z]*)')  # aktive Eingänge: X = Endschalter, R = Reset/Not-Aus-Meldekontakt
 BAUDS = {9600: termios.B9600, 19200: termios.B19200, 38400: termios.B38400, 57600: termios.B57600, 115200: termios.B115200}
 
 
@@ -246,6 +247,7 @@ class Anschlag:
         self.port = None
         self.zustand = '—'
         self.mpos = None
+        self.pins = ''
         self.referenziert = False
         self.ziel = None
         self.meldung = ''
@@ -267,7 +269,7 @@ class Anschlag:
         return {'da': True, 'sim': bool(self.c['sim']), 'verbunden': verb, 'port': self.port, 'zustand': self.zustand if verb else '—',
                 'pos': None if pos is None else round(pos, 2), 'ziel': self.ziel, 'referenziert': self.referenziert and verb,
                 'min': self.c['min'], 'max': self.c['max'], 'toleranz': self.c['toleranz'], 'offset': round(self.c['offset'], 2),
-                'meldung': self.meldung, 'steps_per_mm': round(steps_per_mm(self.c), 3)}
+                'meldung': self.meldung, 'pins': self.pins if verb else '', 'steps_per_mm': round(steps_per_mm(self.c), 3)}
 
     def einstellungen(self):
         return {'werte': {k: self.c[k] for k in VORGABE}, 'felder': [{'key': p[0], 'label': p[1], 'einheit': p[2], 'min': p[3], 'max': p[4],
@@ -413,6 +415,8 @@ class Anschlag:
                 self.referenziert = False
             self.zustand = st
             self.mpos = float(m.group(2))
+            p = PN_RE.search(line)
+            self.pins = p.group(1) if p else ''
             if self.ziel is not None and st == 'Idle' and abs(self.mass(self.mpos) - self.ziel) <= self.c['toleranz']:
                 self.meldung = ''
             return
@@ -423,7 +427,10 @@ class Anschlag:
             self.meldung = {'ALARM:1': 'Endschalter ausgelöst – Referenzfahrt neu', 'ALARM:2': 'Ziel außerhalb des Verfahrwegs',
                             'ALARM:3': 'Zurückgesetzt während der Fahrt – Referenzfahrt neu',
                             'ALARM:6': 'Referenzfahrt abgebrochen', 'ALARM:8': 'Referenzfahrt: Endschalter nicht frei',
-                            'ALARM:9': 'Referenzfahrt: Endschalter nicht gefunden'}.get(line.split()[0], 'Alarm: ' + line)
+                            'ALARM:9': 'Referenzfahrt: Endschalter nicht gefunden',
+                            'ALARM:10': 'Not-Aus ausgelöst – Referenzfahrt neu',
+                            'ALARM:11': 'Eingang beim Einschalten aktiv – Endschalter offen oder Not-Aus gedrückt?',
+                            'ALARM:14': 'Nicht referenziert – Referenzfahrt'}.get(line.split()[0], 'Alarm: ' + line)
         elif line.startswith('error:'):
             self.meldung = 'Fehler vom ESP32: ' + line
         elif line.startswith('Grbl') or 'FluidNC' in line:

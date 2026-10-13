@@ -678,6 +678,12 @@ function fenceTarget() {
   const st = c && c.steps[c.cur];
   return st && st.kind !== 'anschnitt' ? Math.round(st.size * 10) / 10 : null;
 }
+// aktive Eingänge am ESP32 (FluidNC „Pn:“): X = Endschalter (Öffner: Kabel ab = ausgelöst), R = Not-Aus-Meldekontakt
+function fencePinsText(s) {
+  const p = (s && s.pins) || '';
+  return [/X/.test(p) ? 'Endschalter ausgelöst oder Kabel ab (GPIO 32)' : '', /R/.test(p) ? 'Not-Aus gedrückt oder Meldekontakt offen (GPIO 33)' : '']
+    .filter(Boolean).join(' · ');
+}
 function fenceBoxHtml() {
   const s = fence.s;
   const z = fenceTarget();
@@ -696,7 +702,8 @@ function fenceBoxHtml() {
   else if (s.pos != null && Math.abs(s.pos - z) <= (s.toleranz || 0.3)) body = '<div class="fst ok">✓ Anschlag steht auf <b>' + n1(z) + '</b> mm</div>';
   else if (z < s.min || z > s.max) body = '<div class="fst warn">' + n1(z) + ' mm liegt außerhalb des Verfahrwegs (' + n1(s.min) + ' – ' + n1(s.max) + ')</div>';
   else body = '<button type="button" class="btn fgo" data-fence="fahren" title="Taste A, Sprache „Anschlag“">▶ Anschlag auf ' + n1(z) + ' fahren</button><div class="fst">steht auf ' + pos + ' mm</div>';
-  return '<div class="fhead"><span>Anschlag' + (s.sim ? ' <small>Simulator</small>' : '') + '</span></div>' + body + (msg ? '<div class="fmsg">' + esc(msg) + '</div>' : '');
+  const pins = s.verbunden ? fencePinsText(s) : '';
+  return '<div class="fhead"><span>Anschlag' + (s.sim ? ' <small>Simulator</small>' : '') + '</span></div>' + (pins ? '<div class="fst warn">⚠ ' + esc(pins) + '</div>' : '') + body + (msg ? '<div class="fmsg">' + esc(msg) + '</div>' : '');
 }
 function fenceShow() {
   const b = $('fencebox');
@@ -704,7 +711,7 @@ function fenceShow() {
   const p = $('fencecfg');
   if (p && fence.s) { const st = p.querySelector('.fcst'); if (st) st.textContent = fenceStatusLine(); }
 }
-const fenceStatusLine = () => { const s = fence.s; if (!s) return 'Dienst antwortet nicht'; return (s.verbunden ? 'verbunden' + (s.port ? ' (' + s.port + ')' : '') : 'nicht verbunden') + ' · ' + (s.zustand || '–') + ' · ' + (s.pos == null ? '–' : n1(s.pos) + ' mm') + (s.referenziert ? ' · referenziert' : ' · nicht referenziert'); };
+const fenceStatusLine = () => { const s = fence.s; if (!s) return 'Dienst antwortet nicht'; return (s.verbunden ? 'verbunden' + (s.port ? ' (' + s.port + ')' : '') : 'nicht verbunden') + ' · ' + (s.zustand || '–') + ' · ' + (s.pos == null ? '–' : n1(s.pos) + ' mm') + (s.referenziert ? ' · referenziert' : ' · nicht referenziert') + (fencePinsText(s) ? ' · ' + fencePinsText(s) : ''); };
 async function fenceCmd(a, body) {
   if (fence.busy && a !== 'stopp') return;
   fence.busy = a !== 'stopp';

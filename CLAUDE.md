@@ -185,7 +185,7 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   größeren Maßen her anfahren; `Seriell` per termios, Port auto über /dev/serial/by-id; `Sim`; Endpunkte /anschlag, /anschlag/fahren|stopp|
   referenz|entsperren|kalibrieren|einstellungen) – ESP32: FluidNC, `tools/pi/anschlag/config.yaml` (nur Pins), `ANLEITUNG-ANSCHLAG.txt`;
   Seite: `fence`/`fencePoll`/`fenceBoxHtml` (#fencebox unter dem Maß, Ziel `fenceTarget` = Stückmaß, kein Ziel beim Anschnitt)/`fenceCmd`/
-  `fenceGo`, Einstellungen `fenceCfgHtml`/`fenceCfgWire` (`lst.fenceOpen`, `data-saw="fencecfg"`), Taste A, Sprache fence/fencestop,
+  `fenceGo`, offene Eingänge `pins` (FluidNC `Pn:`, `PN_RE`) → `fencePinsText`, Einstellungen `fenceCfgHtml`/`fenceCfgWire` (`lst.fenceOpen`, `data-saw="fencecfg"`), Taste A, Sprache fence/fencestop,
   `sawAction('anschlag_fahren'|'anschlag_stopp')` – nicht im KI-Werkzeug. Tests: `test/anschlag.test.js` (`fixtures/fake_fluidnc.py`, pty).
 - `cli/step2xcs.js` – Kommandozeile. `test/` – `npm test` (node:test; UI-Tests mit Playwright, werden ohne übersprungen).
 - `maestro/doku/Maestro_MSL_KI_Referenz.pdf` – Handbuch der Script-Sprache; Befehlsparameter **immer** dort prüfen

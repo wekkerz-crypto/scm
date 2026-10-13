@@ -25,7 +25,8 @@ test('Anschlag: Werte an FluidNC, Referenzfahrt, Fahren mit Spielausgleich, Gren
     const H = { 'X-Weckwop': '1', 'Content-Type': 'application/json' };
     const get = async (p) => (await fetch(U + p, { headers: H })).json();
     const post = async (p, b) => (await fetch(U + p, { method: 'POST', headers: H, body: JSON.stringify(b || {}) })).json();
-    const until = async (fn, ms) => { for (let t = 0; t < (ms || 6000); t += 100) { const s = await get('/anschlag'); if (fn(s)) return s; await wait(100); } throw new Error('Zeit abgelaufen'); };
+    // Dienst braucht beim Start etwas (Python lädt) – bis dahin schlägt fetch fehl
+    const until = async (fn, ms) => { for (let t = 0; t < (ms || 6000); t += 100) { const s = await get('/anschlag').catch(() => null); if (s && fn(s)) return s; await wait(100); } throw new Error('Zeit abgelaufen'); };
     let s = await until((x) => x.verbunden);
     assert.strictEqual(s.referenziert, false);
     assert.strictEqual(s.steps_per_mm, 200 * 16 / 5);
@@ -66,6 +67,12 @@ test('Anschlag: Werte an FluidNC, Referenzfahrt, Fahren mit Spielausgleich, Gren
     await wait(300);
     assert.match(log(), /^\$\/axes\/x\/acceleration_mm_per_sec2=300$/m);
     assert.match(log(), /^\$\/axes\/x\/steps_per_mm=800\.0000$/m);
+    // aktive Eingänge (Endschalter offen, Not-Aus) werden gemeldet, ALARM:11 im Klartext
+    assert.strictEqual(s.pins, '');
+    fs.writeFileSync(path.join(dir, 'log.pins'), 'XR');
+    s = await until((x) => x.pins === 'XR');
+    fs.writeFileSync(path.join(dir, 'log.pins'), '');
+    await until((x) => x.pins === '');
     // fremde Seite darf nichts
     assert.strictEqual((await fetch(U + '/anschlag/fahren', { method: 'POST', headers: { 'X-Weckwop': '1', Origin: 'https://fremd.example' }, body: '{"mm":10}' })).status, 403);
   } finally {

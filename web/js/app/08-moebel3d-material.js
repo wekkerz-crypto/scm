@@ -91,6 +91,7 @@ function setPage(pg) {
   $('startpage').hidden = pg !== 'start';
   $('drwpage').hidden = pg !== 'drawings';
   document.querySelectorAll('.pagetabs [data-page]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.page === pg)));
+  sawTopMark();
   if (pg === 'model') renderModel();
   if (pg === 'lists') renderLists();
   if (pg === 'labels') renderLD();

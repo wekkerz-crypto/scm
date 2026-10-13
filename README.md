@@ -341,6 +341,7 @@ Dritte Seite oben (**Listen**):
   einer Klammer über seine Breite – der aktuelle blau gefüllt, fertige blass; auf der Karte „Streifen 2/4“, in der Liste
   *Danach* „S2“. Auch im Zuschnittplan (mit *Schnittfolge*), im Druck und im PDF – so lassen sich viele Platten
   hintereinander streifenweise abarbeiten.
+  **Direkt hinein:** grüner Knopf *Sägemodus* oben rechts (von jeder Seite, leuchtet, solange er offen ist) oder Adresse `#saegen`.
   Oben auf der Karte riesig die Zahl, die **am Anschlag einzustellen** ist; fertig geschnittene Teile verschwinden aus der
   Zeichnung. Jedes Teil ist mit **Nr., Maß und Name** beschriftet (passend in die Fläche, schmale Teile gedreht – auch im
   Zuschnittplan). Sobald Teile fertig sind, öffnet sich ein großes Fenster **„Fertig geschnitten“**: Tippen auf ein Teil druckt

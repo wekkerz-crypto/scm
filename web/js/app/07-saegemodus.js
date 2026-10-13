@@ -562,7 +562,11 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); sawGo('next'); }
   else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); sawGo('prev'); }
 });
+// Knopf „Sägemodus“ oben rechts: springt direkt in Listen › Sägen, leuchtet dort
+const sawTopMark = () => { const b = $('sawtop'); if (b) b.setAttribute('aria-pressed', String(state.page === 'lists' && lst.tab === 'saw')); };
+$('sawtop').addEventListener('click', () => { lst.tab = 'saw'; saveLst(); if (state.page === 'lists') renderLists(); else setPage('lists'); });
 function renderLists() {
+  sawTopMark();
   if (state.page !== 'lists') return;
   document.querySelectorAll('[data-ltab]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.ltab === lst.tab)));
   $('bomview').hidden = lst.tab !== 'bom';

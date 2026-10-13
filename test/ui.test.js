@@ -1778,7 +1778,14 @@ test('Web-Tool: Sägemodus per Sprache, Weiter groß und grün', { skip: !chromi
     const [chooser] = await Promise.all([p.waitForEvent('filechooser'), p.click('#pick')]);
     await chooser.setFiles(fixture('schrank3.step'));
     await p.waitForFunction(() => document.querySelectorAll('.part').length === 10, null, { timeout: 60000 });
-    await p.click('[data-page="lists"]');
+    // Knopf „Sägemodus“ oben rechts: direkt von „Programme“ in Listen › Sägen, leuchtet nur dort
+    assert.strictEqual(await p.getAttribute('#sawtop', 'aria-pressed'), 'false');
+    await p.click('#sawtop');
+    await p.waitForSelector('#sawview .sawcard');
+    assert.strictEqual(await p.getAttribute('#sawtop', 'aria-pressed'), 'true');
+    assert.strictEqual(await p.getAttribute('.pagetabs [data-page="lists"]', 'aria-selected'), 'true');
+    await p.click('[data-ltab="bom"]');
+    assert.strictEqual(await p.getAttribute('#sawtop', 'aria-pressed'), 'false');
     await p.click('[data-ltab="saw"]');
     await p.waitForSelector('#sawview .sawcard');
     const opts = await p.$$eval('#sawsheet option', (o) => o.map((x) => x.textContent));

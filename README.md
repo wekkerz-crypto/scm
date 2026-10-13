@@ -265,7 +265,7 @@ Dritte Seite oben (**Listen**):
   der Säge-Leiste **⏻ Ausschalten** (Ausschalten/Neu starten, mit Hinweis auf ungespeicherte Änderungen) über den kleinen Dienst
   `weckwop-dienst.py` (nur 127.0.0.1:8766, nur von der eingerichteten Seite); Headset (USB oder Bluetooth) siehe `ANLEITUNG-PI.txt`.
   **Parallelanschlag mit Schrittmotor:** ESP32 mit FluidNC per USB am Pi (Treiber, Motor, Trapezspindel, Endschalter, Not-Aus –
-  `tools/pi/anschlag/ANLEITUNG-ANSCHLAG.txt`, `config.yaml` nur Pins). Im Sägemodus unter dem Maß der Kasten *Anschlag*:
+  `tools/pi/anschlag/ANLEITUNG-ANSCHLAG.txt`, Verdrahtungsplan `verdrahtung.png`/`.svg`, `config.yaml` nur Pins). Im Sägemodus unter dem Maß der Kasten *Anschlag*:
   „▶ Anschlag auf 534 fahren“ (Knopf, Taste A/Fußtaster, Sprache „Anschlag“), *■ STOPP* (Sprache „Stopp“), *⌂ Referenzfahrt*, „✓ steht“ –
   fährt nie von selbst, nicht über die KI. *⚙ Anschlag*: alle Werte am Pi (Spindelsteigung, Motorschritte, Mikroschritte →
   Schritte/mm, Geschwindigkeiten, Beschleunigung, Spielausgleich, Verfahrweg, Endschalter-Seite, Referenzmaß, Such-/Feingeschwindigkeit,

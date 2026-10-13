@@ -186,7 +186,7 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   Parallelanschlag: `tools/pi/anschlag.py` (im Dienst, nur wenn `~/.config/weckwop/anschlag.json` da ist bzw. `WECKWOP_ANSCHLAG=sim`;
   `PARAMS` = Einstellungen mit Grenzen, `fluidnc_saetze` → `$/axes/x/…=` bei jeder Verbindung; Maß = richtung × MPos + offset; Spiel: von
   größeren Maßen her anfahren; `Seriell` per termios, Port auto über /dev/serial/by-id; `Sim`; Endpunkte /anschlag, /anschlag/fahren|stopp|
-  referenz|entsperren|kalibrieren|einstellungen) – ESP32: FluidNC, `tools/pi/anschlag/config.yaml` (nur Pins), `ANLEITUNG-ANSCHLAG.txt`;
+  referenz|entsperren|kalibrieren|einstellungen) – ESP32: FluidNC, `tools/pi/anschlag/config.yaml` (nur Pins), `ANLEITUNG-ANSCHLAG.txt`, Plan `verdrahtung.svg`/`.png` (Pins gleich config.yaml halten);
   Seite: `fence`/`fencePoll`/`fenceBoxHtml` (#fencebox unter dem Maß, Ziel `fenceTarget` = Stückmaß, kein Ziel beim Anschnitt)/`fenceCmd`/
   `fenceGo`, offene Eingänge `pins` (FluidNC `Pn:`, `PN_RE`) → `fencePinsText`, Einstellungen `fenceCfgHtml`/`fenceCfgWire` (`lst.fenceOpen`, `data-saw="fencecfg"`), Taste A, Sprache fence/fencestop,
   `sawAction('anschlag_fahren'|'anschlag_stopp')` – nicht im KI-Werkzeug. Tests: `test/anschlag.test.js` (`fixtures/fake_fluidnc.py`, pty).

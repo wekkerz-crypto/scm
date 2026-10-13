@@ -28,6 +28,7 @@ Kurz halten (≤ 2 m) und nicht neben den Motorleitungen führen.
 
 Verdrahtung (Vorschlag, passt zur config.yaml)
 ----------------------------------------------
+Als Bild: verdrahtung.png (zum Ausdrucken) bzw. verdrahtung.svg in diesem Ordner.
   ESP32 GPIO 26  → Treiber PUL+ / STEP     (PUL− an GND des ESP32)
   ESP32 GPIO 27  → Treiber DIR+ / DIR      (DIR− an GND)
   ESP32 GPIO 14  → Treiber ENA+ / EN       (ENA− an GND)   – optional

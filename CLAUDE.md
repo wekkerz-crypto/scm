@@ -105,7 +105,7 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   nur anhängen) → Fenster `#aipanel` (`ai.provider`, `aiAsk` für Chat (`aiState.chat`) und Säge (`aiState.saw`, `aiVoice`), `aiUndo` = Stand
   vor der Anfrage über `restoreFrom` + Hinweis an die KI, Schlüssel je Anbieter `step2xcs.ai.v1.key[.openai]`, „Modelle laden“ = models.list);
   SDKs als Browser-Skript `web/js/vendor/openai.js` / `anthropic.js` (`tools/build_openai.sh` / `build_anthropic.sh`, `loadSdk`, `dangerouslyAllowBrowser`).
-- Sprachbefehle im Sägemodus: `web/js/voice.js` (`Voice.parseCmd` → {cmd, n, arg}: next/prev/strip/prevstrip/sheet/prevsheet/gostrip n/gosheet n/
+- Sprachbefehle im Sägemodus: `web/js/voice.js` (`Voice.parseCmd` → {cmd, n, arg}: fence/fencestop, next/prev/strip/prevstrip/sheet/prevsheet/gostrip n/gosheet n/
   gostep n/reset/print/printstrip/lmode/sayon/sayoff/say/status/preview/help/fullon/fulloff/off, Zahlen `numOf`; `Voice.create` mit
   `onFree` (kein Befehl → KI bei `lst.sawAi`), Web Speech oder Vosk offline aus `js/vendor/vosk/` (vosk.js + model-de.tar.gz, nur http;
   `GRAMMAR` außer bei `free()`; `tools/pi/sprache_holen.sh`, Pi `einrichten.sh --sprache` mit lokalem http.server :8765), `Voice.say` Ansage)
@@ -180,6 +180,13 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   Ausschalten: `tools/pi/weckwop-dienst.py` (127.0.0.1:8766, GET /status, POST /ausschalten|/neustart, Kopf `X-Weckwop: 1`, Origin = eingerichtete
   Adresse/null/127.0.0.1:8765, Private-Network-Kopf, Probe `WECKWOP_TROCKEN`) – vom Kiosk-Skript gestartet; Seite: `piCheck`/`piDialog`
   in `13-…`, Knopf `#pioff` (nur wenn der Dienst antwortet) und `data-saw="pioff"` in der Säge-Leiste.
+  Parallelanschlag: `tools/pi/anschlag.py` (im Dienst, nur wenn `~/.config/weckwop/anschlag.json` da ist bzw. `WECKWOP_ANSCHLAG=sim`;
+  `PARAMS` = Einstellungen mit Grenzen, `fluidnc_saetze` → `$/axes/x/…=` bei jeder Verbindung; Maß = richtung × MPos + offset; Spiel: von
+  größeren Maßen her anfahren; `Seriell` per termios, Port auto über /dev/serial/by-id; `Sim`; Endpunkte /anschlag, /anschlag/fahren|stopp|
+  referenz|entsperren|kalibrieren|einstellungen) – ESP32: FluidNC, `tools/pi/anschlag/config.yaml` (nur Pins), `ANLEITUNG-ANSCHLAG.txt`;
+  Seite: `fence`/`fencePoll`/`fenceBoxHtml` (#fencebox unter dem Maß, Ziel `fenceTarget` = Stückmaß, kein Ziel beim Anschnitt)/`fenceCmd`/
+  `fenceGo`, Einstellungen `fenceCfgHtml`/`fenceCfgWire` (`lst.fenceOpen`, `data-saw="fencecfg"`), Taste A, Sprache fence/fencestop,
+  `sawAction('anschlag_fahren'|'anschlag_stopp')` – nicht im KI-Werkzeug. Tests: `test/anschlag.test.js` (`fixtures/fake_fluidnc.py`, pty).
 - `cli/step2xcs.js` – Kommandozeile. `test/` – `npm test` (node:test; UI-Tests mit Playwright, werden ohne übersprungen).
 - `maestro/doku/Maestro_MSL_KI_Referenz.pdf` – Handbuch der Script-Sprache; Befehlsparameter **immer** dort prüfen
   (`pdftotext -layout`). `maestro/beispiele/*.xcs` – Programme aus der Werkstatt, in Maestro bestätigt.

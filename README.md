@@ -263,7 +263,13 @@ Dritte Seite oben (**Listen**):
   dpi, Sprache und Testetikett, richtet alles ein, Verknüpfung auf dem Schreibtisch, Neustart; nochmal starten = aktualisieren
   (Antworten in `~/.config/weckwop/pi-installer.conf`), mit Angaben (`--url … --sprache`) ohne Fragen. Am Pi oben rechts und in
   der Säge-Leiste **⏻ Ausschalten** (Ausschalten/Neu starten, mit Hinweis auf ungespeicherte Änderungen) über den kleinen Dienst
-  `weckwop-dienst.py` (nur 127.0.0.1:8766, nur von der eingerichteten Seite); Headset (USB oder Bluetooth) siehe `ANLEITUNG-PI.txt`. Daneben
+  `weckwop-dienst.py` (nur 127.0.0.1:8766, nur von der eingerichteten Seite); Headset (USB oder Bluetooth) siehe `ANLEITUNG-PI.txt`.
+  **Parallelanschlag mit Schrittmotor:** ESP32 mit FluidNC per USB am Pi (Treiber, Motor, Trapezspindel, Endschalter, Not-Aus –
+  `tools/pi/anschlag/ANLEITUNG-ANSCHLAG.txt`, `config.yaml` nur Pins). Im Sägemodus unter dem Maß der Kasten *Anschlag*:
+  „▶ Anschlag auf 534 fahren“ (Knopf, Taste A/Fußtaster, Sprache „Anschlag“), *■ STOPP* (Sprache „Stopp“), *⌂ Referenzfahrt*, „✓ steht“ –
+  fährt nie von selbst, nicht über die KI. *⚙ Anschlag*: alle Werte am Pi (Spindelsteigung, Motorschritte, Mikroschritte →
+  Schritte/mm, Geschwindigkeiten, Beschleunigung, Spielausgleich, Verfahrweg, Endschalter-Seite, Referenzmaß, Such-/Feingeschwindigkeit,
+  Freifahren, Versatz), Kalibrieren mit gemessenem Maß, Fahren auf ein Maß, Simulator. Installer-Frage bzw. `einrichten.sh --anschlag`. Daneben
   `dist/Weckwop-Pi.zip` mit `einrichten.sh` (Zebra an USB über
   CUPS mit Treiber „Zebra ZPL Label Printer“ als Standarddrucker in Etikettgröße, Bildschirm bleibt an, Chromium startet beim
   Anmelden im Vollbild mit `--kiosk-printing` → Etiketten ohne Druckdialog), `ANLEITUNG-PI.txt` (Einkaufsliste, Schritte,

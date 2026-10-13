@@ -517,14 +517,20 @@ $('projopen').addEventListener('click', () => setPage('start'));
 
 // --- Sägeplatz (Raspberry Pi): Knopf „⏻ Ausschalten“, nur wenn dort der Weckwop-Dienst läuft (127.0.0.1:8766, tools/pi/weckwop-dienst.py)
 const PI_DIENST = 'http://127.0.0.1:8766';
-const piFetch = (path, method) => {
+const piFetch = (path, method, body) => {
   const c = typeof AbortController === 'function' ? new AbortController() : null;
   const t = c ? setTimeout(() => c.abort(), 2500) : 0;
-  return fetch(PI_DIENST + path, { method: method || 'GET', headers: { 'X-Weckwop': '1' }, cache: 'no-store', signal: c ? c.signal : undefined })
+  const h = { 'X-Weckwop': '1' };
+  if (body) h['Content-Type'] = 'application/json';
+  return fetch(PI_DIENST + path, { method: method || 'GET', headers: h, body: body ? JSON.stringify(body) : undefined, cache: 'no-store', signal: c ? c.signal : undefined })
     .then((r) => r.json()).finally(() => clearTimeout(t));
 };
 async function piCheck() {
-  try { const j = await piFetch('/status'); $('pioff').hidden = !(j && j.ok && j.dienst === 'weckwop'); } catch (e) { $('pioff').hidden = true; }
+  try {
+    const j = await piFetch('/status');
+    $('pioff').hidden = !(j && j.ok && j.dienst === 'weckwop');
+    if (j && j.anschlag) fenceStart();
+  } catch (e) { $('pioff').hidden = true; }
   if (!$('pioff').hidden && onSaw()) renderSaw();
 }
 function piDialog() {

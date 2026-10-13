@@ -1145,3 +1145,28 @@ body.drwlock { overflow: hidden; }
 .pidlg .row .btn { font-size: 1.1rem; padding: 12px 18px; }
 .pidlg .btn.danger { background: var(--err); border-color: var(--err); color: #fff; font-weight: 600; }
 .pidlg.bye { text-align: center; }
+/* Parallelanschlag (Schrittmotor) im Sägemodus */
+.fencebox { display: grid; gap: 8px; margin: 4px 0 6px; padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); }
+.fencebox:empty, .fencebox[hidden] { display: none; }
+.fencebox .fhead { display: flex; justify-content: space-between; font: 600 0.78rem var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.fencebox .fhead small { color: var(--warn); margin-left: 6px; }
+.fencebox .fst { font-size: 1.05rem; }
+.fencebox .fst b { font-family: var(--font-mono); }
+.fencebox .fst.ok { color: var(--ok); font-weight: 600; font-size: 1.25rem; }
+.fencebox .fst.run { color: var(--accent); font-weight: 600; font-size: 1.2rem; }
+.fencebox .fst.warn { color: var(--warn); font-weight: 600; }
+.fencebox .fmsg { font-size: 0.85rem; color: var(--muted); }
+.btn.fgo { min-height: 64px; font-size: 1.35rem; font-weight: 700; background: var(--accent); border-color: var(--accent); color: var(--accent-ink); border-radius: 12px; }
+.btn.fstop { min-height: 64px; font-size: 1.5rem; font-weight: 800; letter-spacing: 0.04em; background: var(--err); border-color: var(--err); color: #fff; border-radius: 12px; }
+.fencecfg .btn.fstop { min-height: 0; font-size: 0.9rem; }
+#sawview.sawfull .btn.fgo, #sawview.sawfull .btn.fstop { min-height: 90px; font-size: 1.8rem; }
+.fencecfg { display: grid; gap: 10px; }
+.fencecfg fieldset { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; }
+.fencecfg legend { font-weight: 600; font-size: 0.85rem; padding: 0 4px; }
+.fencecfg label { display: inline-flex; align-items: center; gap: 6px; font-size: 0.86rem; }
+.fencecfg input[type=number] { width: 6.5em; font-family: var(--font-mono); }
+.fencecfg input[type=text] { width: 16em; font-family: var(--font-mono); }
+.fencecfg .fcst { font: 0.82rem var(--font-mono); color: var(--muted); }
+.fencecfg .fcalc { font-size: 0.86rem; color: var(--muted); }
+.fencecfg .row { display: flex; flex-wrap: wrap; gap: 8px; }
+.fencecfg .note { font-size: 0.8rem; color: var(--muted); margin: 0; }

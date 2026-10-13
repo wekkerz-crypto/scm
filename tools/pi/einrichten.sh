@@ -6,6 +6,7 @@
 #   bash einrichten.sh --offline               Programm vom Pi selbst (ohne Internet, ohne Dekor-Bibliothek)
 #   weitere: --etikett 40x60  --dpi 203|300  --nur-drucker  --test
 #   --sprache                                  Sprachbefehle im Sägemodus offline (Vosk, Modell ca. 45 MB, USB-Mikrofon)
+#   --anschlag                                 Parallelanschlag mit Schrittmotor (ESP32 mit FluidNC an USB, siehe anschlag/)
 #   Diskstation (Docker):  bash einrichten.sh --url http://diskstation:8080/ --sprache
 #
 # Macht: CUPS + Zebra (USB, Treiber „Zebra ZPL Label Printer“) als Standarddrucker mit Etikettgröße, Bildschirm-
@@ -20,6 +21,7 @@ DPI="203"
 NUR_DRUCKER=0
 TEST=0
 SPRACHE=0
+ANSCHLAG=0
 PORT=8765
 HIER="$(cd "$(dirname "$0")" && pwd)"
 
@@ -32,6 +34,7 @@ while [ $# -gt 0 ]; do
     --nur-drucker) NUR_DRUCKER=1 ;;
     --test) TEST=1 ;;
     --sprache) SPRACHE=1 ;;
+    --anschlag) ANSCHLAG=1 ;;
     -h|--help) sed -n '2,14p' "$0"; exit 0 ;;
     *) echo "Unbekannte Angabe: $1 (Hilfe: bash einrichten.sh --help)"; exit 1 ;;
   esac
@@ -158,6 +161,14 @@ step "Weckwop beim Anmelden im Vollbild starten"
 mkdir -p "$HOME/.local/bin" "$HOME/.config/autostart"
 # kleiner Dienst nur für diesen Pi (127.0.0.1:8766): Knopf „⏻ Ausschalten“ in Weckwop fährt den Pi herunter
 if [ -f "$HIER/weckwop-dienst.py" ]; then cp "$HIER/weckwop-dienst.py" "$HOME/.local/bin/weckwop-dienst.py" && chmod +x "$HOME/.local/bin/weckwop-dienst.py" && ok "Ausschalt-Knopf eingerichtet"; fi
+[ -f "$HIER/anschlag.py" ] && cp "$HIER/anschlag.py" "$HOME/.local/bin/anschlag.py"
+# Parallelanschlag: Einstellungen anlegen (der Dienst steuert ihn nur, wenn diese Datei da ist), USB-Seriell erlauben
+if [ "$ANSCHLAG" -eq 1 ]; then
+  mkdir -p "$HOME/.config/weckwop"
+  [ -f "$HOME/.config/weckwop/anschlag.json" ] || echo '{"port": "auto"}' > "$HOME/.config/weckwop/anschlag.json"
+  sudo usermod -aG dialout "$USER"
+  ok "Parallelanschlag eingerichtet – Werte in Weckwop unter Sägen › ⚙ Anschlag (gespeichert in ~/.config/weckwop/anschlag.json)"
+fi
 START="$HOME/.local/bin/step2maestro-kiosk.sh"
 cat > "$START" <<EOF
 #!/bin/bash

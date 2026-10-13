@@ -1627,6 +1627,66 @@ test('Sägeplatz (Pi): Knopf „Ausschalten“ nur mit Weckwop-Dienst, Neustart/
   }
 });
 
+test('Sägeplatz (Pi): Parallelanschlag im Sägemodus (Simulator) – Referenzfahrt, Fahren per Knopf/Taste/Sprache, Stopp, Einstellungen', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const fs = require('fs');
+  const os = require('os');
+  const { spawn } = require('child_process');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'weckwop-fence-'));
+  const d = spawn('python3', [path.join(__dirname, '..', 'tools', 'pi', 'weckwop-dienst.py'), 'file:///x'],
+    { env: Object.assign({}, process.env, { WECKWOP_ANSCHLAG: 'sim', WECKWOP_SIM_TEMPO: '10', WECKWOP_ANSCHLAG_CONF: path.join(dir, 'anschlag.json') }), stdio: 'ignore' });
+  const browser = await chromium.launch();
+  try {
+    for (let i = 0; i < 40; i++) { try { if ((await fetch('http://127.0.0.1:8766/status', { headers: { 'X-Weckwop': '1' } })).ok) break; } catch (e) { /* startet */ } await new Promise((r) => setTimeout(r, 100)); }
+    const p = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page.replace('#programme', '#saegen'));
+    await p.waitForSelector('#fencebox [data-fence="referenz"]', { timeout: 10000 });
+    assert.match(await p.textContent('#fencebox'), /Referenzfahrt nötig/);
+    await p.click('#fencebox [data-fence="referenz"]');
+    await p.waitForFunction(() => fence.s && fence.s.referenziert && fence.s.zustand === 'Idle', null, { timeout: 15000 });
+    // Anschnitt: kein Anschlagmaß; dann Streifen 534 mm
+    assert.strictEqual(await p.evaluate(() => fenceTarget()), null);
+    await p.evaluate(() => { lst.sawCfg = Object.assign({}, lst.sawCfg, { labelMode: 'off' }); lst.saw.step = 2; saveLst(); renderSaw(); });
+    assert.match(await p.textContent('#fencebox [data-fence="fahren"]'), /Anschlag auf 534 fahren/);
+    await p.click('#fencebox [data-fence="fahren"]');
+    await p.waitForSelector('#fencebox .fst.ok', { timeout: 15000 });
+    assert.match(await p.textContent('#fencebox'), /steht auf 534 mm/);
+    // nächster Schritt (Querschnitt 1004): fährt nicht von selbst – Taste A
+    await p.click('[data-saw="next"]');
+    await p.waitForTimeout(400);
+    assert.strictEqual(await p.evaluate(() => fence.s.pos), 534);
+    await p.keyboard.press('a');
+    await p.waitForFunction(() => fence.s && Math.abs(fence.s.pos - 1004) < 0.01 && fence.s.zustand === 'Idle', null, { timeout: 15000 });
+    // Sprache: „Anschlag“ fährt, „Stopp“ hält an
+    await p.click('[data-saw="next"]');
+    await p.evaluate(() => voiceCommand(Voice.parseCmd('Anschlag fahren')));
+    await p.waitForFunction(() => fence.s && fence.s.zustand === 'Run', null, { timeout: 5000 });
+    await p.evaluate(() => voiceCommand(Voice.parseCmd('Stopp')));
+    await p.waitForFunction(() => fence.s && fence.s.zustand === 'Idle', null, { timeout: 5000 });
+    assert.ok(Math.abs(await p.evaluate(() => fence.s.pos) - 696) > 0.5);
+    // die KI darf den Anschlag nicht fahren
+    const ki = await p.evaluate(() => Assist.validate({ aktion: 'anschlag_fahren' }, Assist.TOOLS.find((t) => t.name === 'saegen_steuern').input_schema));
+    assert.ok(ki);
+    // Einstellungen: Felder vom Pi, Schritte/mm, Übernehmen → Referenzfahrt nötig
+    await p.click('[data-saw="fencecfg"]');
+    await p.waitForSelector('#fencecfg [data-fcfg="steigung"]');
+    await p.fill('#fencecfg [data-fcfg="steigung"]', '5');
+    assert.strictEqual(await p.textContent('#fspmm'), '320');
+    await p.fill('#fencecfg [data-fcfg="beschl"]', '250');
+    await p.click('#fcsave');
+    await p.waitForFunction(() => fence.s && fence.s.referenziert === false, null, { timeout: 5000 });
+    const conf = JSON.parse(fs.readFileSync(path.join(dir, 'anschlag.json'), 'utf8'));
+    assert.strictEqual(conf.steigung, 5);
+    assert.strictEqual(conf.beschl, 250);
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    d.kill();
+    await browser.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 // Dekor-Bibliothek (PHP auf dem Webspace): eingebauter PHP-Server mit web/ + tools/webserver/dekore in einem Testordner
 const { execFileSync, spawn } = require('child_process');
 let hasPhp = false;

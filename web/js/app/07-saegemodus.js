@@ -169,8 +169,9 @@ function renderSaw() {
     '<button type="button" class="btn ghost small" data-saw="reset">Von vorn</button>' +
     '<button type="button" class="btn small drwbtn" data-saw="drw" title="Zeichnungen zum Projekt bildschirmfüllend (Z) – blättern mit ← →, Sprache „Zeichnung“, „nächste Seite“, „Zeichnung zu“">📄 Zeichnungen' + (drw.list.length ? ' <small>' + drw.list.length + '</small>' : '') + '</button>' +
     '<button type="button" class="btn small" data-saw="full" aria-pressed="' + full + '">' + (full ? '✕ Vollbild beenden' : '⛶ Vollbild') + '</button>' +
+    (fence.da ? '<button type="button" class="btn ghost small" data-saw="fencecfg" aria-expanded="' + String(!!lst.fenceOpen) + '" title="Parallelanschlag: Steigung, Geschwindigkeit, Beschleunigung, Referenzmaß, Versatz …">⚙ Anschlag</button>' : '') +
     ($('pioff').hidden ? '' : '<button type="button" class="btn small pioff" data-saw="pioff" title="Sägeplatz ausschalten oder neu starten">⏻ Aus</button>') + '</div>' +
-    (lst.sawCfgOpen ? sawCfgHtml(cfg) : '') + sawOverHtml(list, xi) +
+    (lst.sawCfgOpen ? sawCfgHtml(cfg) : '') + (fence.da && lst.fenceOpen ? fenceCfgHtml() : '') + sawOverHtml(list, xi) +
     (ok ? '' : '<p class="warn">Diese Anordnung ist nicht ganz mit durchgehenden Schnitten trennbar – im Zuschnittplan prüfen.</p>') +
     '<div class="saw"><div class="sawdraw">' + sawSvg(x, steps, cur, cfg, strips) + '</div><div class="sawcard" aria-live="polite">' +
     (voice.msg || voice.heard ? '<div class="vstat' + (voice.msg ? ' warn' : '') + '" role="status">' + esc(voice.msg || '🎤 „' + voice.heard + '“' + (voice.cmd ? '' : lst.sawAi ? ' → KI' : ' – kein Befehl (z. B. „Hilfe“)')) + '</div>' : '') +
@@ -179,6 +180,7 @@ function renderSaw() {
       (st.sn ? '<span class="sstrip" title="Streifen – Nummer am Rand der Platte">Streifen <b>' + st.sn + '</b>/' + strips.length + '</span>' : '') + '<span class="snum">' + (cur + 1) + '<small>/' + steps.length + '</small></span></div>' +
       '<div class="fence"><span class="fl">' + (st.kind === 'anschnitt' ? 'Abschneiden' : cfg.measure === 'remain' ? 'Anschlag einstellen · Restmaß' : 'Anschlag einstellen') + '</span>' +
       '<span class="big" style="--nl:' + n1(m.v).length + '">' + n1(m.v) + '<small>mm</small></span></div>' +
+      (fence.da ? '<div class="fencebox" id="fencebox" aria-live="polite">' + fenceBoxHtml() + '</div>' : '') +
       '<div class="dir"><span class="darr" aria-hidden="true">' + (st.dir === 'h' ? '⟷' : '↕') + '</span> ' + esc(t.dir) + '</div>' +
       (st.kind !== 'anschnitt' && cfg.measure === 'remain' ? '<div class="sub2">Stück ' + n1(st.size) + ' mm</div>' : st.kind !== 'anschnitt' && st.rest > 0 && !t.rest ? '<div class="sub2">Rest ' + n1(st.rest) + ' mm</div>' : '') +
       '<div class="tx">' + esc(t.tx) + '</div>' +
@@ -194,6 +196,7 @@ function renderSaw() {
     '<div class="sn keys">Tasten: → oder Leertaste = weiter · ← = zurück · F = Vollbild' + (voiceOn() ? ' · Sprache: „weiter“, „zurück“, „drucken“, „nächster Streifen“, „Streifen drei“, „Hilfe“' : '') + '</div>' +
     '<div class="sn">' + Object.entries(kindTot).map(([k2, v]) => v + ' × ' + SAW_KIND[k2]).join(' · ') + '</div></div></div>' + sawPopHtml(x);
   $('sawsheet').addEventListener('change', (e) => { lst.saw = { key: e.target.value, step: 0 }; sawPop = null; saveLst(); renderSaw(); });
+  fenceCfgWire(host);
   host.querySelectorAll('[data-saw]').forEach((b) => b.addEventListener('click', () => sawGo(b.dataset.saw)));
   host.querySelectorAll('[data-lmode]').forEach((b) => b.addEventListener('click', () => {
     lst.sawCfg = Object.assign({}, lst.sawCfg || {}, { labelMode: b.dataset.lmode });
@@ -320,6 +323,7 @@ function sawGo(what) {
   else if (what === 'full') { sawFull(!$('sawview').classList.contains('sawfull')); return; }
   else if (what === 'drw') { drwOverlay(true); return; }
   else if (what === 'pioff') { piDialog(); return; }
+  else if (what === 'fencecfg') { fenceCfgOpen(!lst.fenceOpen); return; }
   else if (what === 'voice') { voiceToggle(); return; }
   else if (what === 'say') { lst.sawSay = !lst.sawSay; saveLst(); renderSaw(); if (lst.sawSay) sawSay(); return; }
   else if (what === 'ai') {
@@ -408,6 +412,9 @@ function sawGoStep(k) { lst.saw.step = k; sawPop = null; }
 function sawAction(aktion, o) {
   o = o || {};
   if (/^zeichnung_/.test(aktion)) return drwAction(aktion, o); // Zeichnungen gehen auch ohne Zuschnitt
+  // Anschlag (nur Sprache/Taste – nicht für die KI freigegeben)
+  if (aktion === 'anschlag_stopp') { if (!fence.da) throw new Error('Kein Anschlag angeschlossen.'); fenceCmd('stopp'); return sawStatusObj(); }
+  if (aktion === 'anschlag_fahren') { if (!fence.da) throw new Error('Kein Anschlag angeschlossen.'); fenceGo(); return sawStatusObj(); }
   if (!onSaw()) { lst.tab = 'saw'; saveLst(); setPage('lists'); }
   let c = sawCur();
   if (!c) throw new Error('Keine Teile für den Zuschnitt.');
@@ -478,7 +485,8 @@ function voiceCommand(c) {
   if (!onSaw()) return;
   const map = { next: 'weiter', prev: 'zurueck', strip: 'naechster_streifen', prevstrip: 'vorheriger_streifen', sheet: 'naechste_platte', prevsheet: 'vorherige_platte',
     reset: 'von_vorn', print: 'drucken', printstrip: 'streifen_etikett', fullon: 'vollbild_an', fulloff: 'vollbild_aus', sayon: 'ansage_an', sayoff: 'ansage_aus', say: 'vorlesen',
-    drawon: 'zeichnung_an', drawoff: 'zeichnung_aus', pagenext: 'zeichnung_weiter', pageprev: 'zeichnung_zurueck' };
+    drawon: 'zeichnung_an', drawoff: 'zeichnung_aus', pagenext: 'zeichnung_weiter', pageprev: 'zeichnung_zurueck',
+    fence: 'anschlag_fahren', fencestop: 'anschlag_stopp' };
   // Zeichnung offen: „weiter“/„zurück“ blättern in der Zeichnung, „Seite 3“ springt dorthin
   if (drw.over && (c.cmd === 'next' || c.cmd === 'prev')) c = { cmd: c.cmd === 'next' ? 'pagenext' : 'pageprev' };
   try {
@@ -550,6 +558,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && $('sawview').classList.contains('sawfull')) { sawFull(false); return; }
   if (e.key === 'f' || e.key === 'F') { e.preventDefault(); sawGo('full'); return; }
   if (e.key === 'z' || e.key === 'Z') { e.preventDefault(); sawGo('drw'); return; }
+  if ((e.key === 'a' || e.key === 'A') && fence.da) { e.preventDefault(); fenceGo(); return; }
   if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); sawGo('next'); }
   else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); sawGo('prev'); }
 });
@@ -643,3 +652,129 @@ $('lprintbtn').addEventListener('click', () => {
   else printOr(cutPdf, () => printA4('<h1>Zuschnittplan</h1><p class="meta">' + new Date().toLocaleDateString('de-DE') + ' · Schnittfuge ' + fmt(lst.kerf) + ' mm · Besäumen ' + fmt(lst.trim) +
     ' mm · ' + (lst.raw ? 'Rohmaß (mit Aufmaß)' : 'Fertigmaß') + '</p>' + renderCut(true), true));
 });
+
+// ------------------------------------------------ Parallelanschlag mit Schrittmotor (ESP32/FluidNC über den Weckwop-Dienst am Pi)
+/*
+ * Nur am Sägeplatz-Pi, wenn der Dienst einen Anschlag meldet (tools/pi/anschlag.py). Fahren nur auf ausdrücklichen Knopfdruck
+ * („▶ Anschlag fahren“, Taste A, Sprache „Anschlag“) – nie von selbst beim „Weiter“. Ziel = Stückmaß des Schritts (Abstand
+ * Blatt → Anschlag). Stand alle 1 s (beim Fahren 0,3 s) abfragen und nur das Feld #fencebox neu zeichnen.
+ */
+const fence = { da: false, s: null, timer: null, einst: null, busy: false, err: '', fast: 0 };
+function fenceStart() {
+  if (fence.da) return;
+  fence.da = true;
+  fencePoll();
+}
+async function fencePoll() {
+  clearTimeout(fence.timer);
+  try { fence.s = await piFetch('/anschlag'); } catch (e) { fence.s = null; }
+  fenceShow();
+  const moving = fence.s && /^(Run|Home|Jog)$/.test(fence.s.zustand);
+  fence.timer = setTimeout(fencePoll, moving || Date.now() < fence.fast ? 300 : onSaw() ? 1000 : 4000);
+}
+// Ziel des aktuellen Schritts (Stückmaß) – kein Ziel beim Anschnitt
+function fenceTarget() {
+  const c = onSaw() && sawCur();
+  const st = c && c.steps[c.cur];
+  return st && st.kind !== 'anschnitt' ? Math.round(st.size * 10) / 10 : null;
+}
+function fenceBoxHtml() {
+  const s = fence.s;
+  const z = fenceTarget();
+  if (!s || !s.da) return '';
+  const pos = s.pos == null ? '–' : n1(s.pos);
+  const msg = fence.err || s.meldung || '';
+  let body;
+  if (!s.verbunden) body = '<div class="fst warn">Anschlag nicht verbunden – USB-Kabel Pi ↔ ESP32 prüfen' + (s.port ? ' (' + esc(s.port) + ')' : '') + '</div>';
+  else if (/^(Run|Home|Jog)$/.test(s.zustand)) {
+    body = '<div class="fst run">' + (s.zustand === 'Home' ? 'Referenzfahrt …' : 'fährt … ' + pos + (s.ziel != null ? ' → ' + n1(s.ziel) : '') + ' mm') + '</div>' +
+      '<button type="button" class="btn fstop" data-fence="stopp">■ STOPP</button>';
+  } else if (!s.referenziert) {
+    body = '<div class="fst warn">' + (s.zustand === 'Alarm' ? 'Alarm – ' : '') + 'Referenzfahrt nötig</div>' +
+      '<button type="button" class="btn fgo" data-fence="referenz">⌂ Referenzfahrt</button>';
+  } else if (z == null) body = '<div class="fst">Anschlag steht auf <b>' + pos + '</b> mm</div>';
+  else if (s.pos != null && Math.abs(s.pos - z) <= (s.toleranz || 0.3)) body = '<div class="fst ok">✓ Anschlag steht auf <b>' + n1(z) + '</b> mm</div>';
+  else if (z < s.min || z > s.max) body = '<div class="fst warn">' + n1(z) + ' mm liegt außerhalb des Verfahrwegs (' + n1(s.min) + ' – ' + n1(s.max) + ')</div>';
+  else body = '<button type="button" class="btn fgo" data-fence="fahren" title="Taste A, Sprache „Anschlag“">▶ Anschlag auf ' + n1(z) + ' fahren</button><div class="fst">steht auf ' + pos + ' mm</div>';
+  return '<div class="fhead"><span>Anschlag' + (s.sim ? ' <small>Simulator</small>' : '') + '</span></div>' + body + (msg ? '<div class="fmsg">' + esc(msg) + '</div>' : '');
+}
+function fenceShow() {
+  const b = $('fencebox');
+  if (b) { b.innerHTML = fenceBoxHtml(); b.hidden = !b.innerHTML; }
+  const p = $('fencecfg');
+  if (p && fence.s) { const st = p.querySelector('.fcst'); if (st) st.textContent = fenceStatusLine(); }
+}
+const fenceStatusLine = () => { const s = fence.s; if (!s) return 'Dienst antwortet nicht'; return (s.verbunden ? 'verbunden' + (s.port ? ' (' + s.port + ')' : '') : 'nicht verbunden') + ' · ' + (s.zustand || '–') + ' · ' + (s.pos == null ? '–' : n1(s.pos) + ' mm') + (s.referenziert ? ' · referenziert' : ' · nicht referenziert'); };
+async function fenceCmd(a, body) {
+  if (fence.busy && a !== 'stopp') return;
+  fence.busy = a !== 'stopp';
+  fence.err = '';
+  fence.fast = Date.now() + 2000; // nach einem Befehl kurz öfter nachfragen
+  try {
+    const j = await piFetch('/anschlag/' + a, 'POST', body || {});
+    if (j && j.ok === false) fence.err = j.fehler || 'abgelehnt';
+    fence.s = j && j.da ? j : fence.s;
+  } catch (e) { fence.err = 'Dienst am Pi antwortet nicht.'; }
+  fence.busy = false;
+  fenceShow();
+  if (fence.err && voiceOn()) Voice.say(fence.err);
+  fencePoll();
+  return !fence.err;
+}
+function fenceGo() {
+  const z = fenceTarget();
+  if (z == null) { fence.err = 'Bei diesem Schritt gibt es kein Anschlagmaß.'; fenceShow(); return false; }
+  return fenceCmd('fahren', { mm: z });
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-fence]');
+  if (!b) return;
+  const a = b.dataset.fence;
+  if (a === 'fahren') fenceGo();
+  else fenceCmd(a);
+});
+// Einstellungen (alle Werte am Pi in ~/.config/weckwop/anschlag.json): Mechanik, Fahren, Verfahrweg, Referenzfahrt, Versatz
+async function fenceCfgOpen(on) {
+  lst.fenceOpen = on;
+  saveLst();
+  if (on) { try { fence.einst = await piFetch('/anschlag/einstellungen'); } catch (e) { fence.einst = null; } }
+  renderSaw();
+}
+function fenceCfgHtml() {
+  const e = fence.einst;
+  if (!e || !e.felder) return '<div class="sawcfg fencecfg" id="fencecfg"><p class="warn">Einstellungen nicht lesbar – läuft der Weckwop-Dienst am Pi?</p></div>';
+  const groups = [];
+  for (const f of e.felder) { let g = groups.find((x) => x.n === f.gruppe); if (!g) groups.push(g = { n: f.gruppe, f: [] }); g.f.push(f); }
+  const w = e.werte;
+  return '<div class="sawcfg fencecfg" id="fencecfg"><div class="fcst">' + esc(fenceStatusLine()) + '</div>' +
+    groups.map((g) => '<fieldset><legend>' + esc(g.n) + '</legend>' + g.f.map((f) => '<label title="' + esc(f.min + ' … ' + f.max + ' ' + f.einheit + ', Vorgabe ' + f.vorgabe) + '">' + esc(f.label) +
+      ' <input type="number" step="any" data-fcfg="' + esc(f.key) + '" value="' + esc(w[f.key]) + '"> ' + esc(f.einheit) + '</label>').join('') +
+      (g.n === 'Mechanik' ? '<div class="fcalc">= <b id="fspmm">' + fmt(e.steps_per_mm) + '</b> Schritte/mm</div>' : '') +
+      (g.n === 'Kalibrierung' ? '<label>Am Anschlag gemessen <input type="number" step="0.1" id="fcist" placeholder="mm"> mm <button type="button" class="btn small" id="fcist-ok">Übernehmen</button></label>' : '') +
+      '</fieldset>').join('') +
+    '<fieldset><legend>Verbindung</legend><label>USB-Anschluss <input type="text" data-fcfg="port" value="' + esc(w.port) + '" placeholder="auto"></label>' +
+      '<label class="ck"><input type="checkbox" data-fcfg="sim"' + (w.sim ? ' checked' : '') + '> Simulator (ohne ESP32)</label></fieldset>' +
+    '<fieldset><legend>Bedienen</legend><label>Fahren auf <input type="number" step="0.1" id="fcgoto" placeholder="mm"> mm <button type="button" class="btn small" id="fcgoto-ok">Fahren</button></label>' +
+      '<div class="row"><button type="button" class="btn small" data-fence="referenz">⌂ Referenzfahrt</button><button type="button" class="btn small" data-fence="entsperren" title="Alarm aufheben ohne Referenzfahrt – nur wenn die Position sicher stimmt">Entsperren</button>' +
+      '<button type="button" class="btn small fstop" data-fence="stopp">■ Stopp</button></div></fieldset>' +
+    '<p class="note">Gespeichert am Pi in ' + esc(e.datei || 'anschlag.json') + '. Nach dem Übernehmen ist eine neue Referenzfahrt nötig. Pins und Treiber stehen in der config.yaml auf dem ESP32.</p>' +
+    '<div class="row"><button type="button" class="btn" id="fcsave">Übernehmen</button><button type="button" class="btn ghost small" id="fcclose">Schließen</button></div></div>';
+}
+function fenceCfgWire(host) {
+  const p = host.querySelector('#fencecfg');
+  if (!p) return;
+  const calc = () => { const v = (k) => parseFloat(String((p.querySelector('[data-fcfg="' + k + '"]') || {}).value || '').replace(',', '.')); const r = v('schritte_u') * v('mikro') / v('steigung'); const o = $('fspmm'); if (o) o.textContent = isFinite(r) ? fmt(Math.round(r * 1000) / 1000) : '–'; };
+  p.querySelectorAll('[data-fcfg]').forEach((i) => i.addEventListener('input', calc));
+  const btn = p.querySelector('#fcsave');
+  if (btn) btn.addEventListener('click', async () => {
+    const d = {};
+    p.querySelectorAll('[data-fcfg]').forEach((i) => { d[i.dataset.fcfg] = i.type === 'checkbox' ? i.checked : i.value; });
+    if (await fenceCmd('einstellungen', d)) { toast('Anschlag-Einstellungen gespeichert – bitte Referenzfahrt.'); fenceCfgOpen(true); } else toast(fence.err);
+  });
+  const ist = p.querySelector('#fcist-ok');
+  if (ist) ist.addEventListener('click', async () => { const v = parseFloat(String($('fcist').value).replace(',', '.')); if (!isFinite(v)) return; if (await fenceCmd('kalibrieren', { ist: v })) { toast('Kalibriert: Anschlag = ' + n1(v) + ' mm'); fenceCfgOpen(true); } else toast(fence.err); });
+  const go = p.querySelector('#fcgoto-ok');
+  if (go) go.addEventListener('click', async () => { const v = parseFloat(String($('fcgoto').value).replace(',', '.')); if (!isFinite(v)) return; if (!(await fenceCmd('fahren', { mm: v }))) toast(fence.err); });
+  const cl = p.querySelector('#fcclose');
+  if (cl) cl.addEventListener('click', () => fenceCfgOpen(false));
+}

@@ -135,6 +135,13 @@ Mikrofon / Headset anschließen
 * Probieren: Terminal  arecord -d 5 test.wav && aplay test.wav  (5 s sprechen,
   dann hört man sich selbst).
 
+Parallelanschlag mit Schrittmotor
+---------------------------------
+Eigene Anleitung im Ordner anschlag/ (ANLEITUNG-ANSCHLAG.txt, config.yaml für
+den ESP32). Kurz: ESP32 mit FluidNC per USB-Kabel an den Pi, im Installer
+„Parallelanschlag … Ja“, in Weckwop unter Sägen › ⚙ Anschlag die Werte
+eintragen, Referenzfahrt, kalibrieren. Sprache: „Anschlag“, „Stopp“.
+
 Ausschalten
 -----------
 Oben rechts (und im Sägemodus in der Leiste) „⏻ Ausschalten“: fährt den Pi

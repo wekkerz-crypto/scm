@@ -44,7 +44,7 @@ if [ $# -gt 0 ]; then
 fi
 
 # ---------------------------------------------------------------- Fragen (whiptail, sonst Text)
-URL=""; OFFLINE=0; ETIKETT="40x60"; DPI="203"; SPRACHE=0; TESTDRUCK=1
+URL=""; OFFLINE=0; ETIKETT="40x60"; DPI="203"; SPRACHE=0; TESTDRUCK=1; ANSCHLAG=0
 # shellcheck disable=SC1090
 [ -f "$CONF" ] && . "$CONF"
 WT=0; command -v whiptail >/dev/null && [ -t 0 ] && WT=1
@@ -74,6 +74,7 @@ if [ -f "$CONF" ] && frage_ja "Weckwop war hier schon eingerichtet:
   Adresse:  $([ "$OFFLINE" = 1 ] && echo 'offline (auf dem Pi)' || echo "$URL")
   Etikett:  ${ETIKETT/x/ × } mm, $DPI dpi
   Sprache:  $([ "$SPRACHE" = 1 ] && echo 'offline' || echo 'aus')
+  Anschlag: $([ "$ANSCHLAG" = 1 ] && echo 'Schrittmotor (ESP32)' || echo 'von Hand')
 
 Mit denselben Einstellungen aktualisieren?" 1; then
   :
@@ -102,6 +103,10 @@ else
 
 „weiter“, „zurück“, „drucken“, „Zeichnung“ … über ein USB-Mikrofon oder Headset,
 ohne Internet. Lädt einmal ca. 45 MB." "$SPRACHE"; then SPRACHE=1; else SPRACHE=0; fi
+  if frage_ja "Parallelanschlag mit Schrittmotor angeschlossen?
+
+ESP32 mit FluidNC per USB am Pi, Treiber, Motor und Endschalter
+(Anleitung: anschlag/ANLEITUNG-ANSCHLAG.txt). Werte später in Weckwop unter Sägen › ⚙ Anschlag." "$ANSCHLAG"; then ANSCHLAG=1; else ANSCHLAG=0; fi
   if frage_ja "Zum Schluss ein Testetikett drucken (Zebra eingeschaltet, Etiketten eingelegt)?" "$TESTDRUCK"; then TESTDRUCK=1; else TESTDRUCK=0; fi
 fi
 
@@ -116,13 +121,14 @@ if [ "$OFFLINE" -eq 0 ]; then
   fi
 fi
 mkdir -p "$(dirname "$CONF")"
-printf 'URL=%q\nOFFLINE=%q\nETIKETT=%q\nDPI=%q\nSPRACHE=%q\nTESTDRUCK=%q\n' "$URL" "$OFFLINE" "$ETIKETT" "$DPI" "$SPRACHE" "$TESTDRUCK" > "$CONF"
+printf 'URL=%q\nOFFLINE=%q\nETIKETT=%q\nDPI=%q\nSPRACHE=%q\nTESTDRUCK=%q\nANSCHLAG=%q\n' "$URL" "$OFFLINE" "$ETIKETT" "$DPI" "$SPRACHE" "$TESTDRUCK" "$ANSCHLAG" > "$CONF"
 
 # ---------------------------------------------------------------- einrichten.sh mit den Antworten
 ARGS=(--etikett "$ETIKETT" --dpi "$DPI")
 if [ "$OFFLINE" -eq 1 ]; then ARGS+=(--offline); else ARGS+=(--url "$URL"); fi
 [ "$SPRACHE" -eq 1 ] && ARGS+=(--sprache)
 [ "$TESTDRUCK" -eq 1 ] && ARGS+=(--test)
+[ "$ANSCHLAG" -eq 1 ] && ARGS+=(--anschlag)
 echo
 echo "Richte ein … (dauert einige Minuten, das Passwort des Pi wird ggf. abgefragt)"
 bash "$ZIEL/einrichten.sh" "${ARGS[@]}" 2>&1 | tee "$ZIEL/installation.log"

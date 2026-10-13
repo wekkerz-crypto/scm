@@ -5,6 +5,9 @@ Läuft nur auf 127.0.0.1:8766 (von außen nicht erreichbar), gestartet von step2
   GET  /status      → {"ok": true, "dienst": "weckwop", "version": 1}
   POST /ausschalten → fährt den Pi herunter (systemctl poweroff, sonst sudo -n poweroff)
   POST /neustart    → startet neu
+  Parallelanschlag (anschlag.py, ESP32 mit FluidNC über USB): GET /anschlag (Stand), POST /anschlag/fahren {"mm": 523.4},
+  /anschlag/stopp, /anschlag/referenz, /anschlag/entsperren, /anschlag/kalibrieren {"ist": 523.1},
+  GET/POST /anschlag/einstellungen (Steigung, Schritte, Geschwindigkeit, Beschleunigung, Referenzmaß, Versatz …)
 Nur Anfragen mit Kopfzeile „X-Weckwop: 1“ (erzwingt bei fremden Seiten eine CORS-Vorabfrage) und nur von erlaubten Seiten:
 Origin der eingerichteten Adresse (1. Argument), „null“ (Datei file://) und http://127.0.0.1:8765 (Offline mit Sprache).
 Probe ohne Ausschalten: WECKWOP_TROCKEN=/pfad/datei  → schreibt nur, was es tun würde.
@@ -19,6 +22,12 @@ from urllib.parse import urlsplit
 
 PORT = int(os.environ.get('WECKWOP_DIENST_PORT', '8766'))
 TROCKEN = os.environ.get('WECKWOP_TROCKEN', '')
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    import anschlag as _anschlag_mod
+except ImportError:
+    _anschlag_mod = None
+ANSCHLAG = None  # erst beim Start (main), damit ein Test ohne ESP32 nichts öffnet
 
 
 def origin_of(url):
@@ -78,13 +87,52 @@ class Dienst(BaseHTTPRequestHandler):
         self.kopf(204 if o in ERLAUBT else 403)
 
     def do_GET(self):
-        if self.path.split('?')[0] != '/status' or not self.erlaubt():
+        p = self.path.split('?')[0]
+        if not self.erlaubt() or p not in ('/status', '/anschlag', '/anschlag/einstellungen'):
             self.kopf(403, {'ok': False})
             return
-        self.kopf(200, {'ok': True, 'dienst': 'weckwop', 'version': 1})
+        if p == '/anschlag/einstellungen':
+            self.kopf(200, ANSCHLAG.einstellungen() if ANSCHLAG else {'da': False})
+            return
+        if p == '/anschlag':
+            self.kopf(200, ANSCHLAG.status() if ANSCHLAG else {'da': False})
+            return
+        self.kopf(200, {'ok': True, 'dienst': 'weckwop', 'version': 2, 'anschlag': ANSCHLAG is not None})
+
+    def daten(self):
+        try:
+            n = min(int(self.headers.get('Content-Length') or 0), 16384)
+            return json.loads(self.rfile.read(n) or b'{}') if n else {}
+        except (ValueError, OSError):
+            return {}
 
     def do_POST(self):
         was = self.path.split('?')[0].strip('/')
+        if was.startswith('anschlag/') and self.erlaubt():
+            if not ANSCHLAG:
+                self.kopf(404, {'ok': False, 'fehler': 'Kein Anschlag eingerichtet.'})
+                return
+            d = self.daten()
+            try:
+                a = was.split('/', 1)[1]
+                if a == 'fahren':
+                    ANSCHLAG.fahren(d.get('mm'))
+                elif a == 'stopp':
+                    ANSCHLAG.stopp()
+                elif a == 'referenz':
+                    ANSCHLAG.referenz()
+                elif a == 'entsperren':
+                    ANSCHLAG.entsperren()
+                elif a == 'kalibrieren':
+                    ANSCHLAG.kalibrieren(d.get('ist'))
+                elif a == 'einstellungen':
+                    ANSCHLAG.setze(d)
+                else:
+                    raise RuntimeError('unbekannt')
+                self.kopf(200, dict(ANSCHLAG.status(), ok=True))
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
+                self.kopf(200, dict(ANSCHLAG.status(), ok=False, fehler=str(e)))
+            return
         if was not in ('ausschalten', 'neustart') or not self.erlaubt():
             self.kopf(403, {'ok': False})
             return
@@ -94,6 +142,9 @@ class Dienst(BaseHTTPRequestHandler):
 
 
 if __name__ == '__main__':
+    # Anschlag nur, wenn eingerichtet (Datei anschlag.json da oder Simulator) – sonst bleibt der Dienst wie bisher
+    if _anschlag_mod and (os.path.exists(_anschlag_mod.CONF) or os.environ.get('WECKWOP_ANSCHLAG') == 'sim'):
+        ANSCHLAG = _anschlag_mod.Anschlag()
     try:
         ThreadingHTTPServer(('127.0.0.1', PORT), Dienst).serve_forever()
     except OSError:

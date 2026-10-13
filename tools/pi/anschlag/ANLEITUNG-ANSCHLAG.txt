@@ -1,0 +1,113 @@
+WECKWOP – PARALLELANSCHLAG MIT SCHRITTMOTOR (ESP32 + FLUIDNC)
+================================================================
+
+Ziel: Im Sägemodus zeigt Weckwop das Maß am Anschlag. Ein Tipp auf
+„▶ Anschlag auf 534 fahren“ (oder Taste A, Fußtaster, Sprache „Anschlag“)
+und der Parallelanschlag fährt auf das Maß. Er fährt NIE von selbst.
+
+  Weckwop (Pi) ──USB-Kabel──► ESP32 (FluidNC) ──► Schrittmotor-Treiber ──► Motor ──► Trapezspindel ──► Anschlag
+                                   ▲                      ▲
+                             Endschalter            Not-Aus trennt den Motorstrom
+
+Was man braucht
+---------------
+* ESP32-Platine (z. B. „ESP32 DevKit“) mit USB-Buchse
+* Schrittmotor-Treiber (z. B. TB6600, DM542) mit eigenem Netzteil (meist 24–48 V)
+* Schrittmotor (NEMA 23 o. Ä.), Trapezgewindespindel (z. B. Tr16x4 = 4 mm je Umdrehung)
+* Endschalter als Öffner (NC) am Ende des großen Maßes
+* Not-Aus mit zwei Öffnern: einer trennt die Treiber-Versorgung, einer geht an den ESP32
+* USB-Kabel ESP32 ↔ Pi (darüber laufen die Befehle, und der ESP32 bekommt Strom)
+
+Wie der Pi mit dem ESP32 verbunden wird
+---------------------------------------
+Einfach mit einem USB-Kabel (USB-A am Pi, am ESP32 je nach Platine Micro-USB
+oder USB-C). Ein Datenkabel nehmen, kein reines Ladekabel. Der Pi erkennt den
+ESP32 von selbst (/dev/ttyUSB0 bzw. /dev/serial/by-id/…). Mehr ist nicht nötig:
+kein WLAN, keine zusätzlichen Leitungen zwischen Pi und ESP32.
+Kurz halten (≤ 2 m) und nicht neben den Motorleitungen führen.
+
+Verdrahtung (Vorschlag, passt zur config.yaml)
+----------------------------------------------
+  ESP32 GPIO 26  → Treiber PUL+ / STEP     (PUL− an GND des ESP32)
+  ESP32 GPIO 27  → Treiber DIR+ / DIR      (DIR− an GND)
+  ESP32 GPIO 14  → Treiber ENA+ / EN       (ENA− an GND)   – optional
+  ESP32 GPIO 32  ── Endschalter (Öffner) ── GND
+  ESP32 GPIO 33  ── Not-Aus 2. Kontakt (Öffner) ── GND
+Braucht der Treiber 5-V-Signale (manche TB6600): Pegelwandler 3,3 → 5 V
+dazwischen. Motor an A+/A−/B+/B− des Treibers. Mikroschritte und Strom am
+Treiber mit den DIP-Schaltern einstellen (z. B. 8 Mikroschritte, Motornennstrom).
+Andere Pins: in config.yaml ändern.
+
+1. FluidNC auf den ESP32
+------------------------
+Am PC in Chrome oder Edge  https://installer.fluidnc.com  öffnen, ESP32 per USB
+anschließen, „Install“ → Gerät wählen → aktuelle FluidNC-Version (ohne WLAN
+reicht) installieren. Danach config.yaml aus diesem Ordner hochladen – im
+Installer über den Dateibereich („File Browser“/„Upload“) oder über die
+FluidNC-Weboberfläche. ESP32 neu starten.
+Hinweis: Die config.yaml hier ist nach der FluidNC-Dokumentation geschrieben,
+aber nicht an einer echten Platine erprobt – Meldungen beim Start prüfen
+(im Installer: „Terminal“, Befehl  $SS ).
+
+2. Am Pi
+--------
+USB-Kabel ESP32 ↔ Pi stecken. Weckwop-Pi-Installer.sh nochmal starten und bei
+„Parallelanschlag mit Schrittmotor angeschlossen?“ Ja wählen. Neu starten.
+Im Sägemodus erscheint der Kasten „Anschlag“ unter dem Maß und oben „⚙ Anschlag“.
+
+3. Einstellen (Weckwop › Listen › Sägen › ⚙ Anschlag)
+-----------------------------------------------------
+  Mechanik:     Spindelsteigung (Tr16x4 → 4 mm/U), Motorschritte je Umdrehung
+                (1,8°-Motor → 200), Mikroschritte wie am Treiber → Schritte/mm
+  Fahren:       Fahrgeschwindigkeit, Höchstgeschwindigkeit, Beschleunigung,
+                Spielausgleich (die Spindel hat Spiel: Ziel wird immer von
+                größeren Maßen her angefahren), Toleranz für „steht“
+  Verfahrweg:   kleinstes und größtes Maß (z. B. 0 – 1300 mm)
+  Referenzfahrt: Endschalter am großen (1) oder kleinen (0) Ende, Referenzmaß
+                = Anschlagmaß, wenn der Schalter auslöst, Such-/Feingeschwindigkeit,
+                Freifahren
+  Kalibrierung: Versatz – wird beim Kalibrieren gesetzt
+„Übernehmen“ speichert am Pi (~/.config/weckwop/anschlag.json) und schickt die
+Werte an den ESP32. Danach Referenzfahrt.
+Vorsichtig anfangen: Fahrgeschwindigkeit 600, Beschleunigung 50 – dann steigern.
+
+4. Kalibrieren
+--------------
+1. Referenzfahrt.  2. „Fahren auf“ 500 mm.  3. Mit dem Maßband/Messschieber den
+Abstand Sägeblatt (Zahn, der zum Anschlag zeigt) → Anschlag messen.
+4. Gemessenes Maß bei „Am Anschlag gemessen“ eintragen → Übernehmen.
+5. Kontrolle bei 100 mm und 1200 mm. Weicht es mit der Länge zunehmend ab:
+Spindelsteigung/Mikroschritte prüfen.
+Fährt der Motor bei der Referenzfahrt VOM Schalter weg: Not-Aus, in config.yaml
+direction_pin auf gpio.27:low ändern (oder eine Motorspule umpolen).
+
+5. Bedienen
+-----------
+* „▶ Anschlag auf … fahren“, Taste A (auch ein USB-Fußtaster, der „A“ sendet),
+  Sprache „Anschlag“ / „Anschlag fahren“.
+* „■ STOPP“ während der Fahrt, Sprache „Stopp“ / „Halt“ – bremst sauber ab.
+  Das ist KEIN Not-Aus.
+* Nach dem Einschalten, nach Not-Aus oder Alarm: „⌂ Referenzfahrt“.
+* Beim Anschnitt (Besäumen) gibt es kein Anschlagmaß.
+* Simulator zum Ausprobieren ohne Hardware: in ⚙ Anschlag „Simulator“ anhaken.
+
+Sicherheit
+----------
+* Not-Aus trennt den Motorstrom hart (Treiber-Versorgung) – unabhängig von Pi
+  und ESP32. Der zweite Kontakt an GPIO 33 meldet es nur.
+* Endschalter als Öffner: ein abgerissenes Kabel wirkt wie ein ausgelöster Schalter.
+* Anschlag fährt nur auf Knopfdruck; nicht fahren, solange Hände oder Werkstück
+  im Weg sind. Quetschstellen am Anschlag abdecken.
+* Umbau der Säge mit dem Hersteller bzw. der BG Holz und Metall abstimmen.
+
+Probleme
+--------
+* „Anschlag nicht verbunden“: USB-Kabel (Datenkabel?), im Terminal
+  ls /dev/serial/by-id/  – erscheint dort etwas? Nach dem ersten Einrichten
+  einmal neu starten (Benutzer braucht die Gruppe „dialout“).
+* „Alarm“: Endschalter ausgelöst, Not-Aus, Referenzfahrt abgebrochen →
+  Ursache beheben, „⌂ Referenzfahrt“.
+* Maß stimmt nach längerer Fahrt nicht mehr (Schritte verloren): langsamer
+  fahren, Beschleunigung senken, Treiberstrom prüfen.
+* Mehrere Geräte an USB: in ⚙ Anschlag bei „USB-Anschluss“ den Pfad aus
+  /dev/serial/by-id/ eintragen statt „auto“.

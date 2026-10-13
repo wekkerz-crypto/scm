@@ -49,11 +49,13 @@
    * Befehle (Reihenfolge = Vorrang: längere/genauere Wendungen vor kurzen Wörtern). Ergebnis { cmd, n?, arg? }:
    *   next, prev, strip, prevstrip, sheet, prevsheet, gostrip n, gosheet n, gostep n, reset, print, printstrip,
    *   lmode arg (off|popup|auto), sayon, sayoff, say, status, preview, help, fullon, fulloff, off,
-   *   drawon, drawoff (Zeichnung), pagenext, pageprev, gopage n (Seite in der Zeichnung)
+   *   drawon, drawoff (Zeichnung), pagenext, pageprev, gopage n (Seite in der Zeichnung), fence (Anschlag fahren), fencestop (Stopp)
    */
   const RULES = [
     ['off', /\b(mikro(fon)? (aus|ausschalten|stopp)|sprache (aus|ausschalten)|(nicht mehr|aufhoeren (zu|mit)) zuhoeren|zuhoeren (aus|beenden)|hoer auf zuzuhoeren)\b/],
+    ['fencestop', /\b(stopp?|halt|anhalten|anschlag (stopp?|halt))\b/],
     ['help', /\b(hilfe|was kann ich sagen|welche befehle|befehle)\b/],
+    ['fence', /\banschlag( (fahren|los|einstellen|stellen))?\b|\bfahr den anschlag\b/],
     ['drawoff', /\b(zeichnung(en)?|plan|pdf) (zu|aus|schliessen|weg|beenden|ausblenden)\b|\bzurueck zur saege\b/],
     ['drawon', /\b(zeichnung(en)?|pdf)( (zeigen|an|auf|oeffnen|anzeigen))?\b|\b(zeig|zeige) (mir )?(die )?(zeichnung(en)?|pdf)\b/],
     ['pageprev', /\b((vorherige[nrs]?|letzte[nrs]?|vorige[nr]?) seite|seite zurueck|zurueckblaettern)\b/],
@@ -108,7 +110,7 @@
     'nächste platte', 'vorherige platte', 'von vorne', 'von vorn', 'wiederholen', 'nochmal', 'noch einmal', 'ansage', 'ansage an', 'ansage aus', 'ruhe',
     'etiketten aus', 'etiketten an', 'etiketten automatisch', 'vollbild', 'vollbild aus', 'wie weit', 'wie viele noch', 'was kommt danach', 'hilfe',
     'mikrofon aus', 'sprache aus', 'zeichnung', 'zeichnungen', 'zeichnung zeigen', 'zeichnung zu', 'zeichnung schließen', 'nächste seite',
-    'vorherige seite', 'seite zurück', 'umblättern']
+    'vorherige seite', 'seite zurück', 'umblättern', 'anschlag', 'anschlag fahren', 'stopp', 'halt']
     .concat(...['streifen', 'platte', 'schritt', 'seite'].map((w) => NUMW.map((n) => w + ' ' + n)), ['[unk]']);
 
   const g = typeof window !== 'undefined' ? window : {};

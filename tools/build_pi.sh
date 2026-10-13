@@ -16,18 +16,20 @@ for n in z.namelist():
     if n.startswith('step2maestro/') and not n.startswith('step2maestro/dekore/') and n != 'step2maestro/.htaccess':
         z.extract(n, 'dist/Weckwop-Pi')
 PY
-cp tools/pi/einrichten.sh tools/pi/sprache_holen.sh tools/pi/weckwop-dienst.py tools/pi/ANLEITUNG-PI.txt "$OUT/"
+cp tools/pi/einrichten.sh tools/pi/sprache_holen.sh tools/pi/weckwop-dienst.py tools/pi/anschlag.py tools/pi/ANLEITUNG-PI.txt "$OUT/"
+cp -r tools/pi/anschlag "$OUT/anschlag"
 (cd "$OUT" && python3 -c "
 import zipfile, os
 z = zipfile.ZipFile('../Weckwop-Pi.zip', 'w', zipfile.ZIP_DEFLATED)
-for f in ('ANLEITUNG-PI.txt', 'einrichten.sh', 'sprache_holen.sh', 'weckwop-dienst.py'):
+for f in ('ANLEITUNG-PI.txt', 'einrichten.sh', 'sprache_holen.sh', 'weckwop-dienst.py', 'anschlag.py'):
     i = zipfile.ZipInfo.from_file(f); i.external_attr = (0o755 if f.endswith(('.sh', '.py')) else 0o644) << 16
     z.writestr(i, open(f, 'rb').read(), zipfile.ZIP_DEFLATED)
-for r, ds, fs in os.walk('step2maestro'):
-    for f in sorted(fs): z.write(os.path.join(r, f))
+for d in ('step2maestro', 'anschlag'):
+    for r, ds, fs in os.walk(d):
+        for f in sorted(fs): z.write(os.path.join(r, f))
 z.close()")
 # eine Datei zum Installieren: Kopf (Fragen, Prüfung) + Paket als base64 (tar.gz) angehängt
-(cd "$OUT" && tar czf ../weckwop-pi-paket.tgz --owner=0 --group=0 ANLEITUNG-PI.txt einrichten.sh sprache_holen.sh weckwop-dienst.py step2maestro)
+(cd "$OUT" && tar czf ../weckwop-pi-paket.tgz --owner=0 --group=0 ANLEITUNG-PI.txt einrichten.sh sprache_holen.sh weckwop-dienst.py anschlag.py anschlag step2maestro)
 SUM="$(sha256sum dist/weckwop-pi-paket.tgz | cut -d' ' -f1)"
 STAND="$(date +%Y-%m-%d)$(git rev-parse --short HEAD 2>/dev/null | sed 's/^/ · /')"
 sed -e "s/@PRUEF@/$SUM/" -e "s/@STAND@/$STAND/" tools/pi/installer-kopf.sh > dist/Weckwop-Pi-Installer.sh

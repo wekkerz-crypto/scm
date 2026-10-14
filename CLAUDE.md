@@ -208,6 +208,10 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
 - Werkstatt-Vorgaben: Feld IJ (X ≤ 1300) / IL; bei Y > 620 AB / AD. X-Konverter
   `C:\Program Files\SCM Group\Maestro\XConverter.exe`, Werkzeuge `C:\Users\Public\Documents\SCM Group\Maestro\Tlgx\def.tlgx`.
 - Teilenamen: aus der STEP (bei „Part 1“ o. Ä. Dateiname), Umlaute umschreiben, Leerzeichen → `_`, gleich für .xcs und .pgmx.
+- Design-System oben in `web/css/step2maestro.css` (Abschnitt „Design-System“): Tokens für Abstände `--sp-*`, Radien `--r*`, Schrift `--fs-*`,
+  Höhen `--h-sm/--h/--h-lg/--h-touch` (Säge-Vollbild 52 px), Farbregel blau = Navigation/Hauptaktion, grün `--on`/`--on-fill` = an/gewählt/los,
+  rot = löschen/stopp; Bausteine `.btn` (primary/ghost/danger/go/small), `.seg`, Felder, Panels, `p.warn`/`.warns`, Fenster – neue Oberfläche
+  daraus bauen, keine Einzelwerte. Säge-Leiste in Zeilen `.sawrow`, Listen-Leiste: Optionen `#bomopts`/`#cutopts` als zweite Zeile.
 - Farben der Bearbeitungsarten sind eine feste, validierte Palette (Tokens `--drill`, `--pocket`, `--mill`, `--saw`,
   `--chamfer`, `--sdrill`, `--hdrill`); nicht umfärben, ohne neu zu validieren.
 - Nach Änderungen: `npm test`; Ausgabe aller Testteile vorher/nachher vergleichen (nur gewollte Unterschiede);

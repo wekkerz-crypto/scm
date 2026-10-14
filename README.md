@@ -13,7 +13,13 @@ STEP oder DXF (Onshape o. a. CAD) ──► Web-Tool / CLI ──► .xcs ──
 
 **Im Browser:** `web/index.html` öffnen (Doppelklick genügt, es läuft komplett offline im Browser).
 STEP-Dateien hineinziehen, Draufsicht und Bearbeitungen prüfen, ggf. *Drehen 90°* / *Wenden*,
-dann *Speichern* (einzeln) oder *Alle als ZIP*.
+dann *Programm speichern* (einzeln) oder *Alle als ZIP*.
+
+**Bedienung – überall gleich:** Oben die Reiter (blau = aktuelle Seite), darunter je Seite eine Leiste: links die
+Umschalter, rechts Ausgabe (*CSV*, *PDF speichern*, *Drucken*) und die Hauptaktion (blau). Grün heißt „eingeschaltet / gewählt“
+(alle Umschalter) bzw. „los“ (*Weiter*, *Sägemodus*), rot „löschen / stoppen / ausschalten“ (Löschen immer mit zweitem Klick).
+Knöpfe mit Fläche sind die üblichen Aktionen, Knöpfe ohne Fläche (nur Rand) die selteneren. Im Sägemodus sind alle Knöpfe
+mindestens 36 px hoch, im **Vollbild** 52 px (Touchscreen, Handschuhe).
 
 **Etiketten:** *Etikett* (am Teil) bzw. *Etiketten* (alle Teile) öffnet eine Vorschau, *Drucken* druckt über den Browser
 auf den Etikettendrucker – je Teil ein Etikett: schwarzer Kopf mit **Bauteil-Nr.** (wie im Zuschnittplan, gleiche Teile
@@ -232,7 +238,7 @@ zusammengebaut, so wie sie im Modell stehen (OpenCascade, three.js – offline, 
 - **Schnittebene:** *Schnitt* X / Y / Z, Regler für die Lage, ⇄ zeigt die andere Seite – Falze, Nuten und Verbindungen von
   innen ansehen; der Rahmen zeigt die Ebene.
 - **Explosion abspielen** (▶): Teile fahren weich auseinander bzw. wieder zusammen.
-- **Bild** speichert die Ansicht als PNG (mit Nummern, Maßen, Messung); **PDF** schreibt Ansicht, Maße und Stückliste als
+- **Bild speichern** legt die Ansicht als PNG ab (mit Nummern, Maßen, Messung); **PDF speichern** schreibt Ansicht, Maße und Stückliste als
   PDF-Datei (A4 quer); **Drucken** über den Browser.
 
 ### Listen: Stückliste, Zuschnittplan, Zeit
@@ -571,7 +577,7 @@ stehen oben. Zustellung global oder je Bearbeitung; Warnung, wenn die Zustellung
 Plattendicke + Zugabe (Einstellungen *Formatfräsen: Dicke +* bzw. *Ausschnitte: Dicke +*). Je Teil lässt sich die Tiefe
 in der Bearbeitungsliste im Feld *Tiefe* absolut in mm setzen; ist sie kleiner als die Plattendicke, gibt es einen Hinweis.
 
-**Werkstück-Profile:** Ganz oben stehen fünf frei benennbare Knöpfe (Vorgabe: *Spanplatte*, *Massivholz* = Formatfräsen
+**Werkstück-Profile:** Auf der Seite *Programme* stehen unter den Reitern fünf frei benennbare Knöpfe (Vorgabe: *Spanplatte*, *Massivholz* = Formatfräsen
 zweistufig, *Profil 3* bis *Profil 5*). Ein Klick gibt dem gewählten Teil dieses Profil (aktiver Knopf farbig, noch einmal
 klicken = ohne Profil); neue Teile bekommen das zuletzt gewählte, *Für alle Teile* setzt es überall. Im Bereich
 *Werkstück-Profile* je Profil Name und die Werte, die es festlegt: Formatfräser, zweistufig ja/nein, Vorfräser, Aufmaß,
@@ -648,7 +654,7 @@ Zeitleiste und am Werkzeug in der Animation: Bohrung oben blau, Tasche orange, F
 Fase/schräge Kante pink, schräge Bohrung grün, Kante (Bohrung/Tasche) violett. Die Palette ist für hell und dunkel
 getrennt abgestimmt und auch bei Farbsehschwäche unterscheidbar; die Legende unter der Ansicht nennt alle Farben.
 **Zoom** in der Draufsicht (2D, auch während der Animation): Mausrad an der Mausposition, Ziehen verschiebt, Doppelklick oder
-*Ganz* zeigt das ganze Teil; Knöpfe −/+ unten links, am Handy mit zwei Fingern.
+*Einpassen* zeigt das ganze Teil; Knöpfe −/+ unten links, am Handy mit zwei Fingern.
 **Werkzeugwechsel** zeigt die Animation, sobald das Fräswerkzeug wechselt (Bohrungen laufen über das Bohraggregat): Eilgang
 zum Wechselplatz links neben der Platte, kurze Pause mit „⟳ alt → neu“, in der Anzeige *Werkzeugwechsel*. Beim **zweistufigen
 Formatfräsen** sind Vor- und Nachfräsen eigene Abschnitte der Zeitleiste; das Vorfräsen ist heller (gleicher Farbton), die

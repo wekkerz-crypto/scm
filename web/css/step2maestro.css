@@ -1137,22 +1137,25 @@ body.drwlock { overflow: hidden; }
 /* Sägeplatz (Pi): Ausschalten */
 /* Sägen „Von Hand“: Tastenfeld/Rechner links, Karte mit Maß rechts */
 .seg.hmode button { font-weight: 700; }
-.saw.hand { grid-template-columns: minmax(300px, 1fr) minmax(340px, calc(40% / var(--sz, 1))); }
-.hcalc { display: grid; gap: 12px; align-content: start; max-width: 620px; }
+.saw.hand { grid-template-columns: minmax(320px, 1.15fr) minmax(340px, 1fr); }
+.hcalc { display: grid; gap: 12px; align-content: start; max-width: 760px; }
 .hdisp { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
-.hdisp input { font: 700 1.7rem/1.2 var(--font-mono); border: 0; background: transparent; color: var(--ink); min-width: 0; padding: 4px 2px; }
+.hdisp input { font: 700 2.2rem/1.2 var(--font-mono); border: 0; background: transparent; color: var(--ink); min-width: 0; padding: 4px 2px; }
 .hdisp input:focus { outline: none; }
+.hdisp input::placeholder { font-size: 1.05rem; font-weight: 600; color: var(--muted); }
 .hdisp:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
-.hdisp output { font: 700 1.3rem var(--font-mono); color: var(--muted); white-space: nowrap; }
-.hkeys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.hkeys .hk { min-height: 58px; font: 700 1.5rem var(--font-mono); justify-content: center; border-radius: 10px; }
+.hdisp output { font: 700 1.6rem var(--font-mono); color: var(--muted); white-space: nowrap; }
+.hkeys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.hkeys .hk { min-height: 84px; font: 700 2.3rem var(--font-mono); justify-content: center; border-radius: 12px; }
 .hkeys .hk.dig { background: var(--surface); }
 .hkeys .hk:not(.dig) { background: var(--sunken); }
 .hfun, .hjog, .hhist { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.hjog .btn { flex: 1 1 0; justify-content: center; min-height: 40px; font-family: var(--font-mono); font-weight: 700; }
+.hjog .btn { flex: 1 1 0; justify-content: center; min-height: 60px; font: 700 1.3rem var(--font-mono); }
 .hhist > span, .hchain .hch-head b { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 700; margin-right: 4px; }
 .hact { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.hact .hbig { flex: 1 1 220px; min-height: 54px; font-size: 1.15rem; font-weight: 700; justify-content: center; }
+.hact .hbig { flex: 1 1 220px; min-height: 70px; font-size: 1.4rem; font-weight: 700; justify-content: center; }
+.hact .btn:not(.hbig), .hfun .btn { min-height: 48px; font-size: 1.05rem; }
+.hhist .btn { min-height: 44px; font: 700 1.1rem var(--font-mono); }
 .hadd { display: inline-flex; gap: 6px; align-items: center; }
 .hadd input { width: 4.2em; }
 .hchain { display: grid; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
@@ -1173,7 +1176,7 @@ body.drwlock { overflow: hidden; }
 .hauto { display: flex; gap: 6px; align-items: center; font-size: 0.9rem; }
 .sk.hand { background: color-mix(in srgb, var(--accent) 15%, var(--surface)); color: var(--accent); }
 @media (max-width: 900px) { .saw.hand { grid-template-columns: 1fr; } .saw.hand .sawcard { order: -1; } }
-#sawview.sawfull .hkeys .hk { min-height: 70px; font-size: 1.8rem; }
+#sawview.sawfull .hkeys .hk { min-height: 100px; font-size: 2.8rem; }
 /* Wer ist im selben Projekt (Server): 👥 Gerät, ⟳ Neuer Stand */
 .btn.projwho, .btn.projnew { color: var(--warn); background: var(--warn-bg); border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); font-weight: 600; }
 .btn.projnew { animation: projnew 1.6s ease-in-out 3; }

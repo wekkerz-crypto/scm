@@ -36,6 +36,65 @@
     const k = ORD.indexOf(o);
     return k > 0 ? k : 0;
   }
+  // Maße (Sägen „Von Hand“): Ziffern oder Wörter bis 9999, mit Komma – „534“, „534,5“, „fünfhundertvierunddreißig Komma fünf“,
+  // „zwei tausend siebzig“ (Vosk trennt Wörter oft). Ergebnis Zahl oder NaN.
+  const TENS = { zwanzig: 20, dreissig: 30, vierzig: 40, fuenfzig: 50, sechzig: 60, siebzig: 70, achtzig: 80, neunzig: 90 };
+  function below100(w) {
+    if (!w || w === 'null') return 0;
+    if (/^\d+$/.test(w)) return +w;
+    if (NUMS.has(w) && w !== 'einen') return NUMS.get(w);
+    if (TENS[w]) return TENS[w];
+    const m = /^(ein|zwei|drei|vier|fuenf|sechs|sieben|acht|neun)und(zwanzig|dreissig|vierzig|fuenfzig|sechzig|siebzig|achtzig|neunzig)$/.exec(w);
+    return m ? PRE.indexOf(m[1]) + TENS[m[2]] : NaN;
+  }
+  // big: „achtzehnhundert“, „zwölfhundertfünfzig“ (ohne „tausend“)
+  function below1000(w, big) {
+    const i = w.indexOf('hundert');
+    if (i < 0) return below100(w);
+    const h = w.slice(0, i);
+    const hv = h === '' || h === 'ein' ? 1 : below100(h);
+    return hv >= 1 && hv <= (big ? 99 : 9) ? hv * 100 + below100(w.slice(i + 7)) : NaN;
+  }
+  function intWords(w) {
+    w = w.replace(/\bund /g, 'und').replace(/ /g, '');
+    if (!w) return NaN;
+    if (/^\d+$/.test(w)) return +w;
+    const i = w.indexOf('tausend');
+    if (i < 0) return below1000(w, true);
+    const t = w.slice(0, i);
+    const tv = t === '' || t === 'ein' ? 1 : below1000(t);
+    return tv >= 1 && tv <= 9 ? tv * 1000 + below1000(w.slice(i + 7)) : NaN;
+  }
+  const DIGW = { null: 0, eins: 1, ein: 1, zwei: 2, zwo: 2, drei: 3, vier: 4, fuenf: 5, sechs: 6, sieben: 7, acht: 8, neun: 9 };
+  function measureOf(t) {
+    t = norm(t);
+    if (!t) return NaN;
+    const [a, b] = t.split(/ (?:komma|punkt) /);
+    const iv = intWords(a);
+    if (!isFinite(iv)) return NaN;
+    if (b === undefined) return iv;
+    const ds = b.split(' ').map((d) => (/^\d+$/.test(d) ? d : DIGW[d] !== undefined ? String(DIGW[d]) : 'x')).join('');
+    return /^\d+$/.test(ds) ? parseFloat(iv + '.' + ds) : NaN;
+  }
+  // Befehle mit Maß (nur „Von Hand“ sinnvoll): { cmd: 'measure', v, go? } | jog v | chain v, n | total v | divide n | chainclear | number v
+  const NUMPART = '([a-z0-9 ]+?)';
+  function parseMeasure(t) {
+    let m;
+    if (/^kette (loeschen|leeren|weg|neu)$/.test(t)) return { cmd: 'chainclear' };
+    if ((m = /^(?:aufteilen|teilen|teile) (?:in )?([a-z0-9]+)(?: teile)?$/.exec(t)) && numOf(m[1]) >= 2) return { cmd: 'divide', n: numOf(m[1]) };
+    if ((m = new RegExp('^(?:kette|in die kette|an die kette) (?:([a-z0-9]+) ?mal )?' + NUMPART + '$').exec(t))) {
+      const v = measureOf(m[2]);
+      const n = m[1] ? numOf(m[1]) : 1;
+      if (v > 0 && n >= 1) return { cmd: 'chain', v: v, n: n };
+    }
+    if ((m = new RegExp('^(?:gesamt|gesamtmass|plattenmass|platte gesamt|platte ist) ' + NUMPART + '$').exec(t)) && measureOf(m[1]) > 0) return { cmd: 'total', v: measureOf(m[1]) };
+    if ((m = new RegExp('^(plus|minus) ' + NUMPART + '$').exec(t)) && measureOf(m[2]) > 0) return { cmd: 'jog', v: (m[1] === 'minus' ? -1 : 1) * measureOf(m[2]) };
+    if ((m = new RegExp('^(?:anschlag )?(?:auf|fahr(?:e)? auf|fahren auf) ' + NUMPART + '(?: fahren)?$').exec(t)) && measureOf(m[1]) > 0) return { cmd: 'measure', v: measureOf(m[1]), go: true };
+    if ((m = new RegExp('^(?:mass|neues mass|masse) ' + NUMPART + '$').exec(t)) && measureOf(m[1]) > 0) return { cmd: 'measure', v: measureOf(m[1]) };
+    const v = measureOf(t);
+    if (v > 0 && /\d|hundert|tausend|zig|zehn|komma/.test(t)) return { cmd: 'number', v: v };
+    return null;
+  }
   // „Streifen 3“, „Streifen Nummer drei“, „dritter Streifen“, „zu Streifen 3“
   function numAfter(t, word) {
     let m = new RegExp('\\b' + word + ' (?:nummer |nr |no )?([a-z0-9]+)\\b').exec(t);
@@ -85,13 +144,15 @@
   const SHORT_ONLY = new Set(['next', 'prev', 'print', 'say']);
   const MAX_SHORT = 4;
   function parseCmd(text) {
-    const t = norm(text);
+    const t = norm(String(text || '').replace(/(\d),(\d)/g, '$1 komma $2'));
     if (!t) return null;
     const c = parseAny(t);
     if (c && SHORT_ONLY.has(c.cmd) && t.split(' ').length > MAX_SHORT) return null;
     return c;
   }
   function parseAny(t) {
+    const mm = parseMeasure(t);
+    if (mm) return mm;
     // mit Nummer: „Streifen 3“, „Platte zwei“, „Schritt 5“ (vor den übrigen Regeln)
     for (const [cmd, word] of [['gostrip', 'streifen'], ['gosheet', 'platte'], ['gostep', 'schritt'], ['gopage', 'seite']]) {
       const n = numAfter(t, word);
@@ -248,5 +309,5 @@
   }
 
   const supported = () => !!webSpeech() || (typeof navigator !== 'undefined' && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
-  return { parse, parseCmd, norm, numOf, GRAMMAR, create, say, supported };
+  return { parse, parseCmd, norm, numOf, measureOf, GRAMMAR, create, say, supported };
 });

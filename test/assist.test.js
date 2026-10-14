@@ -80,6 +80,17 @@ test('Sprachbefehle: Wendungen im Sägemodus', () => {
   assert.deepStrictEqual(Voice.parseCmd('zum dritten Streifen'), { cmd: 'gostrip', n: 3 });
   assert.deepStrictEqual(Voice.parseCmd('Platte Nummer 2'), { cmd: 'gosheet', n: 2 });
   assert.deepStrictEqual(Voice.parseCmd('Schritt einundzwanzig'), { cmd: 'gostep', n: 21 });
+  // Maße „Von Hand“: Ziffern, Wörter, Komma, plus/minus, Kette, Gesamt, Aufteilen
+  assert.deepStrictEqual(Voice.parseCmd('Maß fünfhundertvierunddreißig Komma fünf'), { cmd: 'measure', v: 534.5 });
+  assert.deepStrictEqual(Voice.parseCmd('Anschlag auf 412,5'), { cmd: 'measure', v: 412.5, go: true });
+  assert.deepStrictEqual(Voice.parseCmd('zwei tausend siebzig'), { cmd: 'number', v: 2070 });
+  assert.deepStrictEqual(Voice.parseCmd('achtzehnhundert'), { cmd: 'number', v: 1800 });
+  assert.deepStrictEqual(Voice.parseCmd('minus null komma fünf'), { cmd: 'jog', v: -0.5 });
+  assert.deepStrictEqual(Voice.parseCmd('Kette drei mal 400'), { cmd: 'chain', v: 400, n: 3 });
+  assert.deepStrictEqual(Voice.parseCmd('Gesamt 2070'), { cmd: 'total', v: 2070 });
+  assert.deepStrictEqual(Voice.parseCmd('aufteilen in vier'), { cmd: 'divide', n: 4 });
+  assert.deepStrictEqual(Voice.parseCmd('Anschlag'), { cmd: 'fence' });
+  assert.strictEqual(Voice.parseCmd('ja die sind schon geschnitten worden heute'), null);
   assert.deepStrictEqual(Voice.parseCmd('Etiketten aus'), { cmd: 'lmode', arg: 'off' });
   assert.deepStrictEqual(Voice.parseCmd('automatisch drucken'), { cmd: 'lmode', arg: 'auto' });
   assert.ok(Voice.GRAMMAR.includes('[unk]') && Voice.GRAMMAR.includes('streifen fünf'));

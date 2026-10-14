@@ -1880,6 +1880,14 @@ test('Web-Tool: Sägen „Von Hand“ – Rechner, Nachstellen, Kettenmaß (Stü
     const errors = [];
     p.on('pageerror', (e) => errors.push(e.message));
     p.on('dialog', (d) => d.accept());
+    // Attrappe der Spracherkennung (wie im Sprach-Test)
+    await p.addInitScript(() => {
+      window.SpeechRecognition = window.webkitSpeechRecognition = class { constructor() { window.__rec = this; } start() { this.started = true; } abort() { this.started = false; } };
+      window.__said = [];
+      window.SpeechSynthesisUtterance = class { constructor(t) { this.text = t; } };
+      Object.defineProperty(window, 'speechSynthesis', { value: { cancel() {}, getVoices: () => [], speak(u) { window.__said.push(u.text); if (u.onend) setTimeout(u.onend, 0); } } });
+      window.__say = (t) => window.__rec.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: t }], { isFinal: true })] });
+    });
     await p.goto(page);
     await p.waitForSelector('.part');
     // mit Teilen: Umschalter im Plan, „Von Hand“ wählbar
@@ -1939,6 +1947,26 @@ test('Web-Tool: Sägen „Von Hand“ – Rechner, Nachstellen, Kettenmaß (Stü
     for (let i = 0; i < 3; i++) await p.evaluate(() => sawAction('weiter'));
     await p.waitForSelector('[data-ha="reset"]');
     assert.strictEqual(await p.evaluate(() => sawStatusObj().modus), 'von_hand');
+    // Sprache: Maße als Wörter, plus/minus, Kette, Gesamt, Aufteilen
+    await p.click('[data-saw="voice"]');
+    await p.waitForFunction(() => window.__rec && window.__rec.started);
+    const sayIt = async (t) => { await p.evaluate((x) => window.__say(x), t); await p.waitForTimeout(500); }; // nach einer Ansage 0,4 s Pause
+    await sayIt('Maß fünfhundertvierunddreißig Komma fünf');
+    assert.strictEqual(await p.evaluate(() => handTarget()), 534.5);
+    assert.match(await p.evaluate(() => window.__said.join(' | ')), /Maß 534 Komma 5 Millimeter/);
+    await sayIt('plus zehn');
+    await sayIt('minus null komma fünf');
+    assert.strictEqual(await p.evaluate(() => handTarget()), 544);
+    await sayIt('Kette löschen');
+    await sayIt('Kette drei mal vierhundert');
+    await sayIt('Gesamt zweitausendsiebzig');
+    assert.deepStrictEqual(await p.evaluate(() => [lst.hand.chain, lst.hand.total]), [[400, 400, 400], 2070]);
+    await sayIt('weiter');
+    assert.strictEqual(await p.evaluate(() => handTarget()), 400);
+    await sayIt('aufteilen in fünf');
+    assert.strictEqual(await p.evaluate(() => lst.hand.chain.length), 4);
+    await sayIt('achtzehnhundert');
+    assert.strictEqual(await p.evaluate(() => handTarget()), 1800);
     assert.deepStrictEqual(errors, []);
   } finally {
     await browser.close();

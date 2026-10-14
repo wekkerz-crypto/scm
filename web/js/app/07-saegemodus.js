@@ -131,7 +131,9 @@ function sawCfgHtml(cfg) {
 function renderSaw() {
   const list = sawSheets();
   const host = $('sawview');
+  const wasHand = handNow;
   handNow = handOn(list);
+  if (wasHand !== handNow && voiceOn()) voice.ctl.restart(); // Offline-Erkennung: „Von Hand“ mit Zahlwörtern
   if (handNow) { renderHand(host, list); return; } // ohne Zuschnittplan bzw. „✋ Von Hand“
   if (!lst.saw || !list.some((x) => x.key === lst.saw.key)) lst.saw = { key: list[0].key, step: 0 };
   const xi = list.findIndex((x) => x.key === lst.saw.key);
@@ -377,8 +379,8 @@ function voiceToggle() {
   if (!voice.ctl) {
     voice.ctl = Voice.create({
       voskBase: new URL('js/vendor/vosk/', location.href).href,
-      free: () => !!lst.sawAi,
-      onCommand: (cmd, t, c) => voiceCommand(c),
+      free: () => !!lst.sawAi || handNow, // „Von Hand“: ganzer Wortschatz (Zahlwörter für Maße)
+      onCommand: (cmd, t, c) => voiceCommand(c, t),
       onFree: (t) => { if (lst.sawAi && onSaw()) aiVoice(t); },
       onHeard: (t, cmd) => { voice.heard = t; voice.cmd = cmd; voice.msg = ''; if (cmd) voice.reply = ''; if (onSaw()) renderSaw(); },
       onState: (x) => { voice.msg = x.msg; if (!x.on) voice.heard = ''; if (onSaw()) renderSaw(); },
@@ -495,10 +497,13 @@ function sawAction(aktion, o) {
   return sawStatusObj();
 }
 const MOVES = new Set(['weiter', 'zurueck', 'naechster_streifen', 'vorheriger_streifen', 'naechste_platte', 'vorherige_platte', 'von_vorn', 'gehe_zu']);
+const HAND_HELP = 'Sag zum Beispiel: Maß fünfhundertvierunddreißig, Anschlag auf vierhundert Komma fünf, plus zehn, minus eins, ' +
+  'Kette drei mal vierhundert, Gesamt zweitausendsiebzig, aufteilen in vier, Kette löschen, weiter, zurück, Anschlag, Stopp.';
 const SAW_HELP = 'Sag zum Beispiel: weiter, zurück, drucken, nächster Streifen, Streifen drei, nächste Platte, Platte zwei, Schritt fünf, von vorn, ' +
   'wie weit, was kommt danach, nochmal, Ansage an oder aus, Etiketten aus, Fenster oder automatisch, Vollbild, Zeichnung, nächste Seite, Seite zwei, Zeichnung zu, Mikrofon aus.';
-function voiceCommand(c) {
+function voiceCommand(c, text) {
   if (!onSaw()) return;
+  if (HAND_VOICE.has(c.cmd)) { handVoice(c, text); return; }
   const map = { next: 'weiter', prev: 'zurueck', strip: 'naechster_streifen', prevstrip: 'vorheriger_streifen', sheet: 'naechste_platte', prevsheet: 'vorherige_platte',
     reset: 'von_vorn', print: 'drucken', printstrip: 'streifen_etikett', fullon: 'vollbild_an', fulloff: 'vollbild_aus', sayon: 'ansage_an', sayoff: 'ansage_aus', say: 'vorlesen',
     drawon: 'zeichnung_an', drawoff: 'zeichnung_aus', pagenext: 'zeichnung_weiter', pageprev: 'zeichnung_zurueck',
@@ -507,7 +512,7 @@ function voiceCommand(c) {
   if (drw.over && (c.cmd === 'next' || c.cmd === 'prev')) c = { cmd: c.cmd === 'next' ? 'pagenext' : 'pageprev' };
   try {
     if (c.cmd === 'status') { Voice.say(sawStatusText()); return; }
-    if (c.cmd === 'help') { Voice.say(SAW_HELP); return; }
+    if (c.cmd === 'help') { Voice.say(handNow ? HAND_HELP : SAW_HELP); return; }
     if (c.cmd === 'preview') {
       const o = sawStatusObj();
       Voice.say(o.danach && o.danach.length ? 'Danach: ' + o.danach.slice(0, 2).map((q) => q.art + ' ' + q.richtung + ', ' + n1(q.mass_mm) + ' Millimeter').join('. Dann ') + '.' : 'Danach ist die Platte fertig.');
@@ -940,7 +945,8 @@ function renderHand(host, list) {
       (h.chain.length && !chainEnd ? '<div class="nx"><span>Danach</span>' + (inChain && steps[h.i + 1] ? '<ol start="' + (h.i + 2) + '">' + steps.slice(h.i + 1, h.i + 4).map((q) => '<li>' + n1(q.piece) + ' mm' + (h.mode === 'remain' && q.fence != null ? ' · Anschlag ' + n1(q.fence) : '') + '</li>').join('') + '</ol>' : !inChain ? '<p>Kette: ' + h.chain.length + ' Stück – „Weiter“ startet.</p>' : '<p>Danach ist die Kette fertig.</p>') + '</div>' : '') +
       '<div class="sawnav"><button type="button" class="btn ghost" data-ha="prev"' + (h.chain.length && h.cur === 'chain' && h.i > 0 ? '' : ' disabled') + '>◀ Zurück</button>' +
       '<button type="button" class="btn go" data-ha="next"' + (h.chain.length && !chainEnd ? '' : ' disabled') + '>' + (h.chain.length && h.cur !== 'chain' ? 'Kette starten ▶' : 'Weiter ▶') + '</button></div>' +
-      '<div class="sn keys">Tippen: Ziffern, + − * / ( ) · Enter = als Maß · → / Leertaste = weiter in der Kette · ← = zurück' + (fence.da ? ' · A = Anschlag fahren' : '') + '</div>' +
+      '<div class="sn keys">Tippen: Ziffern, + − * / ( ) · Enter = als Maß · → / Leertaste = weiter in der Kette · ← = zurück' + (fence.da ? ' · A = Anschlag fahren' : '') +
+        (voiceOn() ? '<br>Sprache: „Maß 534 Komma 5“, „Anschlag auf 400“, „plus 10“, „Kette 3 mal 400“, „Gesamt 2070“, „aufteilen in 4“, „weiter“, „Stopp“' : ' · 🎤 Sprache: Maße ansagen') + '</div>' +
     '</div></div>';
   // --- Ereignisse
   const ex = $('hexpr');
@@ -1014,4 +1020,41 @@ function handKey(e) {
   if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); handGo('next'); return true; }
   if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); handGo('prev'); return true; }
   return false;
+}
+// Sprache „Von Hand“: Maß, Anschlag auf …, plus/minus, Kette, Gesamt, Aufteilen (Voice.parseCmd → measure/number/jog/chain/total/divide/chainclear)
+const HAND_VOICE = new Set(['measure', 'number', 'jog', 'chain', 'total', 'divide', 'chainclear']);
+function handVoice(c, text) {
+  if (!handNow) {
+    // im Plan: Zahlen allein sind kein Befehl (bei „🤖 KI“ an die KI)
+    if (c.cmd === 'number' && lst.sawAi) aiVoice(text);
+    else { voice.reply = '⚠ Maße ansagen geht im Modus „✋ Von Hand“.'; renderSaw(); }
+    return;
+  }
+  const h = hand();
+  const say = (t) => { voice.reply = '✓ ' + t; if (lst.sawSay || c.cmd !== 'number') Voice.say(t.replace(/(\d),(\d)/g, '$1 Komma $2').replace(/ mm\b/g, ' Millimeter')); };
+  if (c.cmd === 'measure' || c.cmd === 'number') {
+    h.target = r1(c.v); h.cur = 'free'; handRemember(c.v);
+    say((c.go ? 'Anschlag auf ' : 'Maß ') + n1(h.target) + ' mm');
+  } else if (c.cmd === 'jog') {
+    const cur = handTarget();
+    if (!(cur > 0)) { voice.reply = '⚠ Erst ein Maß ansagen.'; renderSaw(); Voice.say('Erst ein Maß ansagen.'); return; }
+    h.target = r1(cur + c.v); h.cur = 'free';
+    say('Maß ' + n1(h.target) + ' mm');
+  } else if (c.cmd === 'chain') {
+    for (let j = 0; j < c.n; j++) h.chain.push(r1(c.v));
+    if (h.cur !== 'chain') h.i = 0;
+    say((c.n > 1 ? c.n + ' mal ' : '') + n1(c.v) + ' mm in der Kette, ' + h.chain.length + ' Stück');
+  } else if (c.cmd === 'total') { h.total = r1(c.v); say('Gesamt ' + n1(h.total) + ' mm'); }
+  else if (c.cmd === 'chainclear') { h.chain = []; h.i = 0; h.cur = 'free'; say('Kette gelöscht'); }
+  else if (c.cmd === 'divide') {
+    h.div = c.n;
+    saveLst();
+    handAct('divide');
+    if (h.chain.length) say('Aufgeteilt in ' + c.n + ', je ' + n1(h.chain[0]) + ' mm');
+    renderSaw();
+    return;
+  }
+  saveLst();
+  renderSaw();
+  if (c.cmd === 'measure' && c.go && fence.da) fenceGo();
 }

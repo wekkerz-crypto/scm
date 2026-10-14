@@ -55,6 +55,8 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   „Von Hand“ (Ende von `07-…`): `lst.hand` (`hand()` = immer dasselbe Objekt, `HAND0`; Gerät, nicht Projekt), `handOn`/`handNow` (ohne Teile oder
   `hand.on`, Umschalter `data-hmode`), `renderHand`, Rechner `calcEval` (ohne eval), `handSteps` (Kette: piece/fence/rest, Modus piece|remain,
   `lst.kerf`), `handTarget` → `fenceTarget`, `handGo`/`handAct`/`handKeyIn`/`handKey`, `sawAction` weiter/zurück/von vorn und `sawStatusObj` → `handStatus`;
+  Sprache: `Voice.measureOf` (Ziffern/Wörter bis 9999, „achtzehnhundert“, Komma) + `parseMeasure` → measure/number/jog/chain/total/divide/chainclear
+  → `handVoice` (`HAND_VOICE`); Vosk ohne Grammatik, solange `handNow` (`free()`, Neustart beim Umschalten);
   fertige Teile nicht mehr gezeichnet, Beschriftung `partLabelSvg` (auch `sheetSvg`), Etikett-Fenster `sawPop`/`sawPopHtml` →
   `sawPart` (uid id#n → Bauteil über `items[].pp`) → `printLabels`;
   Schnitte mit `level`/`kind`/`size`/`rest`/`side`/`done`/`strip`/`tg`/`sn` aus `cutSequence`, dazu `strips` [{n, region, dir, parts}]

@@ -347,7 +347,10 @@ Dritte Seite oben (**Listen**):
   (→/←, Sprache „weiter“) gehen durch; *Stückmaß* (Anschlag = Stück) oder *Restmaß* (Anschlag = was nach dem Schnitt übrig
   bleibt, mit Plattenmaß und Schnittfuge aus dem Zuschnitt); mit Plattenmaß zeigt jedes Glied den Rest danach, *÷ Aufteilen*
   macht n gleiche Teile (n − 1 Schnitte, das letzte Stück ist der Rest). Anschlag fahren mit A bzw. *▶ Anschlag auf …*,
-  wahlweise gleich mit *Weiter*. Stand bleibt am Gerät.
+  wahlweise gleich mit *Weiter*. Stand bleibt am Gerät. Große Tasten (Touch am Pi). **Sprache** (🎤): „Maß 534 Komma 5“ (auch
+  „fünfhundertvierunddreißig“, „achtzehnhundert“, nur die Zahl), „Anschlag auf 400“ (setzt und fährt), „plus 10“, „minus null
+  Komma fünf“, „Kette drei mal 400“, „Kette löschen“, „Gesamt 2070“, „aufteilen in vier“, „weiter“, „Stopp“ – offline (Vosk) hier mit
+  ganzem Wortschatz statt Befehls-Grammatik.
   **Direkt hinein:** grüner Knopf *Sägemodus* oben rechts (von jeder Seite, leuchtet, solange er offen ist) oder Adresse `#saegen`.
   Oben auf der Karte riesig die Zahl, die **am Anschlag einzustellen** ist; fertig geschnittene Teile verschwinden aus der
   Zeichnung. Jedes Teil ist mit **Nr., Maß und Name** beschriftet (passend in die Fläche, schmale Teile gedreht – auch im

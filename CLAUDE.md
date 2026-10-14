@@ -128,7 +128,7 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
 - Profil (Rahmenholz/Leiste, `panel.profile`: L ≥ 6 W, Rechteck, nur Falze/Nuten längs X + Bohrungen), `profileRule` 'saw':
   Stufen als Falze (`stepped`), Stirnseiten `blade-end-…` statt Formatfräsen, Rohteil nur in X, Falze hinten (`analyze` dreht 180°).
 - Kantenrundungen bis R 5,5 an Kontur/Durchbruch: `panel.edgeRounds` → Kontur-Ops `edge-…` (`profile: true`, Radiusfräser
-  E061 oben / E060 unten, keine Zustellung).
+  E061 oben / E060 unten, keine Zustellung); anderer Radius als `roundRadius`: `roundOther` 'mill' (Standard, trotzdem fräsen + Hinweis) | 'skip'.
 - Zweiseitig (je Teil `overrides.twoSided`, nur wenn `panel.bottom`): `convertSolid` rechnet die Gegenseite
   (`PanelAnalyzer.turnOverY`, um Y gewendet) mit – ihre offenen Stellen sperren die Sauger (`openZones` → `avoid`);
   Ergebnis `side2` (`write(…, { side: 2 })`: nur Bearbeitungen von unten, Rohteil ohne Versatz), Dateien `_S1`/`_S2`,

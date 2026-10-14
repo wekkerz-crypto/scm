@@ -844,9 +844,9 @@ test('Kantenrundungen R2 mit dem Radiusfräser: oben E061 Tiefe 0, unten E060 Ti
   // stepDown wirkt nicht auf den Radiusfräser
   assert.ok(convertSolid(s, { toolInfo, stepDown: 5 }).ops.filter((o) => o.profile).every((o) => !o.step));
 
-  // offene Kanten: an Außenecken tangential auslaufen; anderer Radius → Hinweis, mit passender Einstellung gefräst
+  // offene Kanten: an Außenecken tangential auslaufen; anderer Radius (R5) → mit dem R2-Fräser trotzdem gefräst + Hinweis
   const [o] = readParts(read('test/fixtures/kanten_r2_offen.step'), 'kanten_r2_offen.step');
-  const ro = convertSolid(o, { toolInfo });
+  const ro = convertSolid(o, { toolInfo, roundOther: 'skip' });
   const open = ro.ops.filter((x) => x.profile);
   assert.strictEqual(open.length, 2);
   for (const x of open) {
@@ -857,7 +857,13 @@ test('Kantenrundungen R2 mit dem Radiusfräser: oben E061 Tiefe 0, unten E060 Ti
     assert.ok(Math.abs(len - (ro.panel.L + 2 * ll)) < 1e-6, 'Länge ' + len);
   }
   assert.ok(ro.warnings.some((w) => /Kantenrundung R5 .*kein passender Radiusfräser/.test(w)));
-  assert.strictEqual(convertSolid(o, { toolInfo, roundRadius: 5 }).ops.filter((x) => x.profile).length, 1);
+  assert.strictEqual(convertSolid(o, { toolInfo, roundRadius: 5, roundOther: 'skip' }).ops.filter((x) => x.profile).length, 1);
+  // Standard: R5 trotzdem mit dem Radiusfräser (E061 oben, Tiefe 0), Hinweis „kleiner als im Modell“
+  const rm = convertSolid(o, { toolInfo });
+  const all = rm.ops.filter((x) => x.profile);
+  assert.strictEqual(all.length, 3);
+  assert.ok(all.some((x) => /R5/.test(x.label) && x.tool === 'E061' && x.depth === 0));
+  assert.ok(rm.warnings.some((w) => /Kantenrundung R5 oben: mit dem Radiusfräser R2 gefräst – die Rundung wird kleiner als im Modell/.test(w)), rm.warnings.join(' | '));
 });
 
 test('Gewölbte Zylinderfläche 4-Achs mit dem Schaftfräser abzeilen', () => {

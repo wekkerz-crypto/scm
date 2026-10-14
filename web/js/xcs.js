@@ -94,6 +94,7 @@
     chamferTool: 'E050',       // Fasen (CreateChamfer)
     // Kantenrundungen mit dem Radiusfräser (Profil R2): oben und unten je eine eigene Werkzeugnummer
     roundRadius: 2,            // Radius des Radiusfräsers; Rundungen mit diesem Radius werden damit gefräst
+    roundOther: 'mill',        // Rundung mit anderem Radius: 'mill' = trotzdem mit dem Radiusfräser (Hinweis), 'skip' = nicht bearbeiten
     roundTopTool: 'E061',      // Radiusfräser oben
     roundTopDepth: 0,          // oben: Tiefe ab Oberseite (Z 0)
     roundBottomTool: 'E060',   // Radiusfräser unten (gleicher Fräser, andere Werkzeugnummer)
@@ -933,8 +934,11 @@
       const where = (e.side === 'top' ? 'oben' : 'unten') + (e.loop === 'outer' ? '' : ' am Durchbruch') + (e.closed ? ' umlaufend' : '');
       const label = 'Kantenrundung R' + fmt(e.r) + ' ' + where;
       if (Math.abs(e.r - cfg.roundRadius) > 0.1) {
-        warnings.push(label + ': kein passender Radiusfräser (eingestellt R' + fmt(cfg.roundRadius) + ') – nicht bearbeitet.');
-        continue;
+        if (cfg.roundOther === 'skip') {
+          warnings.push(label + ': kein passender Radiusfräser (eingestellt R' + fmt(cfg.roundRadius) + ') – nicht bearbeitet.');
+          continue;
+        }
+        warnings.push(label + ': mit dem Radiusfräser R' + fmt(cfg.roundRadius) + ' gefräst – die Rundung wird ' + (e.r > cfg.roundRadius ? 'kleiner' : 'größer') + ' als im Modell (R' + fmt(e.r) + ').');
       }
       const top = e.side === 'top';
       const key = 'edge-' + i;
@@ -971,7 +975,7 @@
     }
 
     // Haltestege und Rundung unten am Durchbruch: der Radiusfräser unten schneidet die Stege durch
-    if (cfg.tabsMode !== 'off' && (p.edgeRounds || []).some((e) => e.loop === 'cutout' && e.side === 'bottom' && Math.abs(e.r - cfg.roundRadius) <= 0.1)) {
+    if (cfg.tabsMode !== 'off' && (p.edgeRounds || []).some((e) => e.loop === 'cutout' && e.side === 'bottom' && (cfg.roundOther !== 'skip' || Math.abs(e.r - cfg.roundRadius) <= 0.1))) {
       warnings.push('Haltestege: der Radiusfräser unten am Durchbruch schneidet die Stege durch – Innenstück wird lose.');
     }
 

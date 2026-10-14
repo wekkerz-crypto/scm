@@ -87,6 +87,7 @@ const GROUPS = [
     ['tenonTool', 'Zapfen auf Schräge: Fräser für die Fläche', 'mill'],
     ['tenonAllowance', 'Zapfen: Vorschnitt weiter außen', 'number', 'mm · > 0: Zapfenoberseite wird plan gefräst'],
     ['roundRadius', 'Kantenrundung: Radius des Radiusfräsers', 'number', 'mm'],
+    ['roundOther', 'Rundung mit anderem Radius', 'choice', [['mill', 'trotzdem mit dem Radiusfräser fräsen'], ['skip', 'nicht bearbeiten']]],
     ['roundTopTool', 'Radiusfräser oben', 'mill'],
     ['roundTopDepth', 'Radiusfräser oben: Tiefe (Z)', 'number', 'mm ab Oberseite'],
     ['roundBottomTool', 'Radiusfräser unten', 'mill'],

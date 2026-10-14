@@ -13,7 +13,6 @@
 <link rel="stylesheet" href="css/step2maestro.css">
 
 <div class="wrap">
-  <nav class="profilebar" id="profilebar" aria-label="Werkstück-Profil"></nav>
   <header class="top">
     <div>
       <h1 class="brand"><svg class="logo" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
@@ -53,6 +52,7 @@
     <button type="button" role="tab" data-page="material" aria-selected="false"><svg class="pti" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5 12 3l9 4.5-9 4.5z"/><path d="M3 12l9 4.5 9-4.5M3 16.5 12 21l9-4.5"/></svg><span class="ptt"><b>Material</b><small>Platten, Dekore, Kanten</small></span></button>
     <button type="button" role="tab" data-page="drawings" aria-selected="false"><svg class="pti" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M15 3v4h4"/><path d="M8 17l3-4 2 2.5 1.5-2L17 17z"/></svg><span class="ptt"><b>Zeichnungen</b><small>PDF zum Projekt, blättern</small></span><span class="ptn" id="ptn-drw"></span></button>
   </nav>
+  <nav class="profilebar" id="profilebar" aria-label="Werkstück-Profil"></nav>
 
   <section class="card startpage" id="startpage" hidden></section>
   <section class="card drwpage" id="drwpage" hidden></section>
@@ -116,8 +116,8 @@
           <button type="button" class="btn small" id="mdim" aria-pressed="false" title="Maße setzen, die stehen bleiben: zwei Punkte anklicken (mit Fang); Entf löscht das letzte; Esc beendet">📐 Bemaßen</button>
           <span class="v3bar static" id="mdimaxis" role="group" aria-label="Maßrichtung" hidden><button type="button" data-dimaxis="aligned" aria-pressed="true" title="Direkter Abstand der Punkte">Direkt</button><button type="button" data-dimaxis="x" aria-pressed="false" title="Abstand in X">X</button><button type="button" data-dimaxis="y" aria-pressed="false" title="Abstand in Y">Y</button><button type="button" data-dimaxis="z" aria-pressed="false" title="Abstand in Z (Höhe)">Z</button></span>
           <span class="sp"></span>
-          <button type="button" class="btn small" id="msnap" title="Bild der Ansicht mit Nummern und Maßen als PNG speichern">Bild</button>
-          <button type="button" class="btn small" id="mpdf" title="Ansicht, Maße und Stückliste als PDF-Datei speichern (ohne Druckdialog)">PDF</button>
+          <button type="button" class="btn small" id="msnap" title="Bild der Ansicht mit Nummern und Maßen als PNG speichern">Bild speichern</button>
+          <button type="button" class="btn small" id="mpdf" title="Ansicht, Maße und Stückliste als PDF-Datei speichern (ohne Druckdialog)">PDF speichern</button>
         <button type="button" class="btn small" id="mprint" title="Ansicht mit Stückliste und Maßen drucken">Drucken</button>
         </div>
         <div class="mrow mlook">

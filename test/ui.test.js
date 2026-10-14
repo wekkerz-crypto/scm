@@ -149,7 +149,7 @@ test('Web-Tool: Draufsicht zoomen, Haltestege am Durchbruch umschalten', { skip:
     assert.match(await p.textContent('#xcs'), /SetParametricAttribute2\("TAB"/);
     await p.click('[data-tabs][data-on="0"]');
     assert.strictEqual(await p.$$eval('#view polygon.tabmark', (x) => x.length), 0);
-    // Zoom: Mausrad vergrößert, „Ganz“ zeigt wieder alles
+    // Zoom: Mausrad vergrößert, „Einpassen“ zeigt wieder alles
     const vb = () => p.$eval('#view svg', (s) => s.viewBox.baseVal.width);
     const full = await vb();
     const box = await (await p.$('#view')).boundingBox();

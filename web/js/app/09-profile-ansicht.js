@@ -103,7 +103,7 @@ function renderSoon() { if (ptrDown) pendingRender = true; else render(); }
 
 // Schritte mit gedrückter Maus (oder Finger) am Griff verschieben
 // ------------------------------------------------ Zoom der Draufsicht (2D): Mausrad an der Mausposition, Ziehen verschiebt,
-// Doppelklick oder „Ganz“ zeigt wieder alles. Wirkt auf das SVG (viewBox) – die Animation zeichnet im selben Ausschnitt.
+// Doppelklick oder „Einpassen“ zeigt wieder alles. Wirkt auf das SVG (viewBox) – die Animation zeichnet im selben Ausschnitt.
 const zoom = { part: null, k: 1, cx: 0, cy: 0 };
 function setupZoom(part) {
   const view = $('view');
@@ -146,7 +146,7 @@ function setupZoom(part) {
   bar.className = 'v3bar zoombar';
   bar.innerHTML = '<button type="button" data-z="out" aria-label="Verkleinern" title="Verkleinern (Mausrad)">−</button>' +
     '<span class="zk" id="zoomk">100 %</span><button type="button" data-z="in" aria-label="Vergrößern" title="Vergrößern (Mausrad)">+</button>' +
-    '<button type="button" data-z="fit" title="Ganzes Teil zeigen (Doppelklick)">Ganz</button>';
+    '<button type="button" data-z="fit" title="Ganzes Teil zeigen (Doppelklick)">Einpassen</button>';
   view.appendChild(bar);
   bar.addEventListener('click', (e) => {
     const b = e.target.closest('[data-z]');

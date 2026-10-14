@@ -585,7 +585,7 @@ function renderDetail() {
     '<div class="v3msg" id="v3msg" hidden></div></div>' +
     '<div class="s-tl" id="tl" aria-label="Zeitleiste der Bearbeitungen"></div>' +
     '<div class="hud" id="hud" aria-live="polite"></div>' +
-    '<div class="anim"><button class="btn primary" id="aplay" type="button">▶ Werkzeugbahn abspielen</button>' +
+    '<div class="anim"><button class="btn" id="aplay" type="button">▶ Werkzeugbahn abspielen</button>' +
     '<button class="btn ghost" id="areset" type="button">⟲ Neustart</button>' +
     '<button class="btn ghost" id="afull" type="button" aria-pressed="false">⛶ Vollbild</button>' +
     '<label for="aspeed" class="note">Tempo <select id="aspeed">' + [1, 2, 5, 10, 25, 50].map((v) => '<option value="' + v + '"' +
@@ -615,7 +615,7 @@ function renderDetail() {
     '<div class="card code"><div class="bar"><span class="fname"><input id="fname" type="text" value="' + esc(sideFile(part, part.side)) + '" aria-label="Dateiname"></span>' +
     '<span class="tools"><button class="btn" id="label" type="button" title="Etikett mit Name, Maßen und Draufsicht drucken">' + ICON_PRINT + ' Etikett</button>' +
     '<button class="btn" id="copy" type="button">Kopieren</button><button class="btn primary" id="dl" type="button">' +
-      (part.res.side2 ? 'Beide Seiten speichern' : 'Speichern') + '</button></span></div>' +
+      (part.res.side2 ? 'Beide Seiten speichern' : 'Programm speichern') + '</button></span></div>' +
     '<details class="xcsbox" id="xcsbox"' + (state.showCode ? ' open' : '') + '><summary>Programmcode (.xcs) anzeigen</summary>' +
     '<pre class="xcs" id="xcs">' + highlight(r.xcs) + '</pre></details></div>';
 

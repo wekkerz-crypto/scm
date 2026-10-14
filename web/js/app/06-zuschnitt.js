@@ -543,7 +543,7 @@ function renderBomNew() {
     '<label>Dicke <input type="number" id="np-T" min="1" step="0.1" value="' + esc(last.T || 19) + '" aria-label="Dicke"> mm</label>' +
     '<label>Anzahl <input type="number" id="np-qty" min="1" step="1" value="1" aria-label="Anzahl"></label>' +
     '<label>Material <select id="np-board" aria-label="Material">' + boards.map(([k, T]) => '<option value="' + esc(k) + '" data-t="' + T + '"' + (k === bsel ? ' selected' : '') + '>' + esc(boardName(k)) + '</option>').join('') + '</select></label>' +
-    '</div><div class="row"><button type="button" class="btn" id="np-add">Anlegen</button><button type="button" class="btn ghost small" id="np-close">Schließen</button></div>';
+    '</div><div class="row"><button type="button" class="btn primary" id="np-add">Anlegen</button><button type="button" class="btn ghost" id="np-close">Schließen</button></div>';
   $('np-board').addEventListener('change', (e) => { const t = e.target.selectedOptions[0].dataset.t; if (t) $('np-T').value = t; });
   $('np-close').addEventListener('click', () => { el.hidden = true; $('bomnewbtn').setAttribute('aria-expanded', 'false'); });
   $('np-add').addEventListener('click', () => {
@@ -606,7 +606,7 @@ function renderEdgeRules() {
       '<td><select data-er="' + i + '" data-f="deco" aria-label="Regel ' + (i + 1) + ' Dekor"><option value="1"' + (r.deco !== 2 ? ' selected' : '') + '>Dekor 1</option><option value="2"' + (r.deco === 2 ? ' selected' : '') + '>Dekor 2</option></select></td>' +
       '<td><button type="button" class="btn ghost small" data-erdel="' + i + '" aria-label="Regel ' + (i + 1) + ' löschen">✕</button></td></tr>').join('') + '</tbody></table>' +
     '<div class="row"><button type="button" class="btn small" id="eradd">+ Regel</button><button type="button" class="btn ghost small" id="erdefault">Standardregeln</button>' +
-    '<button type="button" class="btn ghost small" id="erreset" title="Von Hand gesetzte Kanten aller Teile verwerfen – dann gilt wieder die Regel">Eigene Kanten aller Teile löschen</button>' +
+    '<button type="button" class="btn ghost small danger" id="erreset" title="Von Hand gesetzte Kanten aller Teile verwerfen – dann gilt wieder die Regel">Eigene Kanten aller Teile löschen</button>' +
     '<button type="button" class="btn ghost small" id="erclose">Schließen</button></div>' +
     '<p class="note">Erste passende Regel gilt (Bauteilname aus der STEP, Wörter mit Komma, * = alle übrigen). „Vorderkante im Möbel“ = die Schmalseite, die zur ' +
     'Möbelvorderseite zeigt; Teile, die mit der Fläche nach vorne zeigen (Türen, Fronten), bekommen dabei keine. Von Hand gesetzte Kanten gehen vor (in der Liste ohne „Regel“).</p>';

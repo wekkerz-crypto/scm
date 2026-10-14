@@ -126,7 +126,7 @@ function sawCfgHtml(cfg) {
       num('trimPct', cfg.trimPct, 'oder bis', '% vom Maß') + num('restMin', cfg.restMin, 'Reststück ab', 'mm', 'Größere Reste heißen Reststück, kleinere Abfall') + '</fieldset>' +
     '<fieldset><legend>Etikett</legend>' + sel('labelMode', [['off', 'aus'], ['popup', 'Fenster zum Antippen'], ['auto', 'automatisch bei „Weiter“ drucken']], sawLabelMode(cfg), 'Etiketten') +
       chk('stripPopup', cfg.stripPopup, 'Streifen-Etikett nach jedem Streifen') + '</fieldset>' +
-    '</div><div class="row"><button type="button" class="btn ghost small" data-saw="cfgreset">Standard</button><button type="button" class="btn small" data-saw="cfgclose">Fertig</button></div></div>';
+    '</div><div class="row"><button type="button" class="btn ghost" data-saw="cfgreset">Standard</button><button type="button" class="btn" data-saw="cfgclose">Fertig</button></div></div>';
 }
 function renderSaw() {
   const list = sawSheets();
@@ -154,26 +154,27 @@ function renderSaw() {
   const full = host.classList.contains('sawfull');
   const kindTot = {};
   for (const q of steps) kindTot[q.kind] = (kindTot[q.kind] || 0) + 1;
-  host.innerHTML = '<div class="sawbar">' + handBarHtml(true, false) + '<label>Platte <select id="sawsheet" aria-label="Platte zum Sägen">' + list.map((y, k) => '<option value="' + esc(y.key) + '"' + (k === xi ? ' selected' : '') + '>' +
+  host.innerHTML = '<div class="sawbar"><div class="sawrow">' + handBarHtml(true, false) + '<label>Platte <select id="sawsheet" aria-label="Platte zum Sägen">' + list.map((y, k) => '<option value="' + esc(y.key) + '"' + (k === xi ? ' selected' : '') + '>' +
       esc(y.g.name + ' ' + fmt(y.g.T) + ' mm – Platte ' + (y.i + 1) + ' von ' + y.g.plan.sheets.length) + '</option>').join('') + '</select></label>' +
     '<span class="sn">' + (st ? 'Schritt ' + (cur + 1) + ' von ' + steps.length : 'fertig') + ' · Teile fertig ' + doneN + ' / ' + x.s.parts.length + '</span>' +
     '<span class="sawprog" aria-hidden="true"><i style="width:' + Math.round((cur / Math.max(1, steps.length)) * 100) + '%"></i></span>' +
     '<span class="czoom" role="group" aria-label="Zoom Platte" title="Größe der Platte – auch Strg + Mausrad"><span>Platte</span><button type="button" class="btn small" data-szoom="-1" aria-label="Platte kleiner">−</button>' +
       '<output id="szoomv">' + Math.round((lst.sawZoom || 1) * 100) + ' %</output><button type="button" class="btn small" data-szoom="1" aria-label="Platte größer">+</button></span>' +
     '<span class="czoom" role="group" aria-label="Zoom Schrift" title="Schrift im Plan – auch Strg + Umschalt + Mausrad"><span>Schrift</span><button type="button" class="btn small" data-sfont="-1" aria-label="Schrift kleiner">−</button>' +
-      '<output id="sfontv">' + Math.round((lst.sawFont || 1) * 100) + ' %</output><button type="button" class="btn small" data-sfont="1" aria-label="Schrift größer">+</button></span>' +
+      '<output id="sfontv">' + Math.round((lst.sawFont || 1) * 100) + ' %</output><button type="button" class="btn small" data-sfont="1" aria-label="Schrift größer">+</button></span>' + '</div><div class="sawrow">' +
     ((m) => '<span class="seg lmode" role="group" aria-label="Etiketten beim Sägen" title="Etiketten beim Sägen: aus, Fenster zum Antippen oder automatisch bei „Weiter“ drucken">' +
       '<span class="lab">🏷 Etiketten</span>' + [['off', 'Aus'], ['popup', 'Fenster'], ['auto', 'Automatisch']].map(([k, t]) =>
       '<button type="button" data-lmode="' + k + '" aria-pressed="' + (m === k) + '">' + t + '</button>').join('') + '</span>')(sawLabelMode(cfg)) +
     '<span class="seg vctl" role="group" aria-label="Sprache"><button type="button" data-saw="voice" aria-pressed="' + voiceOn() + '" title="Sprachbefehle: „weiter“, „zurück“, „drucken“, „nächster Streifen“, „nächste Platte“, „nochmal“, „Mikrofon aus“">🎤 Sprache</button>' +
       '<button type="button" data-saw="say" aria-pressed="' + !!lst.sawSay + '" title="Ansage: Schritt und Maß nach jedem Schritt vorlesen">🔊 Ansage</button>' +
       '<button type="button" data-saw="ai" aria-pressed="' + !!lst.sawAi + '" title="KI hört mit: Sätze, die kein fester Befehl sind (z. B. „geh zu Platte 2, Streifen 3“, „wie viele Teile fehlen noch?“), gehen an den KI-Assistenten (ChatGPT/Claude), die Antwort wird vorgelesen">🤖 KI</button></span>' +
+    '<span class="sp"></span>' +
     '<button type="button" class="btn ghost small" data-saw="cfg" aria-expanded="' + String(!!lst.sawCfgOpen) + '">⚙ Schnittfolge</button>' +
+    (fence.da ? '<button type="button" class="btn ghost small" data-saw="fencecfg" aria-expanded="' + String(!!lst.fenceOpen) + '" title="Parallelanschlag: Steigung, Geschwindigkeit, Beschleunigung, Referenzmaß, Versatz …">⚙ Anschlag</button>' : '') +
     '<button type="button" class="btn ghost small" data-saw="reset">Von vorn</button>' +
     '<button type="button" class="btn small drwbtn" data-saw="drw" title="Zeichnungen zum Projekt bildschirmfüllend (Z) – blättern mit ← →, Sprache „Zeichnung“, „nächste Seite“, „Zeichnung zu“">📄 Zeichnungen' + (drw.list.length ? ' <small>' + drw.list.length + '</small>' : '') + '</button>' +
     '<button type="button" class="btn small" data-saw="full" aria-pressed="' + full + '">' + (full ? '✕ Vollbild beenden' : '⛶ Vollbild') + '</button>' +
-    (fence.da ? '<button type="button" class="btn ghost small" data-saw="fencecfg" aria-expanded="' + String(!!lst.fenceOpen) + '" title="Parallelanschlag: Steigung, Geschwindigkeit, Beschleunigung, Referenzmaß, Versatz …">⚙ Anschlag</button>' : '') +
-    ($('pioff').hidden ? '' : '<button type="button" class="btn small pioff" data-saw="pioff" title="Sägeplatz ausschalten oder neu starten">⏻ Aus</button>') + '</div>' +
+    ($('pioff').hidden ? '' : '<button type="button" class="btn small pioff" data-saw="pioff" title="Sägeplatz ausschalten oder neu starten">⏻ Aus</button>') + '</div></div>' +
     (lst.sawCfgOpen ? sawCfgHtml(cfg) : '') + (fence.da && lst.fenceOpen ? fenceCfgHtml() : '') + sawOverHtml(list, xi) +
     (ok ? '' : '<p class="warn">Diese Anordnung ist nicht ganz mit durchgehenden Schnitten trennbar – im Zuschnittplan prüfen.</p>') +
     '<div class="saw"><div class="sawdraw">' + sawSvg(x, steps, cur, cfg, strips) + '</div><div class="sawcard" aria-live="polite">' +
@@ -792,7 +793,7 @@ function fenceCfgHtml() {
       '<div class="row"><button type="button" class="btn small" data-fence="referenz">⌂ Referenzfahrt</button><button type="button" class="btn small" data-fence="entsperren" title="Alarm aufheben ohne Referenzfahrt – nur wenn die Position sicher stimmt">Entsperren</button>' +
       '<button type="button" class="btn small fstop" data-fence="stopp">■ Stopp</button></div></fieldset>' +
     '<p class="note">Gespeichert am Pi in ' + esc(e.datei || 'anschlag.json') + '. Nach dem Übernehmen ist eine neue Referenzfahrt nötig. Pins und Treiber stehen in der config.yaml auf dem ESP32.</p>' +
-    '<div class="row"><button type="button" class="btn" id="fcsave">Übernehmen</button><button type="button" class="btn ghost small" id="fcclose">Schließen</button></div></div>';
+    '<div class="row"><button type="button" class="btn primary" id="fcsave">Übernehmen</button><button type="button" class="btn ghost" id="fcclose">Schließen</button></div></div>';
 }
 function fenceCfgWire(host) {
   const p = host.querySelector('#fencecfg');
@@ -898,13 +899,14 @@ function renderHand(host, list) {
   const keys = [['7', '8', '9', '÷'], ['4', '5', '6', '×'], ['1', '2', '3', '−'], ['0', ',', '(', '+'], ['C', '⌫', ')', '=']];
   const sumAll = steps.length ? r1(h.chain.reduce((a, q) => a + q, 0) + k * h.chain.length) : 0;
   const chainEnd = h.chain.length && h.cur === 'chain' && h.i >= h.chain.length;
-  host.innerHTML = '<div class="sawbar">' + handBarHtml(list.length > 0, true) +
+  host.innerHTML = '<div class="sawbar"><div class="sawrow">' + handBarHtml(list.length > 0, true) +
     '<span class="sn">Schnittfuge ' + fmt(k) + ' mm <small>(Zuschnitt-Einstellung)</small></span>' +
     '<span class="seg vctl" role="group" aria-label="Sprache"><button type="button" data-saw="voice" aria-pressed="' + voiceOn() + '" title="Sprachbefehle: „weiter“, „zurück“, „Anschlag“, „Stopp“">🎤 Sprache</button></span>' +
+    '<span class="sp"></span>' +
+    (fence.da ? '<button type="button" class="btn ghost small" data-saw="fencecfg" aria-expanded="' + String(!!lst.fenceOpen) + '">⚙ Anschlag</button>' : '') +
     '<button type="button" class="btn small drwbtn" data-saw="drw" title="Zeichnungen zum Projekt (Z)">📄 Zeichnungen' + (drw.list.length ? ' <small>' + drw.list.length + '</small>' : '') + '</button>' +
     '<button type="button" class="btn small" data-saw="full" aria-pressed="' + full + '">' + (full ? '✕ Vollbild beenden' : '⛶ Vollbild') + '</button>' +
-    (fence.da ? '<button type="button" class="btn ghost small" data-saw="fencecfg" aria-expanded="' + String(!!lst.fenceOpen) + '">⚙ Anschlag</button>' : '') +
-    ($('pioff').hidden ? '' : '<button type="button" class="btn small pioff" data-saw="pioff" title="Sägeplatz ausschalten oder neu starten">⏻ Aus</button>') + '</div>' +
+    ($('pioff').hidden ? '' : '<button type="button" class="btn small pioff" data-saw="pioff" title="Sägeplatz ausschalten oder neu starten">⏻ Aus</button>') + '</div></div>' +
     (fence.da && lst.fenceOpen ? fenceCfgHtml() : '') +
     (list.length ? '' : '<p class="note">Kein Zuschnittplan im Projekt – Maße von Hand eingeben. Mit Teilen in der Stückliste geht es auch „📋 Nach Plan“.</p>') +
     '<div class="saw hand"><div class="hcalc">' +

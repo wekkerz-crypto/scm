@@ -1873,6 +1873,78 @@ test('Web-Tool: Sägemodus per Sprache, Weiter groß und grün', { skip: !chromi
   }
 });
 
+test('Web-Tool: Sägen „Von Hand“ – Rechner, Nachstellen, Kettenmaß (Stück-/Restmaß), Aufteilen, Umschalten nach Plan', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1440, height: 950 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    p.on('dialog', (d) => d.accept());
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    // mit Teilen: Umschalter im Plan, „Von Hand“ wählbar
+    await p.click('#sawtop');
+    await p.waitForSelector('#sawview .sawcard');
+    assert.strictEqual(await p.getAttribute('[data-hmode="plan"]', 'aria-pressed'), 'true');
+    await p.click('[data-hmode="hand"]');
+    await p.waitForSelector('.saw.hand');
+    await p.click('[data-hmode="plan"]');
+    await p.waitForSelector('#sawsheet');
+    // ohne Teile: gleich „Von Hand“
+    await p.click('[data-page="pgmx"]');
+    await p.click('#clear');
+    await p.click('#sawtop');
+    await p.waitForSelector('.saw.hand');
+    assert.ok(await p.$eval('[data-hmode="plan"]', (b) => b.disabled));
+    const kerf = await p.evaluate(() => lst.kerf);
+    // Rechnen per Tastatur, Enter = Anschlagmaß, dann nachstellen
+    await p.mouse.click(5, 940);
+    await p.keyboard.type('(2070-2*' + String(kerf).replace('.', ',') + ')/3');
+    assert.match(await p.textContent('#hres'), /^= /);
+    await p.keyboard.press('Enter');
+    const want = Math.round(((2070 - 2 * kerf) / 3) * 10) / 10;
+    assert.strictEqual(await p.evaluate(() => handTarget()), want);
+    assert.match(await p.textContent('.sawcard .big'), new RegExp(String(want).replace('.', ',')));
+    await p.click('[data-hj="10"]');
+    await p.click('[data-hj="-0.1"]');
+    assert.strictEqual(await p.evaluate(() => handTarget()), Math.round((want + 9.9) * 10) / 10);
+    assert.match(await p.textContent('.hhist'), new RegExp(String(want).replace('.', ',')));
+    // Tastenfeld + Kette: 3 × 400, 1 × 250 bei Platte 2070
+    await p.fill('#htotal', '2070');
+    await p.press('#htotal', 'Tab');
+    for (const c of ['4', '0', '0']) await p.click('[data-hk="' + c + '"]');
+    await p.fill('#hcount', '3');
+    await p.press('#hcount', 'Tab');
+    await p.click('[data-ha="chainadd"]');
+    await p.fill('#hcount', '1');
+    await p.press('#hcount', 'Tab');
+    await p.fill('#hexpr', '250');
+    await p.click('[data-ha="chainadd"]');
+    assert.deepStrictEqual(await p.evaluate(() => lst.hand.chain), [400, 400, 400, 250]);
+    await p.click('[data-ha="next"]'); // Kette starten
+    await p.keyboard.press('ArrowRight');
+    assert.strictEqual(await p.evaluate(() => handTarget()), 400);
+    const rest2 = Math.round((2070 - 2 * (400 + kerf)) * 10) / 10;
+    assert.match(await p.textContent('.sawcard'), new RegExp('Rest danach ' + String(rest2).replace('.', ',')));
+    // Restmaß: Anschlag = was nach dem 2. Schnitt übrig bleibt
+    await p.click('[data-hm="remain"]');
+    assert.strictEqual(await p.evaluate(() => handTarget()), rest2);
+    // Aufteilen in 4 gleiche Teile (3 Schnitte, Rest = letztes Stück)
+    await p.fill('#hdivn', '4');
+    await p.press('#hdivn', 'Tab');
+    await p.click('[data-ha="divide"]');
+    const piece = Math.floor(((2070 - 3 * kerf) / 4) * 10) / 10;
+    assert.deepStrictEqual(await p.evaluate(() => [lst.hand.chain, lst.hand.mode]), [[piece, piece, piece], 'piece']);
+    // Ende der Kette, Sprache „weiter“ über die Steuerung
+    for (let i = 0; i < 3; i++) await p.evaluate(() => sawAction('weiter'));
+    await p.waitForSelector('[data-ha="reset"]');
+    assert.strictEqual(await p.evaluate(() => sawStatusObj().modus), 'von_hand');
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});
+
 test('Web-Tool: KI-Assistent mit ChatGPT (Attrappe der API) ruft Werkzeuge der Programm-Schnittstelle auf, Rückgängig; Claude wählbar', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
   const browser = await chromium.launch();
   try {

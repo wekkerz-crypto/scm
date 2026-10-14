@@ -1135,6 +1135,45 @@ body.drwlock { overflow: hidden; }
 @media (min-width: 1300px) and (max-width: 1599px) { .pagetabs .ptt small { display: none; } }
 @media (max-width: 1449px) { .pagetabs .ptn { display: none; } }
 /* Sägeplatz (Pi): Ausschalten */
+/* Sägen „Von Hand“: Tastenfeld/Rechner links, Karte mit Maß rechts */
+.seg.hmode button { font-weight: 700; }
+.saw.hand { grid-template-columns: minmax(300px, 1fr) minmax(340px, calc(40% / var(--sz, 1))); }
+.hcalc { display: grid; gap: 12px; align-content: start; max-width: 620px; }
+.hdisp { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
+.hdisp input { font: 700 1.7rem/1.2 var(--font-mono); border: 0; background: transparent; color: var(--ink); min-width: 0; padding: 4px 2px; }
+.hdisp input:focus { outline: none; }
+.hdisp:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+.hdisp output { font: 700 1.3rem var(--font-mono); color: var(--muted); white-space: nowrap; }
+.hkeys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.hkeys .hk { min-height: 58px; font: 700 1.5rem var(--font-mono); justify-content: center; border-radius: 10px; }
+.hkeys .hk.dig { background: var(--surface); }
+.hkeys .hk:not(.dig) { background: var(--sunken); }
+.hfun, .hjog, .hhist { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.hjog .btn { flex: 1 1 0; justify-content: center; min-height: 40px; font-family: var(--font-mono); font-weight: 700; }
+.hhist > span, .hchain .hch-head b { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 700; margin-right: 4px; }
+.hact { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.hact .hbig { flex: 1 1 220px; min-height: 54px; font-size: 1.15rem; font-weight: 700; justify-content: center; }
+.hadd { display: inline-flex; gap: 6px; align-items: center; }
+.hadd input { width: 4.2em; }
+.hchain { display: grid; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.hch-head { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.hch-head input[type="text"] { width: 6.5em; }
+.hch-head .hdiv input { width: 3.6em; }
+.hlist { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; counter-reset: hl; max-height: 260px; overflow: auto; }
+.hlist li { display: flex; align-items: stretch; gap: 4px; counter-increment: hl; }
+.hlist .hsel { flex: 1; display: flex; gap: 10px; align-items: baseline; text-align: left; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); padding: 6px 10px; font: inherit; cursor: pointer; }
+.hlist .hsel::before { content: counter(hl) "."; color: var(--muted); min-width: 1.8em; font-variant-numeric: tabular-nums; }
+.hlist .hsel b { font: 700 1.05rem var(--font-mono); }
+.hlist .hsel span { color: var(--muted); font-size: 0.85rem; }
+.hlist .hsel em { color: var(--err); font-style: normal; font-weight: 700; font-size: 0.85rem; }
+.hlist li.cur .hsel { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+.hlist li.done .hsel { opacity: 0.5; }
+.hlist .hdel { border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--muted); padding: 0 10px; cursor: pointer; }
+.hlist .hdel:hover { color: var(--err); border-color: var(--err); }
+.hauto { display: flex; gap: 6px; align-items: center; font-size: 0.9rem; }
+.sk.hand { background: color-mix(in srgb, var(--accent) 15%, var(--surface)); color: var(--accent); }
+@media (max-width: 900px) { .saw.hand { grid-template-columns: 1fr; } .saw.hand .sawcard { order: -1; } }
+#sawview.sawfull .hkeys .hk { min-height: 70px; font-size: 1.8rem; }
 /* Wer ist im selben Projekt (Server): 👥 Gerät, ⟳ Neuer Stand */
 .btn.projwho, .btn.projnew { color: var(--warn); background: var(--warn-bg); border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); font-weight: 600; }
 .btn.projnew { animation: projnew 1.6s ease-in-out 3; }

@@ -341,6 +341,13 @@ Dritte Seite oben (**Listen**):
   einer Klammer über seine Breite – der aktuelle blau gefüllt, fertige blass; auf der Karte „Streifen 2/4“, in der Liste
   *Danach* „S2“. Auch im Zuschnittplan (mit *Schnittfolge*), im Druck und im PDF – so lassen sich viele Platten
   hintereinander streifenweise abarbeiten.
+  **✋ Von Hand** (Umschalter oben in der Säge-Leiste; ohne Zuschnittplan gleich so): Maß eintippen oder rechnen – Tastenfeld
+  bzw. Tastatur, + − × ÷ und Klammern, Komma (z. B. `(2070-2*4,4)/3`), *− Fuge*, *½*, *Anschlag-Ist* –, *Als Anschlagmaß* (Enter),
+  ±0,1/1/10 nachstellen, zuletzt benutzte Maße. **Kettenmaß:** Stücke an die Kette hängen (mit *× Anzahl*), *Weiter/Zurück*
+  (→/←, Sprache „weiter“) gehen durch; *Stückmaß* (Anschlag = Stück) oder *Restmaß* (Anschlag = was nach dem Schnitt übrig
+  bleibt, mit Plattenmaß und Schnittfuge aus dem Zuschnitt); mit Plattenmaß zeigt jedes Glied den Rest danach, *÷ Aufteilen*
+  macht n gleiche Teile (n − 1 Schnitte, das letzte Stück ist der Rest). Anschlag fahren mit A bzw. *▶ Anschlag auf …*,
+  wahlweise gleich mit *Weiter*. Stand bleibt am Gerät.
   **Direkt hinein:** grüner Knopf *Sägemodus* oben rechts (von jeder Seite, leuchtet, solange er offen ist) oder Adresse `#saegen`.
   Oben auf der Karte riesig die Zahl, die **am Anschlag einzustellen** ist; fertig geschnittene Teile verschwinden aus der
   Zeichnung. Jedes Teil ist mit **Nr., Maß und Name** beschriftet (passend in die Fläche, schmale Teile gedreht – auch im

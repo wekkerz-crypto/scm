@@ -131,7 +131,8 @@ function sawCfgHtml(cfg) {
 function renderSaw() {
   const list = sawSheets();
   const host = $('sawview');
-  if (!list.length) { host.innerHTML = '<p class="note">Keine Teile für den Zuschnitt.</p>'; return; }
+  handNow = handOn(list);
+  if (handNow) { renderHand(host, list); return; } // ohne Zuschnittplan bzw. „✋ Von Hand“
   if (!lst.saw || !list.some((x) => x.key === lst.saw.key)) lst.saw = { key: list[0].key, step: 0 };
   const xi = list.findIndex((x) => x.key === lst.saw.key);
   const x = list[xi];
@@ -151,7 +152,7 @@ function renderSaw() {
   const full = host.classList.contains('sawfull');
   const kindTot = {};
   for (const q of steps) kindTot[q.kind] = (kindTot[q.kind] || 0) + 1;
-  host.innerHTML = '<div class="sawbar"><label>Platte <select id="sawsheet" aria-label="Platte zum Sägen">' + list.map((y, k) => '<option value="' + esc(y.key) + '"' + (k === xi ? ' selected' : '') + '>' +
+  host.innerHTML = '<div class="sawbar">' + handBarHtml(true, false) + '<label>Platte <select id="sawsheet" aria-label="Platte zum Sägen">' + list.map((y, k) => '<option value="' + esc(y.key) + '"' + (k === xi ? ' selected' : '') + '>' +
       esc(y.g.name + ' ' + fmt(y.g.T) + ' mm – Platte ' + (y.i + 1) + ' von ' + y.g.plan.sheets.length) + '</option>').join('') + '</select></label>' +
     '<span class="sn">' + (st ? 'Schritt ' + (cur + 1) + ' von ' + steps.length : 'fertig') + ' · Teile fertig ' + doneN + ' / ' + x.s.parts.length + '</span>' +
     '<span class="sawprog" aria-hidden="true"><i style="width:' + Math.round((cur / Math.max(1, steps.length)) * 100) + '%"></i></span>' +
@@ -198,6 +199,7 @@ function renderSaw() {
   $('sawsheet').addEventListener('change', (e) => { lst.saw = { key: e.target.value, step: 0 }; sawPop = null; saveLst(); renderSaw(); });
   fenceCfgWire(host);
   host.querySelectorAll('[data-saw]').forEach((b) => b.addEventListener('click', () => sawGo(b.dataset.saw)));
+  host.querySelectorAll('[data-hmode]').forEach((b) => b.addEventListener('click', () => { hand().on = b.dataset.hmode === 'hand'; saveLst(); renderSaw(); }));
   host.querySelectorAll('[data-lmode]').forEach((b) => b.addEventListener('click', () => {
     lst.sawCfg = Object.assign({}, lst.sawCfg || {}, { labelMode: b.dataset.lmode });
     saveLst();
@@ -278,6 +280,16 @@ function sawFull(on) {
 }
 document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && $('sawview').classList.contains('sawfull')) sawFull(false); });
 function sawGo(what) {
+  // Knöpfe, die es auch „Von Hand“ gibt
+  if (handNow && ['full', 'drw', 'pioff', 'fencecfg', 'voice'].includes(what)) {
+    if (what === 'full') sawFull(!$('sawview').classList.contains('sawfull'));
+    else if (what === 'drw') drwOverlay(true);
+    else if (what === 'pioff') piDialog();
+    else if (what === 'fencecfg') fenceCfgOpen(!lst.fenceOpen);
+    else voiceToggle();
+    return;
+  }
+  if (handNow && ['next', 'prev', 'reset'].includes(what)) { handGo(what); return; }
   const list = sawSheets();
   if (!lst.saw) return;
   const xi = list.findIndex((x) => x.key === lst.saw.key);
@@ -388,6 +400,7 @@ function sawCur() {
 }
 const stepInfo = (c, st, k) => { const t = sawText(st, c.x, c.cfg); return { schritt: k + 1, art: t.kind, streifen: st.sn || null, mass_mm: Math.round(sawMeasure(st, c.cfg).v * 10) / 10, richtung: st.dir === 'h' ? 'längs' : 'quer', text: t.tx }; };
 function sawStatusObj() {
+  if (handNow && onSaw()) return handStatus();
   const c = sawCur();
   if (!c) return { aktiv: onSaw(), meldung: 'Keine Teile für den Zuschnitt.' };
   const { x, steps, cur } = c;
@@ -416,6 +429,9 @@ function sawAction(aktion, o) {
   if (aktion === 'anschlag_stopp') { if (!fence.da) throw new Error('Kein Anschlag angeschlossen.'); fenceCmd('stopp'); return sawStatusObj(); }
   if (aktion === 'anschlag_fahren') { if (!fence.da) throw new Error('Kein Anschlag angeschlossen.'); fenceGo(); return sawStatusObj(); }
   if (!onSaw()) { lst.tab = 'saw'; saveLst(); setPage('lists'); }
+  // „Von Hand“: weiter/zurück/von vorn gehen durch die Kette
+  if (handNow && ['weiter', 'zurueck', 'von_vorn'].includes(aktion)) { handGo({ weiter: 'next', zurueck: 'prev', von_vorn: 'reset' }[aktion]); return handStatus(); }
+  if (handNow && aktion === 'vorlesen') { const v = handTarget(); Voice.say(v > 0 ? 'Anschlag ' + n1(v) + ' Millimeter.' : 'Kein Maß eingegeben.'); return handStatus(); }
   let c = sawCur();
   if (!c) throw new Error('Keine Teile für den Zuschnitt.');
   const firstOf = (sn) => c.steps.findIndex((q) => q.sn === sn);
@@ -559,6 +575,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'f' || e.key === 'F') { e.preventDefault(); sawGo('full'); return; }
   if (e.key === 'z' || e.key === 'Z') { e.preventDefault(); sawGo('drw'); return; }
   if ((e.key === 'a' || e.key === 'A') && fence.da) { e.preventDefault(); fenceGo(); return; }
+  if (handNow && handKey(e)) return;
   if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); sawGo('next'); }
   else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); sawGo('prev'); }
 });
@@ -678,6 +695,7 @@ async function fencePoll() {
 }
 // Ziel des aktuellen Schritts (Stückmaß) – kein Ziel beim Anschnitt
 function fenceTarget() {
+  if (onSaw() && handNow) { const v = handTarget(); return v > 0 ? r1(v) : null; }
   const c = onSaw() && sawCur();
   const st = c && c.steps[c.cur];
   return st && st.kind !== 'anschnitt' ? Math.round(st.size * 10) / 10 : null;
@@ -734,7 +752,7 @@ async function fenceCmd(a, body) {
 }
 function fenceGo() {
   const z = fenceTarget();
-  if (z == null) { fence.err = 'Bei diesem Schritt gibt es kein Anschlagmaß.'; fenceShow(); return false; }
+  if (z == null) { fence.err = handNow ? 'Erst ein Maß eingeben (Tastenfeld, „Als Anschlagmaß“).' : 'Bei diesem Schritt gibt es kein Anschlagmaß.'; fenceShow(); return false; }
   return fenceCmd('fahren', { mm: z });
 }
 document.addEventListener('click', (e) => {
@@ -788,4 +806,212 @@ function fenceCfgWire(host) {
   if (go) go.addEventListener('click', async () => { const v = parseFloat(String($('fcgoto').value).replace(',', '.')); if (!isFinite(v)) return; if (!(await fenceCmd('fahren', { mm: v }))) toast(fence.err); });
   const cl = p.querySelector('#fcclose');
   if (cl) cl.addEventListener('click', () => fenceCfgOpen(false));
+}
+
+// ------------------------------------------------ Sägen „Von Hand“: Maß eingeben, kleiner Rechner, Kettenmaß
+/*
+ * Ohne Zuschnittplan (oder umgeschaltet mit „✋ Von Hand“): Maß tippen oder rechnen (+ − × ÷, Klammern, Komma), als Anschlagmaß
+ * übernehmen, ±0,1/1/10 nachstellen, zuletzt benutzte Maße. Kettenmaß: Liste von Stücken (auch „Anzahl ×“, „Aufteilen in n“) –
+ * Weiter/Zurück gehen durch die Kette. Modus Stückmaß (Anschlag = Stück, Parallelanschlag) oder Restmaß (Anschlag = was nach dem
+ * Schnitt am Anschlag bleibt: Gesamt − Σ(Stück + Schnittfuge)). Der Anschlag fährt nur auf Knopfdruck (A, ▶ Anschlag …) – oder bei
+ * „Weiter“, wenn „Weiter fährt den Anschlag gleich mit“ angehakt ist. Stand je Gerät in lst.hand (nicht in der Projektdatei).
+ */
+const HAND0 = { on: false, expr: '', target: null, cur: 'free', chain: [], i: 0, mode: 'piece', total: null, auto: false, hist: [], count: 1, div: 2 };
+// immer dasselbe Objekt (lst.hand), fehlende Felder mit Vorgaben ergänzt
+function hand() {
+  if (!lst.hand || typeof lst.hand !== 'object') lst.hand = {};
+  for (const [k, v] of Object.entries(HAND0)) if (lst.hand[k] === undefined) lst.hand[k] = Array.isArray(v) ? [] : v;
+  return lst.hand;
+}
+let handNow = false; // zeigt der Sägemodus gerade „Von Hand“? (für fenceTarget, Tasten, Sprache)
+const handOn = (list) => !!(lst.hand && lst.hand.on) || !list.length;
+const r1 = (v) => Math.round(v * 10) / 10;
+// kleiner Rechner ohne eval: + − × ÷ ( ), Komma oder Punkt, x/* und :// als Zeichen
+function calcEval(src) {
+  const s = String(src == null ? '' : src).replace(/\s+/g, '').replace(/,/g, '.').replace(/[×xX]/g, '*').replace(/[÷:]/g, '/').replace(/[−–]/g, '-');
+  if (!s) return NaN;
+  let i = 0;
+  const num = () => { const m = /^(\d+\.?\d*|\.\d+)/.exec(s.slice(i)); if (!m) throw new Error('Zahl'); i += m[0].length; return parseFloat(m[0]); };
+  const atom = () => {
+    if (s[i] === '-') { i++; return -atom(); }
+    if (s[i] === '+') { i++; return atom(); }
+    if (s[i] === '(') { i++; const v = expr(); if (s[i] === ')') i++; else if (i < s.length) throw new Error(')'); return v; } // fehlende ) am Ende: egal
+    return num();
+  };
+  const term = () => { let v = atom(); while (s[i] === '*' || s[i] === '/') { const op = s[i++]; const w = atom(); v = op === '*' ? v * w : v / w; } return v; };
+  const expr = () => { let v = term(); while (s[i] === '+' || s[i] === '-') { const op = s[i++]; const w = term(); v = op === '+' ? v + w : v - w; } return v; };
+  try { const v = expr(); return i === s.length && isFinite(v) ? v : NaN; } catch (e) { return NaN; }
+}
+// Kette: je Glied Stück, Anschlagmaß und was danach von der Platte übrig ist
+function handSteps(h) {
+  const k = lst.kerf || 0;
+  let used = 0;
+  return h.chain.map((v) => {
+    used += v + k;
+    const rest = h.total > 0 ? r1(h.total - used) : null;
+    return { piece: v, fence: h.mode === 'remain' ? rest : v, rest: rest };
+  });
+}
+function handTarget() {
+  const h = hand();
+  if (h.cur === 'chain' && h.i < h.chain.length) return handSteps(h)[h.i].fence;
+  return h.target;
+}
+function handRemember(v) {
+  const h = hand();
+  if (!(v > 0)) return;
+  h.hist = [r1(v)].concat((h.hist || []).filter((q) => q !== r1(v))).slice(0, 8);
+}
+function handGo(what) {
+  const h = hand();
+  if (what === 'next' && h.chain.length) {
+    if (h.cur !== 'chain') h.cur = 'chain';
+    else h.i = Math.min(h.chain.length, h.i + 1);
+  } else if (what === 'prev' && h.chain.length) { h.cur = 'chain'; h.i = Math.max(0, Math.min(h.chain.length, h.i) - 1); }
+  else if (what === 'reset') { h.cur = h.chain.length ? 'chain' : 'free'; h.i = 0; }
+  saveLst();
+  renderSaw();
+  if (what === 'next' && h.auto && fence.da && handTarget() > 0) fenceGo();
+}
+function handStatus() {
+  const h = hand();
+  const v = handTarget();
+  return { aktiv: onSaw(), modus: 'von_hand', mass_mm: v == null ? null : r1(v), kette: h.chain.length ? { glied: Math.min(h.i, h.chain.length) + 1, von: h.chain.length, stuecke: h.chain, modus: h.mode === 'remain' ? 'restmass' : 'stueckmass', gesamt: h.total } : null };
+}
+const handBarHtml = (hasPlan, on) => '<span class="seg hmode" role="group" aria-label="Sägen nach Plan oder von Hand">' +
+  '<button type="button" data-hmode="plan" aria-pressed="' + !on + '"' + (hasPlan ? '' : ' disabled title="Kein Zuschnitt – erst Teile laden oder in der Stückliste anlegen"') + '>📋 Nach Plan</button>' +
+  '<button type="button" data-hmode="hand" aria-pressed="' + on + '" title="Maß von Hand: eintippen, rechnen, Kettenmaß – ohne Zuschnittplan">✋ Von Hand</button></span>';
+function renderHand(host, list) {
+  const h = hand();
+  const val = calcEval(h.expr);
+  const steps = handSteps(h);
+  const inChain = h.cur === 'chain' && h.i < h.chain.length;
+  const st = inChain ? steps[h.i] : null;
+  const v = handTarget();
+  const full = host.classList.contains('sawfull');
+  const k = lst.kerf || 0;
+  const keys = [['7', '8', '9', '÷'], ['4', '5', '6', '×'], ['1', '2', '3', '−'], ['0', ',', '(', '+'], ['C', '⌫', ')', '=']];
+  const sumAll = steps.length ? r1(h.chain.reduce((a, q) => a + q, 0) + k * h.chain.length) : 0;
+  const chainEnd = h.chain.length && h.cur === 'chain' && h.i >= h.chain.length;
+  host.innerHTML = '<div class="sawbar">' + handBarHtml(list.length > 0, true) +
+    '<span class="sn">Schnittfuge ' + fmt(k) + ' mm <small>(Zuschnitt-Einstellung)</small></span>' +
+    '<span class="seg vctl" role="group" aria-label="Sprache"><button type="button" data-saw="voice" aria-pressed="' + voiceOn() + '" title="Sprachbefehle: „weiter“, „zurück“, „Anschlag“, „Stopp“">🎤 Sprache</button></span>' +
+    '<button type="button" class="btn small drwbtn" data-saw="drw" title="Zeichnungen zum Projekt (Z)">📄 Zeichnungen' + (drw.list.length ? ' <small>' + drw.list.length + '</small>' : '') + '</button>' +
+    '<button type="button" class="btn small" data-saw="full" aria-pressed="' + full + '">' + (full ? '✕ Vollbild beenden' : '⛶ Vollbild') + '</button>' +
+    (fence.da ? '<button type="button" class="btn ghost small" data-saw="fencecfg" aria-expanded="' + String(!!lst.fenceOpen) + '">⚙ Anschlag</button>' : '') +
+    ($('pioff').hidden ? '' : '<button type="button" class="btn small pioff" data-saw="pioff" title="Sägeplatz ausschalten oder neu starten">⏻ Aus</button>') + '</div>' +
+    (fence.da && lst.fenceOpen ? fenceCfgHtml() : '') +
+    (list.length ? '' : '<p class="note">Kein Zuschnittplan im Projekt – Maße von Hand eingeben. Mit Teilen in der Stückliste geht es auch „📋 Nach Plan“.</p>') +
+    '<div class="saw hand"><div class="hcalc">' +
+      '<div class="hdisp"><input type="text" id="hexpr" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Maß oder Rechnung, z. B. 2070/3 oder 600-2*19" placeholder="Maß oder Rechnung, z. B. 2070/3" value="' + esc(h.expr) + '">' +
+        '<output id="hres">' + (h.expr && isFinite(val) ? '= ' + fmt(val) : h.expr ? '…' : '') + '</output></div>' +
+      '<div class="hkeys">' + keys.map((row) => row.map((c) => '<button type="button" class="btn hk' + (/[0-9,]/.test(c) ? ' dig' : '') + '" data-hk="' + esc(c) + '">' + c + '</button>').join('')).join('') + '</div>' +
+      '<div class="hfun"><button type="button" class="btn small" data-ha="kerf" title="Schnittfuge abziehen">− Fuge (' + fmt(k) + ')</button>' +
+        '<button type="button" class="btn small" data-ha="half" title="Hälfte">½</button>' +
+        '<button type="button" class="btn small" data-ha="pos" title="Aktuelles Anschlagmaß in die Rechnung"' + (fence.s && fence.s.pos != null ? '' : ' disabled') + '>⌖ Anschlag-Ist</button></div>' +
+      '<div class="hact"><button type="button" class="btn primary hbig" data-ha="take"' + (isFinite(val) && val > 0 ? '' : ' disabled') + '>Als Anschlagmaß ▶</button>' +
+        '<span class="hadd"><label>× <input type="number" id="hcount" min="1" max="99" step="1" value="' + (h.count || 1) + '" aria-label="Anzahl"></label>' +
+        '<button type="button" class="btn" data-ha="chainadd"' + (isFinite(val) && val > 0 ? '' : ' disabled') + ' title="Stück (mal Anzahl) an die Kette hängen">＋ Kette</button></span></div>' +
+      '<div class="hjog" role="group" aria-label="Anschlagmaß nachstellen">' + [-10, -1, -0.1, 0.1, 1, 10].map((d) => '<button type="button" class="btn small" data-hj="' + d + '"' + (v > 0 ? '' : ' disabled') + '>' + (d > 0 ? '+' : '−') + fmt(Math.abs(d)) + '</button>').join('') + '</div>' +
+      (h.hist && h.hist.length ? '<div class="hhist"><span>Zuletzt</span>' + h.hist.map((q) => '<button type="button" class="btn ghost small" data-hh="' + q + '">' + n1(q) + '</button>').join('') + '</div>' : '') +
+      '<div class="hchain"><div class="hch-head"><b>Kettenmaß</b>' +
+        '<span class="seg" role="group" aria-label="Maß am Anschlag"><button type="button" data-hm="piece" aria-pressed="' + (h.mode !== 'remain') + '" title="Anschlag = Stückmaß (Parallelanschlag)">Stückmaß</button>' +
+        '<button type="button" data-hm="remain" aria-pressed="' + (h.mode === 'remain') + '" title="Anschlag = was nach dem Schnitt übrig bleibt (Gesamtmaß nötig)">Restmaß</button></span>' +
+        '<label>Platte gesamt <input type="text" id="htotal" inputmode="decimal" value="' + (h.total > 0 ? fmt(h.total) : '') + '" placeholder="mm" aria-label="Gesamtmaß der Platte"></label>' +
+        '<span class="hdiv"><label>aufteilen in <input type="number" id="hdivn" min="2" max="50" value="' + (h.div || 2) + '" aria-label="Anzahl gleicher Teile"></label><button type="button" class="btn small" data-ha="divide" title="Gesamtmaß in gleiche Teile (abzüglich Schnittfugen)">÷ Aufteilen</button></span></div>' +
+        (h.chain.length ? '<ol class="hlist">' + steps.map((q, j) => '<li' + (inChain && j === h.i ? ' class="cur"' : j < h.i && h.cur === 'chain' ? ' class="done"' : '') + '><button type="button" class="hsel" data-hi="' + j + '">' +
+          '<b>' + n1(q.piece) + '</b>' + (h.mode === 'remain' ? ' <span>Anschlag ' + (q.fence == null ? '–' : n1(q.fence)) + '</span>' : q.rest != null ? ' <span>Rest ' + n1(q.rest) + '</span>' : '') +
+          (q.rest != null && q.rest < 0 ? ' <em>passt nicht</em>' : '') + '</button><button type="button" class="hdel" data-hdel="' + j + '" aria-label="Glied ' + (j + 1) + ' entfernen">✕</button></li>').join('') + '</ol>' +
+          '<div class="sn">' + h.chain.length + ' Stück · zusammen ' + n1(sumAll) + ' mm mit Fugen' + (h.total > 0 ? ' · übrig ' + n1(h.total - sumAll) + ' mm' : '') +
+          ' <button type="button" class="btn ghost small" data-ha="chainclear">Kette leeren</button></div>'
+          : '<p class="note">Maß tippen, „＋ Kette“ – z. B. 3 × 400 und 1 × 250. Oder Plattenmaß eintragen und „÷ Aufteilen“.</p>') +
+        (h.mode === 'remain' && !(h.total > 0) && h.chain.length ? '<p class="warn">Restmaß braucht das Gesamtmaß der Platte.</p>' : '') +
+        '<label class="hauto"><input type="checkbox" id="hauto"' + (h.auto ? ' checked' : '') + (fence.da ? '' : ' disabled') + '> „Weiter“ fährt den Anschlag gleich mit</label></div>' +
+    '</div><div class="sawcard" aria-live="polite">' +
+      (voice.msg || voice.heard ? '<div class="vstat' + (voice.msg ? ' warn' : '') + '" role="status">' + esc(voice.msg || '🎤 „' + voice.heard + '“') + '</div>' : '') +
+      (voice.reply ? '<div class="vstat reply" role="status">' + esc(voice.reply) + '</div>' : '') +
+      '<div class="sawhead"><span class="sk hand">Von Hand</span>' + (h.chain.length ? '<span class="sstrip">Kette <b>' + Math.min(h.i + 1, h.chain.length) + '</b>/' + h.chain.length + '</span>' : '') + '</div>' +
+      '<div class="fence"><span class="fl">' + (inChain && h.mode === 'remain' ? 'Anschlag einstellen · Restmaß' : 'Anschlag einstellen') + '</span>' +
+        '<span class="big" style="--nl:' + (v > 0 ? n1(v).length : 1) + '">' + (v > 0 ? n1(v) + '<small>mm</small>' : '–') + '</span></div>' +
+      (fence.da ? '<div class="fencebox" id="fencebox" aria-live="polite">' + fenceBoxHtml() + '</div>' : '') +
+      (st ? (h.mode === 'remain' ? '<div class="sub2">Stück ' + n1(st.piece) + ' mm</div>' : st.rest != null ? '<div class="sub2">Rest danach ' + n1(st.rest) + ' mm</div>' : '') +
+        (st.rest != null && st.rest < 0 ? '<p class="warn">Platte zu klein – es fehlen ' + n1(-st.rest) + ' mm.</p>' : '') : '') +
+      (chainEnd ? '<div class="sawhead"><span class="sk done">Kette fertig</span></div><button type="button" class="btn sawbig" data-ha="reset">Kette von vorn</button>' : '') +
+      (h.chain.length && !chainEnd ? '<div class="nx"><span>Danach</span>' + (inChain && steps[h.i + 1] ? '<ol start="' + (h.i + 2) + '">' + steps.slice(h.i + 1, h.i + 4).map((q) => '<li>' + n1(q.piece) + ' mm' + (h.mode === 'remain' && q.fence != null ? ' · Anschlag ' + n1(q.fence) : '') + '</li>').join('') + '</ol>' : !inChain ? '<p>Kette: ' + h.chain.length + ' Stück – „Weiter“ startet.</p>' : '<p>Danach ist die Kette fertig.</p>') + '</div>' : '') +
+      '<div class="sawnav"><button type="button" class="btn ghost" data-ha="prev"' + (h.chain.length && h.cur === 'chain' && h.i > 0 ? '' : ' disabled') + '>◀ Zurück</button>' +
+      '<button type="button" class="btn go" data-ha="next"' + (h.chain.length && !chainEnd ? '' : ' disabled') + '>' + (h.chain.length && h.cur !== 'chain' ? 'Kette starten ▶' : 'Weiter ▶') + '</button></div>' +
+      '<div class="sn keys">Tippen: Ziffern, + − * / ( ) · Enter = als Maß · → / Leertaste = weiter in der Kette · ← = zurück' + (fence.da ? ' · A = Anschlag fahren' : '') + '</div>' +
+    '</div></div>';
+  // --- Ereignisse
+  const ex = $('hexpr');
+  const live = () => { const r = calcEval(ex.value); $('hres').textContent = ex.value && isFinite(r) ? '= ' + fmt(r) : ex.value ? '…' : ''; };
+  ex.addEventListener('input', () => { h.expr = ex.value; saveLst(); live(); const ok = isFinite(calcEval(h.expr)) && calcEval(h.expr) > 0; host.querySelectorAll('[data-ha="take"],[data-ha="chainadd"]').forEach((b) => { b.disabled = !ok; }); });
+  ex.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); handAct('take'); } });
+  host.querySelectorAll('[data-hk]').forEach((b) => b.addEventListener('click', () => handKeyIn(b.dataset.hk)));
+  host.querySelectorAll('[data-ha]').forEach((b) => b.addEventListener('click', () => handAct(b.dataset.ha)));
+  host.querySelectorAll('[data-hj]').forEach((b) => b.addEventListener('click', () => { const cur = handTarget(); if (!(cur > 0)) return; h.target = r1(cur + +b.dataset.hj); h.cur = 'free'; saveLst(); renderSaw(); }));
+  host.querySelectorAll('[data-hh]').forEach((b) => b.addEventListener('click', () => { h.target = +b.dataset.hh; h.cur = 'free'; saveLst(); renderSaw(); }));
+  host.querySelectorAll('[data-hm]').forEach((b) => b.addEventListener('click', () => { h.mode = b.dataset.hm; saveLst(); renderSaw(); }));
+  host.querySelectorAll('[data-hi]').forEach((b) => b.addEventListener('click', () => { h.cur = 'chain'; h.i = +b.dataset.hi; saveLst(); renderSaw(); }));
+  host.querySelectorAll('[data-hdel]').forEach((b) => b.addEventListener('click', () => { const j = +b.dataset.hdel; h.chain.splice(j, 1); if (h.i > j) h.i--; h.i = Math.min(h.i, h.chain.length); if (!h.chain.length) h.cur = 'free'; saveLst(); renderSaw(); }));
+  $('htotal').addEventListener('change', (e) => { const t = calcEval(e.target.value); h.total = isFinite(t) && t > 0 ? r1(t) : null; saveLst(); renderSaw(); });
+  $('hcount').addEventListener('change', (e) => { h.count = Math.max(1, Math.min(99, Math.round(+e.target.value) || 1)); saveLst(); });
+  $('hdivn').addEventListener('change', (e) => { h.div = Math.max(2, Math.min(50, Math.round(+e.target.value) || 2)); saveLst(); });
+  $('hauto').addEventListener('change', (e) => { h.auto = e.target.checked; saveLst(); });
+  fenceCfgWire(host);
+  host.querySelectorAll('[data-saw]').forEach((b) => b.addEventListener('click', () => sawGo(b.dataset.saw)));
+  host.querySelectorAll('[data-hmode]').forEach((b) => b.addEventListener('click', () => { hand().on = b.dataset.hmode === 'hand'; saveLst(); renderSaw(); }));
+}
+// Taste im Tastenfeld bzw. auf der Tastatur
+function handKeyIn(c) {
+  const h = hand();
+  if (c === 'C') h.expr = '';
+  else if (c === '⌫') h.expr = h.expr.slice(0, -1);
+  else if (c === '=') { const r = calcEval(h.expr); if (isFinite(r)) h.expr = fmt(r); }
+  else h.expr += c;
+  saveLst();
+  renderSaw();
+}
+function handAct(a) {
+  const h = hand();
+  const val = calcEval(h.expr);
+  const k = lst.kerf || 0;
+  if (a === 'take') {
+    if (!(isFinite(val) && val > 0)) { toast('Kein gültiges Maß.'); return; }
+    h.target = r1(val); h.cur = 'free'; handRemember(val); h.expr = '';
+  } else if (a === 'chainadd') {
+    if (!(isFinite(val) && val > 0)) return;
+    for (let j = 0; j < (h.count || 1); j++) h.chain.push(r1(val));
+    h.expr = '';
+    if (h.cur !== 'chain') h.i = 0;
+  } else if (a === 'kerf') h.expr = (h.expr ? h.expr : String(handTarget() || '').replace('.', ',')) + '−' + fmt(k);
+  else if (a === 'half') h.expr = h.expr ? '(' + h.expr + ')÷2' : '';
+  else if (a === 'pos') h.expr += fence.s && fence.s.pos != null ? fmt(fence.s.pos) : '';
+  else if (a === 'divide') {
+    const tot = h.total > 0 ? h.total : isFinite(val) && val > 0 ? r1(val) : 0;
+    if (!tot) { toast('Erst das Gesamtmaß der Platte eintragen.'); return; }
+    const n = Math.max(2, h.div || 2);
+    const p = Math.floor(((tot - (n - 1) * k) / n) * 10) / 10; // auf 0,1 abgerundet – das letzte Stück ist der Rest
+    if (!(p > 0)) { toast('Zu viele Teile für ' + n1(tot) + ' mm.'); return; }
+    h.total = tot; h.chain = Array(n - 1).fill(p); h.i = 0; h.cur = 'chain'; h.mode = 'piece'; h.expr = '';
+    toast(n + ' Teile à ' + n1(p) + ' mm (' + (n - 1) + ' Schnitte, das letzte Stück ist der Rest: ' + n1(tot - (n - 1) * (p + k)) + ' mm).');
+  } else if (a === 'chainclear') { h.chain = []; h.i = 0; h.cur = 'free'; }
+  else if (a === 'next' || a === 'prev' || a === 'reset') { handGo(a); return; }
+  saveLst();
+  renderSaw();
+  if (a === 'take' && h.auto && fence.da) fenceGo();
+}
+// Tastatur im Modus „Von Hand“ (wenn kein Eingabefeld den Fokus hat): Ziffern und Rechenzeichen, Enter = als Maß
+function handKey(e) {
+  if (/^[0-9]$/.test(e.key) || [',', '.', '+', '-', '*', '/', '(', ')', 'x'].includes(e.key)) {
+    e.preventDefault();
+    handKeyIn({ '.': ',', '-': '−', '*': '×', x: '×', '/': '÷' }[e.key] || e.key);
+    return true;
+  }
+  if (e.key === 'Backspace') { e.preventDefault(); handKeyIn('⌫'); return true; }
+  if (e.key === 'Delete') { e.preventDefault(); handKeyIn('C'); return true; }
+  if (e.key === 'Enter') { e.preventDefault(); handAct('take'); return true; }
+  if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); handGo('next'); return true; }
+  if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); handGo('prev'); return true; }
+  return false;
 }

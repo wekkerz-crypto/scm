@@ -81,22 +81,12 @@ const api = {
     for (const [, c] of todo) if (c.material) apiBoardKey(c.material);
     const out = [];
     for (const [p, c] of todo) {
-      let recompute = false;
-      if (c.name !== undefined && p.solid) {
-        const base = StepToXcs.partName(String(c.name)) || p.solid.name;
-        const taken = new Set(state.parts.filter((q) => q !== p && q.solid).map((q) => q.solid.name.toLowerCase()));
-        let k = base;
-        for (let j = 2; taken.has(k.toLowerCase()); j++) k = base + '_' + j;
-        p.solid.name = k;
-        p.fileName = null;
-        recompute = true;
-      }
+      if (c.name !== undefined && p.solid) renamePart(p, c.name);
       if (c.anzahl !== undefined) p.qty = Math.max(0, Math.round(c.anzahl));
       if (c.material !== undefined) p.board = apiBoardKey(c.material);
       if (c.kanten_auto) delete p.edges;
       if (c.kanten) { p.edges = edgesOf(p); for (const [s2] of EDGE_SIDES) if (c.kanten[s2] !== undefined) p.edges[s2] = c.kanten[s2]; }
       if (c.faser !== undefined) p.grain = c.faser === 'auto' ? undefined : c.faser;
-      if (recompute) compute(p);
       out.push(apiPart(p, state.parts.indexOf(p)));
     }
     apiChanged = true;

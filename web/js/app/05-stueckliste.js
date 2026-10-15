@@ -290,6 +290,37 @@ function learnBarWire() {
   $('lrnno').addEventListener('click', () => { bomLearn = null; renderBom(); });
   $('lrnoff').addEventListener('click', () => { bomLearn = null; learn.ask = false; saveLearn(); renderBom(); toast('Es wird nicht mehr gefragt – einschalten unter „Regeln …“.'); });
 }
+/*
+ * Stückliste bearbeiten: Name (alle Teile – Programmname folgt), Länge/Breite (von Hand angelegte Rechtecke), Dicke (von Hand und DXF).
+ * STEP-Teile behalten die Maße aus dem Modell.
+ */
+function renamePart(p, name) {
+  if (!p.solid) return;
+  const base = StepToXcs.partName(String(name)) || p.solid.name;
+  const taken = new Set(state.parts.filter((q) => q !== p && q.solid).map((q) => q.solid.name.toLowerCase()));
+  let k = base;
+  for (let j = 2; taken.has(k.toLowerCase()); j++) k = base + '_' + j;
+  if (k === p.solid.name) return;
+  p.solid.name = k;
+  p.fileName = null; // Programmname neu aus dem Namen
+  compute(p);
+}
+// von Hand angelegtes Rechteck (rectDxf in 06-…): Maße änderbar
+const isRectPart = (p) => p.dxfText !== undefined && /\nLWPOLYLINE\n8\nKontur\n90\n4\n70\n1\n10\n0\n20\n0\n/.test(p.dxfText);
+function resizePart(p, f, v) {
+  if (f === 'T') { if (p.dxfText === undefined) return; p.overrides.dxf = Object.assign({}, p.overrides.dxf, { T: v }); }
+  else {
+    if (!isRectPart(p)) return;
+    const pn = p.res && p.res.panel;
+    const rot = (p.orientation && p.orientation.rot) || 0; // Vierteldrehungen: ungerade = L/W der Platte vertauscht
+    const L0 = pn ? (rot % 2 ? pn.W : pn.L) : 0;
+    const W0 = pn ? (rot % 2 ? pn.L : pn.W) : 0;
+    const L = (f === 'L') !== !!(rot % 2) ? v : L0;
+    const W = (f === 'W') !== !!(rot % 2) ? v : W0;
+    p.dxfText = rectDxf(L, W);
+  }
+  compute(p);
+}
 function renderBom() {
   const rows = bomRows();
   const tot = bomTotals(rows);
@@ -315,8 +346,13 @@ function renderBom() {
     '<th class="r">Dicke</th><th>Material / Kanten</th><th title="Kantenband je Seite: L1 vorne, L2 hinten (lange Seiten), B1 links, B2 rechts – Klick: keine → Dekor 1 (schwarz) → Dekor 2 (gestreift); Mitte = ringsum">Kantenband</th><th class="r">Zuschnitt (roh)</th><th class="r">m²</th><th class="r">Zeit je Stück</th><th title="Faserrichtung im Zuschnitt: Auto = nach Material (Maserung längs), längs, quer (gedreht) oder frei">Faser</th><th>Programm</th><th><span class="sr">Löschen</span></th></tr></thead><tbody>' +
     rows.map((r, k) => '<tr' + (isSel(r) ? ' class="sel"' : '') + '><td class="ck"><input type="checkbox" data-bomsel="' + k + '"' + (isSel(r) ? ' checked' : '') + ' aria-label="Position ' + (k + 1) + ' auswählen"></td><td class="no">' + (k + 1) + '</td>' +
       '<td class="r"><input type="number" min="0" step="1" value="' + r.qty + '" data-bomqty="' + k + '" aria-label="Anzahl Position ' + (k + 1) + '"></td>' +
-      '<td><b>' + r.names.map(esc).join(', ') + '</b><div class="sub">Bauteil ' + r.nums.join(', ') + '</div></td>' +
-      '<td class="r">' + n1(r.L) + '</td><td class="r">' + n1(r.W) + '</td><td class="r">' + n1(r.T) + '</td>' +
+      '<td class="bomname"><input type="text" value="' + esc(r.names[0]) + '" data-bomname="' + k + '" maxlength="60" aria-label="Bezeichnung Position ' + (k + 1) + '" title="Name ändern – der Programmname (.xcs) folgt' + (r.names.length > 1 ? ' (für alle ' + r.names.length + ' Bauteile: ' + esc(r.names.join(', ')) + ')' : '') + '">' +
+        '<div class="sub">Bauteil ' + r.nums.join(', ') + (r.names.length > 1 ? ' · ' + esc(r.names.slice(1).join(', ')) : '') + '</div></td>' +
+      ['L', 'W', 'T'].map((f) => {
+        const can = f === 'T' ? r.parts.every((p) => p.dxfText !== undefined) : r.parts.every(isRectPart);
+        return '<td class="r">' + (can ? '<input type="text" inputmode="decimal" class="bomdim" value="' + n1(r[f]) + '" data-bomdim="' + k + '" data-f="' + f + '" aria-label="' + { L: 'Länge', W: 'Breite', T: 'Dicke' }[f] + ' Position ' + (k + 1) + '">'
+          : '<span title="Maß aus der STEP – im Modell ändern und „STEP aktualisieren“">' + n1(r[f]) + '</span>') + '</td>';
+      }).join('') +
       '<td><button type="button" class="btn ghost small boardbtn bommat" id="bommat' + k + '" data-bommat="' + k + '" aria-expanded="false" title="' +
         (isSel(r) && selRows.length > 1 ? 'Material für alle ' + selRows.length + ' gewählten Positionen ändern' : 'Material ändern') + (r.parts.some((p) => p.board) ? '' : ' (jetzt: ' + (nameBoard(r.parts[0]) ? 'aus dem Namen' : learnedOf(r.parts[0], 'board') ? 'gelernte Regel „' + learnedOf(r.parts[0], 'board').match + '“' : 'Standard') + ')') + '">' + boardChip(r.board) + '</button>' +
         (!r.parts.some((p) => p.board) && !nameBoard(r.parts[0]) && learnedOf(r.parts[0], 'board') ? ' <small class="eauto" title="Aus der gelernten Regel „' + esc(learnedOf(r.parts[0], 'board').match) + '“">Regel</small>' : '') + '</td>' +
@@ -399,6 +435,26 @@ function renderBom() {
     const parts = rows[+sel.dataset.bomgrain].parts;
     for (const p of parts) p.grain = sel.value === 'auto' ? undefined : sel.value;
     if (sel.value !== 'auto') learnOffer(parts, { grain: sel.value });
+    render();
+  }));
+  $('bomview').querySelectorAll('[data-bomname]').forEach((inp) => {
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') inp.blur(); if (e.key === 'Escape') { inp.value = rows[+inp.dataset.bomname].names[0]; inp.blur(); } });
+    inp.addEventListener('change', () => {
+      const r = rows[+inp.dataset.bomname];
+      const v = inp.value.trim();
+      if (!v) { inp.value = r.names[0]; return; }
+      for (const p of r.parts) renamePart(p, v);
+      toast('Umbenannt: ' + r.parts.map((p) => p.solid.name).join(', ') + ' – Programm ' + r.parts.map((p) => p.fileName).join(', '));
+      render();
+    });
+  });
+  $('bomview').querySelectorAll('[data-bomdim]').forEach((inp) => inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') inp.blur(); }));
+  $('bomview').querySelectorAll('[data-bomdim]').forEach((inp) => inp.addEventListener('change', () => {
+    const r = rows[+inp.dataset.bomdim];
+    const f = inp.dataset.f;
+    const v = parseFloat(String(inp.value).replace(',', '.'));
+    if (!(v >= (f === 'T' ? 1 : 10))) { toast(f === 'T' ? 'Dicke ab 1 mm.' : 'Länge und Breite ab 10 mm.'); inp.value = n1(r[f]); return; }
+    for (const p of r.parts) resizePart(p, f, Math.round(v * 10) / 10);
     render();
   }));
   $('bomview').querySelectorAll('[data-bomqty]').forEach((inp) => inp.addEventListener('change', () => {

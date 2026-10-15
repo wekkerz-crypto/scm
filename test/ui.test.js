@@ -1079,7 +1079,7 @@ test('Web-Tool: Kanten nach Regeln vorbelegen und Sägemodus Schritt für Schrit
     await p.waitForFunction(() => document.querySelectorAll('.part').length === 10, null, { timeout: 60000 });
     await p.click('[data-page="lists"]');
     await p.click('[data-ltab="bom"]');
-    const edgesBy = () => p.$$eval('table.bom tbody tr', (rs) => Object.fromEntries(rs.map((r) => [r.querySelector('td:nth-child(4) b').textContent.split(',')[0],
+    const edgesBy = () => p.$$eval('table.bom tbody tr', (rs) => Object.fromEntries(rs.map((r) => [r.querySelector('[data-bomname]').value,
       r.querySelector('.et').textContent + (r.querySelector('.eauto') ? ' R' : '')])));
     // Standardregeln: Türen ringsum, Rückwand keine, alle übrigen die Vorderkante im Möbel (−Y)
     let e = await edgesBy();
@@ -1268,17 +1268,33 @@ test('Web-Tool: Teil in der Stückliste anlegen und löschen, Plattenformat je M
     await p.fill('#np-qty', '3');
     await p.click('#np-add');
     assert.strictEqual(await p.$$eval('.part', (x) => x.length), n0 + 1);
-    const row = await p.$$eval('table.bom tbody tr', (rs) => rs.map((r) => r.textContent).find((t) => /Fachboden_extra/.test(t)));
-    assert.match(row, /700\s*350\s*19/);
+    const rowOf = (re) => p.$$eval('table.bom tbody tr', (rs, src) => rs.findIndex((r) => new RegExp(src).test(r.querySelector('[data-bomname]').value)), re);
+    let k = await rowOf('^Fachboden_extra$');
+    const dims = () => p.evaluate((kk) => ['L', 'W', 'T'].map((f) => document.querySelector(`[data-bomdim="${kk}"][data-f="${f}"]`).value), k);
+    assert.deepStrictEqual(await dims(), ['700', '350', '19']); // Textfelder: Komma oder Punkt
     assert.strictEqual(await p.$eval('table.bom tbody tr:last-child [data-bomqty]', (e) => e.value), '3');
+    // STEP-Teile: Maße nur als Text (aus dem Modell), Name änderbar
+    assert.strictEqual(await p.$$eval('table.bom tbody tr:first-child [data-bomdim]', (x) => x.length), 0);
+    // bearbeiten: Name (Programmname folgt), Länge, Dicke
+    await p.fill(`[data-bomname="${k}"]`, 'Fachboden oben');
+    await p.press(`[data-bomname="${k}"]`, 'Enter');
+    k = await rowOf('^Fachboden_oben$');
+    assert.ok(k >= 0);
+    assert.match(await p.textContent(`table.bom tbody tr >> nth=${k}`), /Fachboden_oben\.xcs/);
+    await p.fill(`[data-bomdim="${k}"][data-f="L"]`, '720,5');
+    await p.press(`[data-bomdim="${k}"][data-f="L"]`, 'Enter');
+    await p.fill(`[data-bomdim="${k}"][data-f="T"]`, '25');
+    await p.press(`[data-bomdim="${k}"][data-f="T"]`, 'Enter');
+    assert.deepStrictEqual(await dims(), ['720,5', '350', '25']);
+    assert.match(await p.textContent(`table.bom tbody tr >> nth=${k}`), /724,5 × 354/); // Zuschnitt roh folgt
+    assert.deepStrictEqual(await p.evaluate(() => { const q = state.parts.find((x) => x.solid.name === 'Fachboden_oben').res.panel; return [q.L, q.W, q.T]; }), [720.5, 350, 25]);
     // löschen: erster Klick fragt, zweiter löscht
-    const k = await p.$$eval('table.bom tbody tr', (rs) => rs.findIndex((r) => /Fachboden_extra/.test(r.textContent)));
     await p.click(`[data-bomdel="${k}"]`);
     assert.match(await p.textContent(`[data-bomdel="${k}"]`), /Löschen\?/);
     assert.strictEqual(await p.$$eval('.part', (x) => x.length), n0 + 1);
     await p.click(`[data-bomdel="${k}"]`);
     assert.strictEqual(await p.$$eval('.part', (x) => x.length), n0);
-    assert.ok(!(await p.textContent('table.bom')).includes('Fachboden_extra'));
+    assert.ok(!(await p.evaluate(() => state.parts.some((q) => /Fachboden/.test(q.solid.name)))));
     // Plattenformat je Material: neu angeordnet, in der Übersicht
     await p.click('[data-ltab="cut"]');
     await p.waitForSelector('svg.sheet');

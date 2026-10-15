@@ -1291,6 +1291,9 @@ body.drwlock { overflow: hidden; }
 #sawview.sawfull .hcalc { gap: var(--sp-2); }
 #sawview.sawfull .hkeys { gap: var(--sp-2); }
 #sawview.sawfull .hact .hbig { min-height: 64px; }
+/* Stückliste bearbeiten: Name und Maße direkt in der Tabelle */
+table.bom td.bomname input { width: 100%; min-width: 14em; font-weight: 700; }
+table.bom input.bomdim { width: 5.2em; text-align: right; font-family: var(--font-mono); }
 /* Wer ist im selben Projekt (Server): 👥 Gerät, ⟳ Neuer Stand */
 .btn.projwho, .btn.projnew { color: var(--warn); background: var(--warn-bg); border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); font-weight: 600; }
 .btn.projnew { animation: projnew 1.6s ease-in-out 3; }

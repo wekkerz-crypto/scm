@@ -72,7 +72,8 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   `learnWord`, `learnAdd`), Verwaltung `learnedHtml`/`learnedWire` oben im Feld „Regeln …“ (`#erpanel`); Projektdatei `data.regeln`
   → `mergeLearned` (nur fehlende Stichwörter).
   Neues Bauteil anlegen (Knopf `#bomnewbtn` rechts in `.lbar`, nur Stückliste; Feld `#bomnew`, `renderBomNew`/`addManualPart`): Rechteck als DXF (`rectDxf`) über `addDxf(text, name,
-  {T, board, qty})` → nur Formatfräsen; Löschen `data-bomdel` (zweiter Klick).
+  {T, board, qty})` → nur Formatfräsen; Löschen `data-bomdel` (zweiter Klick). Bearbeiten in der Tabelle: Name `data-bomname` → `renamePart`
+  (auch API teile_aendern), Maße `data-bomdim` (Textfeld, Komma) → `resizePart` (L/W nur `isRectPart`, T bei DXF via `overrides.dxf.T`).
   Eigene Farben mit Namen: Schlüssel `#rrggbb[/u]~Name`, gemerkt in `settings.customBoards`. Programmläufe `progRuns()` (Teil → Stücklisten-Position, `row.qty` × Zeit; `#pqty` oben im Teil, `.chip.runs`, `.runsum`). Zeit: `Toolpath.estimate`
   (Einstellungen `est*`), `partTime` in `app/03-anzeige.js`. Projektdatei: siehe Projekte.
 - Zeichnungen (`state.page` 'drawings', `#drwpage`, Reiter mit Zähler `#ptn-drw`, Adresse `#zeichnungen`): `app/12-zeichnungen.js` –

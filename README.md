@@ -260,6 +260,9 @@ Dritte Seite oben (**Listen**):
   im Bauteilnamen wie „U708 ST9“ geht beim Material vor). In der Liste steht dann „Regel“. Verwalten unter **Regeln …**
   (Stichwort ändern, Material/Kanten/Faser entfernen, löschen, abschalten, Nachfrage aus); Projektdateien nehmen die Regeln
   mit, beim Öffnen auf einem anderen Gerät kommen fehlende dazu.
+  **Stückliste bearbeiten:** Bezeichnung direkt in der Tabelle ändern (Enter; der Programmname .xcs folgt, gleiche Namen bekommen
+  `_2` …), bei von Hand angelegten Teilen auch Länge und Breite, bei diesen und DXF-Teilen die Dicke (Komma oder Punkt) – Zuschnitt,
+  Programm, Etiketten rechnen gleich neu. STEP-Teile behalten die Maße aus dem Modell (dort ändern und *STEP aktualisieren*).
   **+ Neues Bauteil anlegen** (großer Knopf rechts in der Leiste): Name, Länge, Breite, Dicke, Anzahl, Material – das Teil wird als Rechteck-Platte gerechnet (wie eine
   DXF) und landet mit **Formatfräsen** (umfräst) in den Programmen, in Zuschnitt, Sägen und Etiketten; Kanten danach in der
   Liste setzen, gespeichert mit der Projektdatei. **Löschen** je Position (Papierkorb, zweimal klicken) entfernt die Bauteile

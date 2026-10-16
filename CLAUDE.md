@@ -51,7 +51,7 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   (`data-sfmt`, nur wenn alle Teile passen); Übersicht `cutOverview`/`cutOverviewHtml` (auch
   erste PDF-Seite), im Sägemodus `sawOverHtml` mit `lst.sawDone[key] = sawSig(x)`; Sägemodus `lst.tab` 'saw': `renderSaw`/`sawSteps`/`sawText`/`sawSvg`, Stand
   `lst.saw = {key, step}`, Einstellungen `lst.sawCfg` (`SAW_CFG`: trimLong/trimCross/trimFirst, primary, startX/startY → `flipX`/`flipY`,
-  order depth|strips, trims now|strip|end, trimMax/trimPct, restMin, measure piece|remain, labelPopup), Vollbild `sawFull` (Klasse `sawfull`), Knopf oben rechts `#sawtop` (`sawTopMark` in `renderLists`/`setPage`);
+  order depth|strips, trims now|strip|end, trimMax/trimPct, restMin, measure piece|remain, labelPopup), Vollbild `sawFull` (Klasse `sawfull`), Knopf oben rechts `#sawtop` (`sawTopMark` in `renderLists`/`setPage`); Leiste: `sawBarRight` (Sprache, Zeichnungen, Vollbild, „⋯ Mehr“ `data-saw="more"` → `lst.sawMore`, Aus), „Mehr“-Zeile `.sawmore` mit `sawMoreCommon` (⚙ Anschlag, `data-sawopt="fenceAuto"` → `lst.fenceAuto` = Weiter fährt mit, auch „Von Hand“; Testetikett `sawTestLabel`);
   „Von Hand“ (Ende von `07-…`): `lst.hand` (`hand()` = immer dasselbe Objekt, `HAND0`; Gerät, nicht Projekt), `handOn`/`handNow` (ohne Teile oder
   `hand.on`, Umschalter `data-hmode`), `renderHand`, Rechner `calcEval` (ohne eval), `handSteps` (Kette: piece/fence/rest, Modus piece|remain,
   `lst.kerf`), `handTarget` → `fenceTarget`, `handGo`/`handAct`/`handKeyIn`/`handKey`, `sawAction` weiter/zurück/von vorn und `sawStatusObj` → `handStatus`;

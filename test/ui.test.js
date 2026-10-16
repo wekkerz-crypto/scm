@@ -1161,6 +1161,15 @@ test('Web-Tool: Kanten nach Regeln vorbelegen und Sägemodus Schritt für Schrit
     assert.strictEqual(await p.$$eval('#sawview svg.sheet rect.pt', (x) => x.length), 0);
     await p.keyboard.press('ArrowLeft');
     assert.ok(!(await p.isDisabled('[data-saw="next"]')));
+    // seltene Knöpfe liegen unter „⋯ Mehr“ (bleibt offen, am Gerät gemerkt)
+    assert.strictEqual(await p.$('[data-saw="cfg"]'), null);
+    await p.click('[data-saw="more"]');
+    assert.strictEqual(await p.getAttribute('[data-saw="more"]', 'aria-expanded'), 'true');
+    // Testetikett: echtes Etikett des ersten Teils in Etikettgröße
+    const tl0 = await p.evaluate(() => window.__printed);
+    await p.click('[data-saw="testlabel"]');
+    assert.strictEqual(await p.evaluate(() => window.__printed), tl0 + 1);
+    assert.ok(await p.$('#printarea .lbl'));
     // Schnittfolge einstellen: ohne Anschnitt quer, erst alle Streifen, Restmaß zeigen
     await p.click('[data-saw="cfg"]');
     await p.uncheck('[data-sawcfg="trimCross"]');
@@ -1684,6 +1693,13 @@ test('Sägeplatz (Pi): Parallelanschlag im Sägemodus (Simulator) – Referenzfa
     // die KI darf den Anschlag nicht fahren
     const ki = await p.evaluate(() => Assist.validate({ aktion: 'anschlag_fahren' }, Assist.TOOLS.find((t) => t.name === 'saegen_steuern').input_schema));
     assert.ok(ki);
+    // „Weiter fährt den Anschlag mit“ (unter „⋯ Mehr“): nach Weiter gleich auf das neue Maß
+    await p.click('[data-saw="more"]');
+    await p.check('[data-sawopt="fenceAuto"]');
+    await p.waitForFunction(() => fence.s && fence.s.zustand === 'Idle');
+    await p.click('[data-saw="next"]');
+    await p.waitForFunction(() => fenceTarget() != null && fence.s.zustand === 'Idle' && Math.abs(fence.s.pos - fenceTarget()) < 0.05, null, { timeout: 20000 });
+    await p.uncheck('[data-sawopt="fenceAuto"]');
     // Einstellungen: Felder vom Pi, Schritte/mm, Übernehmen → Referenzfahrt nötig
     await p.click('[data-saw="fencecfg"]');
     await p.waitForSelector('#fencecfg [data-fcfg="steigung"]');
@@ -1835,7 +1851,8 @@ test('Web-Tool: Sägemodus per Sprache, Weiter groß und grün', { skip: !chromi
     await p.evaluate(() => window.__say('drucken'));
     assert.strictEqual(await p.evaluate(() => window.__printed), 1);
     assert.match(await p.textContent('#printarea .slb'), /STREIFEN\s*2/);
-    // Ansage an: nach „weiter“ werden Schritt und Maß vorgelesen
+    // Ansage an: nach „weiter“ werden Schritt und Maß vorgelesen (Knopf unter „⋯ Mehr“)
+    await p.click('[data-saw="more"]');
     await p.click('[data-saw="say"]');
     await p.evaluate(() => window.__say('weiter'));
     const said = await p.evaluate(() => window.__said);

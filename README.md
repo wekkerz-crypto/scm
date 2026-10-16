@@ -360,6 +360,10 @@ Dritte Seite oben (**Listen**):
   „fünfhundertvierunddreißig“, „achtzehnhundert“, nur die Zahl), „Anschlag auf 400“ (setzt und fährt), „plus 10“, „minus null
   Komma fünf“, „Kette drei mal 400“, „Kette löschen“, „Gesamt 2070“, „aufteilen in vier“, „weiter“, „Stopp“ – offline (Vosk) hier mit
   ganzem Wortschatz statt Befehls-Grammatik.
+  **Leiste am Sägeplatz:** vorne Modus, Platte, Fortschritt, rechts 🎤 Sprache, 📄 Zeichnungen, ⛶ Vollbild, **⋯ Mehr**, ⏻ Aus. Unter
+  *⋯ Mehr* (bleibt am Gerät offen/zu): Zoom Platte/Schrift, Etiketten (aus/Fenster/automatisch), 🔊 Ansage, 🤖 KI, ⚙ Schnittfolge,
+  Von vorn, ⚙ Anschlag, **„Weiter“ fährt den Anschlag mit** (Plan und Von Hand – nach Weiter gleich aufs nächste Maß, beim Anschnitt
+  nicht) und **🏷 Testetikett** (echtes Etikett des ersten Teils bzw. Rahmen mit Größe – prüft Etikettgröße, Lage und Drucker).
   **Direkt hinein:** grüner Knopf *Sägemodus* oben rechts (von jeder Seite, leuchtet, solange er offen ist) oder Adresse `#saegen`.
   Oben auf der Karte riesig die Zahl, die **am Anschlag einzustellen** ist; fertig geschnittene Teile verschwinden aus der
   Zeichnung. Jedes Teil ist mit **Nr., Maß und Name** beschriftet (passend in die Fläche, schmale Teile gedreht – auch im

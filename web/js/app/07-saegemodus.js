@@ -158,23 +158,21 @@ function renderSaw() {
       esc(y.g.name + ' ' + fmt(y.g.T) + ' mm – Platte ' + (y.i + 1) + ' von ' + y.g.plan.sheets.length) + '</option>').join('') + '</select></label>' +
     '<span class="sn">' + (st ? 'Schritt ' + (cur + 1) + ' von ' + steps.length : 'fertig') + ' · Teile fertig ' + doneN + ' / ' + x.s.parts.length + '</span>' +
     '<span class="sawprog" aria-hidden="true"><i style="width:' + Math.round((cur / Math.max(1, steps.length)) * 100) + '%"></i></span>' +
-    '<span class="czoom" role="group" aria-label="Zoom Platte" title="Größe der Platte – auch Strg + Mausrad"><span>Platte</span><button type="button" class="btn small" data-szoom="-1" aria-label="Platte kleiner">−</button>' +
-      '<output id="szoomv">' + Math.round((lst.sawZoom || 1) * 100) + ' %</output><button type="button" class="btn small" data-szoom="1" aria-label="Platte größer">+</button></span>' +
-    '<span class="czoom" role="group" aria-label="Zoom Schrift" title="Schrift im Plan – auch Strg + Umschalt + Mausrad"><span>Schrift</span><button type="button" class="btn small" data-sfont="-1" aria-label="Schrift kleiner">−</button>' +
-      '<output id="sfontv">' + Math.round((lst.sawFont || 1) * 100) + ' %</output><button type="button" class="btn small" data-sfont="1" aria-label="Schrift größer">+</button></span>' + '</div><div class="sawrow">' +
-    ((m) => '<span class="seg lmode" role="group" aria-label="Etiketten beim Sägen" title="Etiketten beim Sägen: aus, Fenster zum Antippen oder automatisch bei „Weiter“ drucken">' +
-      '<span class="lab">🏷 Etiketten</span>' + [['off', 'Aus'], ['popup', 'Fenster'], ['auto', 'Automatisch']].map(([k, t]) =>
-      '<button type="button" data-lmode="' + k + '" aria-pressed="' + (m === k) + '">' + t + '</button>').join('') + '</span>')(sawLabelMode(cfg)) +
-    '<span class="seg vctl" role="group" aria-label="Sprache"><button type="button" data-saw="voice" aria-pressed="' + voiceOn() + '" title="Sprachbefehle: „weiter“, „zurück“, „drucken“, „nächster Streifen“, „nächste Platte“, „nochmal“, „Mikrofon aus“">🎤 Sprache</button>' +
-      '<button type="button" data-saw="say" aria-pressed="' + !!lst.sawSay + '" title="Ansage: Schritt und Maß nach jedem Schritt vorlesen">🔊 Ansage</button>' +
-      '<button type="button" data-saw="ai" aria-pressed="' + !!lst.sawAi + '" title="KI hört mit: Sätze, die kein fester Befehl sind (z. B. „geh zu Platte 2, Streifen 3“, „wie viele Teile fehlen noch?“), gehen an den KI-Assistenten (ChatGPT/Claude), die Antwort wird vorgelesen">🤖 KI</button></span>' +
-    '<span class="sp"></span>' +
-    '<button type="button" class="btn ghost small" data-saw="cfg" aria-expanded="' + String(!!lst.sawCfgOpen) + '">⚙ Schnittfolge</button>' +
-    (fence.da ? '<button type="button" class="btn ghost small" data-saw="fencecfg" aria-expanded="' + String(!!lst.fenceOpen) + '" title="Parallelanschlag: Steigung, Geschwindigkeit, Beschleunigung, Referenzmaß, Versatz …">⚙ Anschlag</button>' : '') +
-    '<button type="button" class="btn ghost small" data-saw="reset">Von vorn</button>' +
-    '<button type="button" class="btn small drwbtn" data-saw="drw" title="Zeichnungen zum Projekt bildschirmfüllend (Z) – blättern mit ← →, Sprache „Zeichnung“, „nächste Seite“, „Zeichnung zu“">📄 Zeichnungen' + (drw.list.length ? ' <small>' + drw.list.length + '</small>' : '') + '</button>' +
-    '<button type="button" class="btn small" data-saw="full" aria-pressed="' + full + '">' + (full ? '✕ Vollbild beenden' : '⛶ Vollbild') + '</button>' +
-    ($('pioff').hidden ? '' : '<button type="button" class="btn small pioff" data-saw="pioff" title="Sägeplatz ausschalten oder neu starten">⏻ Aus</button>') + '</div></div>' +
+    '<span class="sp"></span>' + sawBarRight(full) + '</div>' +
+    (lst.sawMore ? '<div class="sawrow sawmore">' +
+      '<span class="czoom" role="group" aria-label="Zoom Platte" title="Größe der Platte – auch Strg + Mausrad"><span>Platte</span><button type="button" class="btn small" data-szoom="-1" aria-label="Platte kleiner">−</button>' +
+        '<output id="szoomv">' + Math.round((lst.sawZoom || 1) * 100) + ' %</output><button type="button" class="btn small" data-szoom="1" aria-label="Platte größer">+</button></span>' +
+      '<span class="czoom" role="group" aria-label="Zoom Schrift" title="Schrift im Plan – auch Strg + Umschalt + Mausrad"><span>Schrift</span><button type="button" class="btn small" data-sfont="-1" aria-label="Schrift kleiner">−</button>' +
+        '<output id="sfontv">' + Math.round((lst.sawFont || 1) * 100) + ' %</output><button type="button" class="btn small" data-sfont="1" aria-label="Schrift größer">+</button></span>' +
+      ((m) => '<span class="seg lmode" role="group" aria-label="Etiketten beim Sägen" title="Etiketten beim Sägen: aus, Fenster zum Antippen oder automatisch bei „Weiter“ drucken">' +
+        '<span class="lab">🏷 Etiketten</span>' + [['off', 'Aus'], ['popup', 'Fenster'], ['auto', 'Automatisch']].map(([k, t]) =>
+        '<button type="button" data-lmode="' + k + '" aria-pressed="' + (m === k) + '">' + t + '</button>').join('') + '</span>')(sawLabelMode(cfg)) +
+      '<span class="seg vctl" role="group" aria-label="Ansage und KI">' +
+        '<button type="button" data-saw="say" aria-pressed="' + !!lst.sawSay + '" title="Ansage: Schritt und Maß nach jedem Schritt vorlesen">🔊 Ansage</button>' +
+        '<button type="button" data-saw="ai" aria-pressed="' + !!lst.sawAi + '" title="KI hört mit: Sätze, die kein fester Befehl sind (z. B. „geh zu Platte 2, Streifen 3“, „wie viele Teile fehlen noch?“), gehen an den KI-Assistenten (ChatGPT/Claude), die Antwort wird vorgelesen">🤖 KI</button></span>' +
+      '<button type="button" class="btn ghost small" data-saw="cfg" aria-expanded="' + String(!!lst.sawCfgOpen) + '">⚙ Schnittfolge</button>' +
+      '<button type="button" class="btn ghost small" data-saw="reset">Von vorn</button>' +
+      sawMoreCommon() + '</div>' : '') + '</div>' +
     (lst.sawCfgOpen ? sawCfgHtml(cfg) : '') + (fence.da && lst.fenceOpen ? fenceCfgHtml() : '') + sawOverHtml(list, xi) +
     (ok ? '' : '<p class="warn">Diese Anordnung ist nicht ganz mit durchgehenden Schnitten trennbar – im Zuschnittplan prüfen.</p>') +
     '<div class="saw"><div class="sawdraw">' + sawSvg(x, steps, cur, cfg, strips) + '</div><div class="sawcard" aria-live="polite">' +
@@ -284,8 +282,10 @@ function sawFull(on) {
 document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && $('sawview').classList.contains('sawfull')) sawFull(false); });
 function sawGo(what) {
   // Knöpfe, die es auch „Von Hand“ gibt
-  if (handNow && ['full', 'drw', 'pioff', 'fencecfg', 'voice'].includes(what)) {
-    if (what === 'full') sawFull(!$('sawview').classList.contains('sawfull'));
+  if (handNow && ['full', 'drw', 'pioff', 'fencecfg', 'voice', 'more', 'testlabel'].includes(what)) {
+    if (what === 'more') { lst.sawMore = !lst.sawMore; saveLst(); renderSaw(); }
+    else if (what === 'testlabel') sawTestLabel();
+    else if (what === 'full') sawFull(!$('sawview').classList.contains('sawfull'));
     else if (what === 'drw') drwOverlay(true);
     else if (what === 'pioff') piDialog();
     else if (what === 'fencecfg') fenceCfgOpen(!lst.fenceOpen);
@@ -323,6 +323,8 @@ function sawGo(what) {
   }
   else if (what === 'prev') lst.saw.step = Math.max(0, (lst.saw.step | 0) - 1);
   else if (what === 'reset') { lst.saw.step = 0; sawPop = null; }
+  else if (what === 'more') lst.sawMore = !lst.sawMore;
+  else if (what === 'testlabel') { sawTestLabel(); return; }
   else if (what === 'striplbl') {
     // aktueller Streifen (bzw. der eben im Fenster gezeigte)
     const x = list[xi];
@@ -366,6 +368,8 @@ function sawGo(what) {
   else if (what === 'donereset') lst.sawDone = {};
   saveLst();
   renderSaw();
+  // „Weiter fährt den Anschlag mit“: nach dem Schritt gleich auf das neue Maß (kein Ziel beim Anschnitt / am Ende)
+  if (what === 'next' && lst.fenceAuto && fence.da && fenceTarget() != null) fenceGo();
 }
 /*
  * Sprachsteuerung (js/voice.js) und Steuerung des Sägemodus von außen (Sprache, KI-Werkzeug saegen_steuern, Schnittstelle):
@@ -822,10 +826,11 @@ function fenceCfgWire(host) {
  * Schnitt am Anschlag bleibt: Gesamt − Σ(Stück + Schnittfuge)). Der Anschlag fährt nur auf Knopfdruck (A, ▶ Anschlag …) – oder bei
  * „Weiter“, wenn „Weiter fährt den Anschlag gleich mit“ angehakt ist. Stand je Gerät in lst.hand (nicht in der Projektdatei).
  */
-const HAND0 = { on: false, expr: '', target: null, cur: 'free', chain: [], i: 0, mode: 'piece', total: null, auto: false, hist: [], count: 1, div: 2 };
+const HAND0 = { on: false, expr: '', target: null, cur: 'free', chain: [], i: 0, mode: 'piece', total: null, hist: [], count: 1, div: 2 };
 // immer dasselbe Objekt (lst.hand), fehlende Felder mit Vorgaben ergänzt
 function hand() {
   if (!lst.hand || typeof lst.hand !== 'object') lst.hand = {};
+  if (lst.hand.auto) { lst.fenceAuto = true; delete lst.hand.auto; } // früher eigener Schalter „Von Hand“
   for (const [k, v] of Object.entries(HAND0)) if (lst.hand[k] === undefined) lst.hand[k] = Array.isArray(v) ? [] : v;
   return lst.hand;
 }
@@ -877,7 +882,7 @@ function handGo(what) {
   else if (what === 'reset') { h.cur = h.chain.length ? 'chain' : 'free'; h.i = 0; }
   saveLst();
   renderSaw();
-  if (what === 'next' && h.auto && fence.da && handTarget() > 0) fenceGo();
+  if (what === 'next' && lst.fenceAuto && fence.da && handTarget() > 0) fenceGo();
 }
 function handStatus() {
   const h = hand();
@@ -901,12 +906,8 @@ function renderHand(host, list) {
   const chainEnd = h.chain.length && h.cur === 'chain' && h.i >= h.chain.length;
   host.innerHTML = '<div class="sawbar"><div class="sawrow">' + handBarHtml(list.length > 0, true) +
     '<span class="sn">Schnittfuge ' + fmt(k) + ' mm <small>(Zuschnitt-Einstellung)</small></span>' +
-    '<span class="seg vctl" role="group" aria-label="Sprache"><button type="button" data-saw="voice" aria-pressed="' + voiceOn() + '" title="Sprachbefehle: „weiter“, „zurück“, „Anschlag“, „Stopp“">🎤 Sprache</button></span>' +
-    '<span class="sp"></span>' +
-    (fence.da ? '<button type="button" class="btn ghost small" data-saw="fencecfg" aria-expanded="' + String(!!lst.fenceOpen) + '">⚙ Anschlag</button>' : '') +
-    '<button type="button" class="btn small drwbtn" data-saw="drw" title="Zeichnungen zum Projekt (Z)">📄 Zeichnungen' + (drw.list.length ? ' <small>' + drw.list.length + '</small>' : '') + '</button>' +
-    '<button type="button" class="btn small" data-saw="full" aria-pressed="' + full + '">' + (full ? '✕ Vollbild beenden' : '⛶ Vollbild') + '</button>' +
-    ($('pioff').hidden ? '' : '<button type="button" class="btn small pioff" data-saw="pioff" title="Sägeplatz ausschalten oder neu starten">⏻ Aus</button>') + '</div></div>' +
+    '<span class="sp"></span>' + sawBarRight(full) + '</div>' +
+    (lst.sawMore ? '<div class="sawrow sawmore">' + sawMoreCommon() + '</div>' : '') + '</div>' +
     (fence.da && lst.fenceOpen ? fenceCfgHtml() : '') +
     (list.length ? '' : '<p class="note">Kein Zuschnittplan im Projekt – Maße von Hand eingeben. Mit Teilen in der Stückliste geht es auch „📋 Nach Plan“.</p>') +
     '<div class="saw hand"><div class="hcalc">' +
@@ -933,7 +934,7 @@ function renderHand(host, list) {
           ' <button type="button" class="btn ghost small" data-ha="chainclear">Kette leeren</button></div>'
           : '<p class="note">Maß tippen, „＋ Kette“ – z. B. 3 × 400 und 1 × 250. Oder Plattenmaß eintragen und „÷ Aufteilen“.</p>') +
         (h.mode === 'remain' && !(h.total > 0) && h.chain.length ? '<p class="warn">Restmaß braucht das Gesamtmaß der Platte.</p>' : '') +
-        '<label class="hauto"><input type="checkbox" id="hauto"' + (h.auto ? ' checked' : '') + (fence.da ? '' : ' disabled') + '> „Weiter“ fährt den Anschlag gleich mit</label></div>' +
+        (fence.da ? '<label class="hauto"><input type="checkbox" id="hauto"' + (lst.fenceAuto ? ' checked' : '') + '> „Weiter“ und „Als Anschlagmaß“ fahren den Anschlag gleich mit</label>' : '') + '</div>' +
     '</div><div class="sawcard" aria-live="polite">' +
       (voice.msg || voice.heard ? '<div class="vstat' + (voice.msg ? ' warn' : '') + '" role="status">' + esc(voice.msg || '🎤 „' + voice.heard + '“') + '</div>' : '') +
       (voice.reply ? '<div class="vstat reply" role="status">' + esc(voice.reply) + '</div>' : '') +
@@ -965,7 +966,7 @@ function renderHand(host, list) {
   $('htotal').addEventListener('change', (e) => { const t = calcEval(e.target.value); h.total = isFinite(t) && t > 0 ? r1(t) : null; saveLst(); renderSaw(); });
   $('hcount').addEventListener('change', (e) => { h.count = Math.max(1, Math.min(99, Math.round(+e.target.value) || 1)); saveLst(); });
   $('hdivn').addEventListener('change', (e) => { h.div = Math.max(2, Math.min(50, Math.round(+e.target.value) || 2)); saveLst(); });
-  $('hauto').addEventListener('change', (e) => { h.auto = e.target.checked; saveLst(); });
+  if ($('hauto')) $('hauto').addEventListener('change', (e) => { lst.fenceAuto = e.target.checked; saveLst(); });
   fenceCfgWire(host);
   host.querySelectorAll('[data-saw]').forEach((b) => b.addEventListener('click', () => sawGo(b.dataset.saw)));
   host.querySelectorAll('[data-hmode]').forEach((b) => b.addEventListener('click', () => { hand().on = b.dataset.hmode === 'hand'; saveLst(); renderSaw(); }));
@@ -1007,7 +1008,7 @@ function handAct(a) {
   else if (a === 'next' || a === 'prev' || a === 'reset') { handGo(a); return; }
   saveLst();
   renderSaw();
-  if (a === 'take' && h.auto && fence.da) fenceGo();
+  if (a === 'take' && lst.fenceAuto && fence.da) fenceGo();
 }
 // Tastatur im Modus „Von Hand“ (wenn kein Eingabefeld den Fokus hat): Ziffern und Rechenzeichen, Enter = als Maß
 function handKey(e) {
@@ -1060,3 +1061,38 @@ function handVoice(c, text) {
   renderSaw();
   if (c.cmd === 'measure' && c.go && fence.da) fenceGo();
 }
+// Säge-Leiste: rechts die häufigen Knöpfe, „⋯ Mehr“ klappt die seltenen auf (lst.sawMore, am Gerät)
+function sawBarRight(full) {
+  return '<span class="seg vctl" role="group" aria-label="Sprache"><button type="button" data-saw="voice" aria-pressed="' + voiceOn() + '" title="Sprachbefehle: „weiter“, „zurück“, „drucken“, „Anschlag“, „Stopp“, „Hilfe“">🎤 Sprache</button></span>' +
+    '<button type="button" class="btn small drwbtn" data-saw="drw" title="Zeichnungen zum Projekt bildschirmfüllend (Z) – blättern mit ← →, Sprache „Zeichnung“, „nächste Seite“, „Zeichnung zu“">📄 Zeichnungen' + (drw.list.length ? ' <small>' + drw.list.length + '</small>' : '') + '</button>' +
+    '<button type="button" class="btn small" data-saw="full" aria-pressed="' + full + '">' + (full ? '✕ Vollbild beenden' : '⛶ Vollbild') + '</button>' +
+    '<button type="button" class="btn small" data-saw="more" aria-expanded="' + String(!!lst.sawMore) + '" title="Weitere Einstellungen: Zoom, Etiketten, Ansage, Schnittfolge, Anschlag, Testetikett">⋯ Mehr</button>' +
+    ($('pioff').hidden ? '' : '<button type="button" class="btn small pioff" data-saw="pioff" title="Sägeplatz ausschalten oder neu starten">⏻ Aus</button>');
+}
+// gleiche Knöpfe in „Mehr“ bei Plan und Von Hand
+function sawMoreCommon() {
+  return (fence.da ? '<button type="button" class="btn ghost small" data-saw="fencecfg" aria-expanded="' + String(!!lst.fenceOpen) + '" title="Parallelanschlag: Steigung, Geschwindigkeit, Beschleunigung, Referenzmaß, Versatz …">⚙ Anschlag</button>' +
+      '<label class="fauto" title="Nach „Weiter“ fährt der Anschlag gleich auf das nächste Maß (beim Anschnitt nicht)"><input type="checkbox" data-sawopt="fenceAuto"' + (lst.fenceAuto ? ' checked' : '') + '> „Weiter“ fährt den Anschlag mit</label>' : '') +
+    '<button type="button" class="btn ghost small" data-saw="testlabel" title="Ein Etikett drucken, um Größe, Lage und Drucker zu prüfen (Einstellung Etikettgröße)">🏷 Testetikett</button>';
+}
+// Testetikett: echtes Etikett des ersten Teils (wenn da) – sonst Rahmen mit Größe, Mitte und Datum
+function sawTestLabel() {
+  const part = state.parts.find((p) => p.res && p.res.panel);
+  const D = labelDims();
+  const d = new Date();
+  const html = part ? labelHtml(part) : '<div class="lbl" style="width:' + D.LW + 'mm;height:' + D.LH + 'mm"><div class="lin" style="width:' + D.cw + 'mm;height:' + D.ch + 'mm;padding:1.6mm;box-sizing:border-box;border:0.6mm solid #000;' +
+    'display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:1mm;' + (D.rot ? 'transform:translate(' + D.LW + 'mm,0) rotate(90deg);' : '') + '">' +
+    '<b style="font-size:4mm">TESTETIKETT</b><span style="font-size:3mm">' + D.LW + ' × ' + D.LH + ' mm' + (D.rot ? ' · gedreht' : '') + '</span>' +
+    '<span style="font-size:2.4mm">' + d.toLocaleDateString('de-DE') + ' ' + d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + '</span><span style="font-size:6mm">+</span></div></div>';
+  if (part) lblNums = labelNums();
+  printLabelHtml(html);
+  toast('🏷 Testetikett ' + D.LW + ' × ' + D.LH + ' mm gedruckt' + (part ? ' (Teil „' + part.solid.name + '“)' : '') + ' – Größe in den Einstellungen unter Etiketten.');
+}
+// Schalter in „Mehr“ (Plan und Von Hand)
+document.addEventListener('change', (e) => {
+  const c = e.target.closest && e.target.closest('#sawview [data-sawopt]');
+  if (!c) return;
+  lst[c.dataset.sawopt] = c.checked;
+  saveLst();
+  renderSaw();
+});

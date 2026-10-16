@@ -1,0 +1,50 @@
+# FluidNC – Weckwop Parallelanschlag (1 Achse X, Trapezgewindespindel, Endschalter am großen Maß)
+# Auf den ESP32 laden (siehe ANLEITUNG-ANSCHLAG.txt). Hier stehen nur Pins und Treiber-Takt – alle Maße, Geschwindigkeiten,
+# Beschleunigung, Referenzmaß usw. schickt der Pi bei jeder Verbindung (Weckwop › Sägen › ⚙ Anschlag).
+# Pins = Vorschlag für ein übliches „ESP32 DevKit“ (38 Pins) – an die eigene Verdrahtung anpassen.
+# Nicht verwenden: GPIO 0, 2, 12, 15 (Startpins), 6–11 (Flash). GPIO 34–39 sind nur Eingänge OHNE Pull-up.
+
+board: ESP32 DevKit
+name: Weckwop Parallelanschlag
+
+stepping:
+  engine: RMT
+  idle_ms: 255            # Motor bleibt bestromt (hält den Anschlag); 0–254 = nach so vielen ms aus
+  pulse_us: 5             # Schrittimpuls – externe Treiber (TB6600/DM542) brauchen meist ≥ 5 µs
+  dir_delay_us: 5
+  disable_delay_us: 0
+
+axes:
+  shared_stepper_disable_pin: gpio.14:low   # ENA/EN des Treibers (aktiv low); ohne Freigabe-Leitung: NO_PIN
+  x:
+    steps_per_mm: 400                       # wird vom Pi überschrieben (Motorschritte × Mikroschritte ÷ Steigung)
+    max_rate_mm_per_min: 2400               # vom Pi überschrieben
+    acceleration_mm_per_sec2: 150           # vom Pi überschrieben
+    max_travel_mm: 1300                     # vom Pi überschrieben (größtes − kleinstes Maß)
+    soft_limits: true                       # nie hinter den Verfahrweg fahren
+    homing:
+      cycle: 1
+      positive_direction: true              # Endschalter am großen Maß (vom Pi überschrieben)
+      mpos_mm: 1300                         # Referenzmaß (vom Pi überschrieben)
+      feed_mm_per_min: 200
+      seek_mm_per_min: 1500
+      settle_ms: 250
+      seek_scaler: 1.1
+      feed_scaler: 1.1
+    motor0:
+      # Endschalter als Öffner (NC) zwischen GPIO 32 und GND: gedrückt ODER Kabel ab = ausgelöst (sicher)
+      limit_pos_pin: gpio.32:pu
+      hard_limits: true
+      pulloff_mm: 3
+      standard_stepper:
+        step_pin: gpio.26                   # PUL/STEP
+        direction_pin: gpio.27              # DIR – fährt die Referenzfahrt vom Schalter weg? dann gpio.27:low
+        disable_pin: NO_PIN
+
+control:
+  # Zweiter Kontakt des Not-Aus (Öffner) zwischen GPIO 33 und GND: ESP32 bricht sofort ab, danach neue Referenzfahrt.
+  # Der Not-Aus selbst MUSS zusätzlich die Versorgung des Treibers (Motorstrom) hart trennen.
+  reset_pin: gpio.33:pu
+
+start:
+  must_home: true                           # nach dem Einschalten erst Referenzfahrt

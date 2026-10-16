@@ -1,0 +1,23 @@
+SetMachiningParameters("IJ", 1, 10, 196608, false);
+
+CreateFinishedWorkpieceBox("Workpiece", 494.6, 646, 19);
+
+CreateRawWorkpiece("Workpiece", 2, 2, 2, 2, 0, 0);
+
+SetWorkpieceSetupPosition(2, 2, 0, 0);
+
+CreatePolyline("Contour_1", 0, 323);
+AddSegmentToPolyline(0, 0);
+AddSegmentToPolyline(494.6, 0);
+AddSegmentToPolyline(494.6, 646);
+AddSegmentToPolyline(0, 646);
+AddSegmentToPolyline(0, 323);
+
+ResetApproachStrategy();
+ResetRetractStrategy();
+SetApproachStrategy(false, true, 2);
+SetRetractStrategy(false, true, 2, 0);
+SetPneumaticHoodPosition(1);
+CreateRoughFinish("Milling_1", 22, "", TypeOfProcess.GeneralRouting, "E014", "-1", 2, "-1", "-1", "-1");
+
+CreateNullOperation("XN", 1494.6, null, 1, 50, false, " ");

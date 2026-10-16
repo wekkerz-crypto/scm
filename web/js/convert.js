@@ -119,7 +119,7 @@
       if (panel.bottom.length) other = PanelAnalyzer.analyze(solid, PanelAnalyzer.turnOverY(solid, panel.orientation));
       const two = !!(ov.twoSided && other);
       const out = XcsWriter.write(panel, settings, { field: options.field, tools: ov.tools, steps: ov.steps, order: ov.order, depths: ov.depths, tech: ov.tech,
-        twoStep: ov.twoStep, rebateReturn: ov.rebateReturn, tabs: ov.tabs, curved: ov.curved, mesh: placeMesh(options, panel), suppress: ov.suppress,
+        twoStep: ov.twoStep, rebateReturn: ov.rebateReturn, narrow: ov.narrow, tabs: ov.tabs, curved: ov.curved, mesh: placeMesh(options, panel), suppress: ov.suppress,
         avoid: other ? openZones(other) : null, twoSided: two });
       const base = partName(solid.name);
       const res = result(solid, base + (two ? '_S1' : '') + '.xcs', panel, out);
@@ -154,7 +154,7 @@
       const cfg = Object.assign({}, XcsWriter.DEFAULTS, settings || {});
       const panel = DR.analyze(text, { name: name, T: dx.T > 0 ? dx.T : cfg.dxfThickness, rot: dx.rot, features: dx.features, drills: cfg.drillsVertical });
       const out = XcsWriter.write(panel, settings, { field: options.field, tools: ov.tools, steps: ov.steps, order: ov.order, depths: ov.depths, tech: ov.tech,
-        twoStep: ov.twoStep, rebateReturn: ov.rebateReturn, tabs: ov.tabs, suppress: ov.suppress });
+        twoStep: ov.twoStep, rebateReturn: ov.rebateReturn, narrow: ov.narrow, tabs: ov.tabs, suppress: ov.suppress });
       const res = result(solid, partName(name) + '.xcs', panel, out);
       res.dxf = panel.dxf;
       return res;

@@ -170,7 +170,7 @@ function cutDimsOf(part) {
 }
 function rawDims(r, p) {
   const o = state.settings.rawOversize || 0;
-  const prof = r.panel.profile && state.settings.profileRule !== 'off';
+  const prof = XcsWriter.narrowModeOf(r.panel, state.settings, p && p.overrides) === 'saw'; // Längsseiten fertig: Rohteil nur in der Länge
   const d = edgeDeduct(edgesOf(p));
   return { L: r.panel.L + 2 * o - d.L, W: r.panel.W + (prof ? 0 : 2 * o) - d.W };
 }

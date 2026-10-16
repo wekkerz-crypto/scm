@@ -1077,6 +1077,7 @@ test('Web-Tool: Kanten nach Regeln vorbelegen und Sägemodus Schritt für Schrit
     const [chooser] = await Promise.all([p.waitForEvent('filechooser'), p.click('#pick')]);
     await chooser.setFiles(fixture('schrank3.step'));
     await p.waitForFunction(() => document.querySelectorAll('.part').length === 10, null, { timeout: 60000 });
+    await p.click('#nmdlg [data-nm="mill"]'); // schmale Tür: wie bisher alles fräsen
     await p.click('[data-page="lists"]');
     await p.click('[data-ltab="bom"]');
     const edgesBy = () => p.$$eval('table.bom tbody tr', (rs) => Object.fromEntries(rs.map((r) => [r.querySelector('[data-bomname]').value,
@@ -1778,6 +1779,7 @@ test('Dekor-Bibliothek: Passwort, Hochladen, Bearbeiten – Weckwop übernimmt N
     const [chooser] = await Promise.all([p.waitForEvent('filechooser'), p.click('#pick')]);
     await chooser.setFiles(fixture('schrank3.step'));
     await p.waitForFunction(() => document.querySelectorAll('.part').length === 10, null, { timeout: 60000 });
+    await p.click('#nmdlg [data-nm="mill"]'); // schmale Tür: wie bisher alles fräsen
     await p.click('[data-page="lists"]');
     await p.click('[data-ltab="bom"]');
     await p.waitForFunction(() => document.querySelector('#bomview').textContent.includes('U708 ST9 Lichtgrau'));
@@ -1810,6 +1812,7 @@ test('Web-Tool: Sägemodus per Sprache, Weiter groß und grün', { skip: !chromi
     const [chooser] = await Promise.all([p.waitForEvent('filechooser'), p.click('#pick')]);
     await chooser.setFiles(fixture('schrank3.step'));
     await p.waitForFunction(() => document.querySelectorAll('.part').length === 10, null, { timeout: 60000 });
+    await p.click('#nmdlg [data-nm="mill"]'); // schmale Tür: wie bisher alles fräsen
     // Knopf „Sägemodus“ oben rechts: direkt von „Programme“ in Listen › Sägen, leuchtet nur dort
     assert.strictEqual(await p.getAttribute('#sawtop', 'aria-pressed'), 'false');
     await p.click('#sawtop');
@@ -2000,6 +2003,41 @@ test('Web-Tool: Sägen „Von Hand“ – Rechner, Nachstellen, Kettenmaß (Stü
     assert.strictEqual(await p.evaluate(() => lst.hand.chain.length), 4);
     await sayIt('achtzehnhundert');
     assert.strictEqual(await p.evaluate(() => handTarget()), 1800);
+    assert.deepStrictEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('Web-Tool: schmale Teile – Nachfrage beim Import, Umschalter am Teil, „immer so“', { skip: !chromium && 'Playwright nicht installiert' }, async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage({ viewport: { width: 1440, height: 950 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(page);
+    await p.waitForSelector('.part');
+    await p.click('#clear');
+    const load = async (f) => { const [ch] = await Promise.all([p.waitForEvent('filechooser'), p.click('#pick')]); await ch.setFiles(fixture(f)); };
+    await load('spante.step');
+    await p.waitForSelector('#nmdlg');
+    assert.match(await p.textContent('#nmdlg'), /höchstens 150 mm breit: spante \(600 × 120\)/);
+    await p.click('#nmdlg [data-nm="sides"]');
+    assert.strictEqual(await p.$('#nmdlg'), null);
+    assert.strictEqual(await p.getAttribute('[data-narrow="sides"]', 'aria-pressed'), 'true');
+    assert.ok(await p.evaluate(() => state.parts[0].result.ops.some((o) => o.key === 'side-0') && state.parts[0].result.ops.some((o) => o.key === 'blade-end-1')));
+    // am Teil umschalten: nur Stirnseiten sägen
+    await p.click('[data-narrow="saw"]');
+    assert.deepStrictEqual(await p.evaluate(() => [state.parts[0].overrides.narrow, state.parts[0].result.ops.some((o) => o.key === 'side-0')]), ['saw', false]);
+    // „immer so“: Einstellung gesetzt, beim nächsten Import keine Nachfrage
+    await load('holz.step');
+    await p.waitForSelector('#nmdlg');
+    await p.check('#nm-always');
+    await p.click('#nmdlg [data-nm="mill"]');
+    assert.strictEqual(await p.evaluate(() => state.settings.narrowRule), 'mill');
+    await load('spante.step');
+    await p.waitForFunction(() => document.querySelectorAll('.part').length === 3);
+    assert.strictEqual(await p.$('#nmdlg'), null);
     assert.deepStrictEqual(errors, []);
   } finally {
     await browser.close();
@@ -2317,6 +2355,7 @@ test('Web-Tool: STEP aktualisieren (Einstellungen der Teile bleiben) und Sicheru
     const [chooser] = await Promise.all([p.waitForEvent('filechooser'), p.click('#pick')]);
     await chooser.setFiles(fixture('schrank3.step'));
     await p.waitForFunction(() => document.querySelectorAll('.part').length === 10, null, { timeout: 60000 });
+    await p.click('#nmdlg [data-nm="mill"]'); // schmale Tür: wie bisher alles fräsen
     // Einstellungen an Teilen: Rückwand 3×, Seite links umbenannt mit Kanten
     const idx = await p.evaluate(() => { const t = window.Weckwop.api.teile_lesen().teile; return { rw: t.find((x) => /RW/.test(x.name)).teil, sw: t.find((x) => /SW_L/.test(x.name)).teil }; });
     await p.evaluate((i) => window.Weckwop.api.teile_aendern({ aenderungen: [{ teil: i.rw, anzahl: 3 }, { teil: i.sw, name: 'Seite links', kanten: { l1: 2, l2: 0, b1: 0, b2: 0 } }] }), idx);

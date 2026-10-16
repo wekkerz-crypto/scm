@@ -1294,6 +1294,13 @@ body.drwlock { overflow: hidden; }
 /* Stückliste bearbeiten: Name und Maße direkt in der Tabelle */
 table.bom td.bomname input { width: 100%; min-width: 14em; font-weight: 700; }
 table.bom input.bomdim { width: 5.2em; text-align: right; font-family: var(--font-mono); }
+/* Schmale Teile: Nachfrage beim Import, Umschalter am Teil */
+#nmdlg { position: fixed; inset: 0; z-index: 1200; background: var(--backdrop); display: grid; place-items: center; padding: 16px; }
+.nmchoice { display: grid; gap: var(--sp-2); }
+.nmchoice .btn { display: grid; justify-items: start; gap: 2px; text-align: left; min-height: var(--h-touch); padding: 10px 16px; height: auto; }
+.nmchoice .btn small { font-weight: 400; opacity: 0.85; font-size: var(--fs-sm); }
+.nmalways { display: flex; gap: 8px; align-items: center; color: var(--muted); }
+.seg.nmseg .lab { font-size: var(--fs-sm); color: var(--muted); padding: 0 6px 0 10px; }
 /* Wer ist im selben Projekt (Server): 👥 Gerät, ⟳ Neuer Stand */
 .btn.projwho, .btn.projnew { color: var(--warn); background: var(--warn-bg); border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); font-weight: 600; }
 .btn.projnew { animation: projnew 1.6s ease-in-out 3; }

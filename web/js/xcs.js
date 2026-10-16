@@ -85,6 +85,11 @@
     maxGrooveWidth: 12,        // breitere Nuten → Warnung
     rebateTool: 'E016',        // Falz
     profileRule: 'saw',        // Profil (Rahmenholz, Leiste): 'saw' = Stufen als Falze, Stirnseiten sägen, volle Kante vorne; 'off' = wie Platte
+    // Schmale Teile (Breite in Y bis narrowWidth, rechteckig): 'mill' = alles fräsen (Formatfräsen), 'sides' = Längsseiten fräsen +
+    // Stirnseiten sägen, 'saw' = nur Stirnseiten sägen (Leiste schon auf Breite); 'ask' = beim Import fragen (bis dahin wie 'mill').
+    // Je Teil: overrides.narrow. Profile ohne eigene Wahl folgen profileRule.
+    narrowWidth: 150,
+    narrowRule: 'ask',
     orientRule: 'model',       // Drehlage: 'model' = wie im Korpus-Modell (X = Breite, sonst Höhe; Werkstatt), 'long' = lange Seite in X
     rebateToolDia: 12,         // nur falls der Fräser nicht in der Werkzeugliste steht
     rebateStopReturn: true,    // abgesetzter Falz: true = nochmal zurück (Mitte auf der Kante), false = einfach ein-, durch-, austauchen
@@ -201,6 +206,17 @@
     clamex: 'Clamex-Nuten (Scheibenfräser)',
   };
 
+  // Schmales Teil? (Breite in Y bis narrowWidth bzw. Profil, rechteckiger Umriss) und wie es bearbeitet wird
+  const NARROW_MODES = ['mill', 'sides', 'saw'];
+  const isNarrow = (p, cfg) => !!p && p.outlineIsRect !== false && (!!p.profile || p.W <= (+cfg.narrowWidth || 0) + 1e-6);
+  function narrowModeOf(p, cfg, override) {
+    if (!isNarrow(p, cfg)) return 'mill';
+    const ov = (override && override.narrow) || cfg.narrowMode;
+    if (NARROW_MODES.includes(ov)) return ov;
+    if (p.profile) return cfg.profileRule !== 'off' ? 'saw' : 'mill';
+    return NARROW_MODES.includes(cfg.narrowRule) ? cfg.narrowRule : 'mill';
+  }
+
   function category(op) {
     if (op.plane) return 'slantPlane';
     if (op.kind === 'drill') return op.face === 'Top' ? 'drillTop' : 'drillSide';
@@ -211,7 +227,7 @@
     if (/^clamex-/.test(k)) return 'clamex';
     const prefix = k.split('-')[0];
     return { notch: 'notch', cutout: 'cutout', round: 'cutout', rebate: 'rebate', pocket: 'pocket', rpocket: 'pocket', spocket: 'pocket', chamfer: 'chamfer', chamferpath: 'chamfer',
-      slant: 'slant', cslant: 'slant', blade: 'blade', slot: 'slot', surface: 'surface', cyl4: 'surface', edge: 'edge' }[prefix] || 'notch';
+      slant: 'slant', cslant: 'slant', blade: 'blade', slot: 'slot', surface: 'surface', cyl4: 'surface', edge: 'edge', side: 'format' }[prefix] || 'notch';
   }
 
   // Vollständige Regel-Reihenfolge (fehlende Arten hinten anhängen, unbekannte entfernen)
@@ -629,17 +645,35 @@
     // (Seite 2: Teil ist schon formatiert – kein Formatfräsen, keine Konturausschnitte)
     const side2 = cfg.side === 2;
     const whole = !p.outlineIsRect && cfg.contourMode !== 'rect';
-    const profileSaw = !side2 && p.profile && cfg.profileRule !== 'off';
-    if (side2) {
-      // nichts – Kontur entstand auf Seite 1
-    } else if (profileSaw) {
-      // Profil (Rahmenholz): Längsseiten sind fertig, die Stirnseiten werden gesägt (90°, Säge außen, Material links)
+    const nMode = side2 ? 'mill' : narrowModeOf(p, cfg);
+    const profileSaw = nMode === 'saw';
+    // Stirnseiten sägen (90°, Säge außen, Material links)
+    // Ende schon schräg bearbeitet (Gehrung/Schräge quer über die ganze Breite)? Dann dort nicht zusätzlich gerade sägen.
+    const cross = (l) => l && Math.abs(l.a[0] - l.b[0]) < 1 && Math.abs(l.a[1] - l.b[1]) >= p.W - 1;
+    const endShaped = (k) => (p.slantWalls || []).some((w) => cross(w.top) && cross(w.bottom) &&
+      (k ? Math.max(w.top.a[0], w.bottom.a[0]) > p.L / 2 : Math.min(w.top.a[0], w.bottom.a[0]) < p.L / 2));
+    const sawEnds = () => {
       const so = cfg.bladeOverrun;
       for (const [k, a, b] of [[0, [0, p.W + so], [0, -so]], [1, [p.L, -so], [p.L, p.W + so]]]) {
+        if (endShaped(k)) { warnings.push('Stirnseite ' + (k ? 'rechts' : 'links') + ' hat eine Gehrung/Schräge – dort nicht zusätzlich gerade gesägt.'); continue; }
         ops.push({ kind: 'blade', key: 'blade-end-' + k, toolKind: 'saw', a: a, b: b, a0: a, b0: b, tilt: 0, leanOut: true,
           depth: T, extra: cfg.bladeExtra, tool: cfg.bladeTool, score: cfg.scoreCut ? { depth: cfg.scoreDepth, out: cfg.scoreOut } : null,
           label: 'Stirnseite ' + (k ? 'rechts' : 'links') + ' sägen' });
       }
+    };
+    if (side2) {
+      // nichts – Kontur entstand auf Seite 1
+    } else if (profileSaw) {
+      // Profil / schmales Teil: Längsseiten sind fertig, die Stirnseiten werden gesägt
+      sawEnds();
+    } else if (nMode === 'sides') {
+      // schmales Teil: beide Längsseiten fräsen (über die Enden hinaus, Korrektur außen), danach die Stirnseiten sägen
+      const ll = cfg.leadLength;
+      for (const [k, y, x0, x1, nm] of [[0, 0, -ll, p.L + ll, 'vorne'], [1, p.W, p.L + ll, -ll, 'hinten']]) {
+        ops.push({ kind: 'contour', key: 'side-' + k, toolKind: 'mill', contour: ++nContour, milling: ++nMill, approach: false,
+          start: [x0, y], segs: [{ type: 'line', to: [x1, y] }], depth: T + cfg.contourExtra, tool: cfg.contourTool, side: 2, label: 'Längsseite ' + nm + ' fräsen' });
+      }
+      sawEnds();
     } else if (whole) {
       const path = wholeContour(p.outline);
       ops.push({
@@ -654,7 +688,7 @@
         depth: T + cfg.contourExtra, tool: cfg.contourTool, side: 2, label: 'Formatfräsen',
       });
     }
-    const fmtOp = side2 || profileSaw ? null : ops[ops.length - 1];
+    const fmtOp = side2 || nMode !== 'mill' ? null : ops[ops.length - 1];
     if (cfg.formatTwoStep && fmtOp) {
       // Vorfräsen mit Werkzeug 1 und Aufmaß, danach Werkzeug 2 auf Endmaß (gleiche Geometrie)
       fmtOp.rough = { tool: cfg.formatRoughTool || cfg.contourTool, allowance: Math.max(0, cfg.formatAllowance || 0) + Math.max(0, cfg.sandOn ? +cfg.sandAllowance || 0 : 0) };
@@ -1859,6 +1893,7 @@
     if (override && override.tech) cfg.techOverrides = override.tech; // je Bearbeitung: Vorschub, Drehzahl, Eintauchen
     if (override && typeof override.twoStep === 'boolean') cfg.formatTwoStep = override.twoStep; // je Teil: normal / zweistufig
     if (override && typeof override.rebateReturn === 'boolean') cfg.rebateStopReturn = override.rebateReturn; // je Teil: abgesetzter Falz
+    if (override && NARROW_MODES.includes(override.narrow)) cfg.narrowMode = override.narrow; // je Teil: schmales Teil fräsen/sägen
     const cv = override && override.curved; // je Teil: gekrümmte Flächen bearbeiten
     if (cv && typeof cv.slant === 'boolean') cfg.curvedSlantOn = cv.slant;
     if (cv && typeof cv.surface === 'boolean') cfg.curvedSurfaceOn = cv.surface;
@@ -1905,7 +1940,7 @@
     }
     const o = fmt(cfg.side === 2 ? 0 : cfg.rawOversize); // Seite 2: Teil liegt formatiert an den Anschlägen
     // Profil mit gesägten Stirnseiten: Rohteil nur in der Länge größer (Querschnitt ist fertig)
-    const oy = p.profile && cfg.profileRule !== 'off' && cfg.side !== 2 ? '0' : o;
+    const oy = cfg.side !== 2 && narrowModeOf(p, cfg) === 'saw' ? '0' : o;
     L.push('CreateRawWorkpiece("Workpiece", ' + [o, o, oy, oy].join(', ') + ', 0, 0);'); blank();
     L.push('SetWorkpieceSetupPosition(' + o + ', ' + oy + ', 0, 0);'); blank();
     // Sauger-Vorschlag: Konsolen und Drehsauger (Koordinaten zum Werkstück-Nullpunkt)
@@ -2244,5 +2279,5 @@
   }
 
   return { write: write, writes: writes, DEFAULTS: DEFAULTS, CATEGORIES: CATEGORIES, ruleSequence: ruleSequence,
-    PROFILE_KEYS: PROFILE_KEYS, applyProfile: applyProfile };
+    PROFILE_KEYS: PROFILE_KEYS, applyProfile: applyProfile, isNarrow: isNarrow, narrowModeOf: narrowModeOf };
 });

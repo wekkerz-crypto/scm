@@ -378,4 +378,50 @@ async function loadFiles(list) {
   }
   state.sel = first;
   render();
+  narrowAsk(state.parts.slice(first));
+}
+/*
+ * Schmale Teile (Breite in Y bis Einstellung narrowWidth, rechteckig – XcsWriter.isNarrow): beim Import fragen, wie sie bearbeitet werden
+ * (Einstellung narrowRule 'ask'); Wahl je Teil in overrides.narrow ('mill' | 'sides' | 'saw'), später oben am Teil umschaltbar.
+ */
+const NARROW_NAMES = { mill: 'Alles fräsen', sides: 'Seiten fräsen, Stirnseiten sägen', saw: 'Nur Stirnseiten sägen' };
+const narrowParts = (parts) => parts.filter((p) => p.res && p.res.panel && p.overrides && !p.overrides.narrow && XcsWriter.isNarrow(p.res.panel, state.settings));
+function narrowSet(parts, mode) {
+  for (const p of parts) { p.overrides.narrow = mode; compute(p); }
+  render();
+}
+function narrowAsk(parts) {
+  const list = narrowParts(parts);
+  if (!list.length || state.settings.narrowRule !== 'ask') return;
+  const old = $('nmdlg');
+  if (old) old.remove();
+  const box = document.createElement('div');
+  box.id = 'nmdlg';
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-modal', 'true');
+  box.setAttribute('aria-label', 'Schmale Teile');
+  const names = list.map((p) => p.solid.name + ' (' + fmt(p.res.panel.L) + ' × ' + fmt(p.res.panel.W) + ')');
+  box.innerHTML = '<div class="pidlg nmdlg"><h3>Schmale Teile</h3>' +
+    '<p>' + list.length + ' Teil' + (list.length === 1 ? ' ist' : 'e sind') + ' höchstens ' + fmt(state.settings.narrowWidth) + ' mm breit: <b>' + esc(names.slice(0, 6).join(', ')) + (names.length > 6 ? ' …' : '') + '</b></p>' +
+    '<p>Wie sollen sie bearbeitet werden?</p><div class="nmchoice">' +
+    '<button type="button" class="btn primary" data-nm="sides"><b>Seiten fräsen, Stirnseiten sägen</b><small>beide Längsseiten mit dem Formatfräser, die Enden mit der Säge</small></button>' +
+    '<button type="button" class="btn" data-nm="mill"><b>Alles fräsen</b><small>Formatfräsen rundum wie bei einer Platte</small></button>' +
+    '<button type="button" class="btn" data-nm="saw"><b>Nur Stirnseiten sägen</b><small>Leiste ist schon auf Breite – nur die Enden absägen</small></button></div>' +
+    '<label class="nmalways"><input type="checkbox" id="nm-always"> Immer so – nicht mehr fragen (Einstellungen › Schmale Teile)</label>' +
+    '<p class="note">Je Teil später umschaltbar: Programme, oben neben „Drehen“.</p></div>';
+  document.body.appendChild(box);
+  const close = () => { box.remove(); document.removeEventListener('keydown', key, true); };
+  const key = (e) => { if (e.key === 'Escape') { e.stopImmediatePropagation(); close(); } };
+  document.addEventListener('keydown', key, true);
+  box.addEventListener('click', (e) => {
+    if (e.target === box) { close(); return; }
+    const b = e.target.closest('[data-nm]');
+    if (!b) return;
+    const mode = b.dataset.nm;
+    if ($('nm-always').checked) { state.settings.narrowRule = mode; saveSettings(); }
+    close();
+    narrowSet(list, mode);
+    toast(list.length + ' schmale' + (list.length === 1 ? 's Teil' : ' Teile') + ': ' + NARROW_NAMES[mode] + '.');
+  });
+  setTimeout(() => { const f = box.querySelector('[data-nm]'); if (f) f.focus(); }, 0);
 }

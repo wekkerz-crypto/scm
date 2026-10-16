@@ -576,7 +576,12 @@ function renderDetail() {
       ((t) => '<button class="btn ghost tiltbtn' + (t ? ' on' : '') + '" id="tilt" type="button" aria-pressed="' + !!t + '" title="Sonderteile: Teil um 90° auf die Kante kippen – ' +
         'erst auf die lange, dann auf die kurze Kante, dann wieder flach. Spannmittel von Hand prüfen.">⤾ Kippen 90°' + (t ? ': ' + (t === 1 ? 'lange Kante' : 'kurze Kante') : '') + '</button>')(part.orientation && part.orientation.tilt | 0)) +
     '<label for="field">Feld <select id="field">' + fieldOpts.map((f) => '<option' + (f === r.field ? ' selected' : '') + '>' + esc(f) + '</option>').join('') +
-    '</select></label></div></div>' +
+    '</select></label>' +
+    // schmales Teil: alles fräsen / Längsseiten fräsen + Stirnseiten sägen / nur Stirnseiten sägen
+    (XcsWriter.isNarrow(p, state.settings) && !part.res.side2 ? ((m) => '<span class="seg nmseg" role="group" aria-label="Schmales Teil" title="Schmales Teil (bis ' + fmt(state.settings.narrowWidth) + ' mm breit): wie werden Längs- und Stirnseiten bearbeitet?">' +
+      '<span class="lab">Schmal</span>' + [['mill', 'Alles fräsen'], ['sides', 'Seiten fräsen · Stirn sägen'], ['saw', 'Nur Stirn sägen']].map(([k, t]) =>
+      '<button type="button" data-narrow="' + k + '" aria-pressed="' + (m === k) + '" title="' + NARROW_NAMES[k] + '">' + t + '</button>').join('') + '</span>')(XcsWriter.narrowModeOf(p, state.settings, part.overrides)) : '') +
+    '</div></div>' +
     '<div class="stage" style="margin-top:12px">' +
     '<div class="view" id="view"' + (state.mode3d ? ' hidden' : '') + '>' + drawPanel(r) + '<canvas id="animcv" aria-hidden="true"></canvas></div>' +
     '<div class="view3d" id="view3d"' + (state.mode3d ? '' : ' hidden') + '><div class="v3slot" id="v3slot"></div>' +
@@ -715,6 +720,10 @@ function renderDetail() {
   el.querySelectorAll('[data-tabs]').forEach((b) => b.addEventListener('click', () => {
     const ov = ovOf(part);
     ov.tabs = Object.assign({}, ov.tabs, { [b.dataset.tabs]: b.dataset.on === '1' });
+    compute(part); render();
+  }));
+  el.querySelectorAll('[data-narrow]').forEach((b) => b.addEventListener('click', () => {
+    part.overrides.narrow = b.dataset.narrow;
     compute(part); render();
   }));
   el.querySelectorAll('[data-rebret]').forEach((b) => b.addEventListener('click', () => {

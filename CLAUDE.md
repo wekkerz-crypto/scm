@@ -128,6 +128,10 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   (je Teil `overrides.rebateReturn`): mit Rückweg (Mitte auf der Kante) oder einfach ein-, durch-, austauchen.
 - Profil (Rahmenholz/Leiste, `panel.profile`: L ≥ 6 W, Rechteck, nur Falze/Nuten längs X + Bohrungen), `profileRule` 'saw':
   Stufen als Falze (`stepped`), Stirnseiten `blade-end-…` statt Formatfräsen, Rohteil nur in X, Falze hinten (`analyze` dreht 180°).
+- Schmale Teile (`XcsWriter.isNarrow`: W ≤ `narrowWidth` 150 oder Profil, Umriss rechteckig) → `narrowModeOf(p, cfg, ov)`: 'mill' | 'sides' (Ops `side-0/1`
+  = offene Bahnen ±`leadLength`, Kategorie format, + `sawEnds` `blade-end-*`) | 'saw' (nur `blade-end-*`, Rohteil oy 0); je Teil `overrides.narrow`,
+  Einstellung `narrowRule` ('ask' = beim Import `narrowAsk` in `02-…` fragen, sonst wie 'mill'; Profile ohne Wahl folgen `profileRule`);
+  Enden mit Gehrung über die ganze Breite (`endShaped`) ohne Zusatzschnitt; Umschalter `data-narrow` in `03-…`, Rohmaß `rawDims`.
 - Kantenrundungen bis R 5,5 an Kontur/Durchbruch: `panel.edgeRounds` → Kontur-Ops `edge-…` (`profile: true`, Radiusfräser
   E061 oben / E060 unten, keine Zustellung); anderer Radius als `roundRadius`: `roundOther` 'mill' (Standard, trotzdem fräsen + Hinweis) | 'skip'.
 - Zweiseitig (je Teil `overrides.twoSided`, nur wenn `panel.bottom`): `convertSolid` rechnet die Gegenseite

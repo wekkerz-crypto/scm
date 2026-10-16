@@ -1849,3 +1849,38 @@ test('Gekippt (Sonderteile): Wände werden nicht zu Falz/Nut/Tasche, flach bleib
   const rz = C.convertSolid(z, {}, { orientation: { rot: 0, flip: false, tilt: 1 } });
   assert.strictEqual(rz.panel.rebates.length + rz.panel.grooves.length, 0);
 });
+
+test('Schmale Teile: alles fräsen, Längsseiten fräsen + Stirnseiten sägen, nur Stirnseiten sägen; Gehrungsenden bleiben', () => {
+  const { readParts, convertSolid } = require('../web/js/convert.js');
+  const X = require('../web/js/xcs.js');
+  const [s] = readParts(read('test/fixtures/spante.step'), 'spante.step');
+  const keys = (r) => r.ops.map((o) => o.key);
+  const raw = (r) => r.xcs.match(/CreateRawWorkpiece\("Workpiece", ([^)]*)\)/)[1];
+  // Standard (beim Import fragen → bis dahin wie bisher): Formatfräsen rundum
+  const def = convertSolid(s, {});
+  assert.ok(X.isNarrow(def.panel, X.DEFAULTS));
+  assert.strictEqual(X.narrowModeOf(def.panel, X.DEFAULTS), 'mill');
+  assert.ok(keys(def).includes('format'));
+  // Seiten fräsen: zwei offene Bahnen über die Enden hinaus (Korrektur außen), dann beide Stirnseiten gesägt, Rohteil rundum
+  const sd = convertSolid(s, {}, { overrides: { narrow: 'sides' } });
+  assert.ok(!keys(sd).includes('format'));
+  const sides = sd.ops.filter((o) => /^side-/.test(o.key));
+  assert.deepStrictEqual(sides.map((o) => [o.start, o.segs[0].to, o.side, o.approach]), [[[-20, 0], [sd.panel.L + 20, 0], 2, false], [[sd.panel.L + 20, sd.panel.W], [-20, sd.panel.W], 2, false]]);
+  assert.deepStrictEqual(sd.ops.filter((o) => /^blade-end-/.test(o.key)).map((o) => [o.a[0], o.b[0]]), [[0, 0], [sd.panel.L, sd.panel.L]]);
+  assert.strictEqual(raw(sd), '2, 2, 2, 2, 0, 0');
+  assert.match(sd.xcs, /CreatePolyline\("Contour_\d+", -20, 0\);\r?\nAddSegmentToPolyline\(620, 0\);/);
+  // nur Stirnseiten: Längsseiten fertig, Rohteil nur in der Länge
+  const sw = convertSolid(s, {}, { overrides: { narrow: 'saw' } });
+  assert.ok(!keys(sw).some((k) => k === 'format' || /^side-/.test(k)));
+  assert.strictEqual(sw.ops.filter((o) => /^blade-end-/.test(o.key)).length, 2);
+  assert.strictEqual(raw(sw), '2, 2, 0, 0, 0, 0');
+  // Einstellung statt je Teil
+  assert.ok(keys(convertSolid(s, { narrowRule: 'sides' })).includes('side-0'));
+  // breiter als die Grenze: kein schmales Teil
+  assert.strictEqual(X.narrowModeOf(def.panel, Object.assign({}, X.DEFAULTS, { narrowWidth: 100 }), { narrow: 'sides' }), 'mill');
+  // Gehrungen an den Enden: dort kein zusätzlicher gerader Schnitt
+  const [h] = readParts(read('test/fixtures/holz.step'), 'holz.step');
+  const hs = convertSolid(h, {}, { overrides: { narrow: 'sides' } });
+  assert.strictEqual(hs.ops.filter((o) => /^blade-end-/.test(o.key)).length, 0);
+  assert.ok(hs.warnings.some((w) => /Stirnseite links hat eine Gehrung/.test(w)));
+});

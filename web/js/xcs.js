@@ -632,13 +632,27 @@
       return w;
     };
     // Passt der Standardfräser nicht hinein: größten Fräser wählen, der passt (Schneide möglichst ≥ Tiefe)
-    const fittingMill = (width, depth, fallback) => {
+    // Taschen: zusätzlich Eckradius – ist er kleiner als der Fräserradius, fährt Maestro an den Ecken Ausbuchtungen nach außen
+    // (in Maestro gesehen), also einen Fräser wählen, dessen Radius in die kleinste Ecke passt
+    const fittingMill = (width, depth, fallback, minR) => {
       const info = cfg.toolInfo || {};
+      const maxD = Math.min(width - 1e-6, isFinite(minR) && minR > 0 ? 2 * minR + 0.02 : Infinity);
       const fd = toolD(fallback, null);
-      if (!fd || fd < width - 1e-6) return fallback;
-      const cands = Object.keys(info).filter((n) => info[n].kind === 'mill' && info[n].d > 0 && info[n].d < width - 1e-6);
+      if (!fd || fd <= maxD) return fallback;
+      const cands = Object.keys(info).filter((n) => info[n].kind === 'mill' && info[n].d > 0 && info[n].d <= maxD);
       cands.sort((a, b) => ((info[b].len || 0) >= depth) - ((info[a].len || 0) >= depth) || info[b].d - info[a].d);
       return cands[0] || fallback;
+    };
+    // Hinweise zur Taschen-Fräserwahl (zu schmal, Ecken zu eng, anderer Fräser automatisch gewählt)
+    const pocketHints = (label, w, k, tool, auto) => {
+      const dia = toolD(tool, null);
+      if (dia && w < dia) { warnings.push(label + ' ist schmaler (' + fmt(w) + ') als Fräser ' + tool + ' (Ø' + fmt(dia) + ') – kleineren Fräser wählen.'); return; }
+      if (dia && k.minRadius < dia / 2 - 0.01) {
+        warnings.push(label + ': Eckenradius R' + fmt(k.minRadius) + ' kleiner als Fräserradius ' + fmt(dia / 2) + ' (' + tool + ') – in Maestro gibt das Ausbuchtungen an den Ecken; ' +
+          'Fräser bis Ø' + fmt(Math.floor(2 * k.minRadius * 100) / 100) + ' wählen.');
+      } else if (tool === auto && auto !== cfg.pocketTool && toolD(cfg.pocketTool, null)) {
+        warnings.push(label + ': Fräser ' + auto + ' (Ø' + fmt(dia) + ') statt ' + cfg.pocketTool + ' – ' + (k.minRadius < toolD(cfg.pocketTool, 0) / 2 - 0.01 ? 'Eckenradius R' + fmt(k.minRadius) : 'Tasche schmal') + '.');
+      }
     };
 
     // 1) Formatfräsen: Rechteck L×B wie in den Beispielen, bei Sonderkontur die ganze Außenkontur am Stück
@@ -730,10 +744,30 @@
 
     // 4) Durchbrüche (Innenkonturen)
     for (const [i, lp] of p.cutouts.entries()) {
-      ops.push({ kind: 'contour', key: 'cutout-' + i, toolKind: 'mill', contour: ++nContour, milling: ++nMill, approach: false,
+      const key = 'cutout-' + i;
+      const round = lp.length === 1 && lp[0].full;
+      // Ecken des Durchbruchs = Bögen in Umlaufrichtung; kleiner als der Fräserradius → Maestro fräst dort Ausbuchtungen
+      // ins Teil (in Maestro gesehen) – Fräser wählen, der in die engste Ecke passt
+      let area = 0;
+      for (const q of lp) area += q.a[0] * q.b[1] - q.b[0] * q.a[1];
+      let minR = Infinity;
+      if (!round) for (const q of lp) if (q.type === 'arc' && !q.full && !!q.ccw === area > 0) minR = Math.min(minR, q.r);
+      const xs = lp.flatMap((q) => [q.a[0], q.b[0]]);
+      const ys = lp.flatMap((q) => [q.a[1], q.b[1]]);
+      const w = round ? 2 * lp[0].r : Math.min(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+      const auto = round ? cfg.cutoutTool : fittingMill(w, T + cfg.cutoutExtra, cfg.cutoutTool, minR);
+      const tool = (cfg.toolOverrides && cfg.toolOverrides[key]) || auto;
+      const dia = toolD(tool, null);
+      if (dia && minR < dia / 2 - 0.01) {
+        warnings.push('Durchbruch: Eckenradius R' + fmt(minR) + ' kleiner als Fräserradius ' + fmt(dia / 2) + ' (' + tool + ') – in Maestro gibt das Ausbuchtungen an den Ecken; ' +
+          'Fräser bis Ø' + fmt(Math.floor(2 * minR * 100) / 100) + ' wählen.');
+      } else if (tool === auto && auto !== cfg.cutoutTool) {
+        warnings.push('Durchbruch: Fräser ' + auto + ' (Ø' + fmt(dia) + ') statt ' + cfg.cutoutTool + ' – Eckenradius R' + fmt(minR) + '.');
+      }
+      ops.push({ kind: 'contour', key: key, toolKind: 'mill', contour: ++nContour, milling: ++nMill, approach: false,
         // ganzer Kreis (z. B. schräges Rundloch): zwei Halbkreise, sonst wären Anfang und Ende gleich
-        ...(lp.length === 1 && lp[0].full ? wholeContour(lp) : { start: lp[0].a, segs: lp.map(toPolySeg) }),
-        depth: T + cfg.cutoutExtra, tool: cfg.cutoutTool, side: 2, label: 'Durchbruch' });
+        ...(round ? wholeContour(lp) : { start: lp[0].a, segs: lp.map(toPolySeg) }),
+        depth: T + cfg.cutoutExtra, tool: auto, side: 2, label: 'Durchbruch' });
     }
 
     // 5) Falze
@@ -822,12 +856,10 @@
     for (const [i, k] of p.pockets.entries()) {
       const key = 'pocket-' + i;
       const kw = Math.min(k.x1 - k.x0, k.y1 - k.y0, narrowest(k.segs));
-      const auto = fittingMill(kw, k.depth, cfg.pocketTool);
+      const auto = fittingMill(kw, k.depth, cfg.pocketTool, k.minRadius);
       const tool = (cfg.toolOverrides && cfg.toolOverrides[key]) || auto;
-      const dia = toolD(tool, null);
       const size = fmt(k.x1 - k.x0) + '×' + fmt(k.y1 - k.y0);
-      if (dia && kw < dia) warnings.push('Tasche ' + size + ' ist schmaler als Fräser ' + tool + ' (Ø' + fmt(dia) + ').');
-      if (dia && k.minRadius < dia / 2 - 0.01) warnings.push('Tasche ' + size + ': Eckenradius R' + fmt(k.minRadius) + ' kleiner als Fräserradius ' + fmt(dia / 2) + ' – Ecken bleiben runder.');
+      pocketHints('Tasche ' + size, kw, k, tool, auto);
       if (k.open && k.open.length) warnings.push('Tasche ' + size + ' ist zur Kante offen (' + k.open.join(', ') + ') – Anfahrt in Maestro prüfen.');
       ops.push({ kind: 'pocket', key: key, toolKind: 'mill', pocket: i + 1, segs: k.segs, islands: k.islands,
         depth: k.depth, tool: auto, label: 'Tasche ' + size + '×' + fmt(k.depth) + (k.islands.length ? ' mit Insel' : '') });
@@ -858,13 +890,11 @@
     for (const [i, k] of (p.sidePockets || []).entries()) {
       const key = 'spocket-' + i;
       const w = Math.min(k.x1 - k.x0, k.y1 - k.y0, narrowest(k.segs));
-      const auto = fittingMill(w, k.depth, cfg.pocketTool);
+      const auto = fittingMill(w, k.depth, cfg.pocketTool, k.minRadius);
       const tool = (cfg.toolOverrides && cfg.toolOverrides[key]) || auto;
-      const dia = toolD(tool, null);
       const r1 = (v) => fmt(Math.round(v * 10) / 10);
       const label = 'Tasche ' + SIDE_DE[k.face] + ' ' + r1(k.x1 - k.x0) + '×' + r1(k.y1 - k.y0);
-      if (dia && w < dia) warnings.push(label + ' ist schmaler (' + fmt(w) + ') als Fräser ' + tool + ' (Ø' + fmt(dia) + ') – kleineren Fräser wählen.');
-      else if (dia && k.minRadius < dia / 2 - 0.01) warnings.push(label + ': Eckenradius R' + fmt(k.minRadius) + ' kleiner als Fräserradius ' + fmt(dia / 2) + ' – Ecken bleiben runder.');
+      pocketHints(label, w, k, tool, auto);
       if (k.holes) warnings.push(label + ': Bohrung im Taschenboden wird nicht ausgegeben.');
       ops.push({ kind: 'pocket', face: k.face, key: key, toolKind: 'mill', pocket: 0, segs: k.segs, islands: k.islands,
         depth: k.depth, tool: auto, label: label + (k.islands.length ? ' mit Insel' : '') });
@@ -1092,13 +1122,11 @@
       for (const [i, k] of sp.pockets.entries()) {
         const key = 'ppocket-' + j + '-' + i;
         const w = Math.min(k.x1 - k.x0, k.y1 - k.y0, narrowest(k.segs));
-        const auto = fittingMill(w, k.depth, cfg.pocketTool);
+        const auto = fittingMill(w, k.depth, cfg.pocketTool, k.minRadius);
         const tool = (cfg.toolOverrides && cfg.toolOverrides[key]) || auto;
-        const dia = toolD(tool, null);
         const r1 = (v) => fmt(Math.round(v * 10) / 10);
         const label = 'Tasche ' + where + ' ' + r1(k.x1 - k.x0) + '×' + r1(k.y1 - k.y0);
-        if (dia && w < dia) warnings.push(label + ' ist schmaler (' + fmt(w) + ') als Fräser ' + tool + ' (Ø' + fmt(dia) + ') – kleineren Fräser wählen.');
-        else if (dia && k.minRadius < dia / 2 - 0.01) warnings.push(label + ': Eckenradius R' + fmt(k.minRadius) + ' kleiner als Fräserradius ' + fmt(dia / 2) + ' – Ecken bleiben runder.');
+        pocketHints(label, w, k, tool, auto);
         ops.push({ kind: 'pocket', plane: plane, key: key, toolKind: 'mill', pocket: 0, segs: k.segs, islands: k.islands,
           depth: k.depth, tool: auto, label: label });
       }

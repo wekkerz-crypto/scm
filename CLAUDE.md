@@ -132,6 +132,10 @@ Benutzer und Werkstatt sprechen Deutsch: Oberfläche, Hinweise, README und Commi
   = offene Bahnen ±`leadLength`, Kategorie format, + `sawEnds` `blade-end-*`) | 'saw' (nur `blade-end-*`, Rohteil oy 0); je Teil `overrides.narrow`,
   Einstellung `narrowRule` ('ask' = beim Import `narrowAsk` in `02-…` fragen, sonst wie 'mill'; Profile ohne Wahl folgen `profileRule`);
   Enden mit Gehrung über die ganze Breite (`endShaped`) ohne Zusatzschnitt; Umschalter `data-narrow` in `03-…`, Rohmaß `rawDims`.
+- Ecken enger als der Fräser: `fittingMill(width, depth, fallback, minR)` in `xcs.js` (Ø ≤ Breite und ≤ 2 × kleinster Eckenradius, lange genug
+  zuerst) für Taschen/Kantentaschen/Schrägtaschen (`pocketHints`) und Durchbrüche (`minR` = kleinster Bogen, der nach innen dreht, über die
+  Fläche der Schleife; Op `tool: auto`, Schlüssel `cutout-i`); zu großer Fräser (auch von Hand) → Hinweis „Ausbuchtungen“. Anzeige:
+  `offsetPath` in `toolpath.js` wirft versetzte Stücke weg, die gegen die Originalrichtung laufen (keine Schlaufe in die Innenecke).
 - Kantenrundungen bis R 5,5 an Kontur/Durchbruch: `panel.edgeRounds` → Kontur-Ops `edge-…` (`profile: true`, Radiusfräser
   E061 oben / E060 unten, keine Zustellung); anderer Radius als `roundRadius`: `roundOther` 'mill' (Standard, trotzdem fräsen + Hinweis) | 'skip'.
 - Zweiseitig (je Teil `overrides.twoSided`, nur wenn `panel.bottom`): `convertSolid` rechnet die Gegenseite

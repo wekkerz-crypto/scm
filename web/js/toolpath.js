@@ -61,27 +61,43 @@
     return out;
   }
 
-  // Mittelpunktsbahn mit Radiuskorrektur: side 1 = links, 2 = rechts, sonst Mitte
+  // Mittelpunktsbahn mit Radiuskorrektur: side 1 = links, 2 = rechts, sonst Mitte.
+  // Innenecken mit kleinerem Radius als der Fräser (z. B. R2-Ecke, Fräser Ø28): die versetzten Stücke dort laufen rückwärts –
+  // sie fallen weg und die Nachbarn werden direkt geschnitten (wie die Korrektur der Steuerung), sonst schwenkt die Bahn in die Ecke.
   function offsetPath(pts, r, side) {
     if (!side || r <= 0 || pts.length < 2) return pts;
     const sgn = side === 1 ? 1 : -1;
     const closed = Math.hypot(pts[0][0] - pts[pts.length - 1][0], pts[0][1] - pts[pts.length - 1][1]) < 1e-6;
-    const segs = [];
+    let segs = [];
     for (let i = 0; i + 1 < pts.length; i++) {
       const a = pts[i];
       const b = pts[i + 1];
       const l = Math.hypot(b[0] - a[0], b[1] - a[1]);
       if (l < 1e-9) continue;
       const n = [(-(b[1] - a[1]) / l) * sgn * r, ((b[0] - a[0]) / l) * sgn * r];
-      segs.push([[a[0] + n[0], a[1] + n[1]], [b[0] + n[0], b[1] + n[1]]]);
+      segs.push({ s: [[a[0] + n[0], a[1] + n[1]], [b[0] + n[0], b[1] + n[1]]], d: [(b[0] - a[0]) / l, (b[1] - a[1]) / l] });
     }
     if (!segs.length) return pts;
-    const out = [segs[0][0]];
-    const join = (s1, s2) => {
+    const meet = (s1, s2) => {
       const p = intersect(s1, s2);
-      if (p && Math.hypot(p[0] - s1[1][0], p[1] - s1[1][1]) < 3 * r) return [p];
-      return [s1[1], s2[0]];
+      return p && Math.hypot(p[0] - s1[1][0], p[1] - s1[1][1]) < 3 * r ? p : null;
     };
+    for (let iter = 0; iter < 64; iter++) {
+      const n = segs.length;
+      const bad = [];
+      for (let i = 0; i < n; i++) {
+        const prev = i > 0 ? segs[i - 1] : closed ? segs[n - 1] : null;
+        const next = i + 1 < n ? segs[i + 1] : closed ? segs[0] : null;
+        const a = (prev && meet(prev.s, segs[i].s)) || segs[i].s[0];
+        const b = (next && meet(segs[i].s, next.s)) || segs[i].s[1];
+        if ((b[0] - a[0]) * segs[i].d[0] + (b[1] - a[1]) * segs[i].d[1] < -1e-9) bad.push(i);
+      }
+      if (!bad.length || n - bad.length < (closed ? 3 : 1)) break;
+      segs = segs.filter((q, i) => !bad.includes(i));
+    }
+    segs = segs.map((q) => q.s);
+    const out = [segs[0][0]];
+    const join = (s1, s2) => { const p = meet(s1, s2); return p ? [p] : [s1[1], s2[0]]; };
     for (let i = 0; i + 1 < segs.length; i++) out.push(...join(segs[i], segs[i + 1]));
     if (closed) {
       const j = join(segs[segs.length - 1], segs[0]);

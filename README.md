@@ -537,7 +537,7 @@ deutschem Text; die Schemas stehen in `web/js/assist.js` (`Assist.TOOLS`).
 | Außenkontur rechteckig | Formatfräsen Rechteck (`E014`, Tiefe D+3, Korrektur rechts), Verlassen im Bogen mit 2 mm Überlappung (`SetRetractStrategy(false, true, 2, 2)`, einstellbar) |
 | Formatfräsen zweistufig (Umschalter Normal/Zweistufig in den Einstellungen und je Teil in der Schrittliste) | Vorfräsen `CreateRoughFinish("Milling_1_Vor", …, Aufmaß)` mit Werkzeug 1, dann Werkzeug 2 auf Endmaß, gleiche Geometrie |
 | Sonderkontur (Ausschnitte, Rundungen, Schrägen) | Standard: ganze Außenkontur **am Stück** als eine Bahn; umschaltbar auf „Rechteck + Ausschnitte einzeln“ (`E016`, Tiefe D+2) |
-| Durchbrüche (innen), auch mit Fase oder Falz am Rand | geschlossene Fräsbahn (`E016`) entlang der engsten Stelle |
+| Durchbrüche (innen), auch mit Fase oder Falz am Rand | geschlossene Fräsbahn (`E016`) entlang der engsten Stelle. Sind Innenecken enger als der Fräserradius (z. B. R3 bei `E016` Ø11,4), nimmt Weckwop automatisch den größten Fräser, der in die Ecke passt (z. B. `E031` Ø6), mit Hinweis – sonst fräst Maestro an den Ecken Ausbuchtungen. Wird von Hand ein zu großer Fräser gewählt: Warnung |
 | Bohrung von oben (Sackloch / durch) | `CreateDrill` Spitze `"P"` / `"L"` (durch: Tiefe D+2) |
 | Überlappende Bohrungen gleichen Durchmessers (bis Ø20) in einer Reihe, auch zur Kante offen – z. B. **Lamello Cabineo** (3 × Ø15, Tiefe 11, Abstand 11,2) | je Mitte ein `CreateDrill` statt einer Tasche (Hinweis in der Liste; Beispiel `test/fixtures/cabineo.step`) |
 | Bohrung, für die kein Bohrer existiert und die durchgeht | Kreisfräsung entlang der Kontur (`E016`) |
@@ -548,7 +548,7 @@ deutschem Text; die Schemas stehen in `web/js/assist.js` (`Assist.TOOLS`).
 | Stufenfalz (Stufe neben einem tieferen Falz, z. B. Fensterprofil) | eigener Falz bis zur Kante, flache Stufe vor der tiefen |
 | **Profil** (Rahmenholz, Leiste: mindestens 6 × so lang wie breit, rechteckiger Umriss, nur Falze/Nuten über die ganze Länge und Bohrungen; Einstellung *Profile*) | jede Stufe ein Falz mit geradem An-/Auslauf, **Stirnseiten gesägt** (90°) statt Formatfräsen, Rohteil-Aufmaß nur in X, Lage: volle Kante vorne an den Anschlägen, Stufen hinten (Beispiel `test/fixtures/rahmenholz.step`) |
 | Abgesetzter Falz (zu einer Kante offen, endet vor den Seiten, mindestens 3 × so lang wie breit) | Fräsbahn in Werkzeugmitte (Korrektur 0), Mitte einen Fräserradius vor den Enden. Zwei Varianten (Einstellung *Abgesetzter Falz: nochmal zurück*, je Teil an der Bearbeitung *Einfach / Mit Rückweg*): **mit Rückweg** (Standard) – außen über die offene Kante eintauchen, an der Flanke entlang, zurück mit der Mitte auf der Plattenkante (an den Enden bleibt nichts stehen), austauchen; **einfach** – außen eintauchen, an der Flanke entlang, über die Kante austauchen (breiter Falz: je Bahn eigenes Ein-/Austauchen). Hinweis: Innenecken bleiben mit Fräserradius rund |
-| Tasche (auch mit Inseln, Eckenradius-Prüfung) | `CreateContourPocket` (Bohrungen im Taschenboden werden von oben gebohrt) |
+| Tasche (auch mit Inseln, Eckenradius-Prüfung) | `CreateContourPocket` (Bohrungen im Taschenboden werden von oben gebohrt). Fräser passend zur engsten Ecke bzw. zur Breite (auch an Kanten und Schrägen), Hinweis „Fräser … statt E016“; ist der gewählte Fräser größer als der kleinste Eckenradius: Warnung „in Maestro gibt das Ausbuchtungen an den Ecken“ |
 | runde Vertiefung von oben ohne passenden Bohrer | Kreistasche: `CreateCircleCenterRadius` + `CreateContourPocket` (Hinweis, wenn der Fräser nicht hineinpasst). Runde Taschen werden **immer im Uhrzeigersinn** ausgeräumt (`CreateContourParallelStrategy(true, 0 …)`) |
 | Tasche in einer Kante (Stirn- oder Längsseite, z. B. Langloch, auch schräg gedreht) | `SelectWorkplane("Left"/"Right"/"Front"/"Back")` + `CreateContourPocket` in Kantenkoordinaten (wie die Kantenbohrungen). Passt der Taschenfräser nicht hinein, wird automatisch der größte passende Fräser gewählt |
 | Fase oben / unten | `CreateChamfer` entlang der Kontur **am Stück**, auch über Rundungen (Kegelflächen), umlaufend als geschlossene Bahn; auch um Durchbrüche |
@@ -629,7 +629,7 @@ durchgefräst zeigt den Tisch, Innenstücke von Durchbrüchen fallen heraus. Bea
 gesehen in die Kante fährt, mit Schneide, Schaft und Aggregat. Werkzeug als drehender Fräser/Bohrer in
 echter Größe, Bohrungen maßstäblich, Vorschau der kommenden Bahnen, Eilgänge mit Pfeil. Zeitleiste mit allen
 Schritten (Klick springt hin), Klick auf einen Schritt in der Liste springt ebenfalls, der aktuelle Schritt ist
-hervorgehoben. Taschen sind vereinfacht zeilenweise dargestellt (`web/js/toolpath.js`); maßgeblich bleibt die
+hervorgehoben. Taschen sind vereinfacht zeilenweise dargestellt (`web/js/toolpath.js`); an Innenecken, die enger als der Fräser sind, bleibt die Werkzeugmitte stehen (keine Schlaufe in die Ecke, wie in Maestro); maßgeblich bleibt die
 Simulation in Maestro.
 
 **Sauger-Vorschlag:** Für jedes Teil schlägt das Tool Konsolen (X) und Drehsauger (Y, Winkel) vor – große Sauger

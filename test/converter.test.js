@@ -1884,3 +1884,43 @@ test('Schmale Teile: alles fräsen, Längsseiten fräsen + Stirnseiten sägen, n
   assert.strictEqual(hs.ops.filter((o) => /^blade-end-/.test(o.key)).length, 0);
   assert.ok(hs.warnings.some((w) => /Stirnseite links hat eine Gehrung/.test(w)));
 });
+
+test('Werkzeugbahn-Anzeige: Innenecke mit kleinerem Radius als der Fräser – Bahn schwenkt nicht in die Ecke', () => {
+  const T = require('../web/js/toolpath.js');
+  // Platte mit Ausklinkung rechts unten, Innenecke R2 bei (880, 200), außen herum gegen den Uhrzeigersinn, Korrektur rechts, Fräser Ø28
+  const segs = [{ type: 'line', to: [880, 0] }, { type: 'line', to: [880, 198] }, { type: 'arc', to: [882, 200], c: [882, 198], cw: true },
+    { type: 'line', to: [1000, 200] }, { type: 'line', to: [1000, 520] }, { type: 'line', to: [0, 520] }, { type: 'line', to: [0, 0] }];
+  const off = T.offsetPath(T.samplePoly([0, 0], segs), 14, 2);
+  const near = off.filter((p) => p[0] > 850 && p[0] < 910 && p[1] > 170 && p[1] < 230);
+  assert.deepStrictEqual(near.map((p) => p.map((v) => Math.round(v * 10) / 10)), [[894, 186]]);
+  // Außenecken unverändert: Ecke mit Fräsermitte diagonal außen
+  assert.ok(off.some((p) => Math.abs(p[0] - 1014) < 1e-6 && Math.abs(p[1] - 534) < 1e-6));
+  // Innenecke mit größerem Radius (R20) bleibt ein Bogen um denselben Mittelpunkt (Radius 20 − 14 = 6)
+  const s2 = [{ type: 'line', to: [880, 0] }, { type: 'line', to: [880, 180] }, { type: 'arc', to: [900, 200], c: [900, 180], cw: true },
+    { type: 'line', to: [1000, 200] }, { type: 'line', to: [1000, 520] }, { type: 'line', to: [0, 520] }, { type: 'line', to: [0, 0] }];
+  const arc = T.offsetPath(T.samplePoly([0, 0], s2), 14, 2).filter((p) => p[0] > 885 && p[0] < 905 && p[1] > 170 && p[1] < 200);
+  assert.ok(arc.length > 5 && arc.every((p) => Math.abs(Math.hypot(p[0] - 900, p[1] - 180) - 6) < 0.2), JSON.stringify(arc));
+});
+
+test('Durchbruch und Tasche: Eckenradius kleiner als Fräserradius → passender kleinerer Fräser (sonst Ausbuchtungen in Maestro)', () => {
+  const C = require('../web/js/convert.js');
+  const T = require('../web/js/tools.js');
+  const toolInfo = T.infoMap(T.parseTlgx(read('maestro/werkzeuge/def.tlgx')));
+  // DXF: Platte 1000×520, Durchbruch 300×200 mit Eckradius R (Bulge = Viertelkreis)
+  const dxf = (R) => {
+    const b = Math.tan(Math.PI / 8);
+    const v = [[500 + R, 150, 0], [800 - R, 150, b], [800, 150 + R, 0], [800, 350 - R, b], [800 - R, 350, 0], [500 + R, 350, b], [500, 350 - R, 0], [500, 150 + R, b]];
+    const poly = (pts) => ['0', 'LWPOLYLINE', '8', '0', '90', String(pts.length), '70', '1'].concat(...pts.map((p) => ['10', String(p[0]), '20', String(p[1])].concat(p[2] ? ['42', String(p[2])] : [])));
+    return ['0', 'SECTION', '2', 'ENTITIES'].concat(poly([[0, 0], [1000, 0], [1000, 520], [0, 520]]), poly(v), ['0', 'ENDSEC', '0', 'EOF']).join('\n') + '\n';
+  };
+  const cut = (r) => r.ops.find((o) => /^cutout-/.test(o.key));
+  const r3 = C.convertDxf(dxf(3), 'kueche.dxf', { toolInfo });
+  assert.ok(toolInfo[cut(r3).tool].d <= 6 + 1e-9, cut(r3).tool);
+  assert.ok(r3.warnings.some((w) => /Durchbruch: Fräser .* statt E016 – Eckenradius R3/.test(w)), r3.warnings.join(' | '));
+  assert.match(r3.xcs, new RegExp('CreateRoughFinish\\("Milling_\\d+", \\d+, "", TypeOfProcess\\.GeneralRouting, "' + cut(r3).tool + '"'));
+  // weite Ecken: Standardfräser bleibt
+  assert.strictEqual(cut(C.convertDxf(dxf(8), 'kueche.dxf', { toolInfo })).tool, 'E016');
+  // von Hand zu großer Fräser: Hinweis auf die Ausbuchtungen
+  const ov = C.convertDxf(dxf(3), 'kueche.dxf', { toolInfo }, { overrides: { tools: { 'cutout-0': 'E016' } } });
+  assert.ok(ov.warnings.some((w) => /Eckenradius R3 kleiner als Fräserradius 5\.69 \(E016\) – in Maestro gibt das Ausbuchtungen/.test(w)), ov.warnings.join(' | '));
+});

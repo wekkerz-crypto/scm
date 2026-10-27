@@ -1,0 +1,11 @@
+# Projektdaten nur über api.php
+<FilesMatch "\.(json|gz|neu)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+</FilesMatch>
+Options -Indexes
+<IfModule mod_php.c>
+  php_value upload_max_filesize 80M
+  php_value post_max_size 90M
+</IfModule>

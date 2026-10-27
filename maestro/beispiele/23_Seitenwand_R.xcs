@@ -1,0 +1,58 @@
+SetMachiningParameters("IL", 1, 10, 196608, false);
+
+CreateFinishedWorkpieceBox("Workpiece", 2305, 600, 19);
+
+CreateRawWorkpiece("Workpiece", 2, 2, 2, 2, 0, 0);
+
+SetWorkpieceSetupPosition(2, 2, 0, 0);
+
+CreatePolyline("Contour_1", 0, 300);
+AddSegmentToPolyline(0, 0);
+AddSegmentToPolyline(2305, 0);
+AddSegmentToPolyline(2305, 600);
+AddSegmentToPolyline(0, 600);
+AddSegmentToPolyline(0, 300);
+
+ResetApproachStrategy();
+ResetRetractStrategy();
+SetApproachStrategy(false, true, 2);
+SetRetractStrategy(false, true, 2, 0);
+SetPneumaticHoodPosition(1);
+CreateRoughFinish("Milling_1", 22, "", TypeOfProcess.GeneralRouting, "E014", "-1", 2, "-1", "-1", "-1");
+
+CreateSegment("SlotSegment_1", -50, 580, 2355, 580);
+SetMachiningDirection(true);
+CreateSlot("Slot_1", 5.6, "", TypeOfProcess.GeneralRouting, "066", "-1", 1,-1,-1,-1,0);
+
+SetMachiningDirection(false);
+CreateSlot("Slot_2", 5.6, "", TypeOfProcess.GeneralRouting, "066", "-1", 2,-1,-1,-1,-8.6);
+
+CreatePattern(1, 2, 0, 32, 0, 90);
+CreateDrill ("Drill_Vertical_1", 572.5, 290, 2, 3, "", TypeOfProcess.Drilling, "-1", "-1", 1, -1, -1, "P");
+CreatePattern(1, 1, 0, 0, 0, 90);
+
+CreatePattern(8, 1, 75.72, 0, 0, 90);
+CreateDrill ("Drill_Vertical_2", 9.5, 25, 15, 8, "", TypeOfProcess.Drilling, "-1", "-1", 1, -1, -1, "P");
+CreatePattern(1, 1, 0, 0, 0, 90);
+
+CreatePattern(7, 1, 80, 0, 0, 90);
+CreateDrill ("Drill_Vertical_3", 9.5, 50, 21, 3, "", TypeOfProcess.Drilling, "-1", "-1", 1, -1, -1, "L");
+CreatePattern(1, 1, 0, 0, 0, 90);
+
+CreatePattern(8, 1, 75.72, 0, 0, 90);
+CreateDrill ("Drill_Vertical_4", 499, 25, 15, 8, "", TypeOfProcess.Drilling, "-1", "-1", 1, -1, -1, "P");
+CreatePattern(1, 1, 0, 0, 0, 90);
+
+CreatePattern(7, 1, 80, 0, 0, 90);
+CreateDrill ("Drill_Vertical_5", 499, 50, 21, 3, "", TypeOfProcess.Drilling, "-1", "-1", 1, -1, -1, "L");
+CreatePattern(1, 1, 0, 0, 0, 90);
+
+CreatePattern(8, 1, 75.72, 0, 0, 90);
+CreateDrill ("Drill_Vertical_6", 2295.5, 25, 15, 8, "", TypeOfProcess.Drilling, "-1", "-1", 1, -1, -1, "P");
+CreatePattern(1, 1, 0, 0, 0, 90);
+
+CreatePattern(7, 1, 80, 0, 0, 90);
+CreateDrill ("Drill_Vertical_7", 2295.5, 50, 21, 3, "", TypeOfProcess.Drilling, "-1", "-1", 1, -1, -1, "L");
+CreatePattern(1, 1, 0, 0, 0, 90);
+
+CreateNullOperation("XN", 3305, null, 1, 50, false, " ");

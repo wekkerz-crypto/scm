@@ -1,0 +1,11 @@
+# Dekor-Bibliothek: Verwaltung (index.html) + api.php; daten/ sperrt sich selbst (eigene .htaccess, legt api.php an)
+DirectoryIndex index.html
+Options -Indexes
+<IfModule mod_headers.c>
+  Header set X-Robots-Tag "noindex, nofollow"
+</IfModule>
+# größere Bilder hochladen (falls der Server es erlaubt; bei Strato sonst im Kunden-Login unter PHP-Einstellungen)
+<IfModule mod_php.c>
+  php_value upload_max_filesize 25M
+  php_value post_max_size 30M
+</IfModule>

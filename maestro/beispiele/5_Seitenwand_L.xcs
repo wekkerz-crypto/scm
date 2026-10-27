@@ -1,0 +1,33 @@
+SetMachiningParameters("IJ", 1, 10, 196608, false);
+
+CreateFinishedWorkpieceBox("Workpiece", 500, 500, 19);
+
+CreateRawWorkpiece("Workpiece", 2, 4, 2, 2, 0, 0);
+
+SetWorkpieceSetupPosition(2, 2, 0, 0);
+
+CreatePolyline("Contour_1", 0, 250);
+AddSegmentToPolyline(0, 0);
+AddSegmentToPolyline(502, 0);
+AddSegmentToPolyline(502, 500);
+AddSegmentToPolyline(0, 500);
+AddSegmentToPolyline(0, 250);
+
+ResetApproachStrategy();
+ResetRetractStrategy();
+SetApproachStrategy(false, true, 2);
+SetRetractStrategy(false, true, 2, 0);
+SetPneumaticHoodPosition(1);
+CreateRoughFinish("Milling_1", 21, "", TypeOfProcess.GeneralRouting, "E014", "-1", 2, "-1", "-1", "-1");
+
+CreateSegment("BladeCutSegment_1", 481, 0, 481, 500);
+CreateSectioningMillingStrategy(2, 50, 0);
+CreateBladeCut("BladeCut_1", "Saw Cut", TypeOfProcess.GeneralRouting, "E070", "-1", 45, 2, -1, -1, -1, 0, true, true, 0, 20);
+
+CreateMacro("SawCut_Lamello_1", "SawCut_Lamello", 500, 70, 500, 430, 45, 1, 19, 1, 5, 3, 0.05, 145.9, 145.9, null, null, 3, "-1", "E070", null, "-1", "E030", null, '2', 0, false, -1, 0, 2, 0, false, "-1", "E031", null, null, null, 0, 0, 0, null, 2, 8.54, 1.4, "14", 0, "-1", "E030", 90, null);
+
+CreateMacro("SawCut_Lamello_2", "SawCut_Lamello", 8.54, 70, 8.54, 430, 0, 1, null, 5, null, 3, 0.05, null, null, null, null, 3, "-1", "E032", null, "-1", "E032", null, '2', 0, false, -1, 0, 2, 0, false, "-1", "E031", null, null, null, 0, 0, 0, null, 2, 0, 1.4, "14", 0, "-1", "E032", 90, null);
+
+CreateMacro("SawCut_Lamello_3", "SawCut_Lamello", 249.04, 70, 249.04, 430, 0, 1, null, 5, null, 3, 0.05, null, null, null, null, 3, "-1", "E032", null, "-1", "E032", null, '2', 0, false, -1, 0, 2, 0, false, "-1", "E031", null, null, null, 0, 0, 0, null, 2, 0, 1.4, "14", 0, "-1", "E032", 90, null);
+
+CreateNullOperation("XN", 1500, null, 1, 50, false, " ");

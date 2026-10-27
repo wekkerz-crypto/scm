@@ -1,0 +1,178 @@
+WECKWOP AM SÄGEPLATZ – RASPBERRY PI 5 MIT ZEBRA (USB)
+=========================================================
+
+Ziel: Pi einschalten -> Weckwop startet im Vollbild (Sägemodus, Zuschnitt,
+Stückliste). Tippen auf „Etikett drucken“ -> Etikett kommt sofort aus der Zebra,
+ohne Druckdialog. Keine Zwangsupdates, kein ungefragter Neustart.
+
+Inhalt der ZIP
+--------------
+  ANLEITUNG-PI.txt     diese Datei
+  einrichten.sh        richtet alles ein (Drucker, Vollbild-Start)
+  sprache_holen.sh     holt die Offline-Spracherkennung (für --sprache)
+  step2maestro/        das Programm zum Offline-Betrieb (ohne Server)
+  (dasselbe in einer Datei: Weckwop-Pi-Installer.sh – siehe Punkt 2)
+
+Einkaufsliste
+-------------
+* Raspberry Pi 5, 4 GB (reicht für Sägemodus, Zuschnitt, Listen, Etiketten);
+  8 GB nur, wenn am Pi auch große STEP-Dateien in 3D geöffnet werden.
+  2 GB nicht empfohlen (Chromium + 3D wird knapp).
+  Ein Pi 4 (4 GB) geht auch – etwas langsamer, 3D zäh; Netzteil 15 W (5 V / 3 A),
+  statt NVMe eine SSD am USB-3-Anschluss (blau) oder SD-Karte.
+* Offizielles Netzteil 27 W (USB-C) – andere führen oft zu Abstürzen
+* Kühlung: offizieller „Active Cooler“ oder Alu-Gehäuse mit Lüfter
+  (Gehäuse möglichst geschlossen – Sägestaub)
+* Speicher: NVMe-SSD mit M.2-Aufsatz (HAT) – hält länger als eine SD-Karte;
+  sonst eine gute SD-Karte (A2, 64 GB)
+* Touch-Monitor 15,6" mit HDMI und USB-Touch (Full HD), Kabel Micro-HDMI auf HDMI
+* Die Zebra hängt per USB direkt am Pi
+* Für Sprachbefehle: USB-Headset mit Mikrofon am Kopf (an der Säge ist es laut –
+  ein Tischmikrofon versteht im Lärm wenig), z. B. ein einfaches USB-Headset
+
+1. Raspberry Pi OS installieren
+-------------------------------
+Am PC den „Raspberry Pi Imager“ (raspberrypi.com/software) starten:
+  Gerät: Raspberry Pi 5 – System: „Raspberry Pi OS (64-bit)“ (mit Desktop)
+  Zahnrad/Einstellungen: Benutzername + Passwort, WLAN (oder LAN-Kabel),
+  Zeitzone Europe/Berlin, Tastatur de.
+Auf SSD/SD schreiben, in den Pi stecken, Monitor, Tastatur (nur zum Einrichten),
+Zebra (eingeschaltet, Etiketten eingelegt) anschließen, starten.
+
+2. Einrichten – am einfachsten mit EINER Datei
+----------------------------------------------
+„Weckwop-Pi-Installer.sh“ auf einen USB-Stick kopieren, am Pi einstecken,
+Terminal öffnen (Symbol oben links) und eingeben:
+
+    bash /media/$USER/*/Weckwop-Pi-Installer.sh
+
+(oder die Datei vorher in den Ordner „Downloads“ ziehen: bash ~/Downloads/Weckwop-Pi-Installer.sh)
+
+Der Installer fragt der Reihe nach:
+  * woher das Programm kommt: Diskstation/Docker im eigenen Netz (empfohlen,
+    z. B. http://diskstation:8080/), Webserver im Internet, oder offline vom Pi
+  * Etikettgröße (z. B. 40x60) und Auflösung der Zebra (203 oder 300 dpi)
+  * Sprachbefehle offline (ja/nein) und ob ein Testetikett gedruckt werden soll
+Dann richtet er alles ein (Passwort des Pi eingeben, wenn gefragt), legt
+„Weckwop“ auf den Schreibtisch und bietet den Neustart an. Fertig.
+Aktualisieren: neue Datei, nochmal starten – die Antworten vom letzten Mal
+sind vorbelegt („Mit denselben Einstellungen aktualisieren? Ja“).
+Protokoll: ~/weckwop-pi/installation.log
+
+Von Hand (Fachleute) – mit der ZIP:
+ZIP auf den Pi kopieren (USB-Stick) und entpacken, z. B. in den Ordner
+„Weckwop-Pi“. Dann Terminal öffnen und:
+
+    cd ~/Weckwop-Pi
+    bash einrichten.sh --url https://www.deine-domain.de/step2maestro/ --test
+
+  --url ...      eure Adresse auf dem Webserver oder der Diskstation
+                 (Docker: http://<diskstation>:8080/ – mit #saegen am Ende
+                 startet der Pi gleich im Sägemodus)
+  --offline      statt --url: Programm vom Pi selbst, ohne Internet
+                 (dann ohne Dekor-Bibliothek; Updates: neue ZIP, nochmal starten)
+  --etikett 40x60   Etikettgröße in mm (Breite x Höhe), Vorgabe 40x60
+  --dpi 203      Auflösung der Zebra (steht auf dem Typenschild: 203 oder 300)
+  --test         druckt am Ende ein Testetikett
+  --sprache      Sprachbefehle offline („weiter“, „zurück“, „drucken“,
+                 „nächster Streifen“) – lädt Vosk + deutsches Modell (45 MB)
+
+Das Skript fragt nach dem Passwort (für die Installation). Danach:
+
+    sudo reboot
+
+3. In Weckwop
+------------------
+Nach dem Neustart öffnet sich Weckwop im Vollbild. Einmal unter
+„Werkzeuge & Regeln -> Etiketten“ die gleiche Etikettgröße einstellen wie oben
+(z. B. 40 x 60 mm). Dann: Listen -> Sägen -> Vollbild. Nach jedem fertigen Teil
+erscheint „Fertig geschnitten“ – Tippen druckt das Etikett.
+
+Sprachbefehle beim Sägen
+------------------------
+Im Sägemodus „🎤 Sprache“ antippen, dann sprechen (viele Wendungen gehen):
+  „weiter“ („okay“, „passt“, „fertig“, „ja“)   nächster Schritt
+  „zurück“                            Schritt zurück
+  „drucken“ / „Etikett“               Etiketten im offenen Fenster drucken
+                                      (sonst das Streifen-Etikett)
+  „nächster Streifen“ / „vorheriger Streifen“
+  „Streifen drei“, „Platte zwei“, „Schritt fünf“   direkt dorthin
+  „nächste Platte“ / „vorherige Platte“, „von vorn“
+  „wie weit“                          Platte, Schritt, fertige Teile vorlesen
+  „was kommt danach“, „nochmal“       nächste Schritte / Maß vorlesen
+  „Etiketten aus“ / „Fenster“ / „automatisch“, „Ansage an“ / „aus“
+  „Vollbild“ / „Vollbild aus“, „Hilfe“, „Mikrofon aus“
+  „Zeichnung“ / „Zeichnung zu“, „nächste Seite“, „Seite drei“   PDF-Zeichnungen
+„🔊 Ansage“ liest nach jedem Schritt Maß und Richtung vor.
+„🤖 KI“: Sätze, die kein fester Befehl sind („wie viele Teile fehlen noch?“,
+„geh zur zweiten U708-Platte, Streifen 3“), beantwortet der KI-Assistent
+(ChatGPT; Schlüssel im KI-Fenster ✨ eintragen, braucht Internet).
+Die Erkennung des Browsers (Chrome/Edge am PC) braucht Internet und geht auf
+dem Pi NICHT – dort mit  --sprache  die Offline-Erkennung einrichten:
+* offline (--offline --sprache): läuft ganz auf dem Pi (eigene Adresse
+  http://127.0.0.1:8765 – Einstellungen einmal neu machen).
+* Webserver (--url … --sprache): das Skript legt den Ordner
+  „vosk-fuer-webserver“ an – auf den Server laden als step2maestro/js/vendor/vosk/
+
+Mikrofon / Headset anschließen
+------------------------------
+* USB-Headset (am sichersten): einstecken – fertig. Ist mehr als ein Mikrofon da,
+  oben rechts in der Leiste auf das Mikrofon-Symbol (rechte Maustaste) und das
+  Headset als Eingang wählen.
+* Bluetooth-Headset geht auch:
+    1. Headset in den Kopplungsmodus bringen (meist Einschalter lange drücken,
+       bis die Lampe blau/rot blinkt).
+    2. Am Pi oben rechts auf das Bluetooth-Symbol -> „Gerät hinzufügen“
+       (Add Device), Headset wählen -> „Koppeln“ (Pair).
+    3. Oben rechts Lautsprecher- und Mikrofon-Symbol (rechte Maustaste): das
+       Headset als Ausgang UND Eingang wählen.
+    4. In Weckwop „🎤 Sprache“ antippen und „Hilfe“ sagen – die Ansage kommt
+       dann im Headset.
+  Nach dem Einschalten verbindet sich ein gekoppeltes Headset von selbst neu
+  (Headset vor oder nach dem Pi einschalten, beides geht). Bluetooth überträgt
+  das Mikrofon nur in Telefonqualität – für die Befehle reicht das. Bricht die
+  Verbindung oft ab: USB-Headset oder Headset mit eigenem USB-Funkstecker nehmen.
+* Probieren: Terminal  arecord -d 5 test.wav && aplay test.wav  (5 s sprechen,
+  dann hört man sich selbst).
+
+Parallelanschlag mit Schrittmotor
+---------------------------------
+Eigene Anleitung im Ordner anschlag/ (ANLEITUNG-ANSCHLAG.txt, config.yaml für
+den ESP32). Kurz: ESP32 mit FluidNC per USB-Kabel an den Pi, im Installer
+„Parallelanschlag … Ja“, in Weckwop unter Sägen › ⚙ Anschlag die Werte
+eintragen, Referenzfahrt, kalibrieren. Sprache: „Anschlag“, „Stopp“.
+
+Ausschalten
+-----------
+Oben rechts (und im Sägemodus in der Leiste) „⏻ Ausschalten“: fährt den Pi
+sauber herunter (oder „Neu starten“). Der Sägestand bleibt erhalten. Strom erst
+trennen, wenn der Bildschirm dunkel und die grüne Lampe am Pi aus ist.
+(Der Knopf erscheint nur am Pi – ein kleiner Dienst nur für diesen Rechner,
+127.0.0.1:8766, den einrichten.sh mit anlegt. Am Büro-PC gibt es ihn nicht.)
+Ohne Bildschirm: kurz auf den Ein-Knopf am Pi 5 drücken fährt ebenfalls herunter.
+
+Gut zu wissen
+-------------
+* Vollbild verlassen: Alt+F4 (Tastatur). Wieder starten: Pi neu starten oder
+  im Terminal  ~/.local/bin/step2maestro-kiosk.sh
+* Jeder Ausdruck aus diesem Fenster geht ohne Nachfrage auf die Zebra. Große
+  Pläne (Zuschnitt A4) daher am Büro-PC drucken oder als PDF speichern.
+* Updates macht der Pi nur, wenn man sie anstößt (sinnvoll ab und zu):
+      sudo apt update && sudo apt full-upgrade
+* Zebra später anschließen oder gewechselt:  bash einrichten.sh --nur-drucker
+* Adresse ändern: einrichten.sh nochmal mit neuer --url starten.
+* Autostart abschalten: Datei ~/.config/autostart/step2maestro.desktop löschen
+  (und die Zeile mit step2maestro in ~/.config/labwc/autostart).
+
+Probleme
+--------
+* „Keine Zebra an USB gefunden“: Drucker an? USB-Kabel direkt am Pi (nicht über
+  einen passiven Hub)? Im Terminal  lpinfo -v  zeigt alle erkannten Drucker.
+* Etikett zu blass / zu dunkel: Browser http://localhost:631 -> Drucker ->
+  Zebra -> Standardeinstellungen -> „Darkness“ anpassen.
+* Etikett verschoben oder über zwei Etiketten: an der Zebra einmal die
+  Etiketten einmessen (Kalibrieren – meist Taste FEED gedrückt halten, bis
+  sie zweimal blinkt) und prüfen, ob die Größe in Weckwop und im Skript
+  gleich ist.
+* Ältere Zebras, die nur EPL können (nicht ZPL): Modell durchgeben, dann
+  passen wir den Treiber an.

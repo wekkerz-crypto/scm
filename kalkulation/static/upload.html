@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Skizze hochladen</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; background: #f5f3ef; color: #2b2723; }
+    header { background: #2f2a25; color: #fff; padding: 14px 16px; font-weight: 700; }
+    main { padding: 16px; max-width: 520px; margin: 0 auto; }
+    .knopf { display: block; width: 100%; padding: 18px; font-size: 1.15rem; border-radius: 10px; border: none; background: #9a6532; color: #fff; margin: 12px 0; text-align: center; }
+    .knopf.zweit { background: #fff; color: #2b2723; border: 1px solid #ddd8cf; }
+    input[type=file] { display: none; }
+    #status { margin: 12px 0; font-size: 1rem; }
+    .bilder { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .bilder img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; }
+    .ok { color: #2f7d4a; } .fehler { color: #b23b2e; }
+  </style>
+</head>
+<body>
+  <header>🪚 Skizze hochladen <span id="projekt" style="font-weight:400"></span></header>
+  <main>
+    <p>Handskizze fotografieren – Front-, Seiten- und Draufsicht. Mehrere Fotos sind möglich. Die Bilder erscheinen sofort am Rechner.</p>
+    <label class="knopf" for="kamera">📷 Foto aufnehmen</label>
+    <input id="kamera" type="file" accept="image/*" capture="environment" />
+    <label class="knopf zweit" for="galerie">🖼 Aus Galerie wählen</label>
+    <input id="galerie" type="file" accept="image/*" multiple />
+    <div id="status"></div>
+    <div class="bilder" id="bilder"></div>
+  </main>
+  <script>
+    const pid = location.pathname.split("/").filter(Boolean).pop();
+    fetch(`/api/projekte/${pid}`).then(r => r.json()).then(p => document.getElementById("projekt").textContent = "· " + p.name).catch(() => {});
+    const status = document.getElementById("status");
+    async function hochladen(e) {
+      const dateien = [...e.target.files];
+      if (!dateien.length) return;
+      const fd = new FormData();
+      dateien.forEach(f => fd.append("dateien", f));
+      status.className = ""; status.textContent = `Lade ${dateien.length} Bild(er) hoch …`;
+      try {
+        const r = await fetch(`/api/projekte/${pid}/skizzen`, { method: "POST", body: fd });
+        if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+        status.className = "ok"; status.textContent = "✔ Hochgeladen – weiteres Foto möglich.";
+        dateien.forEach(f => { const i = document.createElement("img"); i.src = URL.createObjectURL(f); document.getElementById("bilder").prepend(i); });
+      } catch (err) { status.className = "fehler"; status.textContent = "Fehler: " + err.message; }
+      e.target.value = "";
+    }
+    document.getElementById("kamera").onchange = hochladen;
+    document.getElementById("galerie").onchange = hochladen;
+  </script>
+</body>
+</html>

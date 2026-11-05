@@ -9,3 +9,4 @@ FeatureScript für Onshape, das aus Plattenteilen automatisch CNC-Programme für
 | `maestro/makros/` | SCM-Makros |
 | `maestro/werkzeuge/` | Werkzeugdaten (.tlgx o. ä.) |
 | `featurescript/` | Das Onshape-FeatureScript |
+| `kalkulation/` | **Tischlerei-Kalkulation**: lokale Web-App (Skizze → KI → 3D → Stückliste/Zuschnitt → Kalkulation → Angebot, STEP/CNC-Export) – siehe [kalkulation/README.md](kalkulation/README.md) |

@@ -1,0 +1,8 @@
+# Lokale Daten (Datenbank, Skizzen, Texturen, API-Schlüssel) – nicht ins Git
+daten/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+build/
+dist/

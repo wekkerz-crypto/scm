@@ -400,7 +400,7 @@ class _Bau:
                     xk = bx[0] if anschlag == "links" else bx[3]
                     t = self.teil(key, name, "Fronten", "tuer", fmat, bx, "z", "y", fk, anschlag=anschlag,
                                   kaufteil=bool(ber.glas),
-                                  bewegung={"typ": "tuer", "anschlag": anschlag, "drehpunkt": [_r(xk), _r(bx[4])]})
+                                  bewegung={"typ": "tuer", "anschlag": anschlag, "drehpunkt": [_r(xk), _r(bx[1])]})
                     if t is None:
                         return
                     anz = next((int(nz) for grenze, nz in lr("scharniere_staffel", [[99999, 2]]) if hoehe <= grenze), 2)
@@ -425,7 +425,7 @@ class _Bau:
                 elif ber.front == "klappe":
                     t = self.teil(f"front_{tag}", "Klappe", "Fronten", "klappe", fmat, (fx0, fy0, fz0, fx1, fy1, fz1),
                                   "x", "y", fk, kaufteil=bool(ber.glas),
-                                  bewegung={"typ": "klappe", "drehpunkt": [_r(fy1), _r(fz1)]})
+                                  bewegung={"typ": "klappe", "drehpunkt": [_r(fy0), _r(fz1)]})
                     self.beschlag("klappenbeschlag", 1, "Klappe")
                     if griff and t:
                         self.griff(t, "waagerecht", "unten")
@@ -560,10 +560,11 @@ class _Bau:
 
 
 def generiere(m: Moebel, regeln: dict, vorgaben: dict) -> dict:
+    from .kollision import pruefe
     bau = _Bau(m, regeln, vorgaben)
     bau.bauen()
     bau.abschliessen()
-    return {
+    erg = {
         "bezeichnung": m.bezeichnung,
         "anzahl": m.anzahl,
         "masse": {"breite": m.breite, "hoehe": m.hoehe, "tiefe": m.tiefe},
@@ -574,3 +575,6 @@ def generiere(m: Moebel, regeln: dict, vorgaben: dict) -> dict:
         "zusatzpositionen": [z.model_dump() for z in m.zusatzpositionen],
         "warnungen": bau.warnungen,
     }
+    if regeln.get("kollisionspruefung", True):
+        pruefe(erg, regeln)
+    return erg

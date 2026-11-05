@@ -52,6 +52,9 @@ KONSTRUKTIONSREGELN = {
     "front_fuge": 3,
     "tuer_doppel_ab_breite": 600,      # Hinweis für die KI
     "scharniere_staffel": [[900, 2], [1600, 3], [2000, 4], [99999, 5]],
+    "tuer_oeffnungswinkel": 95,
+    "klappe_oeffnungswinkel": 100,
+    "kollisionspruefung": True,
     "griff_je_front": True,
     "griff_laenge": 160,
     "griff_abstand_kante": 40,

@@ -102,15 +102,15 @@ def ansichten(erg: dict, vorgaben: dict) -> dict[str, Ansicht]:
                     a.flaechen.append((g["x"] - 5, g["z"] - g["laenge"] / 2, g["x"] + 5, g["z"] + g["laenge"] / 2, "#9a9a9a", {"griff": True}))
                 else:
                     a.flaechen.append((g["x"] - g["laenge"] / 2, g["z"] - 5, g["x"] + g["laenge"] / 2, g["z"] + 5, "#9a9a9a", {"griff": True}))
-            # Anschlagsymbol: Linien von der Griffseite zur Mitte der Bandseite
+            # Anschlagsymbol: Linien von den Ecken der Bandseite, Spitze zeigt zur Öffnungs-/Griffseite
             for t in fronten:
                 x0, _, z0, x1, _, z1 = _quader(t)
                 b = t.get("bewegung") or {}
                 if b.get("typ") == "tuer":
                     xb, xg = (x0, x1) if b["anschlag"] == "links" else (x1, x0)
-                    a.linien.append(([(xg, z1), (xb, (z0 + z1) / 2), (xg, z0)], {"dash": True}))
+                    a.linien.append(([(xb, z1), (xg, (z0 + z1) / 2), (xb, z0)], {"dash": True}))
                 elif b.get("typ") == "klappe":
-                    a.linien.append(([(x0, z0), ((x0 + x1) / 2, z1), (x1, z0)], {"dash": True}))
+                    a.linien.append(([(x0, z1), ((x0 + x1) / 2, z0), (x1, z1)], {"dash": True}))
         a.umriss()
         out[name] = a
 
@@ -373,27 +373,32 @@ def _groesse(a: Ansicht, n: int, mit_massen=True):
     return (u1 - u0) / n + r["links"] + r["rechts"], (v1 - v0) / n + r["unten"] + r["oben"]
 
 
+def _kurz(text: str, n: int = 38) -> str:
+    text = str(text or "")
+    for alt, neu in (("melaminbeschichtet", "mel."), ("Massivholzplatte", "massiv"), (" (Leimholz)", "")):
+        text = text.replace(alt, neu)
+    return text if len(text) <= n else text[: n - 1] + "…"
+
+
 def _schriftfeld(c, x, y, w, h, zeilen: list[tuple[str, str]], firma: dict, blatt: str):
     from reportlab.lib.units import mm
     c.setStrokeColorRGB(0.17, 0.15, 0.14)
     c.setLineWidth(0.5)
     c.rect(x * mm, y * mm, w * mm, h * mm)
     c.setFillColorRGB(0.17, 0.15, 0.14)
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString((x + 3) * mm, (y + h - 6) * mm, firma.get("name") or "")
-    c.setFont("Helvetica", 7)
-    c.drawString((x + 3) * mm, (y + h - 10) * mm, " · ".join(v for v in (firma.get("strasse"), firma.get("plz_ort"), firma.get("telefon")) if v))
-    zy = y + h - 15
+    c.setFont("Helvetica-Bold", 8.5)
+    c.drawString((x + 2.5) * mm, (y + h - 4.8) * mm, _kurz(firma.get("name"), 45))
+    c.setFont("Helvetica", 6)
+    c.drawRightString((x + w - 2.5) * mm, (y + h - 4.8) * mm, blatt)
+    zy = y + h - 9
     for label, wert in [z for z in zeilen if z[1]]:
-        c.setFont("Helvetica", 6.5)
+        c.setFont("Helvetica", 5.8)
         c.setFillColorRGB(0.43, 0.4, 0.37)
-        c.drawString((x + 3) * mm, zy * mm, label)
-        c.setFont("Helvetica-Bold", 7.5)
+        c.drawString((x + 2.5) * mm, zy * mm, label)
+        c.setFont("Helvetica-Bold", 6.8)
         c.setFillColorRGB(0.17, 0.15, 0.14)
-        c.drawString((x + 26) * mm, zy * mm, str(wert)[:85])
-        zy -= 3.4
-    c.setFont("Helvetica", 7)
-    c.drawRightString((x + w - 3) * mm, (y + 3) * mm, blatt)
+        c.drawString((x + 18) * mm, zy * mm, _kurz(wert, 52))
+        zy -= 3.2
 
 
 def uebersichtsblaetter(projekt: dict, ergebnis: dict, vorgaben: dict, bilder: dict) -> bytes:
@@ -410,7 +415,7 @@ def uebersichtsblaetter(projekt: dict, ergebnis: dict, vorgaben: dict, bilder: d
     c.setTitle(f"Zeichnungen {projekt['name']}")
     BW, BH = 420, 297
     RAND = 10
-    SF_W, SF_H = 175, 42
+    SF_W, SF_H = 120, 30
     seiten_gesamt = 2 * len(ergebnis["moebel"])
     seite_nr = 0
     for mi, erg in enumerate(ergebnis["moebel"]):
@@ -422,10 +427,12 @@ def uebersichtsblaetter(projekt: dict, ergebnis: dict, vorgaben: dict, bilder: d
         m = erg["masse"]
         info = erg.get("info", {})
         breite_ges = info.get("x_gesamt", [0, m["breite"]])
-        sf_zeilen = [("Projekt", projekt["name"]), ("Kunde", (projekt.get("kunde") or {}).get("name", "")),
-                     ("Möbel", f"{erg['bezeichnung']} ({erg['anzahl']} Stk)"),
-                     ("Außenmaße", f"{_z(breite_ges[1] - breite_ges[0])} × {_z(m['hoehe'])} × {_z(m['tiefe'] - info.get('frontebene', 0))} mm (B × H × T)"),
-                     ("Front/Sicht", ", ".join(mats)), ("Korpus", ", ".join(mats_k)), ("Datum", date.today().strftime("%d.%m.%Y"))]
+        kunde = (projekt.get("kunde") or {}).get("name", "")
+        sf_zeilen = [("Projekt", projekt["name"] + (f" · {kunde}" if kunde else "")),
+                     ("Möbel", f"{erg['bezeichnung']}" + (f" ({erg['anzahl']} Stk)" if erg["anzahl"] > 1 else "")),
+                     ("Maße", f"{_z(breite_ges[1] - breite_ges[0])} × {_z(m['hoehe'])} × {_z(m['tiefe'] - info.get('frontebene', 0))} mm"),
+                     ("Front", _kurz(mats[0]) if mats else ""), ("Korpus", _kurz(mats_k[0]) if mats_k else "")]
+        datum = date.today().strftime("%d.%m.%Y")
         bild_liste = [b for b in bilder.get(mi, []) if b and b.exists()]
 
         # ---------- Blatt 1: bemaßte Ansichten
@@ -467,10 +474,10 @@ def uebersichtsblaetter(projekt: dict, ergebnis: dict, vorgaben: dict, bilder: d
             bw, bh = BW - RAND - 4 - bx, BH - RAND - 4 - by
             if bw > 60 and bh > 45:
                 c.drawImage(str(bild_liste[0]), bx * mm, by * mm, bw * mm, bh * mm, preserveAspectRatio=True, anchor="ne", mask="auto")
-        _schriftfeld(c, BW - RAND - SF_W, RAND, SF_W, SF_H, sf_zeilen + [("Maßstab", f"1:{n}")], firma,
-                     f"Blatt {seite_nr}/{seiten_gesamt} · Ansichten")
+        _schriftfeld(c, BW - RAND - SF_W, RAND, SF_W, SF_H, sf_zeilen + [("Datum", f"{datum}   M 1:{n}")], firma,
+                     f"Blatt {seite_nr}/{seiten_gesamt}")
         c.setFont("Helvetica", 6.5)
-        c.drawString((RAND + 3) * mm, (RAND + 2.5) * mm, "Maße in mm · Anschlagsymbol: Spitze zeigt zur Bandseite · Alle Maße am Bau prüfen")
+        c.drawString((RAND + 3) * mm, (RAND + 2.5) * mm, "Maße in mm · Spitze des Anschlagsymbols zeigt zur Öffnungsseite")
         c.showPage()
 
         # ---------- Blatt 2: Präsentation
@@ -481,7 +488,7 @@ def uebersichtsblaetter(projekt: dict, ergebnis: dict, vorgaben: dict, bilder: d
         c.setFillColorRGB(0.17, 0.15, 0.14)
         c.drawString((RAND + 6) * mm, (BH - RAND - 12) * mm, erg["bezeichnung"])
         c.setFont("Helvetica", 9)
-        c.drawString((RAND + 6) * mm, (BH - RAND - 18) * mm, f"{projekt['name']} · {', '.join(mats)}")
+        c.drawString((RAND + 6) * mm, (BH - RAND - 18) * mm, f"{projekt['name']} · {_kurz(mats[0], 60) if mats else ''}")
         oben_y = BH - RAND - 22
         if bild_liste:
             bh = 145
@@ -504,7 +511,7 @@ def uebersichtsblaetter(projekt: dict, ergebnis: dict, vorgaben: dict, bilder: d
         fw2, _ = _groesse(f, n2, False)
         _ansicht_platzieren(c, f, n2, RAND + 6, RAND + 6, True, False)
         _ansicht_platzieren(c, s_, n2, RAND + 6 + fw2 + 10, RAND + 6, True, False)
-        _schriftfeld(c, BW - RAND - SF_W, RAND, SF_W, SF_H, sf_zeilen, firma, f"Blatt {seite_nr}/{seiten_gesamt} · Präsentation")
+        _schriftfeld(c, BW - RAND - SF_W, RAND, SF_W, SF_H, sf_zeilen + [("Datum", datum)], firma, f"Blatt {seite_nr}/{seiten_gesamt}")
         c.showPage()
     c.save()
     return buf.getvalue()

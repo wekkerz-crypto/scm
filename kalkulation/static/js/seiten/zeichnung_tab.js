@@ -7,6 +7,7 @@ async function renderBilder(p, erg, vorgaben, fortschritt) {
   box.style.cssText = "position:fixed;left:-5000px;top:0;width:1500px;height:1000px";
   document.body.appendChild(box);
   const v = new Viewer(box);
+  v.kollisionAnzeigen = false; // Präsentationsbilder ohne rote Markierung
   try {
     for (let mi = 0; mi < erg.moebel.length; mi++) {
       const e = erg.moebel[mi];
@@ -72,5 +73,5 @@ export function ZeichnungTab({ p, erg, vorgaben, aktiv, setAktiv }) {
         ${ansicht("innen")}
       </div>`}
     <p class="leise klein">Blatt 1: Front-, Seiten-, Innenansicht und Draufsicht bemaßt im passenden Maßstab, Blatt 2: zwei 3D-Ansichten
-      (geschlossen / geöffnet) mit kolorierter Front- und Seitenansicht. Anschlagsymbol: Spitze zeigt zur Bandseite.</p>`;
+      (geschlossen / geöffnet) mit kolorierter Front- und Seitenansicht. Anschlagsymbol: Spitze zeigt zur Öffnungsseite (Griffseite).</p>`;
 }

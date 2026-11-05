@@ -202,11 +202,12 @@ export class Viewer {
       g.userData = { typ: b.typ, weg: 0, winkel: 0 };
       if (b.typ === "tuer") {
         g.position.set(b.drehpunkt[0] * S, 0, -b.drehpunkt[1] * S);
-        g.userData.winkel = (b.anschlag === "links" ? -1 : 1) * this.oeffnungswinkel.tuer * Math.PI / 180;
+        g.userData.winkel = (b.anschlag === "links" ? -1 : 1) * (b.max_winkel ?? this.oeffnungswinkel.tuer) * Math.PI / 180;
       } else if (b.typ === "klappe") {
         g.position.set(0, b.drehpunkt[1] * S, -b.drehpunkt[0] * S);
-        g.userData.winkel = -this.oeffnungswinkel.klappe * Math.PI / 180;
+        g.userData.winkel = -(b.max_winkel ?? this.oeffnungswinkel.klappe) * Math.PI / 180;
       }
+      g.userData.kollision = !!b.kollision;
       pivots.set(schluessel, g);
       this.gruppe.add(g);
       this.beweger.push(g);
@@ -318,6 +319,11 @@ export class Viewer {
       if (g.userData.typ === "tuer") g.rotation.y = g.userData.winkel * f;
       else if (g.userData.typ === "klappe") g.rotation.x = g.userData.winkel * f;
       else if (g.userData.typ === "schubkasten") g.position.z = g.userData.weg * f;
+      // Kollision: Front beim Anschlagen rot markieren
+      if (g.userData.kollision && this.kollisionAnzeigen !== false) {
+        const rot = f > 0.97 ? 0.45 : 0;
+        g.traverse((o) => { if (o.isMesh && o.userData.teil && o.userData.teil.key !== this.auswahl) o.material.emissive.setRGB(rot, 0, 0); });
+      }
     }
   }
 

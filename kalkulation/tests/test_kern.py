@@ -31,7 +31,8 @@ def test_unterschrank_bauteile_und_masse():
     assert t["Sichtseite links"]["breite"] == 560 + 19            # bündig mit der Front
     assert t["Abdeckplatte"]["laenge"] == 600
     assert t["Tür rechts"]["breite"] == bk - 3                    # aufliegend, Fuge 3
-    assert t["Tür rechts"]["bewegung"] == {"typ": "tuer", "anschlag": "rechts", "drehpunkt": [600 - 19 - 1.5, 0.0]}
+    assert t["Tür rechts"]["bewegung"]["drehpunkt"] == [600 - 19 - 1.5, -19.0]   # vordere Bandkante
+    assert t["Tür rechts"]["bewegung"]["max_winkel"] == 95
     assert any(b["art"] == "nut" for b in t["Seitenwand links"]["bearbeitungen"])
     rollen = {b["rolle"]: b["menge"] for b in erg["beschlaege"]}
     assert rollen == {"sockelfuss": 4, "fachbodentraeger": 4, "scharnier": 2, "griff": 1}
@@ -212,3 +213,34 @@ def test_zeichnungen():
     assert b"BEMASSUNG" in zeichnung.dxf(erg["moebel"][0], V)
     zusammen = pdf.zusammenfuegen([pdf.angebot(projekt, erg, V, None, None), blaetter])
     assert zusammen.startswith(b"%PDF")
+
+
+def test_anschlagsymbol_spitze_zur_oeffnungsseite():
+    from app import zeichnung
+    m = beispiel_unterschrank()  # eine Tür, Anschlag rechts
+    erg = berechne_projekt({"moebel": [m.model_dump()]}, R, V)
+    tuer = next(t for t in erg["moebel"][0]["bauteile"] if t["rolle"] == "tuer")
+    x0, x1 = tuer["pos"][0], tuer["pos"][0] + tuer["dim"][0]
+    (pkt, _), = zeichnung.ansichten(erg["moebel"][0], V)["front"].linien
+    assert pkt[0][0] == x1 and pkt[2][0] == x1   # Linien beginnen an der Bandseite (rechts)
+    assert pkt[1][0] == x0                       # Spitze links = Griff-/Öffnungsseite
+
+
+
+def test_kollision_nischenwand_und_mittelwand():
+    m = beispiel_unterschrank()
+    m.abschluss_links, m.passblende_links = "passblende", 20
+    m.spalten = [Spalte(bereiche=[Bereich(front="tuer", anschlag="links")])]
+    tuer = next(t for t in generiere(m, R, V)["bauteile"] if t["rolle"] == "tuer")
+    assert tuer["bewegung"]["kollision"]["mit"] == "Nischenwand links"
+    assert tuer["bewegung"]["max_winkel"] < 95
+    m.passblende_links = 80
+    tuer = next(t for t in generiere(m, R, V)["bauteile"] if t["rolle"] == "tuer")
+    assert "kollision" not in tuer["bewegung"]
+    m2 = beispiel_unterschrank()
+    m2.breite = 1000
+    m2.spalten = [Spalte(bereiche=[Bereich(front="tuer", anschlag="rechts")]), Spalte(bereiche=[Bereich(front="tuer", anschlag="links")])]
+    erg = generiere(m2, R, V)
+    assert sum("Kollision" in w for w in erg["warnungen"]) == 2
+    m2.spalten = [Spalte(bereiche=[Bereich(front="doppeltuer")])]
+    assert not generiere(m2, R, V)["warnungen"]

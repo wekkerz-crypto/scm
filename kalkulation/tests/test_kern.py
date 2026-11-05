@@ -20,19 +20,61 @@ def namen(erg):
 
 def test_unterschrank_bauteile_und_masse():
     erg = generiere(beispiel_unterschrank(), R, V)
-    assert namen(erg) == ["Seitenwand links", "Seitenwand rechts", "Unterboden", "Oberboden",
-                          "Rückwand", "Sockelblende", "Fachboden", "Tür rechts"]
+    assert namen(erg) == ["Seitenwand links", "Seitenwand rechts", "Unterboden", "Oberboden", "Rückwand",
+                          "Sichtseite links", "Sichtseite rechts", "Abdeckplatte", "Sockelblende", "Fachboden", "Tür rechts"]
     t = {x["name"]: x for x in erg["bauteile"]}
-    assert t["Seitenwand links"]["laenge"] == 820 - 100          # Höhe ohne Sockel
-    assert t["Unterboden"]["laenge"] == 600 - 2 * 19              # zwischen den Seiten
-    assert t["Rückwand"]["breite"] == 600 - 2 * 19 + 2 * (8 - 1)  # in Nut mit Spiel
-    assert t["Fachboden"]["breite"] == 560 - 10 - 8 - 10 - 5
-    assert t["Tür rechts"]["laenge"] == 820 - 100 - 3             # aufliegend, Fuge 3
-    assert t["Tür rechts"]["zuschnitt_laenge"] == 717 - 4          # 2 mm Kante oben/unten
+    bk = 600 - 2 * 19                                             # Korpus zwischen den Sichtseiten
+    assert t["Seitenwand links"]["laenge"] == 820 - 100 - 19     # ohne Sockel und Abdeckplatte
+    assert t["Unterboden"]["laenge"] == bk - 2 * 19
+    assert t["Rückwand"]["breite"] == bk - 2 * 19 + 2 * (8 - 1)  # in Nut mit Spiel
+    assert t["Sichtseite links"]["laenge"] == 820 - 19            # bis zum Boden, unter der Abdeckplatte
+    assert t["Sichtseite links"]["breite"] == 560 + 19            # bündig mit der Front
+    assert t["Abdeckplatte"]["laenge"] == 600
+    assert t["Tür rechts"]["breite"] == bk - 3                    # aufliegend, Fuge 3
+    assert t["Tür rechts"]["bewegung"] == {"typ": "tuer", "anschlag": "rechts", "drehpunkt": [600 - 19 - 1.5, 0.0]}
     assert any(b["art"] == "nut" for b in t["Seitenwand links"]["bearbeitungen"])
     rollen = {b["rolle"]: b["menge"] for b in erg["beschlaege"]}
     assert rollen == {"sockelfuss": 4, "fachbodentraeger": 4, "scharnier": 2, "griff": 1}
+    fuesse = [k for k in erg["koerper"] if k["typ"] == "sockelfuss"]
+    assert {(f["x"], f["y"]) for f in fuesse} == {(69, 80), (69, 500), (531, 80), (531, 500)}
     assert not erg["warnungen"]
+
+
+def test_universalschubkasten():
+    m = beispiel_unterschrank()
+    m.spalten = [Spalte(bereiche=[Bereich(front="schubkasten", schubkasten_anzahl=3)])]
+    erg = generiere(m, R, V)
+    sk = [t for t in erg["bauteile"] if t["gruppe"] == "Schubkästen"]
+    assert len(sk) == 15
+    s1 = {t["name"]: t for t in sk if t["name"].startswith("SK1 ")}
+    assert set(s1) == {"SK1 Seite links", "SK1 Seite rechts", "SK1 Vorderstück", "SK1 Hinterstück", "SK1 Boden"}
+    assert s1["SK1 Seite links"]["staerke"] == 16 and s1["SK1 Boden"]["staerke"] == 8
+    assert s1["SK1 Seite links"]["laenge"] == 500               # Nennlänge im 50er-Raster (Ti = 542 → 500)
+    lichte = 600 - 2 * 19 - 2 * 19
+    assert s1["SK1 Boden"]["laenge"] == lichte - 2 * 13 - 2 * 16 + 2 * (8 - 1) or s1["SK1 Boden"]["breite"] == lichte - 2 * 13 - 2 * 16 + 2 * (8 - 1)
+    assert any(b["art"] == "nut" for b in s1["SK1 Seite links"]["bearbeitungen"])
+    # Vorder-/Hinterstück stehen auf dem Boden
+    assert s1["SK1 Vorderstück"]["pos"][2] == s1["SK1 Boden"]["pos"][2] + 8
+    fronten = [t for t in erg["bauteile"] if t["rolle"] == "schubkastenfront"]
+    assert [f["name"] for f in fronten] == ["Schubkastenfront 1", "Schubkastenfront 2", "Schubkastenfront 3"]
+    assert all(f["bewegung"]["typ"] == "schubkasten" and f["bewegung"]["weg"] == 450 for f in fronten)
+    rollen = {b["rolle"]: 0 for b in erg["beschlaege"]}
+    for b in erg["beschlaege"]:
+        rollen[b["rolle"]] += b["menge"]
+    assert rollen["schubkastenfuehrung"] == 3 and rollen["griff"] == 3
+
+
+def test_passblende_in_nische_und_klappe():
+    m = beispiel_unterschrank()
+    m.abschluss_links, m.abschluss_rechts, m.passblende_links = "passblende", "keine", 45
+    m.spalten = [Spalte(bereiche=[Bereich(front="offen", fachboeden=1, hoehe=300), Bereich(front="klappe")])]
+    erg = generiere(m, R, V)
+    t = {x["name"]: x for x in erg["bauteile"]}
+    pb = t["Passblende links"]
+    assert pb["pos"][0] == -45 and pb["pos"][1] == -19                 # bündig mit der Frontebene
+    assert "Sichtseite links" not in t and "Sichtseite rechts" not in t
+    assert t["Klappe"]["bewegung"]["typ"] == "klappe"
+    assert erg["info"]["x_gesamt"] == [-45, 600]
 
 
 def test_teile_ueberlappen_nicht():
@@ -69,6 +111,7 @@ def test_varianten(bauweise, rw):
     erg = generiere(m, R, V)
     assert not erg["warnungen"]
     assert ("Rückwand" in namen(erg)) == (rw != "keine")
+    assert "Abdeckplatte" in namen(erg)
 
 
 def test_zuschnitt_ohne_ueberlappung():
@@ -145,3 +188,27 @@ def test_api_ablauf():
     assert c.post(f"/api/projekte/{p['id']}/angebotstext", json={"ohne_ki": True}).json()["quelle"] == "vorlage"
     assert c.get("/").status_code == 200 and c.get(f"/upload/{p['id']}").status_code == 200
     assert c.delete(f"/api/projekte/{p['id']}").status_code == 200
+
+
+def test_zeichnungen():
+    from app import zeichnung
+    m = beispiel_unterschrank()
+    m.spalten = [Spalte(bereiche=[Bereich(front="schubkasten", schubkasten_anzahl=2)]),
+                 Spalte(bereiche=[Bereich(front="doppeltuer", fachboeden=1)])]
+    m.breite = 1200
+    daten = {"moebel": [m.model_dump()]}
+    erg = berechne_projekt(daten, R, V)
+    av = zeichnung.ansichten(erg["moebel"][0], V)
+    assert set(av) == {"front", "innen", "seite", "oben"}
+    gesamt = [x for x in av["front"].masse if x.seite == "unten" and abs(x.b - x.a - 1200) < 0.01]
+    assert gesamt, "Gesamtbreite fehlt in der Frontansicht"
+    assert any(abs(x.b - x.a - 820) < 0.01 for x in av["front"].masse if x.seite == "rechts")
+    assert len(av["front"].linien) == 2  # Anschlagsymbole der Doppeltür
+    svg = zeichnung.svg(av["front"])
+    assert svg.startswith("<svg") and ">1200<" in svg
+    projekt = {"id": "x1", "name": "Test", "kunde": {}, "daten": daten}
+    blaetter = zeichnung.uebersichtsblaetter(projekt, erg, V, {})
+    assert blaetter.startswith(b"%PDF") and blaetter.count(b"/Type /Page") >= 2
+    assert b"BEMASSUNG" in zeichnung.dxf(erg["moebel"][0], V)
+    zusammen = pdf.zusammenfuegen([pdf.angebot(projekt, erg, V, None, None), blaetter])
+    assert zusammen.startswith(b"%PDF")

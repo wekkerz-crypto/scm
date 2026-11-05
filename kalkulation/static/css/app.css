@@ -156,3 +156,8 @@ tr:hover td { background: #fcfaf7; }
   main { padding: 10px; }
   .kopf { height: auto; flex-wrap: wrap; padding: 8px 10px; }
 }
+
+/* Zeichnungen */
+.zeichnungen { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1.2fr); gap: 12px; align-items: end; }
+.zeichnung .svg-rahmen svg { width: 100%; height: auto; max-height: 60vh; display: block; background: #fff; }
+@media (max-width: 1000px) { .zeichnungen { grid-template-columns: 1fr; } }

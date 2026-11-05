@@ -132,13 +132,14 @@ export function Laden({ text = "Lädt …" }) {
   return html`<div class="laden"><span class="spinner"></span> ${text}</div>`;
 }
 
-export const GRUPPEN = ["Korpus", "Rückwand", "Sockel", "Einlegeböden", "Fronten"];
+export const GRUPPEN = ["Korpus", "Rückwand", "Aufdoppelung", "Sockel", "Einlegeböden", "Schubkästen", "Fronten"];
 export const ROLLEN = [
   ["scharnier", "Scharnier (je Tür nach Staffel)"],
   ["schubkasten_klein", "Schubkasten klein"],
   ["schubkasten_mittel", "Schubkasten mittel"],
   ["schubkasten_gross", "Schubkasten groß"],
   ["sockelfuss", "Sockelfuß"],
+  ["schubkastenfuehrung", "Schubkastenführung (Paar, Universalschubkasten)"],
   ["griff", "Griff"],
   ["fachbodentraeger", "Fachbodenträger"],
   ["klappenbeschlag", "Klappenbeschlag"],

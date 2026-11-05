@@ -48,8 +48,8 @@ class BauteilOverride(BaseModel):
 
 class Moebel(BaseModel):
     bezeichnung: str = "Unterschrank"
-    breite: float = Field(600, gt=50, le=6000)
-    hoehe: float = Field(800, gt=50, le=3500, description="Gesamthöhe inkl. Sockel")
+    breite: float = Field(600, gt=50, le=6000, description="Außenbreite inkl. Sichtseiten, ohne Passblenden")
+    hoehe: float = Field(800, gt=50, le=3500, description="Gesamthöhe inkl. Sockel und Abdeckplatte")
     tiefe: float = Field(560, gt=50, le=1500, description="Korpustiefe ohne Front")
     anzahl: int = Field(1, ge=1, le=100)
     # Materialien (None = Standard aus den Konstruktionsregeln)
@@ -57,12 +57,19 @@ class Moebel(BaseModel):
     material_rueckwand: Optional[str] = None
     material_front: Optional[str] = None
     material_fachboden: Optional[str] = None
+    material_sichtseite: Optional[str] = None
     # Abweichungen von den Konstruktionsregeln (None = Regel)
     bauweise: Optional[Literal["seiten_durchgehend", "boeden_durchgehend", "oberboden_aufliegend"]] = None
     rueckwand_art: Optional[Literal["genutet", "gefaelzt", "aufgesetzt", "keine"]] = None
     sockel_art: Optional[Literal["blende", "fuesse", "keiner"]] = None
     sockel_hoehe: Optional[float] = None
     front_aufschlag: Optional[Literal["aufliegend", "eingelegt"]] = None
+    # Seitliche Abschlüsse: Sichtseite (aufgedoppelt), Passblende (Nische, bündig) oder keine (z. B. Nachbarschrank)
+    abschluss_links: Optional[Literal["sichtseite", "passblende", "keine"]] = None
+    abschluss_rechts: Optional[Literal["sichtseite", "passblende", "keine"]] = None
+    passblende_links: Optional[float] = Field(None, ge=0, le=300, description="Breite Passblende links in mm")
+    passblende_rechts: Optional[float] = Field(None, ge=0, le=300, description="Breite Passblende rechts in mm")
+    abdeckplatte: Optional[bool] = None
     spalten: list[Spalte] = Field(default_factory=lambda: [Spalte()])
     zusatzpositionen: list[Zusatzposition] = Field(default_factory=list)
     besonderheiten: str = ""

@@ -3,6 +3,7 @@ import { ModellTab } from "./modell_tab.js";
 import { SkizzenTab } from "./skizzen_tab.js";
 import { StuecklisteTab, ZuschnittTab, KalkulationTab } from "./listen_tab.js";
 import { AngebotTab } from "./angebot_tab.js";
+import { ZeichnungTab } from "./zeichnung_tab.js";
 
 export function Warnungen({ liste }) {
   if (!liste || !liste.length) return null;
@@ -94,7 +95,7 @@ export function ProjektSeite({ id, tab }) {
   const props = { p, aendern, ersetzen, erg, vorgaben, aktiv: idx, setAktiv, speichernJetzt, neuladen: laden };
 
   const tabs = { uebersicht: UebersichtTab, skizzen: SkizzenTab, modell: ModellTab, stueckliste: StuecklisteTab,
-    zuschnitt: ZuschnittTab, kalkulation: KalkulationTab, angebot: AngebotTab };
+    zuschnitt: ZuschnittTab, kalkulation: KalkulationTab, zeichnung: ZeichnungTab, angebot: AngebotTab };
   const Inhalt = tabs[tab] || UebersichtTab;
   return html`
     <div class="zeile" style="margin-bottom:4px"><h1 class="abstand" style="margin:0">${p.name}
@@ -102,6 +103,6 @@ export function ProjektSeite({ id, tab }) {
       ${erg && html`<span><b>${eur(erg.kalkulation.netto)}</b> <span class="leise">netto</span></span>`}
       <span class="status">${status}</span></div>
     <${Tabs} aktiv=${tab} setAktiv=${setTab} tabs=${[["uebersicht", "Übersicht"], ["skizzen", "Skizzen & KI"], ["modell", "3D-Modell"],
-      ["stueckliste", "Stückliste"], ["zuschnitt", "Zuschnitt"], ["kalkulation", "Kalkulation"], ["angebot", "Angebot & Export"]]} />
+      ["zeichnung", "Zeichnungen"], ["stueckliste", "Stückliste"], ["zuschnitt", "Zuschnitt"], ["kalkulation", "Kalkulation"], ["angebot", "Angebot & Export"]]} />
     <${Inhalt} ...${props} />`;
 }

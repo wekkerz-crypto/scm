@@ -37,6 +37,7 @@ export function AngebotTab({ p, erg, aendern }) {
     <div class="karte"><div class="zeile" style="align-items:flex-start">
       <div class="abstand"><h3 style="margin-top:0">Bild im Angebot</h3>
         <${Haken} wert=${a.mit_bild !== false} aendern=${(v) => setA("mit_bild", v)} label="Renderbild ins PDF übernehmen" />
+        <${Haken} wert=${a.mit_zeichnungen} aendern=${(v) => setA("mit_zeichnungen", v)} label="Übersichtsblätter (Zeichnungen A3) anhängen" />
         <p class="leise klein">Bild im Tab „3D-Modell“ → „Als Angebotsbild“ speichern.</p></div>
       ${a.render && html`<img src=${`/api/projekte/${p.id}/dateien/renders/${a.render}?v=${Date.now()}`} style="max-width:360px;border:1px solid var(--rand);border-radius:6px" />`}
     </div></div>
@@ -46,6 +47,6 @@ export function AngebotTab({ p, erg, aendern }) {
     <div class="karte"><h3 style="margin-top:0">Exporte</h3><div class="zeile">
       ${exp("stueckliste.pdf", "Stückliste PDF")} ${exp("stueckliste.csv", "Stückliste CSV")}
       ${exp("zuschnitt.pdf", "Zuschnitt PDF")} ${exp("zuschnitt.csv", "Zuschnitt CSV")}
-      ${exp("kalkulation.pdf", "Kalkulation PDF")} ${exp("modell.step", "3D-Modell STEP AP242")} ${exp("cnc.zip", "CNC (DXF je Teil)")}
+      ${exp("kalkulation.pdf", "Kalkulation PDF")} ${exp("zeichnungen.pdf", "Zeichnungen A3 PDF")} ${exp("modell.step", "3D-Modell STEP AP242")} ${exp("cnc.zip", "CNC (DXF je Teil)")}
     </div></div>`;
 }

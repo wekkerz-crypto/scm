@@ -34,13 +34,27 @@ KONSTRUKTIONSREGELN = {
     "sockel_art": "blende",
     "sockel_hoehe": 100,
     "sockelblende_rueckversatz": 40,
-    "sockelfuesse_je_600mm": 2,       # Anzahl Füße je angefangene 600 mm Breite, min. 4
+    # Kunststoff-Sockelfüße: an den Ecken und unter jeder Mittelwand, vorne und hinten
+    "sockelfuss_abstand_seite": 50,
+    "sockelfuss_abstand_vorne": 80,
+    "sockelfuss_abstand_hinten": 60,
+    # Aufdoppelung (Konstruktionsstandard: Innenkorpus + Sichtseiten / Abdeckplatte / Passblenden)
+    "abschluss_seiten": "sichtseite",   # sichtseite | passblende | keine
+    "abdeckplatte_oben": True,
+    "material_sichtseite": None,        # None = wie Fronten
+    "kante_sichtseite": None,           # None = wie Fronten
+    "kanten_sichtseite": "vorne",
+    "sichtseite_bis_boden": True,       # Sichtseiten und Passblenden verdecken den Sockel seitlich
+    "passblende_breite": 30,
+    "passblendenleiste_tiefe": 60,
     # Fronten
     "front_aufschlag": "aufliegend",  # aufliegend | eingelegt
     "front_fuge": 3,
     "tuer_doppel_ab_breite": 600,      # Hinweis für die KI
     "scharniere_staffel": [[900, 2], [1600, 3], [2000, 4], [99999, 5]],
     "griff_je_front": True,
+    "griff_laenge": 160,
+    "griff_abstand_kante": 40,
     # Kanten: vorne | rundum | keine
     "kanten_korpus": "vorne",
     "kanten_fachboden": "vorne",
@@ -58,7 +72,23 @@ KONSTRUKTIONSREGELN = {
     "lochreihe_raster": 32,
     "lochreihe_durchmesser": 5,
     "lochreihe_tiefe": 12,
-    # Schubkästen (Kaufteil-System, Größe nach Fronthöhe)
+    # Schubkästen: universal = selbst gebaut (Zarge 16 mm, Boden 8 mm eingenutet), system = Kaufteil klein/mittel/groß
+    "schubkasten_bauart": "universal",
+    "schubkasten_material": "spa_weiss_16",
+    "schubkasten_boden_material": "spa_weiss_8",
+    "schubkasten_staerke": 16,
+    "schubkasten_seitenluft": 13,       # je Seite für die Führung
+    "schubkasten_nl_raster": 50,
+    "schubkasten_nl_min": 250,
+    "schubkasten_tiefenabzug": 10,
+    "schubkasten_hoehe_abzug": 40,      # Zargenhöhe = Fronthöhe - Abzug
+    "schubkasten_luft_unten": 15,
+    "schubkasten_luft_oben": 25,
+    "schubkasten_nut_abstand": 10,      # Unterkante Seite bis Nut
+    "schubkasten_nuttiefe": 8,
+    "schubkasten_boden_luft": 1,
+    "schubkasten_kanten_oben": True,
+    "schubkasten_auszug_anteil": 0.9,   # Vollauszug: Auszugsweg = Anteil × Nennlänge (Animation)
     "schubkasten_system": "Standard-Zargensystem",
     "schubkasten_klein_bis": 120,
     "schubkasten_mittel_bis": 220,
@@ -75,6 +105,9 @@ VORGABEN = {
     "platten": [
         {"id": "spa_weiss_19", "name": "Spanplatte melaminbeschichtet weiß 19 mm", "staerke": 19,
          "laenge": 2800, "breite": 2070, "preis_platte": 62.0, "preis_m2": 0, "faser": False,
+         "farbe": "#f2f1ec", "rauheit": 0.55, "textur": None, "textur_mm": 1000, "glas": False},
+        {"id": "spa_weiss_16", "name": "Spanplatte melaminbeschichtet weiß 16 mm", "staerke": 16,
+         "laenge": 2800, "breite": 2070, "preis_platte": 55.0, "preis_m2": 0, "faser": False,
          "farbe": "#f2f1ec", "rauheit": 0.55, "textur": None, "textur_mm": 1000, "glas": False},
         {"id": "spa_weiss_8", "name": "Spanplatte melaminbeschichtet weiß 8 mm", "staerke": 8,
          "laenge": 2800, "breite": 2070, "preis_platte": 38.0, "preis_m2": 0, "faser": False,
@@ -116,13 +149,15 @@ VORGABEN = {
     "artikel": [
         {"id": "scharnier", "name": "Topfscharnier 110° mit Dämpfung inkl. Montageplatte", "kategorie": "Beschläge",
          "einheit": "Stk", "preis": 6.50, "rolle": "scharnier"},
+        {"id": "sk_fuehrung", "name": "Schubkastenführung Vollauszug mit Dämpfung (Paar)", "kategorie": "Beschläge",
+         "einheit": "Stk", "preis": 24.0, "rolle": "schubkastenfuehrung"},
         {"id": "sk_klein", "name": "Schubkasten klein (Zargensystem, Vollauszug)", "kategorie": "Beschläge",
          "einheit": "Stk", "preis": 48.0, "rolle": "schubkasten_klein"},
         {"id": "sk_mittel", "name": "Schubkasten mittel (Zargensystem, Vollauszug)", "kategorie": "Beschläge",
          "einheit": "Stk", "preis": 58.0, "rolle": "schubkasten_mittel"},
         {"id": "sk_gross", "name": "Schubkasten groß (Zargensystem, Vollauszug)", "kategorie": "Beschläge",
          "einheit": "Stk", "preis": 72.0, "rolle": "schubkasten_gross"},
-        {"id": "sockelfuss", "name": "Sockelfuß verstellbar", "kategorie": "Beschläge",
+        {"id": "sockelfuss", "name": "Kunststoff-Sockelfuß verstellbar", "kategorie": "Beschläge",
          "einheit": "Stk", "preis": 1.80, "rolle": "sockelfuss"},
         {"id": "griff", "name": "Griff Bügel 160 mm", "kategorie": "Beschläge",
          "einheit": "Stk", "preis": 8.50, "rolle": "griff"},

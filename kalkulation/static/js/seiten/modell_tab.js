@@ -43,8 +43,8 @@ function MoebelEditor({ m, setzeM, vorgaben, regeln }) {
   return html`
     <div class="raster eng">
       <${Feld} label="Bezeichnung" breit><${Text} wert=${m.bezeichnung} aendern=${(v) => setze({ bezeichnung: v })} /><//>
-      <${Feld} label="Breite"><${Zahl} wert=${m.breite} einheit="mm" aendern=${(v) => v && setze({ breite: v })} /><//>
-      <${Feld} label="Höhe (inkl. Sockel)"><${Zahl} wert=${m.hoehe} einheit="mm" aendern=${(v) => v && setze({ hoehe: v })} /><//>
+      <${Feld} label="Breite (außen, ohne Passblenden)"><${Zahl} wert=${m.breite} einheit="mm" aendern=${(v) => v && setze({ breite: v })} /><//>
+      <${Feld} label="Höhe (gesamt)"><${Zahl} wert=${m.hoehe} einheit="mm" aendern=${(v) => v && setze({ hoehe: v })} /><//>
       <${Feld} label="Tiefe (Korpus)"><${Zahl} wert=${m.tiefe} einheit="mm" aendern=${(v) => v && setze({ tiefe: v })} /><//>
       <${Feld} label="Stückzahl"><${Zahl} wert=${m.anzahl} min="1" aendern=${(v) => setze({ anzahl: Math.max(1, v || 1) })} /><//>
     </div>
@@ -55,6 +55,17 @@ function MoebelEditor({ m, setzeM, vorgaben, regeln }) {
       <${Feld} label="Rückwand"><${MaterialWahl} wert=${m.material_rueckwand} aendern=${(v) => setze({ material_rueckwand: v })} platten=${pl} standard=${R.material_rueckwand} /><//>
       <${Feld} label="Fachböden"><${MaterialWahl} wert=${m.material_fachboden} aendern=${(v) => setze({ material_fachboden: v })} platten=${pl} standard=${R.material_fachboden} /><//>
     </div>
+    <h3>Seitliche Abschlüsse & Abdeckung</h3>
+    <div class="raster eng">
+      ${[["links", "abschluss_links", "passblende_links"], ["rechts", "abschluss_rechts", "passblende_rechts"]].map(([l, fa, fp]) => html`
+        <${Feld} label=${"Abschluss " + l}><${Auswahl} wert=${m[fa]} aendern=${(v) => setze({ [fa]: v })}
+          leer=${"Regel (" + ({ sichtseite: "Sichtseite", passblende: "Passblende", keine: "keiner" }[R.abschluss_seiten] || "Sichtseite") + ")"}
+          optionen=${[["sichtseite", "Sichtseite aufgedoppelt"], ["passblende", "Passblende (Nische)"], ["keine", "keiner (Nachbarschrank)"]]} /><//>
+        ${(m[fa] || R.abschluss_seiten) === "passblende" && html`<${Feld} label=${"Passblende " + l}><${Zahl} wert=${m[fp]} platzhalter=${R.passblende_breite} einheit="mm" aendern=${(v) => setze({ [fp]: v })} /><//>`}`)}
+      <${Feld} label="Abdeckplatte oben"><${Auswahl} wert=${m.abdeckplatte === null || m.abdeckplatte === undefined ? null : String(m.abdeckplatte)}
+        aendern=${(v) => setze({ abdeckplatte: v === null ? null : v === "true" })} leer=${"Regel (" + (R.abdeckplatte_oben ? "ja" : "nein") + ")"} optionen=${[["true", "ja"], ["false", "nein"]]} /><//>
+    </div>
+    <${Feld} label="Material Sichtseiten / Abdeckplatte / Passblenden"><${MaterialWahl} wert=${m.material_sichtseite} aendern=${(v) => setze({ material_sichtseite: v })} platten=${pl} standard=${R.material_sichtseite || m.material_front || R.material_front} /><//>
     <details><summary class="leise" style="cursor:pointer;margin:10px 0">Abweichend von den Konstruktionsregeln …</summary>
       <div class="raster eng">
         <${Feld} label="Bauweise"><${Auswahl} wert=${m.bauweise} aendern=${(v) => setze({ bauweise: v })} leer="Regel"
@@ -143,6 +154,7 @@ function ModellArbeit({ p, aendern, erg, vorgaben, aktiv, setAktiv }) {
   const [aus, setAus] = useState([]);
   const [schnitt, setSchnitt] = useState({ x: null, y: null, z: null });
   const [ortho, setOrtho] = useState(false);
+  const [offen, setOffen] = useState({ tuer: 0, schubkasten: 0, klappe: 0 });
   const [regeln, setRegeln] = useState(null);
   const [bildOpt, setBildOpt] = useState({ breite: 2400, hoehe: 1600, transparent: false });
   const moebel = p.daten.moebel || [];
@@ -154,8 +166,8 @@ function ModellArbeit({ p, aendern, erg, vorgaben, aktiv, setAktiv }) {
     viewer.current = new Viewer(box.current, { beiAuswahl: setAuswahl });
     return () => viewer.current.zerstoeren();
   }, []);
-  useEffect(() => { if (e && viewer.current) viewer.current.setTeile(e.bauteile, vorgaben.platten); }, [e, vorgaben]);
-  useEffect(() => { viewer.current?.setTeile(e?.bauteile || [], vorgaben.platten, { ansichtBehalten: false }); setAus([]); setAuswahl(null); }, [aktiv]);
+  useEffect(() => { if (e && viewer.current) viewer.current.setTeile(e.bauteile, vorgaben.platten, { koerper: e.koerper }); }, [e, vorgaben]);
+  useEffect(() => { viewer.current?.setTeile(e?.bauteile || [], vorgaben.platten, { ansichtBehalten: false, koerper: e?.koerper || [] }); setAus([]); setAuswahl(null); }, [aktiv]);
   useEffect(() => viewer.current?.setAusgeblendet(aus), [aus]);
 
   const neuesMoebel = async () => {
@@ -171,6 +183,13 @@ function ModellArbeit({ p, aendern, erg, vorgaben, aktiv, setAktiv }) {
     const alleAus = keys.every((k) => aus.includes(k));
     setAus(alleAus ? aus.filter((k) => !keys.includes(k)) : [...new Set([...aus, ...keys])]);
   };
+  const bewegen = (typ) => {
+    const alleOffen = Object.values(offen).every((v) => v === 1);
+    const neu = typ === "alle" ? Object.fromEntries(Object.keys(offen).map((k) => [k, alleOffen ? 0 : 1])) : { ...offen, [typ]: offen[typ] ? 0 : 1 };
+    for (const [k, v] of Object.entries(neu)) viewer.current.setOffen(k, v);
+    setOffen(neu);
+  };
+  const vorhanden = (typ) => teile.some((t) => t.bewegung?.typ === typ);
   const setS = (a, v) => { const n = { ...schnitt, [a]: v }; setSchnitt(n); viewer.current.setSchnitt(a, v); };
   const grenzen = { x: [0, m.breite], y: [-30, m.tiefe], z: [0, m.hoehe] };
   const bild = async (speichern) => {
@@ -196,6 +215,9 @@ function ModellArbeit({ p, aendern, erg, vorgaben, aktiv, setAktiv }) {
           ${[["front", "Front"], ["seite", "Seite"], ["oben", "Draufsicht"], ["iso", "Isometrie"]].map(([k, l]) =>
             html`<button class="knopf klein" onClick=${() => viewer.current.ansicht(k)}>${l}</button>`)}
           <button class=${"knopf klein" + (ortho ? " aktiv" : "")} onClick=${() => { setOrtho(!ortho); viewer.current.setOrtho(!ortho); }}>Parallelprojektion</button>
+          ${[["tuer", "Türen"], ["schubkasten", "Schubkästen"], ["klappe", "Klappen"]].filter(([k]) => vorhanden(k)).map(([k, l]) =>
+            html`<button class=${"knopf klein" + (offen[k] ? " aktiv" : "")} onClick=${() => bewegen(k)}>${l} ${offen[k] ? "zu" : "auf"}</button>`)}
+          <button class="knopf klein" onClick=${() => bewegen("alle")}>${Object.values(offen).every((v) => v === 1) ? "Alles zu" : "Alles auf"}</button>
           <button class="knopf klein" onClick=${() => gruppeUmschalten("Fronten")}>Fronten ${teile.filter((t) => t.gruppe === "Fronten").every((t) => aus.includes(t.key)) ? "ein" : "aus"}</button>
         </div>
       </div>

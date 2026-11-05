@@ -10,3 +10,4 @@ segno>=1.6
 ezdxf>=1.3
 # 3D-Kernel OpenCascade (OCP) für STEP-AP242-Export und B-Rep-Geometrie
 cadquery-ocp-novtk>=7.8
+pypdf>=4.0

@@ -294,3 +294,15 @@ def csv_zuschnitt(ergebnis: dict) -> bytes:
                                                        zahl(t["l"], 1), zahl(t["b"], 1), zahl(t["x"], 1), zahl(t["y"], 1),
                                                        "ja" if t["gedreht"] else "nein"]))
     return ("﻿" + "\r\n".join(zeilen)).encode("utf-8")
+
+
+def zusammenfuegen(dateien: list[bytes]) -> bytes:
+    """Mehrere PDFs (z. B. Angebot A4 + Zeichnungen A3) zu einer Datei verbinden."""
+    from pypdf import PdfWriter, PdfReader
+    w = PdfWriter()
+    for d in dateien:
+        for seite in PdfReader(io.BytesIO(d)).pages:
+            w.add_page(seite)
+    out = io.BytesIO()
+    w.write(out)
+    return out.getvalue()

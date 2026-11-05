@@ -51,6 +51,11 @@ MOEBEL = _obj({
     "sockel_art": _enum_null("blende", "fuesse", "keiner"),
     "sockel_hoehe": _NUM_NULL,
     "front_aufschlag": _enum_null("aufliegend", "eingelegt"),
+    "abschluss_links": _enum_null("sichtseite", "passblende", "keine"),
+    "abschluss_rechts": _enum_null("sichtseite", "passblende", "keine"),
+    "passblende_links": _NUM_NULL,
+    "passblende_rechts": _NUM_NULL,
+    "abdeckplatte": {"type": ["boolean", "null"]},
     "spalten": {"type": "array", "items": _obj({"breite": _NUM_NULL, "bereiche": {"type": "array", "items": BEREICH}})},
     "zusatzpositionen": {"type": "array", "items": _obj({
         "artikel_id": {"type": "string"}, "menge": {"type": "number"}, "hinweis": {"type": "string"}})},
@@ -71,7 +76,11 @@ ANALYSE_SCHEMA = _obj({
 
 MODELL_BESCHREIBUNG = """\
 Datenmodell eines Möbels (alle Maße in mm):
-- breite, hoehe (Gesamthöhe INKL. Sockel), tiefe (Korpustiefe OHNE Front), anzahl (Stückzahl gleicher Möbel)
+- breite (Außenbreite inkl. Sichtseiten, ohne Passblenden), hoehe (Gesamthöhe INKL. Sockel und Abdeckplatte),
+  tiefe (Korpustiefe OHNE Front), anzahl (Stückzahl gleicher Möbel)
+- Konstruktionsstandard: Innenkorpus; sichtbare Außenseiten werden mit Sichtseiten aufgedoppelt, oben Abdeckplatte.
+  abschluss_links/rechts: sichtseite | passblende (Möbel steht in einer Mauernische → bündige Passblende,
+  Breite in passblende_links/rechts) | keine (Nachbarschrank/Wand ohne Blende); null = Regel. abdeckplatte: null = Regel.
 - material_* : ID aus der Materialliste oder null (= Standard aus den Konstruktionsregeln)
 - bauweise, rueckwand_art, sockel_art, sockel_hoehe, front_aufschlag: null = Konstruktionsregel verwenden.
   Nur setzen, wenn die Skizze ausdrücklich etwas anderes zeigt.

@@ -8,7 +8,7 @@ binaries = []
 hiddenimports = collect_submodules("app") + collect_submodules("uvicorn") + ["multipart", "segno"]
 
 # OpenCascade (STEP-Export), DXF, PDF und KI-Client vollständig einsammeln
-for paket in ("OCP", "ezdxf", "reportlab", "anthropic"):
+for paket in ("OCP", "ezdxf", "reportlab", "anthropic", "pypdf"):
     try:
         d, b, h = collect_all(paket)
         datas += d

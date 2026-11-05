@@ -84,14 +84,33 @@ außer Skizzenanalyse und KI-Angebotstext; für den Angebotstext gibt es dann ei
    z. B. „Tiefe nicht erkennbar – 560 mm übernehmen?“. Antworten gehen per Tastatur oder Mikrofon.
 4. **3D-Modell prüfen**: Drehen, Standardansichten, Parallelprojektion, Schnittebenen X/Y/Z, Fronten oder einzelne Teile ausblenden,
    Bauteil anklicken und Name, Material oder Kanten ändern. Maße, Einteilung und Materialien links ändern; das Modell wird neu aufgebaut.
-5. **Stückliste & Zuschnitt**: automatisch benannte Teile in Baureihenfolge, Zuschnittmaße, Plattenoptimierung mit Faserrichtung,
+   **Bewegung**: Türen öffnen zur Bandseite, Klappen schwenken nach oben, Schubkästen fahren mit der Front aus,
+   jeweils getrennt („Türen auf“, „Schubkästen auf“, „Klappen auf“) oder alles zusammen.
+5. **Zeichnungen**: Frontansicht (Frontaufteilung, Anschlagsymbole, Griffe), Innenansicht ohne Fronten (lichte Maße),
+   Seitenansicht und Draufsicht mit sparsamer Bemaßung (Gesamtmaße, Korpus/Sichtseiten/Passblenden, Frontmaße, Sockel),
+   koloriert in den Materialfarben oder als Strichzeichnung. **Übersichtsblätter (A3-PDF)**: Blatt 1 mit den bemaßten Ansichten
+   im passenden Maßstab und einem 3D-Bild, Blatt 2 als Präsentation mit zwei 3D-Ansichten (geschlossen/geöffnet) und
+   kolorierten Ansichten. Die Ansichten gibt es zusätzlich als DXF, die Blätter lassen sich ans Angebot anhängen.
+6. **Stückliste & Zuschnitt**: automatisch benannte Teile in Baureihenfolge, Zuschnittmaße, Plattenoptimierung mit Faserrichtung,
    Sägeblatt und Besäumrand, umschaltbar zwischen ganzen Platten und m² mit Verschnitt.
-6. **Kalkulation**: Material, Kanten, Beschläge, Zusatzpositionen, CNC-Maschine, Arbeit, Zuschläge, Netto/MwSt./Brutto.
+7. **Kalkulation**: Material, Kanten, Beschläge, Zusatzpositionen, CNC-Maschine, Arbeit, Zuschläge, Netto/MwSt./Brutto.
    Jede Position zeigt ihre Herleitung (Menge × Einzelpreis).
-7. **Angebot & Export**: Angebotstext (Claude oder Vorlage, editierbar), Angebots-PDF mit Briefkopf und Renderbild,
+8. **Angebot & Export**: Angebotstext (Claude oder Vorlage, editierbar), Angebots-PDF mit Briefkopf und Renderbild,
    Stückliste/Zuschnitt (PDF, CSV), Kalkulation (PDF), **STEP AP242**, **CNC-DXF je Bauteil**.
 
 Zum Ausprobieren gibt es auf der Startseite ein Testprojekt: Unterschrank mit Tür und Fachboden.
+
+### Konstruktionsstandard (in den Konstruktionsregeln einstellbar)
+
+* **Innenkorpus mit Aufdoppelung**: Sichtbare Außenseiten bekommen Sichtseiten (bündig mit der Front, bis zum Boden),
+  oben eine Abdeckplatte. Für Nischen im Mauerwerk gibt es je Seite eine **Passblende** in der Frontebene mit
+  Passblendenleiste; neben einem Nachbarschrank wählt man „keiner“. *Breite* = Außenmaß inkl. Sichtseiten ohne Passblenden,
+  *Höhe* = Gesamthöhe inkl. Sockel und Abdeckplatte.
+* **Sockel**: Kunststoff-Sockelfüße an den Ecken und unter jeder Mittelwand (vorne hinter der Sockelblende, hinten),
+  im 3D-Modell dargestellt und automatisch gezählt.
+* **Universalschubkasten**: Zarge 16 mm, Boden 8 mm in die Seiten eingenutet, Vorder- und Hinterstück zwischen den Seiten auf
+  dem Boden, Nennlänge automatisch im 50-mm-Raster passend zur Korpustiefe, Breite = lichte Breite − 2 × Seitenluft der Führung.
+  Alle Kastenteile stehen als eigene Bauteile in Stückliste, Zuschnitt und STEP. Je Kasten wird eine Führung (Paar) kalkuliert.
 
 ---
 
@@ -106,6 +125,7 @@ kalkulation/
 │   ├── kalkulation.py    Kalkulation mit Herleitung, Zuschläge, Netto/Brutto
 │   ├── berechnung.py     Gesamtablauf je Projekt, Stückliste, Preisanteile je Möbel
 │   ├── step_export.py    B-Rep-Körper mit OpenCascade → STEP AP242 (Namen, Farben, Baugruppen)
+│   ├── zeichnung.py      2D-Ansichten mit Bemaßung → SVG, A3-Übersichtsblätter (PDF), DXF
 │   ├── cnc_export.py     DXF je Bauteil (Kontur, Nut/Falz, Lochreihen, Topfbohrungen), Layer konfigurierbar
 │   ├── ki.py             Claude: Skizzenanalyse (Vision + JSON-Schema), Rückfragen, Angebotstext
 │   ├── pdf.py            Angebot, Stückliste, Zuschnittpläne, Kalkulation (reportlab), CSV
@@ -162,8 +182,8 @@ STEP AP242 mit Namen sowie der API-Ablauf.
 * **Egger-Texturen**: Vor dem Hochladen die Nutzungsbedingungen von Egger prüfen. Die Texturen bleiben lokal im Datenordner.
 * **CNC/Maestro**: Der DXF-Export ist eine Übergabe mit konfigurierbarer Layerkonvention. Den direkten `.pgmx`-Export
   für SCM Maestro baut man am besten mit den Beispielprogrammen und Makros in `../maestro/` (siehe Haupt-README).
-* **Technische 2D-Zeichnungen** (Ansichten, Schnitte, Bemaßung als PDF/DXF): noch nicht umgesetzt. Die Bauteildaten und
-  OCP-Körper sind die Grundlage dafür.
+* **Zeichnungen**: Schnittdarstellungen (z. B. Vertikalschnitt) und Einzelteilzeichnungen können noch ergänzt werden.
+* **Klappenbewegung**: dargestellt als Drehung um die Oberkante (Hochklappe); Hochschwenk- oder Faltklappen-Kinematik folgt bei Bedarf.
 * **Raumszene** mit externem Bildgenerator: bewusst nicht in V1.
 * **Schubkasten-Innenkasten**: Schubkästen werden als Kaufteil-System (klein/mittel/groß nach Fronthöhe) kalkuliert;
   Zargen oder Böden als eigene Bauteile sind möglich, sobald das System feststeht.

@@ -19,7 +19,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
-from . import bilder, cnc_export, db, ki, pdf
+from . import bilder, cnc_export, db, ki, pdf, zeichnung
 from .berechnung import berechne_projekt
 from .modell import Moebel, beispiel_unterschrank
 
@@ -350,12 +350,32 @@ def render_speichern(pid: str, daten: dict = Body(...)):
     url = daten.get("bild", "")
     if not url.startswith("data:image/png;base64,"):
         raise HTTPException(400, "PNG als Data-URL erwartet")
-    name = "angebot.png"
+    name = daten.get("name") or "angebot"
+    if not re.fullmatch(r"angebot|blatt_\d+_[12]", name):
+        raise HTTPException(400, "Ungültiger Bildname")
+    name += ".png"
     (db.projekt_ordner(pid) / "renders").mkdir(exist_ok=True)
     (db.projekt_ordner(pid) / "renders" / name).write_bytes(base64.b64decode(url.split(",", 1)[1]))
-    p["daten"].setdefault("angebot", {})["render"] = name
-    db.speichere_projekt(p)
+    if name == "angebot.png":
+        p["daten"].setdefault("angebot", {})["render"] = name
+        db.speichere_projekt(p)
     return {"render": name}
+
+
+def _blatt_bilder(pid: str, anzahl: int) -> dict:
+    ordner = db.projekt_ordner(pid) / "renders"
+    return {mi: [ordner / f"blatt_{mi}_{k}.png" for k in (1, 2)] for mi in range(anzahl)}
+
+
+@app.get("/api/projekte/{pid}/zeichnung/{mi}")
+def zeichnung_ansichten(pid: str, mi: int):
+    p = _projekt_oder_404(pid)
+    erg = _berechne(p)
+    if not 0 <= mi < len(erg["moebel"]) or not erg["moebel"][mi]["bauteile"]:
+        raise HTTPException(404, "Möbel nicht gefunden")
+    av = zeichnung.ansichten(erg["moebel"][mi], db.lade_einstellung("vorgaben"))
+    return {name: {"titel": a.titel, "koloriert": zeichnung.svg(a, True), "linien": zeichnung.svg(a, False)}
+            for name, a in av.items()}
 
 
 # ---------------------------------------------------------------------------- Exporte
@@ -369,7 +389,20 @@ def export(pid: str, art: str):
         logo = db.DATEN / "firma" / vorgaben["firma"]["logo"] if vorgaben["firma"].get("logo") else None
         render = p["daten"].get("angebot", {}).get("render")
         rpfad = db.projekt_ordner(pid) / "renders" / render if render else None
-        return _download(pdf.angebot(p, erg, vorgaben, logo, rpfad), f"Angebot_{basis}.pdf", "application/pdf")
+        daten = pdf.angebot(p, erg, vorgaben, logo, rpfad)
+        if p["daten"].get("angebot", {}).get("mit_zeichnungen"):
+            daten = pdf.zusammenfuegen([daten, zeichnung.uebersichtsblaetter(p, erg, vorgaben, _blatt_bilder(pid, len(erg["moebel"])))])
+        return _download(daten, f"Angebot_{basis}.pdf", "application/pdf")
+    if art == "zeichnungen.pdf":
+        return _download(zeichnung.uebersichtsblaetter(p, erg, vorgaben, _blatt_bilder(pid, len(erg["moebel"]))),
+                         f"Zeichnungen_{basis}.pdf", "application/pdf")
+    if art.startswith("zeichnung_") and art.endswith(".dxf"):
+        try:
+            mi = int(art[len("zeichnung_"):-4])
+            moebel_erg = erg["moebel"][mi]
+        except (ValueError, IndexError):
+            raise HTTPException(404, "Möbel nicht gefunden")
+        return _download(zeichnung.dxf(moebel_erg, vorgaben), f"Zeichnung_{basis}_{mi + 1}.dxf", "application/dxf")
     if art == "stueckliste.pdf":
         return _download(pdf.stueckliste(p, erg, vorgaben), f"Stueckliste_{basis}.pdf", "application/pdf")
     if art == "zuschnitt.pdf":
